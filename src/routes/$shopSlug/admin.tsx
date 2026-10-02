@@ -1,0 +1,603 @@
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import {
+  acceptBooking,
+  getOperatorData,
+  inviteEmployee,
+  updateShopBrand,
+} from "@/lib/axiom/server";
+import { useAxiomRing } from "@/components/axiom-ring";
+import { Button } from "@/components/ui/button";
+import { Input, Label } from "@/components/ui/input";
+import { Wordmark } from "@/components/shop-chrome";
+import { formatMoney } from "@/lib/utils";
+import type { AccessMode, Appointment, Billing, Employee, Service, Shop } from "@/lib/axiom/types";
+import { CinematicHero } from "@/components/cinematic-hero";
+
+export const Route = createFileRoute("/$shopSlug/admin")({ component: AdminPage });
+
+type OpData = {
+  mode: AccessMode;
+  shop: Shop;
+  appointments: Appointment[];
+  billing: Billing | null;
+  services: Service[];
+  employees: Employee[];
+};
+
+function AdminPage() {
+  const { shopSlug } = Route.useParams();
+  const { user, isPending } = useCurrentUserState();
+  const [data, setData] = useState<OpData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isPending || !user) return;
+    void getOperatorData({ data: shopSlug })
+      .then(setData)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Forbidden"));
+  }, [isPending, shopSlug, user]);
+
+  if (isPending || (user && !data && !error)) {
+    return (
+      <main className="grid min-h-dvh place-items-center">
+        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/8" />
+      </main>
+    );
+  }
+  if (!user) return <RedirectToSignIn to="/login" />;
+  if (error || !data) {
+    return (
+      <main className="grid min-h-dvh place-items-center px-6 text-center">
+        <div>
+          <p className="font-display text-3xl">This console is locked.</p>
+          <p className="mt-2 text-sm text-muted">Create your own shop to get the operator view.</p>
+          <Link to="/onboard" className="mt-4 inline-block text-sm underline-offset-4 hover:underline">
+            Start onboarding
+          </Link>
+        </div>
+      </main>
+    );
+  }
+  if (data.mode === "employee") {
+    return <Navigate to="/$shopSlug/employee" params={{ shopSlug }} />;
+  }
+
+  return <AdminShell data={data} readonly={data.mode === "preview"} onReload={() => {
+    void getOperatorData({ data: shopSlug }).then(setData);
+  }} />;
+}
+
+function AdminShell({
+  data,
+  readonly,
+  onReload,
+}: {
+  data: OpData;
+  readonly: boolean;
+  onReload: () => void;
+}) {
+  const [tab, setTab] = useState<"overview" | "brand" | "team" | "billing">("overview");
+  const setup = data.shop.onboarding;
+  const needsSetup = !readonly && (!setup.hero || !setup.service || !setup.employee);
+
+  return (
+    <main className="min-h-dvh bg-bg">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8">
+        <div>
+          <Wordmark />
+          <p className="mt-2 text-sm text-muted">
+            {data.shop.name}
+            {readonly ? " · live demo preview" : ""}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            to="/$shopSlug"
+            params={{ shopSlug: data.shop.slug }}
+            className="inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted hover:text-fg"
+          >
+            Customer site
+          </Link>
+          <Link
+            to="/$shopSlug/employee"
+            params={{ shopSlug: data.shop.slug }}
+            className="inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted hover:text-fg"
+          >
+            Station
+          </Link>
+        </div>
+      </header>
+
+      {needsSetup ? (
+        <SetupStrip shop={data.shop} services={data.services} readonly={readonly} onDone={onReload} />
+      ) : null}
+
+      <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
+        {(["overview", "brand", "team", "billing"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className="h-11 rounded-xl px-3 text-sm capitalize"
+            style={
+              tab === t
+                ? { background: "var(--color-surface)", color: "var(--color-fg)" }
+                : { color: "var(--color-muted)" }
+            }
+          >
+            {t}
+          </button>
+        ))}
+      </nav>
+
+      <div className="px-5 py-8 sm:px-8">
+        {tab === "overview" ? (
+          <Overview data={data} readonly={readonly} onReload={onReload} />
+        ) : null}
+        {tab === "brand" ? (
+          <BrandPanel
+            shop={data.shop}
+            services={data.services}
+            readonly={readonly}
+            onReload={onReload}
+          />
+        ) : null}
+        {tab === "team" ? (
+          <TeamPanel shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
+        ) : null}
+        {tab === "billing" ? <BillingPanel billing={data.billing} appointments={data.appointments} /> : null}
+      </div>
+    </main>
+  );
+}
+
+function SetupStrip({
+  shop,
+  services,
+  readonly,
+  onDone,
+}: {
+  shop: Shop;
+  services: Service[];
+  readonly: boolean;
+  onDone: () => void;
+}) {
+  const flags = shop.onboarding;
+  return (
+    <div className="mx-5 mb-4 rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] sm:mx-8">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Guided loop · admin setup</p>
+      <p className="mt-1 font-display text-2xl">Three moves, then book yourself.</p>
+      <ol className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+        <li className={flags.hero ? "text-ok" : "text-muted"}>{flags.hero ? "Hero set" : "1 · Hero + blend"}</li>
+        <li className={flags.service ? "text-ok" : "text-muted"}>
+          {flags.service ? "Primary service" : "2 · Primary service"}
+        </li>
+        <li className={flags.employee ? "text-ok" : "text-muted"}>
+          {flags.employee ? "Staff invited" : "3 · Invite one employee"}
+        </li>
+      </ol>
+      {!readonly && flags.hero && flags.service && flags.employee ? (
+        <Link
+          to="/$shopSlug"
+          params={{ shopSlug: shop.slug }}
+          search={{ loop: true }}
+          className="mt-4 inline-flex h-11 items-center rounded-xl bg-fg px-4 text-sm font-medium text-bg"
+        >
+          Book a test appointment
+        </Link>
+      ) : null}
+      <span className="hidden">{services.length}</span>
+    </div>
+  );
+}
+
+function Overview({
+  data,
+  readonly,
+  onReload,
+}: {
+  data: OpData;
+  readonly: boolean;
+  onReload: () => void;
+}) {
+  const ring = useAxiomRing();
+  const pending = data.appointments.filter((a) => a.status === "pending");
+  const paid = data.appointments.filter((a) => a.paymentStatus === "paid");
+  const revenue = paid.reduce((s, a) => s + a.paymentCents, 0);
+  const chart = useMemo(() => {
+    const days: { day: string; cents: number }[] = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      const key = d.toDateString();
+      const cents = paid
+        .filter((a) => new Date(a.startsAt).toDateString() === key)
+        .reduce((s, a) => s + a.paymentCents, 0);
+      days.push({
+        day: d.toLocaleDateString("en-US", { weekday: "short" }),
+        cents,
+      });
+    }
+    return days;
+  }, [paid]);
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Captured" value={formatMoney(revenue)} />
+          <Stat label="Bookings" value={String(data.appointments.length)} />
+        </div>
+        <div className="mt-4 h-48 rounded-2xl bg-surface p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chart}>
+              <defs>
+                <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--ring-color, #2ee6d6)" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="var(--ring-color, #2ee6d6)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="day" stroke="#6d6d76" fontSize={11} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: "#121216", border: "1px solid rgba(243,241,235,0.1)" }}
+                formatter={(v: number) => formatMoney(v)}
+              />
+              <Area type="monotone" dataKey="cents" stroke="var(--ring-color, #2ee6d6)" fill="url(#rev)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <h3 className="mt-8 text-sm font-medium text-muted">Schedule</h3>
+        <ul className="mt-3 divide-y divide-line">
+          {data.appointments.slice(0, 12).map((a) => (
+            <li key={a.id} className="flex items-center justify-between gap-3 py-3">
+              <div>
+                <p className="text-sm">
+                  {a.serviceName} · {a.employeeName}
+                </p>
+                <p className="text-xs text-muted">
+                  {a.customerName} ·{" "}
+                  {new Date(a.startsAt).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+              <span className="text-xs uppercase tracking-wider text-faint">{a.status}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3 className="text-sm font-medium text-muted">Incoming</h3>
+        {pending.length === 0 ? (
+          <p className="mt-3 text-sm text-faint">Quiet board. New requests light the ring.</p>
+        ) : (
+          <ul className="mt-3 grid gap-2">
+            {pending.map((a) => (
+              <li key={a.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <p className="font-medium">{a.customerName}</p>
+                <p className="text-sm text-muted">
+                  {a.serviceName} with {a.employeeName}
+                </p>
+                {!readonly ? (
+                  <Button
+                    className="mt-3"
+                    size="sm"
+                    onClick={() => {
+                      void (async () => {
+                        await acceptBooking({
+                          data: { slug: data.shop.slug, appointmentId: a.id },
+                        });
+                        ring.announce(
+                          {
+                            id: `acc-${a.id}`,
+                            type: "booking_confirmed",
+                            appointmentId: a.id,
+                            createdAt: new Date().toISOString(),
+                          },
+                          true,
+                        );
+                        onReload();
+                      })();
+                    }}
+                  >
+                    Accept
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 font-display text-3xl tabular">{value}</p>
+    </div>
+  );
+}
+
+function BrandPanel({
+  shop,
+  services,
+  readonly,
+  onReload,
+}: {
+  shop: Shop;
+  services: Service[];
+  readonly: boolean;
+  onReload: () => void;
+}) {
+  const [blend, setBlend] = useState(shop.heroBlendPercent);
+  const [color, setColor] = useState(shop.ringColor);
+  const [primary, setPrimary] = useState(shop.primaryServiceId ?? services[0]?.id ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save(extra?: { heroImageUrl?: string; markService?: boolean }) {
+    if (readonly) return;
+    setSaving(true);
+    try {
+      await updateShopBrand({
+        data: {
+          slug: shop.slug,
+          heroBlendPercent: blend,
+          ringColor: color,
+          heroImageUrl: extra?.heroImageUrl,
+          primaryServiceId: primary || undefined,
+          markHero: true,
+          markService: extra?.markService ?? Boolean(primary),
+        },
+      });
+      onReload();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onFile(file: File | undefined) {
+    if (!file) return;
+    const url = await fileToDataUrl(file, 900);
+    await save({ heroImageUrl: url });
+  }
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-2">
+      <div className="overflow-hidden rounded-[28px]">
+        <CinematicHero
+          imageUrl={shop.heroImageUrl}
+          videoUrl={shop.heroVideoUrl}
+          blendPercent={blend}
+          ringColor={color}
+          className="min-h-[420px]"
+        >
+          <div className="mt-auto p-6">
+            <p className="font-display text-4xl">{shop.name}</p>
+          </div>
+        </CinematicHero>
+      </div>
+      <div>
+        <Label htmlFor="blend">Hero blend {blend}%</Label>
+        <input
+          id="blend"
+          type="range"
+          min={35}
+          max={90}
+          value={blend}
+          disabled={readonly}
+          onChange={(e) => setBlend(Number(e.target.value))}
+          onPointerUp={() => void save()}
+          className="mt-2 w-full accent-accent"
+        />
+        <p className="mt-2 text-xs text-muted">
+          Masks the media into the page so the bottom of the hero dissolves into the dark field.
+        </p>
+        <div className="mt-6">
+          <Label htmlFor="ring">Ring color</Label>
+          <input
+            id="ring"
+            type="color"
+            value={color}
+            disabled={readonly}
+            onChange={(e) => setColor(e.target.value)}
+            onBlur={() => void save()}
+            className="mt-2 h-11 w-24 cursor-pointer rounded-xl bg-surface-2"
+          />
+        </div>
+        <div className="mt-6">
+          <Label htmlFor="primary">Primary service</Label>
+          <select
+            id="primary"
+            value={primary}
+            disabled={readonly}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPrimary(v);
+              void (async () => {
+                if (readonly) return;
+                setSaving(true);
+                try {
+                  await updateShopBrand({
+                    data: {
+                      slug: shop.slug,
+                      heroBlendPercent: blend,
+                      ringColor: color,
+                      primaryServiceId: v,
+                      markHero: true,
+                      markService: true,
+                    },
+                  });
+                  onReload();
+                } finally {
+                  setSaving(false);
+                }
+              })();
+            }}
+            className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+          >
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mt-6">
+          <Label htmlFor="hero-file">Replace hero still</Label>
+          <input
+            id="hero-file"
+            type="file"
+            accept="image/*"
+            disabled={readonly}
+            onChange={(e) => void onFile(e.target.files?.[0])}
+            className="mt-2 block w-full text-sm text-muted"
+          />
+        </div>
+        <Button className="mt-6" disabled={readonly || saving} onClick={() => void save()}>
+          Save brand
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TeamPanel({
+  shop,
+  employees,
+  readonly,
+  onReload,
+}: {
+  shop: Shop;
+  employees: Employee[];
+  readonly: boolean;
+  onReload: () => void;
+}) {
+  const [displayName, setDisplayName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [invitePath, setInvitePath] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
+      <ul className="grid gap-3">
+        {employees.map((e) => (
+          <li key={e.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3">
+            {e.avatarUrl ? (
+              <img src={e.avatarUrl} alt="" className="size-14 rounded-xl object-cover" />
+            ) : null}
+            <div>
+              <p className="font-medium">{e.displayName}</p>
+              <p className="text-xs text-muted">
+                {e.title} · {e.inviteStatus}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <form
+        className="rounded-2xl bg-surface p-4"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          if (readonly) return;
+          setBusy(true);
+          void inviteEmployee({
+            data: { slug: shop.slug, displayName, phone },
+          })
+            .then((r) => {
+              setInvitePath(r.invitePath);
+              setDisplayName("");
+              setPhone("");
+              onReload();
+            })
+            .finally(() => setBusy(false));
+        }}
+      >
+        <p className="font-display text-2xl">Invite staff</p>
+        <p className="mt-1 text-sm text-muted">
+          Enter a name and phone. They sign in and claim the link — no shared PIN.
+        </p>
+        <div className="mt-4">
+          <Label htmlFor="en">Name</Label>
+          <Input id="en" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+        </div>
+        <div className="mt-3">
+          <Label htmlFor="ep">Phone</Label>
+          <Input id="ep" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1…" />
+        </div>
+        <Button type="submit" className="mt-4 w-full" disabled={readonly || busy}>
+          Create invite
+        </Button>
+        {invitePath ? (
+          <p className="mt-3 break-all text-xs text-muted">
+            Invite link: {invitePath}. The chair is already live on your booking page.
+          </p>
+        ) : null}
+        {shop.onboarding.hero && shop.onboarding.service && (shop.onboarding.employee || invitePath) ? (
+          <Link
+            to="/$shopSlug"
+            params={{ shopSlug: shop.slug }}
+            search={{ loop: true }}
+            className="mt-4 flex h-11 items-center justify-center rounded-xl bg-fg text-sm font-medium text-bg"
+          >
+            Book a test appointment
+          </Link>
+        ) : null}
+      </form>
+    </div>
+  );
+}
+
+function BillingPanel({
+  billing,
+  appointments,
+}: {
+  billing: Billing | null;
+  appointments: Appointment[];
+}) {
+  const volume = appointments.reduce((s, a) => s + a.paymentCents, 0);
+  const fee = billing ? Math.round((volume * billing.gearGuardianBps) / 10000) : 0;
+  return (
+    <div className="max-w-lg rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">SaaS</p>
+      <p className="mt-2 font-display text-3xl">Axiom Pro</p>
+      <p className="mt-1 text-sm text-muted">
+        {billing ? `${formatMoney(billing.priceCents)} / month · ${billing.status}` : "No plan"}
+      </p>
+      <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-muted">Gear Guardian fee</p>
+          <p className="tabular">{billing ? `${(billing.gearGuardianBps / 100).toFixed(2)}%` : "—"}</p>
+        </div>
+        <div>
+          <p className="text-muted">Fees this week</p>
+          <p className="tabular">{formatMoney(fee)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function fileToDataUrl(file: File, maxEdge: number): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", 0.82);
+}

@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/sals-barber",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Axiom",
+      "hasCanvas": false,
+      "bodyTextLen": 797,
+      "bodyTextHash": "1749c023ae67fe5b3c4897d57ea7e046e748342bd20e7ac2ddfe125c8b05f4ae",
+      "bodyTextPrefix": "AXIOM Sal's Barber Shop Book 414 MERCER STREET, HOBOKEN, NJ Sal'",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/sals.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Axiom",
+      "hasCanvas": false,
+      "bodyTextLen": 801,
+      "bodyTextHash": "3da06dde43459cd6bda2a24bdd3102694a20757bb571197f24e3b335e28af5d9",
+      "bodyTextPrefix": "AXIOM Sal's Barber Shop 414 MERCER STREET, HOBOKEN, NJ Sal's Bar",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/sals-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/sals.json"
+}

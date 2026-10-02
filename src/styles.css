@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+
+  --color-bg: #08080a;
+  --color-surface: #121216;
+  --color-surface-2: #1b1b22;
+  --color-fg: #f3f1eb;
+  --color-muted: #9a9aa3;
+  --color-faint: #6d6d76;
+  --color-line: rgba(243, 241, 235, 0.1);
+  --color-accent: #2ee6d6;
+  --color-copper: #e7b48a;
+  --color-steel: #7ec8e3;
+  --color-ok: #8fce8a;
+  --color-danger: #e07a73;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+
+  --shadow-border: 0 0 0 1px rgba(243, 241, 235, 0.08);
+  --shadow-border-hover: 0 0 0 1px rgba(243, 241, 235, 0.14);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  img {
+    outline: 1px solid rgba(255, 255, 255, 0.08);
+    outline-offset: -1px;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.hero-blend {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 var(--hero-blend, 62%),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 var(--hero-blend, 62%),
+    transparent 100%
+  );
+}
+
+.axiom-ring {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow:
+    inset 0 0 20px 2px var(--ring-color, #2ee6d6),
+    inset 0 0 48px 6px color-mix(in srgb, var(--ring-color, #2ee6d6) 45%, transparent),
+    inset 0 0 5px 0px rgba(255, 255, 255, 0.5);
+  opacity: 0;
+}
+
+.axiom-ring[data-state="idle"] {
+  opacity: 0.16;
+}
+
+.axiom-ring[data-state="pulse"] {
+  animation: ring-pulse 2.4s ease-in-out infinite;
+}
+
+.axiom-ring[data-state="flash"] {
+  animation: ring-flash 0.55s ease-in-out 2 forwards;
+}
+
+.axiom-ring[data-state="awaiting"],
+.axiom-ring[data-state="solid"] {
+  opacity: 1;
+}
+
+@keyframes ring-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ring-flash {
+  0%,
+  40%,
+  80% {
+    opacity: 0.18;
+  }
+  20%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axiom-ring[data-state="pulse"],
+  .axiom-ring[data-state="flash"] {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

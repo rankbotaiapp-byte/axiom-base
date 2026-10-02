@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Axiom",
+      "hasCanvas": false,
+      "bodyTextLen": 473,
+      "bodyTextHash": "b79b5be4820d3319c09f9dc88dd1a5310d3d9c08cffdee27eed542481533e613",
+      "bodyTextPrefix": "Axiom VERTICAL SAAS · LOCAL SERVICES Your shop, live before the ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Axiom",
+      "hasCanvas": false,
+      "bodyTextLen": 621,
+      "bodyTextHash": "a15e47313901a9d68c6f20a7256a589c92f100805ae576a0a92fd091f2645dc7",
+      "bodyTextPrefix": "Axiom Sign in VERTICAL SAAS · LOCAL SERVICES Your shop, live bef",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
