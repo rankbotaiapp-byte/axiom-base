@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Store, Truck } from "lucide-react";
+import { AppWindow, ArrowUpRight, Store, Truck } from "lucide-react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
@@ -85,7 +85,7 @@ function Home() {
           </a>
         </div>
 
-        <div className="mt-14 grid gap-3 sm:grid-cols-2">
+        <div className="mt-14 grid gap-3 sm:grid-cols-3">
           <NicheCard
             icon={<Store className="size-4" />}
             title="Storefront"
@@ -96,14 +96,19 @@ function Home() {
             title="Field service"
             copy="Auto, HVAC, trades. You go to the curb — or they come to the lift."
           />
+          <NicheCard
+            icon={<AppWindow className="size-4" />}
+            title="Studio"
+            copy="Web apps, contractors. You build the shop that books itself."
+          />
         </div>
       </section>
 
       <section id="live" className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Two shops. Already taking chairs.</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants · New Era Apps</p>
+          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Three shops. Already taking chairs.</h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
             {showcases.map((s) => (
               <Link
                 key={s.id}
@@ -121,10 +126,11 @@ function Home() {
                 </div>
                 <div className="flex items-end justify-between gap-3 p-5">
                   <div>
-                    <p className="font-display text-2xl">{s.name}</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-faint">Powered by Axiom</p>
+                    <p className="mt-1 font-display text-2xl">{s.name}</p>
                     <p className="mt-1 text-sm text-muted">{s.tagline}</p>
                   </div>
-                  <ArrowUpRight className="size-5 text-muted" />
+                  <ArrowUpRight className="size-5 shrink-0 text-muted" />
                 </div>
               </Link>
             ))}

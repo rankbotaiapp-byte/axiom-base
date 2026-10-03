@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { getPortfolio } from "@/lib/axiom/server";
-import { formatMoney, initials } from "@/lib/utils";
-import { ShopNav } from "@/components/shop-chrome";
+import { formatMoney, formatPhone, initials } from "@/lib/utils";
+import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { Route as ShopLayoutRoute } from "./route";
 
 export const Route = createFileRoute("/$shopSlug/staff/$employeeId")({
@@ -41,6 +41,14 @@ function StaffPage() {
           <div className="flex-1 pt-2">
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{employee.title}</p>
             <h1 className="mt-2 font-display text-5xl leading-none">{employee.displayName}</h1>
+            {employee.phone ? (
+              <a
+                href={`tel:${employee.phone}`}
+                className="mt-3 inline-block text-sm tabular text-muted hover:text-fg"
+              >
+                {formatPhone(employee.phone)}
+              </a>
+            ) : null}
             <p className="mt-4 max-w-md text-muted">{employee.bio}</p>
             <Link
               to="/$shopSlug/book"
@@ -79,6 +87,7 @@ function StaffPage() {
           </div>
         </section>
       </div>
+      <PoweredBy />
     </main>
   );
 }

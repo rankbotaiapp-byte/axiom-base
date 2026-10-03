@@ -66,7 +66,7 @@ function mapShop(r: ShopRow): Shop {
     id: r.id,
     slug: r.slug,
     name: r.name,
-    niche: r.niche === "field" ? "field" : "location",
+    niche: r.niche === "field" ? "field" : r.niche === "studio" ? "studio" : "location",
     tagline: r.tagline,
     description: r.description,
     ringColor: r.ring_color,
@@ -176,7 +176,7 @@ export const listShowcaseShops = createServerFn({ method: "GET" }).handler(
   async (): Promise<Shop[]> => {
     const sql = await getSql();
     const rows = await sql<ShopRow>`
-      select * from shops where is_showcase = true order by name asc
+      select * from shops where is_showcase = true order by created_at asc
     `;
     return rows.map(mapShop);
   },
@@ -231,9 +231,10 @@ export const listShopEvents = createServerFn({ method: "GET" })
           id: string;
           type: ShopEvent["type"];
           appointment_id: string | null;
+          payload: string | null;
           created_at: string;
         }>`
-          select id, type, appointment_id, created_at from shop_events
+          select id, type, appointment_id, payload, created_at from shop_events
           where shop_id = ${row.id} and created_at > ${data.after}
           order by created_at asc limit 40
         `
@@ -241,9 +242,10 @@ export const listShopEvents = createServerFn({ method: "GET" })
           id: string;
           type: ShopEvent["type"];
           appointment_id: string | null;
+          payload: string | null;
           created_at: string;
         }>`
-          select id, type, appointment_id, created_at from shop_events
+          select id, type, appointment_id, payload, created_at from shop_events
           where shop_id = ${row.id}
           order by created_at desc limit 12
         `;
@@ -251,6 +253,7 @@ export const listShopEvents = createServerFn({ method: "GET" })
       id: r.id,
       type: r.type,
       appointmentId: r.appointment_id,
+      payload: r.payload,
       createdAt: String(r.created_at),
     }));
   });
@@ -452,7 +455,7 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
         insert into employees (
           id, shop_id, display_name, title, bio, phone, avatar_url, invite_token, invite_status
         ) values (
-          ${e.id}, ${shopId}, ${e.displayName}, ${e.title}, ${e.bio}, '', ${e.avatarUrl},
+          ${e.id}, ${shopId}, ${e.displayName}, ${e.title}, ${e.bio}, ${e.phone ?? ""}, ${e.avatarUrl},
           ${e.token}, 'pending'
         )
       `;
@@ -517,6 +520,29 @@ export const updateShopBrand = createServerFn({ method: "POST" })
     return { ok: true as const, onboarding: flags };
   });
 
+export const setShopRingColor = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; ringColor: string }) => d)
+  .handler(async ({ data, context }) => {
+    const color = data.ringColor.trim().toUpperCase();
+    if (!/^#[0-9A-F]{6}$/.test(color)) throw new Error("Invalid color");
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    const mem = await membership(row.id, context.userId);
+    const allowed =
+      row.owner_user_id === context.userId ||
+      mem?.role === "owner" ||
+      Boolean(row.is_showcase);
+    if (!allowed) throw new Error("Forbidden");
+    const sql = await getSql();
+    await sql`update shops set ring_color = ${color} where id = ${row.id}`;
+    await sql`
+      insert into shop_events (id, shop_id, type, payload)
+      values (${newId("evt")}, ${row.id}, 'ring_color', ${color})
+    `;
+    return { ringColor: color };
+  });
+
 export const inviteEmployee = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((d: { slug: string; displayName: string; phone: string; title?: string }) => d)
@@ -529,9 +555,9 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     const sql = await getSql();
     const id = newId("emp");
     const token = crypto.randomUUID();
-    const template = NICHES[row.niche === "field" ? "field" : "location"];
+    const template = NICHES[(row.niche as ShopNiche)] ?? NICHES.location;
     const avatar =
-      row.niche === "field" ? "/media/gabe.jpg" : "/media/marco.jpg";
+      template.employees[1]?.avatarUrl || template.employees[0]?.avatarUrl || "";
     await sql`
       insert into employees (
         id, shop_id, display_name, title, bio, phone, avatar_url, invite_token, invite_status
@@ -748,7 +774,7 @@ export const acceptBooking = createServerFn({ method: "POST" })
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
     const mem = await membership(row.id, context.userId);
-    const allowed = mem || row.owner_user_id === context.userId;
+    const allowed = mem || row.owner_user_id === context.userId || Boolean(row.is_showcase);
     if (!allowed) throw new Error("Forbidden");
     const sql = await getSql();
     const updated = await sql<{ id: string }>`

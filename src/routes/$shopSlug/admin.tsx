@@ -9,6 +9,7 @@ import {
   inviteEmployee,
   updateShopBrand,
 } from "@/lib/axiom/server";
+import { RING_PRESETS } from "@/lib/axiom/niches";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -286,7 +287,7 @@ function Overview({
                 <p className="text-sm text-muted">
                   {a.serviceName} with {a.employeeName}
                 </p>
-                {!readonly ? (
+                {!readonly || data.shop.isShowcase ? (
                   <Button
                     className="mt-3"
                     size="sm"
@@ -300,6 +301,7 @@ function Overview({
                             id: `acc-${a.id}`,
                             type: "booking_confirmed",
                             appointmentId: a.id,
+                            payload: null,
                             createdAt: new Date().toISOString(),
                           },
                           true,
@@ -340,6 +342,7 @@ function BrandPanel({
   readonly: boolean;
   onReload: () => void;
 }) {
+  const ring = useAxiomRing();
   const [blend, setBlend] = useState(shop.heroBlendPercent);
   const [color, setColor] = useState(shop.ringColor);
   const [primary, setPrimary] = useState(shop.primaryServiceId ?? services[0]?.id ?? "");
@@ -364,6 +367,12 @@ function BrandPanel({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function persistColor(next: string) {
+    setColor(next);
+    ring.setRingColor(next);
+    await ring.persistRingColor(next);
   }
 
   async function onFile(file: File | undefined) {
@@ -404,16 +413,41 @@ function BrandPanel({
           Masks the media into the page so the bottom of the hero dissolves into the dark field.
         </p>
         <div className="mt-6">
-          <Label htmlFor="ring">Ring color</Label>
-          <input
-            id="ring"
-            type="color"
-            value={color}
-            disabled={readonly}
-            onChange={(e) => setColor(e.target.value)}
-            onBlur={() => void save()}
-            className="mt-2 h-11 w-24 cursor-pointer rounded-xl bg-surface-2"
-          />
+          <Label htmlFor="ring">Ring color · all dashboards</Label>
+          <p className="mt-1 text-xs text-muted">
+            The perimeter glow customers, staff, and this console share. Incoming books flash it;
+            confirmations lock it.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {RING_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                aria-label={p.name}
+                onClick={() => void persistColor(p.value)}
+                className="size-10 rounded-full"
+                style={{
+                  background: p.value,
+                  boxShadow:
+                    color.toUpperCase() === p.value.toUpperCase()
+                      ? `0 0 0 2px var(--color-bg), 0 0 0 4px ${p.value}`
+                      : "0 0 0 1px rgba(243,241,235,0.16)",
+                }}
+              />
+            ))}
+            <input
+              id="ring"
+              type="color"
+              value={color}
+              onChange={(e) => {
+                const next = e.target.value;
+                setColor(next);
+                ring.setRingColor(next);
+              }}
+              onBlur={() => void persistColor(color)}
+              className="h-11 w-16 cursor-pointer rounded-xl bg-surface-2"
+            />
+          </div>
         </div>
         <div className="mt-6">
           <Label htmlFor="primary">Primary service</Label>

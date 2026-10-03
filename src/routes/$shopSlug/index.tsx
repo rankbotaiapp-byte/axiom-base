@@ -3,9 +3,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { CinematicHero } from "@/components/cinematic-hero";
 import { LoopOverlay, TourOverlay } from "@/components/tour-overlay";
-import { ShopNav } from "@/components/shop-chrome";
-import { formatMoney, initials } from "@/lib/utils";
-import { WEEKDAYS } from "@/lib/axiom/niches";
+import { PoweredBy, ShopNav } from "@/components/shop-chrome";
+import { formatMoney, formatPhone, initials } from "@/lib/utils";
+import { nicheCopy, WEEKDAYS } from "@/lib/axiom/niches";
 import type { AccessMode } from "@/lib/axiom/types";
 import { getShopAccess } from "@/lib/axiom/server";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -35,6 +35,8 @@ function CustomerHome() {
   }, [data.shop.slug, isPending, user]);
 
   const invited = data.employees[data.employees.length - 1];
+  const copy = nicheCopy(data.shop.niche);
+  const contact = data.employees.find((e) => e.phone)?.phone;
 
   return (
     <div className="bg-bg">
@@ -64,8 +66,8 @@ function CustomerHome() {
 
       <section className="px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-5xl">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">The bench</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Who you'll sit with.</h2>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bench}</p>
+          <h2 className="mt-2 font-display text-3xl sm:text-4xl">{copy.heading}</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {data.employees.map((e) => (
               <Link
@@ -88,6 +90,9 @@ function CustomerHome() {
                 <div className="py-2 pr-2">
                   <p className="font-display text-2xl leading-tight">{e.displayName}</p>
                   <p className="text-sm text-muted">{e.title}</p>
+                  {e.phone ? (
+                    <p className="mt-1 text-sm tabular text-muted">{formatPhone(e.phone)}</p>
+                  ) : null}
                   <p className="mt-2 line-clamp-3 text-sm text-muted">{e.bio}</p>
                 </div>
               </Link>
@@ -127,9 +132,16 @@ function CustomerHome() {
               ))}
             </ul>
             <p className="mt-6 text-sm text-muted">{data.shop.address}</p>
+            {contact ? (
+              <a href={`tel:${contact}`} className="mt-2 block text-sm tabular text-muted hover:text-fg">
+                {formatPhone(contact)}
+              </a>
+            ) : null}
           </div>
         </div>
       </section>
+
+      <PoweredBy />
 
       <div className="sticky bottom-0 z-30 border-t border-line bg-bg/90 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
         <Link

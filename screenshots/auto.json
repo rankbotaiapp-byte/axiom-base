@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8080/axiom-auto",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 904,
+      "bodyTextHash": "3b16c621e56dd20be79122478881cd2d9b4f9a5308360b9286c1700abbb984c8",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM Axiom Auto Book NEW ERA · 15-MIL",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [
+        "Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <CatchBoundary getResetKey={function getResetKey} errorComponent={function AppErrorComponent} ...>\n      <MatchInnerImpl match={{id:\"/$shop...\", ...}}>\n        <Lazy>\n          <CustomerHome>\n            <div className=\"bg-bg\">\n              <CinematicHero imageUrl=\"/media/aut...\" videoUrl=\"/media/aut...\" blendPercent={64} ringColor=\"#7EC8E3\">\n                <section className=\"relative i...\" style={{...}}>\n                  <div>\n                  <div className=\"relative z...\">\n                    <ShopNav shop={{id:\"shop_dg\", ...}} mode=\"customer\" highlightAdmin={undefined}>\n                      <header className=\"flex items...\">\n                        <a>\n                        <nav className=\"flex items...\">\n                          <a>\n                          <div className=\"hidden sm:...\">\n+                           <a\n+                             className=\"inline-flex h-11 items-center px-3 text-sm text-muted hover:text-fg\"\n+                             ref={{current:null}}\n+                             onClick={function handleClick}\n+                             onBlur={function handleLeave}\n+                             onFocus={function}\n+                             onMouseEnter={function}\n+                             onMouseLeave={function handleLeave}\n+                             onTouchStart={function handleTouchStart}\n+                             href=\"/login\"\n+                             target={undefined}\n+                           >\n-                           <div className=\"size-8 animate-pulse rounded-full bg-fg/10\">\n                    ...\n              ...\n"
+      ],
+      "screenshot": "/workspace/screenshots/auto.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 908,
+      "bodyTextHash": "0c00eecfb2ea61b65b653e6ea420332e0a8aa70f0e5c05a03fbd233f31c77d80",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM Axiom Auto NEW ERA · 15-MILE SER",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/auto-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/auto.json"
+}

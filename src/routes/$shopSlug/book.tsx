@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { GearGuardianCheckout } from "@/components/gear-guardian-checkout";
-import { ShopNav } from "@/components/shop-chrome";
+import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -94,6 +94,7 @@ function BookPage() {
         id: `local-${result.id}`,
         type: "booking_request",
         appointmentId: result.id,
+        payload: null,
         createdAt: new Date().toISOString(),
       },
       true,
@@ -252,6 +253,7 @@ function BookPage() {
           </Link>
         </aside>
       </div>
+      <PoweredBy />
     </main>
   );
 }

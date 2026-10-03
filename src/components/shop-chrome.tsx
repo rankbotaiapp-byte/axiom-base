@@ -13,7 +13,7 @@ export function ShopNav({
   mode: AccessMode;
   highlightAdmin?: boolean;
 }) {
-  const { user, isPending } = useCurrentUserState();
+  const { user } = useCurrentUserState();
   return (
     <header className="flex items-center justify-between gap-3 px-4 py-4 sm:px-8">
       <Link
@@ -21,7 +21,9 @@ export function ShopNav({
         params={{ shopSlug: shop.slug }}
         className="min-w-0"
       >
-        <p className="truncate text-[11px] uppercase tracking-[0.22em] text-muted">Axiom</p>
+        <p className="truncate text-[11px] uppercase tracking-[0.22em] text-muted">
+          New Era Apps · Powered by Axiom
+        </p>
         <p className="truncate font-display text-xl leading-tight text-fg">{shop.name}</p>
       </Link>
       <nav className="flex items-center gap-1 sm:gap-2">
@@ -57,9 +59,7 @@ export function ShopNav({
           </Link>
         ) : null}
         <div className="hidden sm:block">
-          {isPending ? (
-            <div className="size-8 animate-pulse rounded-full bg-fg/10" />
-          ) : user ? (
+          {user ? (
             <UserButton />
           ) : (
             <Link to="/login" className="inline-flex h-11 items-center px-3 text-sm text-muted hover:text-fg">
@@ -80,5 +80,18 @@ export function Wordmark({ className }: { className?: string }) {
       </span>
       <span className="font-display text-lg tracking-tight">Axiom</span>
     </Link>
+  );
+}
+
+export function PoweredBy({ className }: { className?: string }) {
+  return (
+    <p
+      className={cn(
+        "px-5 py-10 text-center text-[11px] uppercase tracking-[0.22em] text-faint",
+        className,
+      )}
+    >
+      New Era Apps · Powered by Axiom
+    </p>
   );
 }

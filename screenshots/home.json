@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 558,
+      "bodyTextHash": "736ef59b94234c6371281c3884f09b3b00f11e2648817b11382533e7435106ee",
+      "bodyTextPrefix": "Axiom VERTICAL SAAS · LOCAL SERVICES Your shop, live before the ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/home.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 558,
+      "bodyTextHash": "736ef59b94234c6371281c3884f09b3b00f11e2648817b11382533e7435106ee",
+      "bodyTextPrefix": "Axiom VERTICAL SAAS · LOCAL SERVICES Your shop, live before the ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/home-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/home.json"
+}

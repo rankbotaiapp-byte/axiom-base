@@ -24,10 +24,20 @@ export type NicheTemplate = {
     title: string;
     bio: string;
     avatarUrl: string;
+    phone?: string;
     serviceIndexes: number[];
   }[];
   portfolio: { employeeIndex: number; imageUrl: string; caption: string }[];
 };
+
+export const RING_PRESETS = [
+  { name: "Teal", value: "#2EE6D6" },
+  { name: "Copper", value: "#E7B48A" },
+  { name: "Steel", value: "#7EC8E3" },
+  { name: "Ember", value: "#E07A73" },
+  { name: "Gold", value: "#C9A227" },
+  { name: "Violet", value: "#B388FF" },
+] as const;
 
 export const NICHES: Record<ShopNiche, NicheTemplate> = {
   location: {
@@ -39,7 +49,7 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     tagline: "Precision cuts. No waiting around.",
     description:
       "A quiet two-chair shop. Book a chair, skip the walk-in list, leave looking finished.",
-    address: "12 Pine Street",
+    address: "12 Main Street, New Era",
     ringColor: "#E7B48A",
     heroImageUrl: "/media/barber-hero.jpg",
     heroVideoUrl: "/media/barber-hero.mp4",
@@ -95,7 +105,7 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     tagline: "We come to the curb.",
     description:
       "Mobile diagnostics plus a bay for the work that needs a hoist. Plain-language quotes.",
-    address: "Service radius: 15 miles",
+    address: "New Era · 15-mile service radius",
     ringColor: "#7EC8E3",
     heroImageUrl: "/media/auto-hero.jpg",
     heroVideoUrl: "/media/auto-hero.mp4",
@@ -142,6 +152,62 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       { employeeIndex: 1, imageUrl: "/media/auto-work-1.jpg", caption: "Curb-side" },
     ],
   },
+  studio: {
+    niche: "studio",
+    label: "Studio",
+    kicker: "You build for them",
+    blurb: "Web apps, contractors, studios — a desk, a build, a product that books itself.",
+    defaultName: "Forge Studio",
+    tagline: "Powered by Axiom.",
+    description:
+      "We stand up the booking site, the operator console, and the staff station — then light the edge of the phone when the first appointment lands.",
+    address: "New Era",
+    ringColor: "#2EE6D6",
+    heroImageUrl: "/media/apps-hero.jpg",
+    heroVideoUrl: "/media/apps-hero.mp4",
+    heroBlendPercent: 60,
+    services: [
+      {
+        name: "Discovery call",
+        description: "What you run. What the ring should say.",
+        durationMin: 45,
+        priceCents: 15000,
+      },
+      {
+        name: "Site launch session",
+        description: "Live booking page, services, and staff.",
+        durationMin: 90,
+        priceCents: 48000,
+      },
+      {
+        name: "Console + station",
+        description: "Admin, employee board, incoming book.",
+        durationMin: 60,
+        priceCents: 32000,
+      },
+      {
+        name: "Custom ring + brand",
+        description: "Perimeter glow, color, confirmation language.",
+        durationMin: 50,
+        priceCents: 22000,
+      },
+    ],
+    employees: [
+      {
+        displayName: "Eric",
+        title: "Founder",
+        bio: "Builds the shop you can book. New Era Apps, powered by Axiom.",
+        avatarUrl: "/media/eric.jpg",
+        phone: "5418908126",
+        serviceIndexes: [0, 1, 2, 3],
+      },
+    ],
+    portfolio: [
+      { employeeIndex: 0, imageUrl: "/media/apps-work-1.jpg", caption: "The ring" },
+      { employeeIndex: 0, imageUrl: "/media/apps-work-2.jpg", caption: "Operator console" },
+      { employeeIndex: 0, imageUrl: "/media/apps-hero.jpg", caption: "Studio" },
+    ],
+  },
 };
 
 export const DEFAULT_HOURS: Record<string, string> = {
@@ -163,3 +229,9 @@ export const WEEKDAYS = [
   ["sat", "Sat"],
   ["sun", "Sun"],
 ] as const;
+
+export function nicheCopy(niche: ShopNiche) {
+  if (niche === "field") return { bench: "The crew", heading: "Who rolls up." };
+  if (niche === "studio") return { bench: "The studio", heading: "Who you'll work with." };
+  return { bench: "The bench", heading: "Who you'll sit with." };
+}

@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { addPortfolioItem, getOperatorData, getPortfolio } from "@/lib/axiom/server";
+import { addPortfolioItem, acceptBooking, getOperatorData, getPortfolio } from "@/lib/axiom/server";
 import type { AccessMode, Appointment, Employee, PortfolioItem, Shop } from "@/lib/axiom/types";
 import { Wordmark } from "@/components/shop-chrome";
 import { Input, Label } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useAxiomRing } from "@/components/axiom-ring";
 
 export const Route = createFileRoute("/$shopSlug/employee")({ component: EmployeePage });
 
 function EmployeePage() {
   const { shopSlug } = Route.useParams();
   const { user, isPending } = useCurrentUserState();
+  const ring = useAxiomRing();
   const [error, setError] = useState<string | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
   const [mode, setMode] = useState<AccessMode>("none");
@@ -89,7 +92,7 @@ function EmployeePage() {
             <li className="py-6 text-sm text-faint">No appointments yet.</li>
           ) : (
             appointments.map((a) => (
-              <li key={a.id} className="flex justify-between gap-3 py-3">
+              <li key={a.id} className="flex items-center justify-between gap-3 py-3">
                 <div>
                   <p className="text-sm">{a.serviceName}</p>
                   <p className="text-xs text-muted">
@@ -103,7 +106,37 @@ function EmployeePage() {
                     })}
                   </p>
                 </div>
-                <span className="text-xs uppercase tracking-wider text-faint">{a.status}</span>
+                <div className="flex items-center gap-2">
+                  {a.status === "pending" ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        void (async () => {
+                          await acceptBooking({
+                            data: { slug: shop.slug, appointmentId: a.id },
+                          });
+                          ring.announce(
+                            {
+                              id: `acc-${a.id}`,
+                              type: "booking_confirmed",
+                              appointmentId: a.id,
+                              payload: null,
+                              createdAt: new Date().toISOString(),
+                            },
+                            true,
+                          );
+                          setAppointments((prev) =>
+                            prev.map((x) => (x.id === a.id ? { ...x, status: "confirmed" } : x)),
+                          );
+                        })();
+                      }}
+                    >
+                      Accept
+                    </Button>
+                  ) : (
+                    <span className="text-xs uppercase tracking-wider text-faint">{a.status}</span>
+                  )}
+                </div>
               </li>
             ))
           )}

@@ -132,7 +132,7 @@ var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-XnfIKv7r.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-CJZje4W_.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -154,75 +154,79 @@ async function getStartManifest(matchedRoutes) {
 var manifest = {
 	"0448307bae57c4cb90c9e675e96ee95efc433358871a5d8a5cd71bfc73a3b4e7": {
 		functionName: "getOperatorData_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"1efc849d468da8194dc28868fabb50e7a182b529ec1132c7635d2174be23f0e9": {
 		functionName: "getInvitePreview_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
+	},
+	"268101d8c1ff513f0bcf57bf86d08af52b0d4d53a698bc5f5e00ef0cc44640ab": {
+		functionName: "setShopRingColor_createServerFn_handler",
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"2c4985e96c199268f7f639534cb5e8e31d6b19d43286bf77416413db60ffde26": {
 		functionName: "fetchSessionUser_createServerFn_handler",
-		importer: () => import("../__root-BXdL1yTU.mjs")
+		importer: () => import("../__root-BglS43A9.mjs")
 	},
 	"2c61f6c5d07f7ac5f6cfbdc53f8c7038bf8884f7c4a21cf7c5f5e5ab30064b8f": {
 		functionName: "createBooking_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"30642a916957732ce0ede2e076fdb02b275425ecbb5a809f21665bb30ca990d6": {
 		functionName: "getPublicShop_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"6521a92301daa18d33236f64eda487904d6acc18113b45e5197ee75e7633eb9a": {
 		functionName: "listMyShops_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"67aca4a0b4d0b1ed0ad5278149217973b9db21407da6f799cbe369b72cd9a1c2": {
 		functionName: "getShopAccess_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"8c4f196bd44621e17aae1a5067f96ed468e28b603c84cc4704041cbe5288e416": {
 		functionName: "getPortfolio_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"9219cba4f202ba8cb97885c839c76493c7bbf25617b3f09ca632e6d252cfc222": {
 		functionName: "addPortfolioItem_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"9cc41ac852ee56a58d91c2414049c5468c0283109c3db342d38325ad9c449097": {
 		functionName: "acceptBooking_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"aa87097a34d8e3d2d957a7db6a1efd5ca2c14c54ff6a39c644c6fccb7b690014": {
 		functionName: "inviteEmployee_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"aada2037010cdf5753557f0d845ad8897b308055acf6464586ddf2bcfd422abf": {
 		functionName: "claimInvite_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"cc0942e921337ab38993c3c7b8c59f7e7f30bcf338e245618f83bafbfa582592": {
 		functionName: "updateShopBrand_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"ccae9bd556feaad5df260bf196d003143fa1bc3bd089df43dd943122bf3d3b6c": {
 		functionName: "getAppointmentPublic_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"e6dfeb63056e67b41ebe7f194100e4e43214edcb391e3ee824cd5b7b1a130387": {
 		functionName: "listShopEvents_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"f72216c02755fa90557b16a345b8c00ab8c6d61d8c3c98b86380c8bee6b80dca": {
 		functionName: "listShowcaseShops_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"f829bacc015ea9c584d6ae5c326a97820f705785a12b391b88c3b47ee8419cba": {
 		functionName: "listBookedStarts_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	},
 	"fff0111b81048d2fdb01754712776e41b57112d20c9b14bd18695a7be91f7c9a": {
 		functionName: "createShopFromNiche_createServerFn_handler",
-		importer: () => import("./server-DkRbN6Qr.mjs")
+		importer: () => import("./server-BhvC5U7R.mjs")
 	}
 };
 async function getServerFnById(id, access) {
@@ -1627,7 +1631,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-Cz9T8z2K.mjs").then((n) => n.t),
+		import("./router-MEFXtEX6.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);

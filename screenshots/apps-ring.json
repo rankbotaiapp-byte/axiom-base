@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/new-era-apps",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 675,
+      "bodyTextHash": "9c0bddb8855ce43387d7cd709e00702b3dab57dcead15a60323c10a890d5e405",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM New Era Apps Book Sign in NEW ER",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/apps-ring.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 671,
+      "bodyTextHash": "a5307ef79b16bfd2ac7446c60b95b2e220aeb8820e7a14296dc244fbccc0f12f",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM New Era Apps NEW ERA New Era App",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/apps-ring-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/apps-ring.json"
+}

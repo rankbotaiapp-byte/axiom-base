@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { Store, Truck } from "lucide-react";
+import { AppWindow, Store, Truck } from "lucide-react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
@@ -77,10 +77,11 @@ function Onboard() {
           We generate a live booking site with dummy staff, services, and a cinematic hero. You can rename it in the next breath.
         </p>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
           {(Object.keys(NICHES) as ShopNiche[]).map((key) => {
             const n = NICHES[key];
             const selected = niche === key;
+            const Icon = key === "field" ? Truck : key === "studio" ? AppWindow : Store;
             return (
               <button
                 key={key}
@@ -97,7 +98,7 @@ function Onboard() {
                 }
               >
                 <span className="grid size-9 place-items-center rounded-lg bg-surface-2">
-                  {key === "location" ? <Store className="size-4" /> : <Truck className="size-4" />}
+                  <Icon className="size-4" />
                 </span>
                 <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-muted">{n.kicker}</p>
                 <p className="mt-1 font-display text-2xl">{n.label}</p>

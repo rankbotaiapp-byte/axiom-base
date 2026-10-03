@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/new-era-apps",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 667,
+      "bodyTextHash": "5083b752f09e34280ddcd7e05c0a9081c517e32947cc0a8359652d03d04e2571",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM New Era Apps Book NEW ERA New Er",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/apps.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 671,
+      "bodyTextHash": "a5307ef79b16bfd2ac7446c60b95b2e220aeb8820e7a14296dc244fbccc0f12f",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM New Era Apps NEW ERA New Era App",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/apps-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/apps.json"
+}

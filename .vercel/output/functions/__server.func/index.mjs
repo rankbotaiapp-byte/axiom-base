@@ -12,9 +12,9 @@ var install_page_default = "<!DOCTYPE html>\n<html lang=\"en\" class=\"device-de
 //#endregion
 //#region \0virtual:grok-og-identity
 var grokOgIdentity = { "site": {
-	"title": "Axiom",
+	"title": "New Era Apps",
 	"card": "custom",
-	"description": "Instant booking sites for local service businesses.",
+	"description": "Instant booking sites for local service businesses. Powered by Axiom.",
 	"image": "/og.jpg"
 } };
 //#endregion

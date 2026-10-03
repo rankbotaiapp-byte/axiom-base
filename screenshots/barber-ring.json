@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/new-era-barbershop",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 851,
+      "bodyTextHash": "0dccec97fed04836d695acecd52834253e01cac6dab846567848e829c9eebc95",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM New Era Barbershop Book Sign in ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/barber-ring.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "New Era Apps",
+      "hasCanvas": false,
+      "bodyTextLen": 847,
+      "bodyTextHash": "69d6e83dfbdb208d7526e38decb5b88fa3aeab1e9bf59cc59342f14a3bcb7a17",
+      "bodyTextPrefix": "NEW ERA APPS · POWERED BY AXIOM New Era Barbershop 12 MAIN STREE",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/barber-ring-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/barber-ring.json"
+}

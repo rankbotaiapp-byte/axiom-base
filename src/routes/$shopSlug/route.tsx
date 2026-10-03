@@ -57,7 +57,7 @@ function ShopLayout() {
 
 function AcceptBar({ slug, mode }: { slug: string; mode: AccessMode }) {
   const { state, accept, message } = useAxiomRing();
-  const staff = mode === "owner" || mode === "employee";
+  const staff = mode === "owner" || mode === "employee" || mode === "preview";
   const show =
     staff && (state === "pulse" || state === "awaiting" || message === "New booking request");
   if (!show) return null;

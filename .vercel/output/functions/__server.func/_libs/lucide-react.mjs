@@ -82,6 +82,34 @@ var createLucideIcon = (iconName, iconNode) => {
 * This source code is licensed under the ISC license.
 * See the LICENSE file in the root directory of this source tree.
 */
+var AppWindow = createLucideIcon("app-window", [
+	["rect", {
+		x: "2",
+		y: "4",
+		width: "20",
+		height: "16",
+		rx: "2",
+		key: "izxlao"
+	}],
+	["path", {
+		d: "M10 4v4",
+		key: "pp8u80"
+	}],
+	["path", {
+		d: "M2 8h20",
+		key: "d11cs7"
+	}],
+	["path", {
+		d: "M6 4v4",
+		key: "1svtjw"
+	}]
+]);
+/**
+* @license lucide-react v0.510.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
 var ArrowRight = createLucideIcon("arrow-right", [["path", {
 	d: "M5 12h14",
 	key: "1ays0h"
@@ -206,4 +234,4 @@ var Truck = createLucideIcon("truck", [
 	}]
 ]);
 //#endregion
-export { LoaderCircle as a, ShieldCheck as i, TriangleAlert as n, ArrowUpRight as o, Store as r, ArrowRight as s, Truck as t };
+export { LoaderCircle as a, AppWindow as c, ShieldCheck as i, TriangleAlert as n, ArrowUpRight as o, Store as r, ArrowRight as s, Truck as t };

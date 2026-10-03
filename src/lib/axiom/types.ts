@@ -1,4 +1,4 @@
-export type ShopNiche = "location" | "field";
+export type ShopNiche = "location" | "field" | "studio";
 
 export type ShopRole = "owner" | "employee" | "customer";
 
@@ -82,10 +82,13 @@ export type Appointment = {
   paymentRef: string | null;
 };
 
+export type ShopEventType = "booking_request" | "booking_confirmed" | "ring_color";
+
 export type ShopEvent = {
   id: string;
-  type: "booking_request" | "booking_confirmed";
+  type: ShopEventType;
   appointmentId: string | null;
+  payload: string | null;
   createdAt: string;
 };
 

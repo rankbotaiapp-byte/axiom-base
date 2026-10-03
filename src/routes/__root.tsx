@@ -5,7 +5,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Axiom";
+const APP_NAME = "New Era Apps";
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
   const { getSessionUser } = await import("@/lib/auth/verify.server");
@@ -22,7 +22,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "Instant booking sites for local service businesses.",
+        content: "Instant booking sites for local service businesses. Powered by Axiom.",
       },
       { name: "theme-color", content: "#08080A" },
     ],
