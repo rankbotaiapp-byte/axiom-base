@@ -4,12 +4,15 @@ import { ArrowRight } from "lucide-react";
 import { CinematicHero, IntroFxToggle } from "@/components/cinematic-hero";
 import { LoopOverlay, TourOverlay } from "@/components/tour-overlay";
 import { PoweredBy, ShopNav } from "@/components/shop-chrome";
+import { Button } from "@/components/ui/button";
+import { Input, Label } from "@/components/ui/input";
 import { formatMoney, formatPhone, initials } from "@/lib/utils";
 import { nicheCopy, WEEKDAYS } from "@/lib/axiom/niches";
+import { resolveHeroMedia } from "@/lib/axiom/media";
 import type { AccessMode } from "@/lib/axiom/types";
-import { getShopAccess } from "@/lib/axiom/server";
+import { getShopAccess, submitInquiry } from "@/lib/axiom/server";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { Route as ShopLayoutRoute } from "./route";
+import { useShopPageData } from "./route";
 
 export const Route = createFileRoute("/$shopSlug/")({
   validateSearch: (s: Record<string, unknown>): { tour?: boolean; loop?: boolean } => {
@@ -22,7 +25,7 @@ export const Route = createFileRoute("/$shopSlug/")({
 });
 
 function CustomerHome() {
-  const data = ShopLayoutRoute.useLoaderData();
+  const data = useShopPageData();
   const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [mode, setMode] = useState<AccessMode>("customer");
@@ -37,11 +40,13 @@ function CustomerHome() {
   const invited = data.employees[data.employees.length - 1];
   const copy = nicheCopy(data.shop.niche);
   const contact = data.employees.find((e) => e.phone)?.phone;
+  const hero = resolveHeroMedia(data.shop);
 
   return (
     <div className="bg-bg">
       <CinematicHero
-        imageUrl={data.shop.heroImageUrl}
+        imageUrl={hero.imageUrl}
+        videoUrl={hero.videoUrl}
         blendPercent={data.shop.heroBlendPercent}
         introPreset={data.shop.introPreset}
         introSpeed={data.shop.introSpeed}
@@ -132,7 +137,9 @@ function CustomerHome() {
                 </li>
               ))}
             </ul>
-            <p className="mt-6 text-sm text-muted">{data.shop.address}</p>
+            <p className="mt-6 text-sm text-muted">{data.shop.description}</p>
+            <p className="mt-2 text-sm text-muted">{data.shop.address}</p>
+            <InquiryForm slug={data.shop.slug} />
             {contact ? (
               <a href={`tel:${contact}`} className="mt-2 block text-sm tabular text-muted hover:text-fg">
                 {formatPhone(contact)}
@@ -160,5 +167,59 @@ function CustomerHome() {
       {search.tour ? <TourOverlay slug={data.shop.slug} /> : null}
       {search.loop ? <LoopOverlay slug={data.shop.slug} employeeId={invited?.id} /> : null}
     </div>
+  );
+}
+
+function InquiryForm({ slug }: { slug: string }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <form
+      className="mt-8 grid gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setBusy(true);
+        setError(null);
+        void submitInquiry({ data: { slug, name, phone, message } })
+          .then(() => {
+            setSent(true);
+            setMessage("");
+          })
+          .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not send"))
+          .finally(() => setBusy(false));
+      }}
+    >
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Ask the shop</p>
+      {sent ? <p className="text-sm text-ok">Sent. They have it on the console.</p> : null}
+      <div>
+        <Label htmlFor="inq-name">Name</Label>
+        <Input id="inq-name" value={name} onChange={(e) => setName(e.target.value)} required />
+      </div>
+      <div>
+        <Label htmlFor="inq-phone">Phone</Label>
+        <Input id="inq-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
+      </div>
+      <div>
+        <Label htmlFor="inq-msg">Message</Label>
+        <textarea
+          id="inq-msg"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          required
+          minLength={8}
+          rows={3}
+          className="mt-2 w-full rounded-xl bg-surface-2 px-3 py-2 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+        />
+      </div>
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      <Button type="submit" disabled={busy}>
+        {busy ? "Sending" : "Send inquiry"}
+      </Button>
+    </form>
   );
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -11,6 +11,8 @@ import {
   parseAppEnv,
   projectRoot,
   readAppEnv,
+  resolveCommand,
+  scriptFromCmdShim,
 } from "./with-app-env.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -71,6 +73,26 @@ test("vite loadEnv resolves the wrapped value", () => {
   const root = makeWorkspace('{"VITE_AUTH_ENABLED":"false"}');
   const merged = mergeAppEnv(readAppEnv(root), { PATH: "/usr/bin" });
   assert.equal(merged.VITE_AUTH_ENABLED, "false");
+});
+
+test("a windows cmd shim points at the package JS entry", () => {
+  assert.equal(
+    scriptFromCmdShim('"%_prog%"  "%dp0%\\..\\vite\\bin\\vite.js" %*'),
+    "..\\vite\\bin\\vite.js",
+  );
+  assert.equal(scriptFromCmdShim("no shim here"), null);
+});
+
+test("vite resolves to a local file instead of a bare PATH lookup", () => {
+  const resolved = resolveCommand("vite", projectRoot());
+  if (process.platform === "win32") {
+    assert.equal(resolved.command, process.execPath);
+    assert.equal(resolved.args.length, 1);
+    assert.equal(existsSync(resolved.args[0]), true);
+  } else {
+    assert.equal(existsSync(resolved.command), true);
+    assert.equal(resolved.args.length, 0);
+  }
 });
 
 test("the wrapped command runs with the app env applied", async () => {

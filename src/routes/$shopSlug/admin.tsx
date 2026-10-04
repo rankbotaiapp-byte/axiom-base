@@ -7,20 +7,29 @@ import {
   acceptBooking,
   getOperatorData,
   inviteEmployee,
+  refreshStripeConnect,
   updateShopBrand,
   setShopIntro,
 } from "@/lib/axiom/server";
 import { RING_PRESETS } from "@/lib/axiom/niches";
+import { resolveHeroMedia } from "@/lib/axiom/media";
 import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
+import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Wordmark } from "@/components/shop-chrome";
 import { formatMoney } from "@/lib/utils";
-import type { AccessMode, Appointment, Billing, Employee, Service, Shop } from "@/lib/axiom/types";
+import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service, Shop, ShopNotice } from "@/lib/axiom/types";
 import { CinematicHero } from "@/components/cinematic-hero";
 
-export const Route = createFileRoute("/$shopSlug/admin")({ component: AdminPage });
+export const Route = createFileRoute("/$shopSlug/admin")({
+  validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh" } => {
+    if (s.stripe === "return" || s.stripe === "refresh") return { stripe: s.stripe };
+    return {};
+  },
+  component: AdminPage,
+});
 
 type OpData = {
   mode: AccessMode;
@@ -29,10 +38,15 @@ type OpData = {
   billing: Billing | null;
   services: Service[];
   employees: Employee[];
+  notices: ShopNotice[];
+  notifyEmail: string;
+  notifyPhone: string;
+  payments: PaymentSetup;
 };
 
 function AdminPage() {
   const { shopSlug } = Route.useParams();
+  const { stripe } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [data, setData] = useState<OpData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +56,24 @@ function AdminPage() {
     void getOperatorData({ data: shopSlug })
       .then(setData)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Forbidden"));
+  }, [isPending, shopSlug, user]);
+
+  useEffect(() => {
+    if (!user || !stripe) return;
+    void refreshStripeConnect({ data: shopSlug })
+      .then(() => getOperatorData({ data: shopSlug }))
+      .then(setData)
+      .catch(() => undefined);
+  }, [shopSlug, stripe, user]);
+
+  useEffect(() => {
+    if (isPending || !user) return;
+    const id = window.setInterval(() => {
+      void getOperatorData({ data: shopSlug })
+        .then(setData)
+        .catch(() => undefined);
+    }, 12000);
+    return () => window.clearInterval(id);
   }, [isPending, shopSlug, user]);
 
   if (isPending || (user && !data && !error)) {
@@ -83,7 +115,7 @@ function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "brand" | "team" | "billing">("overview");
+  const [tab, setTab] = useState<"overview" | "settings" | "services" | "brand" | "team" | "alerts" | "billing">("overview");
   const setup = data.shop.onboarding;
   const needsSetup = !readonly && (!setup.hero || !setup.service || !setup.employee);
 
@@ -120,7 +152,7 @@ function AdminShell({
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "brand", "team", "billing"] as const).map((t) => (
+        {(["overview", "settings", "services", "brand", "team", "alerts", "billing"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -141,6 +173,12 @@ function AdminShell({
         {tab === "overview" ? (
           <Overview data={data} readonly={readonly} onReload={onReload} />
         ) : null}
+        {tab === "settings" ? (
+          <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
+        ) : null}
+        {tab === "services" ? (
+          <ServicesPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
+        ) : null}
         {tab === "brand" ? (
           <BrandPanel
             shop={data.shop}
@@ -152,7 +190,26 @@ function AdminShell({
         {tab === "team" ? (
           <TeamPanel shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
         ) : null}
-        {tab === "billing" ? <BillingPanel billing={data.billing} appointments={data.appointments} /> : null}
+        {tab === "alerts" ? (
+          <AlertsPanel
+            shop={data.shop}
+            notifyEmail={data.notifyEmail}
+            notifyPhone={data.notifyPhone}
+            notices={data.notices}
+            readonly={readonly}
+            onReload={onReload}
+          />
+        ) : null}
+        {tab === "billing" ? (
+          <PaymentsPanel
+            shop={data.shop}
+            billing={data.billing}
+            payments={data.payments}
+            appointments={data.appointments}
+            readonly={readonly}
+            onReload={onReload}
+          />
+        ) : null}
       </div>
     </main>
   );
@@ -428,7 +485,8 @@ function BrandPanel({
     <div className="grid gap-8 lg:grid-cols-2">
       <div className="overflow-hidden rounded-[28px]">
         <CinematicHero
-          imageUrl={shop.heroImageUrl}
+          imageUrl={resolveHeroMedia(shop).imageUrl}
+          videoUrl={resolveHeroMedia(shop).videoUrl}
           blendPercent={blend}
           introPreset={preset}
           introSpeed={speed}
@@ -459,6 +517,7 @@ function BrandPanel({
         <p className="mt-2 text-xs text-muted">
           Masks the still into the page so the bottom of the hero dissolves into the dark field.
         </p>
+        <p className="mt-1 text-xs text-muted">{resolveHeroMedia(shop).loopLabel}</p>
 
         <div className="mt-8 rounded-[24px] bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Intro Animation Studio</p>
@@ -712,36 +771,6 @@ function TeamPanel({
           </Link>
         ) : null}
       </form>
-    </div>
-  );
-}
-
-function BillingPanel({
-  billing,
-  appointments,
-}: {
-  billing: Billing | null;
-  appointments: Appointment[];
-}) {
-  const volume = appointments.reduce((s, a) => s + a.paymentCents, 0);
-  const fee = billing ? Math.round((volume * billing.gearGuardianBps) / 10000) : 0;
-  return (
-    <div className="max-w-lg rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">SaaS</p>
-      <p className="mt-2 font-display text-3xl">Axiom Pro</p>
-      <p className="mt-1 text-sm text-muted">
-        {billing ? `${formatMoney(billing.priceCents)} / month · ${billing.status}` : "No plan"}
-      </p>
-      <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <p className="text-muted">Gear Guardian fee</p>
-          <p className="tabular">{billing ? `${(billing.gearGuardianBps / 100).toFixed(2)}%` : "—"}</p>
-        </div>
-        <div>
-          <p className="text-muted">Fees this week</p>
-          <p className="tabular">{formatMoney(fee)}</p>
-        </div>
-      </div>
     </div>
   );
 }

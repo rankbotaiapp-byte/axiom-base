@@ -1,3 +1,4 @@
+import { NICHE_MEDIA } from "./media";
 import type { ShopNiche } from "./types";
 
 export type NicheTemplate = {
@@ -51,8 +52,8 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       "A quiet two-chair shop. Book a chair, skip the walk-in list, leave looking finished.",
     address: "12 Main Street, New Era",
     ringColor: "#E7B48A",
-    heroImageUrl: "/media/barber-hero.jpg",
-    heroVideoUrl: "/media/barber-hero.mp4",
+    heroImageUrl: NICHE_MEDIA.location.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.location.heroVideoUrl,
     heroBlendPercent: 58,
     services: [
       {
@@ -107,8 +108,8 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       "Mobile diagnostics plus a bay for the work that needs a hoist. Plain-language quotes.",
     address: "New Era · 15-mile service radius",
     ringColor: "#7EC8E3",
-    heroImageUrl: "/media/auto-hero.jpg",
-    heroVideoUrl: "/media/auto-hero.mp4",
+    heroImageUrl: NICHE_MEDIA.field.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.field.heroVideoUrl,
     heroBlendPercent: 64,
     services: [
       {
@@ -163,8 +164,8 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       "We stand up the booking site, the operator console, and the staff station — then light the edge of the phone when the first appointment lands.",
     address: "New Era",
     ringColor: "#2EE6D6",
-    heroImageUrl: "/media/apps-hero.jpg",
-    heroVideoUrl: "/media/apps-hero.mp4",
+    heroImageUrl: NICHE_MEDIA.studio.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.studio.heroVideoUrl,
     heroBlendPercent: 60,
     services: [
       {

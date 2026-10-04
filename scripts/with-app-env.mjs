@@ -20,7 +20,7 @@
  * `process.env`, which is why the merge has to happen before Vite starts.
  */
 import { spawn } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { constants as osConstants } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -104,6 +104,35 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+/**
+ * npm's Windows `.cmd` shims are not executable via `spawn(name)` — CreateProcess
+ * does not apply PATHEXT, so `vite` raises ENOENT even when `node_modules/.bin`
+ * is on PATH. The shim is a one-line node launch; run that JS entry with this
+ * process's node instead of going through `cmd.exe`.
+ */
+export function scriptFromCmdShim(text) {
+  const match = text.match(/%dp0%[\\/](\.\.[^"]+\.js)"/i);
+  return match ? match[1] : null;
+}
+
+export function resolveCommand(command, root = projectRoot()) {
+  if (!command || command.includes("/") || command.includes("\\")) {
+    return { command, args: [] };
+  }
+  const binDir = join(root, "node_modules", ".bin");
+  if (process.platform === "win32") {
+    const shim = join(binDir, `${command}.cmd`);
+    if (existsSync(shim)) {
+      const relative = scriptFromCmdShim(readFileSync(shim, "utf8"));
+      if (relative) return { command: process.execPath, args: [join(binDir, relative)] };
+    }
+  } else {
+    const shim = join(binDir, command);
+    if (existsSync(shim)) return { command: shim, args: [] };
+  }
+  return { command, args: [] };
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
@@ -111,7 +140,8 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  const resolved = resolveCommand(command);
+  const child = spawn(resolved.command, [...resolved.args, ...args], { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));

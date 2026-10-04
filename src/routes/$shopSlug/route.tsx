@@ -1,10 +1,55 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, Outlet, notFound } from "@tanstack/react-router";
 import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-ring";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import type { AccessMode } from "@/lib/axiom/types";
+import type { AccessMode, ShopPublic } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
+
+const LiveShopContext = createContext<ShopPublic | null>(null);
+
+export function useShopPageData() {
+  const live = useContext(LiveShopContext);
+  const loader = Route.useLoaderData();
+  return live ?? loader;
+}
+
+function shopSnapshot(data: ShopPublic) {
+  return JSON.stringify({
+    shop: data.shop,
+    services: data.services,
+    employees: data.employees,
+  });
+}
+
+function useLiveShop(initial: ShopPublic) {
+  const [data, setData] = useState(initial);
+  const slug = initial.shop.slug;
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
+
+  useEffect(() => {
+    setData(initialRef.current);
+  }, [slug]);
+
+  useEffect(() => {
+    let stop = false;
+    const id = window.setInterval(() => {
+      void getPublicShop({ data: slug })
+        .then((next) => {
+          if (!next || stop) return;
+          setData((prev) => (shopSnapshot(prev) === shopSnapshot(next) ? prev : next));
+        })
+        .catch(() => undefined);
+    }, 8000);
+    return () => {
+      stop = true;
+      window.clearInterval(id);
+    };
+  }, [slug]);
+
+  return data;
+}
 
 export const Route = createFileRoute("/$shopSlug")({
   loader: async ({ params }) => {
@@ -26,7 +71,8 @@ export const Route = createFileRoute("/$shopSlug")({
 });
 
 function ShopLayout() {
-  const data = Route.useLoaderData();
+  const initial = Route.useLoaderData();
+  const data = useLiveShop(initial);
   const { user, isPending } = useCurrentUserState();
   const [mode, setMode] = useState<AccessMode>("customer");
 
@@ -42,16 +88,18 @@ function ShopLayout() {
   }, [data.shop.slug, isPending, user]);
 
   return (
-    <AxiomRingProvider
-      shopId={data.shop.id}
-      slug={data.shop.slug}
-      ringColor={data.shop.ringColor}
-      mode={mode}
-    >
-      <AxiomRing />
-      <AcceptBar slug={data.shop.slug} mode={mode} />
-      <Outlet />
-    </AxiomRingProvider>
+    <LiveShopContext.Provider value={data}>
+      <AxiomRingProvider
+        shopId={data.shop.id}
+        slug={data.shop.slug}
+        ringColor={data.shop.ringColor}
+        mode={mode}
+      >
+        <AxiomRing />
+        <AcceptBar slug={data.shop.slug} mode={mode} />
+        <Outlet />
+      </AxiomRingProvider>
+    </LiveShopContext.Provider>
   );
 }
 

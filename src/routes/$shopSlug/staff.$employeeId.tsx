@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { getPortfolio } from "@/lib/axiom/server";
 import { formatMoney, formatPhone, initials } from "@/lib/utils";
 import { PoweredBy, ShopNav } from "@/components/shop-chrome";
-import { Route as ShopLayoutRoute } from "./route";
+import { useShopPageData } from "./route";
 
 export const Route = createFileRoute("/$shopSlug/staff/$employeeId")({
   loader: async ({ params }) => {
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/$shopSlug/staff/$employeeId")({
 function StaffPage() {
   const { employeeId } = Route.useParams();
   const { items } = Route.useLoaderData();
-  const data = ShopLayoutRoute.useLoaderData();
+  const data = useShopPageData();
   const employee = data.employees.find((e) => e.id === employeeId);
   if (!employee) throw notFound();
   const offered = data.services.filter(

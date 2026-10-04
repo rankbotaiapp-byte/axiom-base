@@ -12,6 +12,7 @@ import {
 
 export function CinematicHero({
   imageUrl,
+  videoUrl,
   blendPercent,
   introPreset = "kenburns",
   introSpeed = 40,
@@ -22,6 +23,7 @@ export function CinematicHero({
   children,
 }: {
   imageUrl: string;
+  videoUrl?: string | null;
   blendPercent: number;
   introPreset?: IntroPreset;
   introSpeed?: number;
@@ -33,6 +35,7 @@ export function CinematicHero({
 }) {
   const [reduced, setReduced] = useState(false);
   const [fxOn, setFxOn] = useState(true);
+  const [videoOk, setVideoOk] = useState(true);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -54,6 +57,10 @@ export function CinematicHero({
     };
   }, [previewMode]);
 
+  useEffect(() => {
+    setVideoOk(true);
+  }, [videoUrl]);
+
   const skip = reduced || (!previewMode && !fxOn);
   const preset: IntroPreset = skip ? "none" : introPreset;
   const motionProps = cameraMotion(preset, introIntensity);
@@ -66,11 +73,9 @@ export function CinematicHero({
       style={{ ["--hero-blend" as string]: `${blendPercent}%` }}
     >
       <div className="hero-blend absolute inset-0 overflow-hidden">
-        <motion.img
-          key={`${imageUrl}-${preset}-${replayKey ?? "0"}`}
-          src={imageUrl}
-          alt=""
-          className="absolute inset-0 z-0 h-full w-full origin-center object-cover outline-none"
+        <motion.div
+          key={`${imageUrl}-${videoUrl ?? ""}-${preset}-${replayKey ?? "0"}`}
+          className="absolute inset-0 origin-center"
           initial={animate ? motionProps.initial : { scale: 1, x: "0%", y: "0%", opacity: 1 }}
           animate={motionProps.animate}
           transition={
@@ -78,7 +83,22 @@ export function CinematicHero({
               ? { duration, ease: [0.22, 0.08, 0.2, 1] }
               : { duration: 0 }
           }
-        />
+        >
+          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover outline-none" />
+          {videoUrl && videoOk && !reduced ? (
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={imageUrl}
+              onError={() => setVideoOk(false)}
+            >
+              <source src={videoUrl} type="video/mp4" />
+            </video>
+          ) : null}
+        </motion.div>
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[42%] bg-gradient-to-t from-bg to-transparent" />
       <div className="relative z-20 flex min-h-0 flex-1 flex-col">{children}</div>

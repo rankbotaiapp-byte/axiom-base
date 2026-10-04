@@ -40,6 +40,7 @@ export type Shop = {
   };
   hours: Record<string, string>;
   address: string;
+  acceptsCard: boolean;
   createdAt: string;
 };
 
@@ -102,6 +103,24 @@ export type Billing = {
   status: string;
   priceCents: number;
   gearGuardianBps: number;
+};
+
+export type ShopNotice = {
+  id: string;
+  channel: "inbox" | "email" | "sms" | "webhook";
+  kind: "booking_request" | "booking_paid" | "inquiry";
+  destination: string;
+  subject: string;
+  body: string;
+  status: "queued" | "sent" | "skipped" | "failed";
+  detail: string;
+  createdAt: string;
+};
+
+export type PaymentSetup = {
+  processorReady: boolean;
+  connected: boolean;
+  chargesEnabled: boolean;
 };
 
 export type ShopPublic = {

@@ -5,30 +5,42 @@ import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { createBooking, getShopAccess, listBookedStarts } from "@/lib/axiom/server";
+import {
+  confirmCardCheckout,
+  createBooking,
+  getShopAccess,
+  listBookedStarts,
+  releaseCardCheckout,
+  startCardCheckout,
+} from "@/lib/axiom/server";
 import { buildSlots } from "@/lib/axiom/slots";
 import type { AccessMode, Employee } from "@/lib/axiom/types";
 import { formatMoney, initials } from "@/lib/utils";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { Route as ShopLayoutRoute } from "./route";
+import { useShopPageData } from "./route";
 
 export const Route = createFileRoute("/$shopSlug/book")({
-  validateSearch: (s: Record<string, unknown>): { employee?: string; service?: string } => {
-    const out: { employee?: string; service?: string } = {};
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { employee?: string; service?: string; session?: string; cancelled?: string } => {
+    const out: { employee?: string; service?: string; session?: string; cancelled?: string } = {};
     if (typeof s.employee === "string") out.employee = s.employee;
     if (typeof s.service === "string") out.service = s.service;
+    if (typeof s.session === "string" && s.session.startsWith("cs_")) out.session = s.session;
+    if (typeof s.cancelled === "string" && s.cancelled.startsWith("apt_")) out.cancelled = s.cancelled;
     return out;
   },
   component: BookPage,
 });
 
 function BookPage() {
-  const data = ShopLayoutRoute.useLoaderData();
+  const data = useShopPageData();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { setPendingId, announce } = useAxiomRing();
   const { user, isPending } = useCurrentUserState();
   const [mode, setMode] = useState<AccessMode>("customer");
+  const [busy, setBusy] = useState(false);
   const [serviceId, setServiceId] = useState(
     search.service ?? data.shop.primaryServiceId ?? data.services[0]?.id ?? "",
   );
@@ -65,6 +77,44 @@ function BookPage() {
     );
   }, [data.shop.slug, employee]);
 
+  useEffect(() => {
+    if (!search.session) return;
+    let stop = false;
+    setBusy(true);
+    void confirmCardCheckout({ data: { slug: data.shop.slug, sessionId: search.session } })
+      .then(async (result) => {
+        if (stop) return;
+        setPendingId(result.appointmentId);
+        announce(
+          {
+            id: `local-${result.appointmentId}`,
+            type: "booking_request",
+            appointmentId: result.appointmentId,
+            payload: null,
+            createdAt: new Date().toISOString(),
+          },
+          true,
+        );
+        await navigate({ to: "/$shopSlug", params: { shopSlug: data.shop.slug } });
+      })
+      .catch((err: unknown) => {
+        if (!stop) setError(err instanceof Error ? err.message : "Payment could not be confirmed");
+      })
+      .finally(() => {
+        if (!stop) setBusy(false);
+      });
+    return () => {
+      stop = true;
+    };
+  }, [announce, data.shop.slug, navigate, search.session, setPendingId]);
+
+  useEffect(() => {
+    if (!search.cancelled) return;
+    void releaseCardCheckout({
+      data: { slug: data.shop.slug, appointmentId: search.cancelled },
+    }).then(() => setError("Payment cancelled. That time was released."));
+  }, [data.shop.slug, search.cancelled]);
+
   const groups = useMemo(() => {
     if (!service) return [];
     return buildSlots({
@@ -74,7 +124,10 @@ function BookPage() {
     });
   }, [booked, data.shop.hours, service]);
 
-  async function onPaid(paymentRef: string) {
+  const cardReady = data.shop.acceptsCard && (service?.priceCents ?? 0) > 0;
+  const payMode = cardReady ? "stripe" : data.shop.isShowcase ? "demo" : "request";
+
+  async function finishBooking(paymentRef?: string) {
     if (!service || !employee || !slot) return;
     const result = await createBooking({
       data: {
@@ -84,8 +137,8 @@ function BookPage() {
         customerName: name,
         customerPhone: phone,
         startsAt: slot,
+        paymentMode: payMode === "demo" ? "demo" : "request",
         paymentRef,
-        paymentCents: service.priceCents,
       },
     });
     setPendingId(result.id);
@@ -100,6 +153,10 @@ function BookPage() {
       true,
     );
     await navigate({ to: "/$shopSlug", params: { shopSlug: data.shop.slug } });
+  }
+
+  async function onPaid(paymentRef: string) {
+    await finishBooking(paymentRef);
   }
 
   return (
@@ -207,12 +264,36 @@ function BookPage() {
                 className="mt-5 grid gap-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!slot || !name.trim()) {
+                  if (!slot || !name.trim() || !service || !employee) {
                     setError("Name and a time are required");
                     return;
                   }
                   setError(null);
-                  setPay(true);
+                  if (payMode === "demo") {
+                    setPay(true);
+                    return;
+                  }
+                  setBusy(true);
+                  const run =
+                    payMode === "stripe"
+                      ? startCardCheckout({
+                          data: {
+                            slug: data.shop.slug,
+                            employeeId: employee.id,
+                            serviceId: service.id,
+                            customerName: name,
+                            customerPhone: phone,
+                            startsAt: slot,
+                          },
+                        }).then((result) => {
+                          window.location.href = result.url;
+                        })
+                      : finishBooking();
+                  void run
+                    .catch((err: unknown) => {
+                      setError(err instanceof Error ? err.message : "Could not book");
+                      setBusy(false);
+                    });
                 }}
               >
                 <div>
@@ -228,9 +309,22 @@ function BookPage() {
                     placeholder="Optional"
                   />
                 </div>
+                <p className="text-xs text-muted">
+                  {payMode === "stripe"
+                    ? "No account. Stripe opens next and pays this shop directly."
+                    : payMode === "demo"
+                      ? "Demo checkout. Nothing is charged."
+                      : "No account. Request the time and the shop confirms it."}
+                </p>
                 {error ? <p className="text-sm text-danger">{error}</p> : null}
-                <Button type="submit" size="lg" disabled={!slot}>
-                  Continue to Gear Guardian
+                <Button type="submit" size="lg" disabled={!slot || busy}>
+                  {busy
+                    ? "Working"
+                    : payMode === "stripe"
+                      ? `Pay ${service ? formatMoney(service.priceCents) : ""}`
+                      : payMode === "demo"
+                        ? "Continue to Gear Guardian"
+                        : "Request this time"}
                 </Button>
               </form>
             ) : service ? (

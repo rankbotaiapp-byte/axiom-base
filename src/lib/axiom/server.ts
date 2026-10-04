@@ -3,12 +3,15 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { DEFAULT_HOURS, NICHES } from "./niches";
+import { isNotifyEmail, toE164 } from "./notify-target";
 import { parseIntroPreset, type IntroPreset } from "./intro";
 import type {
   AccessMode,
   Appointment,
   Billing,
   Employee,
+  PaymentSetup,
+  ShopNotice,
   OnboardingStep,
   PortfolioItem,
   Service,
@@ -39,6 +42,8 @@ type ShopRow = {
   onboarding_json: string;
   hours_json: string;
   address: string;
+  notify_email?: string;
+  notify_phone?: string;
   created_at: string;
 };
 
@@ -65,7 +70,7 @@ function parseHours(raw: string): Record<string, string> {
   }
 }
 
-function mapShop(r: ShopRow): Shop {
+function mapShop(r: ShopRow, acceptsCard = false): Shop {
   return {
     id: r.id,
     slug: r.slug,
@@ -87,9 +92,31 @@ function mapShop(r: ShopRow): Shop {
     onboarding: parseOnboarding(r.onboarding_json),
     hours: parseHours(r.hours_json),
     address: r.address,
+    acceptsCard,
     createdAt: String(r.created_at),
   };
 }
+
+function isOn(value: unknown) {
+  return value === true || value === 1 || value === "t" || value === "true";
+}
+
+async function shopAcceptsCard(shopId: string) {
+  const sql = await getSql();
+  const rows = await sql<{ stripe_charges_enabled: unknown; stripe_account_id: string | null }>`
+    select stripe_charges_enabled, stripe_account_id
+    from shop_billing where shop_id = ${shopId}
+  `;
+  return isOn(rows[0]?.stripe_charges_enabled) && Boolean(rows[0]?.stripe_account_id);
+}
+
+const OPEN_BOOKING_SQL = `
+  status in ('pending', 'confirmed')
+  and (
+    payment_status in ('paid', 'unpaid')
+    or (payment_status = 'processing' and created_at > now() - interval '30 minutes')
+  )
+`;
 
 async function loadShopRow(slug: string): Promise<ShopRow | null> {
   const sql = await getSql();
@@ -171,7 +198,7 @@ export const getPublicShop = createServerFn({ method: "GET" })
   .handler(async ({ data: slug }): Promise<ShopPublic | null> => {
     const row = await loadShopRow(slug);
     if (!row) return null;
-    const shop = mapShop(row);
+    const shop = mapShop(row, await shopAcceptsCard(row.id));
     const [services, employees] = await Promise.all([
       loadServices(shop.id),
       loadEmployees(shop.id),
@@ -185,7 +212,7 @@ export const listShowcaseShops = createServerFn({ method: "GET" }).handler(
     const rows = await sql<ShopRow>`
       select * from shops where is_showcase = true order by created_at asc
     `;
-    return rows.map(mapShop);
+    return rows.map((row) => mapShop(row));
   },
 );
 
@@ -195,13 +222,14 @@ export const listBookedStarts = createServerFn({ method: "GET" })
     const row = await loadShopRow(data.slug);
     if (!row) return [];
     const sql = await getSql();
-    const rows = await sql<{ starts_at: string }>`
-      select starts_at from appointments
-      where shop_id = ${row.id}
-        and employee_id = ${data.employeeId}
-        and status in ('pending', 'confirmed')
-        and starts_at > now() - interval '1 day'
-    `;
+    const rows = await sql.query<{ starts_at: string }>(
+      `select starts_at from appointments
+       where shop_id = $1
+         and employee_id = $2
+         and ${OPEN_BOOKING_SQL}
+         and starts_at > now() - interval '1 day'`,
+      [row.id, data.employeeId],
+    );
     return rows.map((r) => String(r.starts_at));
   });
 
@@ -296,6 +324,55 @@ export const getAppointmentPublic = createServerFn({ method: "GET" })
     };
   });
 
+async function assertBookable(data: {
+  slug: string;
+  employeeId: string;
+  serviceId: string;
+  customerName: string;
+  customerPhone: string;
+  startsAt: string;
+}) {
+  const shop = await loadShopRow(data.slug);
+  if (!shop) throw new Error("Shop not found");
+  const name = data.customerName.trim();
+  if (name.length < 2 || name.length > 80) throw new Error("Name required");
+  const when = new Date(data.startsAt);
+  if (Number.isNaN(when.getTime())) throw new Error("Invalid time");
+  const sql = await getSql();
+  const service = await sql<{ name: string; price_cents: number }>`
+    select name, price_cents from services
+    where id = ${data.serviceId} and shop_id = ${shop.id}
+    limit 1
+  `;
+  if (!service[0]) throw new Error("Service not found");
+  const employee = await sql<{ display_name: string }>`
+    select display_name from employees
+    where id = ${data.employeeId} and shop_id = ${shop.id}
+    limit 1
+  `;
+  if (!employee[0]) throw new Error("Specialist not found");
+  const link = await sql<{ employee_id: string }>`
+    select employee_id from employee_services
+    where employee_id = ${data.employeeId} and service_id = ${data.serviceId}
+  `;
+  if (!link[0]) throw new Error("That specialist does not offer this service");
+  const clash = await sql.query<{ id: string }>(
+    `select id from appointments
+     where employee_id = $1 and starts_at = $2 and ${OPEN_BOOKING_SQL}
+     limit 1`,
+    [data.employeeId, data.startsAt],
+  );
+  if (clash[0]) throw new Error("That time was just taken");
+  return {
+    shop,
+    name,
+    phone: data.customerPhone.trim().slice(0, 20),
+    serviceName: service[0].name,
+    priceCents: Number(service[0].price_cents),
+    employeeName: employee[0].display_name,
+  };
+}
+
 export const createBooking = createServerFn({ method: "POST" })
   .validator(
     (d: {
@@ -305,53 +382,47 @@ export const createBooking = createServerFn({ method: "POST" })
       customerName: string;
       customerPhone: string;
       startsAt: string;
-      paymentRef: string;
-      paymentCents: number;
+      paymentMode: "request" | "demo";
+      paymentRef?: string;
     }) => d,
   )
   .handler(async ({ data }) => {
-    const shop = await loadShopRow(data.slug);
-    if (!shop) throw new Error("Shop not found");
-    const name = data.customerName.trim();
-    if (name.length < 2) throw new Error("Name required");
+    const booked = await assertBookable(data);
+    const demo = data.paymentMode === "demo";
+    if (demo) {
+      if (!booked.shop.is_showcase) throw new Error("This shop does not use demo checkout");
+      if (!data.paymentRef?.startsWith("gg_")) throw new Error("Demo payment was not completed");
+    }
     const sql = await getSql();
-    const link = await sql<{ employee_id: string }>`
-      select employee_id from employee_services
-      where employee_id = ${data.employeeId} and service_id = ${data.serviceId}
-    `;
-    if (!link[0]) throw new Error("That specialist does not offer this service");
-    const clash = await sql<{ id: string }>`
-      select id from appointments
-      where employee_id = ${data.employeeId}
-        and starts_at = ${data.startsAt}
-        and status in ('pending', 'confirmed')
-      limit 1
-    `;
-    if (clash[0]) throw new Error("That time was just taken");
     const id = newId("apt");
-    const eventId = newId("evt");
     await sql`
       insert into appointments (
         id, shop_id, employee_id, service_id, customer_name, customer_phone,
         starts_at, status, payment_status, payment_ref, payment_cents
       ) values (
-        ${id}, ${shop.id}, ${data.employeeId}, ${data.serviceId}, ${name},
-        ${data.customerPhone.trim()}, ${data.startsAt}, 'pending', 'paid',
-        ${data.paymentRef}, ${data.paymentCents}
+        ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
+        ${booked.phone}, ${data.startsAt}, 'pending', ${demo ? "paid" : "unpaid"},
+        ${demo ? data.paymentRef ?? null : null}, ${booked.priceCents}
       )
     `;
     await sql`
       insert into shop_events (id, shop_id, type, appointment_id)
-      values (${eventId}, ${shop.id}, 'booking_request', ${id})
+      values (${newId("evt")}, ${booked.shop.id}, 'booking_request', ${id})
     `;
-    if (!shop.is_showcase) {
-      const flags = parseOnboarding(shop.onboarding_json);
+    const { notifyShop } = await import("./notify.server");
+    await notifyShop(booked.shop.id, {
+      kind: "booking_request",
+      subject: `New booking · ${booked.name}`,
+      body: `${booked.name} requested ${booked.serviceName} with ${booked.employeeName} at ${data.startsAt}.${booked.phone ? ` Phone: ${booked.phone}` : ""}`,
+    });
+    if (!booked.shop.is_showcase) {
+      const flags = parseOnboarding(booked.shop.onboarding_json);
       flags.testBooked = true;
       await sql`
         update shops
         set onboarding_json = ${JSON.stringify(flags)},
             onboarding_step = 'complete'
-        where id = ${shop.id}
+        where id = ${booked.shop.id}
       `;
     }
     return { id };
@@ -391,7 +462,7 @@ export const listMyShops = createServerFn({ method: "GET" })
       where m.user_id = ${context.userId}
       order by s.created_at desc
     `;
-    return rows.map(mapShop);
+    return rows.map((row) => mapShop(row));
   });
 
 export const createShopFromNiche = createServerFn({ method: "POST" })
@@ -753,14 +824,57 @@ async function mapAppointments(shopId: string, employeeId?: string | null): Prom
   }));
 }
 
+async function loadNotices(shopId: string): Promise<ShopNotice[]> {
+  const sql = await getSql();
+  const rows = await sql<{
+    id: string;
+    channel: ShopNotice["channel"];
+    kind: ShopNotice["kind"];
+    destination: string;
+    subject: string;
+    body: string;
+    status: ShopNotice["status"];
+    detail: string;
+    created_at: string;
+  }>`
+    select id, channel, kind, destination, subject, body, status, detail, created_at
+    from shop_notifications
+    where shop_id = ${shopId}
+    order by created_at desc
+    limit 30
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    channel: r.channel,
+    kind: r.kind,
+    destination: r.destination,
+    subject: r.subject,
+    body: r.body,
+    status: r.status,
+    detail: r.detail,
+    createdAt: String(r.created_at),
+  }));
+}
+
+async function requireOwnerShop(slug: string, userId: string) {
+  const row = await loadShopRow(slug);
+  if (!row) throw new Error("Shop not found");
+  if (row.is_showcase) throw new Error("Showcase shops are read-only");
+  const mem = await membership(row.id, userId);
+  if (row.owner_user_id !== userId && mem?.role !== "owner") throw new Error("Forbidden");
+  return row;
+}
+
 export const getOperatorData = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((slug: string) => slug)
   .handler(async ({ data: slug, context }) => {
     const row = await loadShopRow(slug);
     if (!row) throw new Error("Shop not found");
-    const shop = mapShop(row);
-    const mem = await membership(shop.id, context.userId);
+    const mem = await membership(row.id, context.userId);
+    let stripeAccountId: string | null = null;
+    let chargesEnabled = false;
+    const shop = mapShop(row, false);
     const mode: AccessMode = mem?.role === "owner"
       ? "owner"
       : mem?.role === "employee"
@@ -787,7 +901,12 @@ export const getOperatorData = createServerFn({ method: "GET" })
         status: string;
         price_cents: number;
         gear_guardian_bps: number;
-      }>`select plan, status, price_cents, gear_guardian_bps from shop_billing where shop_id = ${shop.id}`;
+        stripe_account_id: string | null;
+        stripe_charges_enabled: boolean;
+      }>`
+        select plan, status, price_cents, gear_guardian_bps, stripe_account_id, stripe_charges_enabled
+        from shop_billing where shop_id = ${shop.id}
+      `;
       if (b[0]) {
         billing = {
           plan: b[0].plan,
@@ -795,13 +914,24 @@ export const getOperatorData = createServerFn({ method: "GET" })
           priceCents: Number(b[0].price_cents),
           gearGuardianBps: Number(b[0].gear_guardian_bps),
         };
+        stripeAccountId = b[0].stripe_account_id;
+        chargesEnabled = isOn(b[0].stripe_charges_enabled) && Boolean(b[0].stripe_account_id);
       }
     }
+    shop.acceptsCard = chargesEnabled;
 
     const [services, employees] = await Promise.all([
       loadServices(shop.id),
       loadEmployees(shop.id),
     ]);
+
+    const { stripeConfigured } = await import("./payments.server");
+    const payments: PaymentSetup = {
+      processorReady: stripeConfigured(),
+      connected: Boolean(stripeAccountId),
+      chargesEnabled,
+    };
+    const notices = mode === "owner" ? await loadNotices(shop.id) : [];
 
     return {
       mode,
@@ -811,6 +941,10 @@ export const getOperatorData = createServerFn({ method: "GET" })
       services,
       employees,
       employeeId: mem?.employee_id ?? null,
+      notices,
+      notifyEmail: mode === "owner" ? (row.notify_email ?? "") : "",
+      notifyPhone: mode === "owner" ? (row.notify_phone ?? "") : "",
+      payments,
     };
   });
 
@@ -871,4 +1005,265 @@ export const addPortfolioItem = createServerFn({ method: "POST" })
       values (${id}, ${row.id}, ${empId}, ${data.imageUrl}, ${data.caption.trim().slice(0, 80)})
     `;
     return { id };
+  });
+
+export const updateShopProfile = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    (d: { slug: string; name: string; tagline: string; description: string; address: string }) => d,
+  )
+  .handler(async ({ data, context }) => {
+    const row = await requireOwnerShop(data.slug, context.userId);
+    const name = data.name.trim();
+    if (name.length < 2 || name.length > 80) throw new Error("Business name is required");
+    const sql = await getSql();
+    await sql`
+      update shops set
+        name = ${name},
+        tagline = ${data.tagline.trim().slice(0, 160)},
+        description = ${data.description.trim().slice(0, 600)},
+        address = ${data.address.trim().slice(0, 160)}
+      where id = ${row.id}
+    `;
+    return { ok: true as const };
+  });
+
+export const updateNotifyChannels = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; notifyEmail: string; notifyPhone: string }) => d)
+  .handler(async ({ data, context }) => {
+    const row = await requireOwnerShop(data.slug, context.userId);
+    const email = data.notifyEmail.trim().toLowerCase();
+    if (email && !isNotifyEmail(email)) throw new Error("Enter a valid email");
+    let phone = "";
+    if (data.notifyPhone.trim()) {
+      const normalized = toE164(data.notifyPhone);
+      if (!normalized) throw new Error("Use a 10-digit mobile number");
+      phone = normalized;
+    }
+    const sql = await getSql();
+    await sql`
+      update shops set notify_email = ${email}, notify_phone = ${phone}
+      where id = ${row.id}
+    `;
+    return { ok: true as const, notifyEmail: email, notifyPhone: phone };
+  });
+
+export const saveShopServices = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    (d: {
+      slug: string;
+      services: { id?: string; name: string; description: string; durationMin: number; priceCents: number }[];
+      removeIds: string[];
+    }) => d,
+  )
+  .handler(async ({ data, context }) => {
+    const row = await requireOwnerShop(data.slug, context.userId);
+    if (data.services.length < 1 || data.services.length > 24) throw new Error("Add at least one service");
+    const sql = await getSql();
+    const kept: string[] = [];
+    for (const [index, service] of data.services.entries()) {
+      const name = service.name.trim();
+      if (name.length < 2 || name.length > 80) throw new Error("Service name is required");
+      const description = service.description.trim().slice(0, 240);
+      const duration = Math.round(Number(service.durationMin));
+      const price = Math.round(Number(service.priceCents));
+      if (!Number.isFinite(duration) || duration < 10 || duration > 480) {
+        throw new Error("Duration must be between 10 and 480 minutes");
+      }
+      if (!Number.isFinite(price) || price < 0 || price > 1_000_000) throw new Error("Price is out of range");
+      if (service.id) {
+        const updated = await sql<{ id: string }>`
+          update services
+          set name = ${name},
+              description = ${description},
+              duration_min = ${duration},
+              price_cents = ${price},
+              sort_order = ${index}
+          where id = ${service.id} and shop_id = ${row.id}
+          returning id
+        `;
+        if (!updated[0]) throw new Error("Service not found");
+        kept.push(service.id);
+      } else {
+        const id = newId("svc");
+        await sql`
+          insert into services (id, shop_id, name, description, duration_min, price_cents, sort_order)
+          values (${id}, ${row.id}, ${name}, ${description}, ${duration}, ${price}, ${index})
+        `;
+        const employees = await sql<{ id: string }>`select id from employees where shop_id = ${row.id}`;
+        for (const employee of employees) {
+          await sql`
+            insert into employee_services (employee_id, service_id)
+            values (${employee.id}, ${id})
+            on conflict do nothing
+          `;
+        }
+        kept.push(id);
+      }
+    }
+    for (const removeId of data.removeIds) {
+      if (kept.includes(removeId)) continue;
+      const used = await sql<{ id: string }>`
+        select id from appointments where service_id = ${removeId} and shop_id = ${row.id} limit 1
+      `;
+      if (used[0]) throw new Error("That service already has bookings");
+      await sql`delete from employee_services where service_id = ${removeId}`;
+      await sql`delete from services where id = ${removeId} and shop_id = ${row.id}`;
+    }
+    if (!row.primary_service_id || !kept.includes(row.primary_service_id)) {
+      await sql`update shops set primary_service_id = ${kept[0] ?? null} where id = ${row.id}`;
+    }
+    return { ok: true as const };
+  });
+
+export const submitInquiry = createServerFn({ method: "POST" })
+  .validator((d: { slug: string; name: string; phone: string; message: string }) => d)
+  .handler(async ({ data }) => {
+    const shop = await loadShopRow(data.slug);
+    if (!shop) throw new Error("Shop not found");
+    const name = data.name.trim();
+    const message = data.message.trim();
+    if (name.length < 2 || name.length > 80) throw new Error("Name required");
+    if (message.length < 8 || message.length > 500) throw new Error("Write a short message");
+    const { allowInquiry, notifyShop } = await import("./notify.server");
+    if (!allowInquiry(shop.id)) throw new Error("Too many messages. Call the shop instead.");
+    const phone = data.phone.trim().slice(0, 20);
+    await notifyShop(shop.id, {
+      kind: "inquiry",
+      subject: `Inquiry · ${name}`,
+      body: `${name} wrote: ${message}${phone ? ` Phone: ${phone}` : ""}`,
+    });
+    return { ok: true as const };
+  });
+
+export const startCardCheckout = createServerFn({ method: "POST" })
+  .validator(
+    (d: {
+      slug: string;
+      employeeId: string;
+      serviceId: string;
+      customerName: string;
+      customerPhone: string;
+      startsAt: string;
+    }) => d,
+  )
+  .handler(async ({ data }) => {
+    const booked = await assertBookable(data);
+    if (booked.priceCents <= 0) throw new Error("This service has no card price");
+    const sql = await getSql();
+    const billing = await sql<{
+      stripe_account_id: string | null;
+      stripe_charges_enabled: boolean;
+      gear_guardian_bps: number;
+    }>`
+      select stripe_account_id, stripe_charges_enabled, gear_guardian_bps
+      from shop_billing where shop_id = ${booked.shop.id}
+    `;
+    const account = billing[0]?.stripe_account_id;
+    if (!account || !isOn(billing[0]?.stripe_charges_enabled)) {
+      throw new Error("This shop is not accepting cards yet");
+    }
+    const id = newId("apt");
+    await sql`
+      insert into appointments (
+        id, shop_id, employee_id, service_id, customer_name, customer_phone,
+        starts_at, status, payment_status, payment_cents
+      ) values (
+        ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
+        ${booked.phone}, ${data.startsAt}, 'pending', 'processing', ${booked.priceCents}
+      )
+    `;
+    const { createConnectCheckout, requestOrigin } = await import("./payments.server");
+    const origin = requestOrigin();
+    let fee = Math.round((booked.priceCents * Number(billing[0].gear_guardian_bps)) / 10000);
+    if (fee >= booked.priceCents) fee = Math.max(0, booked.priceCents - 50);
+    try {
+      const session = await createConnectCheckout({
+        destination: account,
+        amountCents: booked.priceCents,
+        feeCents: fee,
+        serviceName: booked.serviceName,
+        shopId: booked.shop.id,
+        appointmentId: id,
+        successUrl: `${origin}/${booked.shop.slug}/book?session={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${origin}/${booked.shop.slug}/book?cancelled=${id}`,
+      });
+      await sql`update appointments set payment_ref = ${session.id} where id = ${id}`;
+      return { url: session.url };
+    } catch (err) {
+      await sql`delete from appointments where id = ${id} and payment_status = 'processing'`;
+      throw err instanceof Error ? err : new Error("Checkout failed");
+    }
+  });
+
+export const confirmCardCheckout = createServerFn({ method: "POST" })
+  .validator((d: { slug: string; sessionId: string }) => d)
+  .handler(async ({ data }) => {
+    if (!data.sessionId.startsWith("cs_")) throw new Error("Invalid session");
+    const shop = await loadShopRow(data.slug);
+    if (!shop) throw new Error("Shop not found");
+    const { settlePaidSession } = await import("./payments.server");
+    const result = await settlePaidSession(data.sessionId);
+    if (result.shopId !== shop.id) throw new Error("Payment does not match this shop");
+    return { appointmentId: result.appointmentId };
+  });
+
+export const releaseCardCheckout = createServerFn({ method: "POST" })
+  .validator((d: { slug: string; appointmentId: string }) => d)
+  .handler(async ({ data }) => {
+    if (!data.appointmentId.startsWith("apt_")) throw new Error("Invalid booking");
+    const shop = await loadShopRow(data.slug);
+    if (!shop) throw new Error("Shop not found");
+    const sql = await getSql();
+    await sql`
+      update appointments
+      set status = 'cancelled', payment_status = 'failed'
+      where id = ${data.appointmentId}
+        and shop_id = ${shop.id}
+        and status = 'pending'
+        and payment_status = 'processing'
+    `;
+    return { ok: true as const };
+  });
+
+export const beginStripeConnect = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((slug: string) => slug)
+  .handler(async ({ data: slug, context }) => {
+    const row = await requireOwnerShop(slug, context.userId);
+    const { beginConnect, requestOrigin, stripeConfigured } = await import("./payments.server");
+    if (!stripeConfigured()) throw new Error("Card payments are not configured for this workspace");
+    const sql = await getSql();
+    const billing = await sql<{ stripe_account_id: string | null }>`
+      select stripe_account_id from shop_billing where shop_id = ${row.id}
+    `;
+    return beginConnect({
+      shopId: row.id,
+      slug: row.slug,
+      accountId: billing[0]?.stripe_account_id ?? null,
+      origin: requestOrigin(),
+    });
+  });
+
+export const refreshStripeConnect = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((slug: string) => slug)
+  .handler(async ({ data: slug, context }) => {
+    const row = await requireOwnerShop(slug, context.userId);
+    const sql = await getSql();
+    const billing = await sql<{ stripe_account_id: string | null }>`
+      select stripe_account_id from shop_billing where shop_id = ${row.id}
+    `;
+    const accountId = billing[0]?.stripe_account_id;
+    if (!accountId) return { chargesEnabled: false };
+    const { syncConnectAccount } = await import("./payments.server");
+    const synced = await syncConnectAccount(accountId);
+    await sql`
+      update shop_billing
+      set stripe_charges_enabled = ${synced.chargesEnabled}, updated_at = now()
+      where shop_id = ${row.id}
+    `;
+    return synced;
   });
