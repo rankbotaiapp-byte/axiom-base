@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
-import { CinematicHero } from "@/components/cinematic-hero";
+import { CinematicHero, IntroFxToggle } from "@/components/cinematic-hero";
 import { LoopOverlay, TourOverlay } from "@/components/tour-overlay";
 import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { formatMoney, formatPhone, initials } from "@/lib/utils";
@@ -42,9 +42,10 @@ function CustomerHome() {
     <div className="bg-bg">
       <CinematicHero
         imageUrl={data.shop.heroImageUrl}
-        videoUrl={data.shop.heroVideoUrl}
         blendPercent={data.shop.heroBlendPercent}
-        ringColor={data.shop.ringColor}
+        introPreset={data.shop.introPreset}
+        introSpeed={data.shop.introSpeed}
+        introIntensity={data.shop.introIntensity}
       >
         <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
         <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
@@ -144,6 +145,9 @@ function CustomerHome() {
       <PoweredBy />
 
       <div className="sticky bottom-0 z-30 border-t border-line bg-bg/90 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
+        <div className="mb-2 flex justify-center">
+          <IntroFxToggle />
+        </div>
         <Link
           to="/$shopSlug/book"
           params={{ shopSlug: data.shop.slug }}

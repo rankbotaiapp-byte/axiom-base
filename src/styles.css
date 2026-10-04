@@ -79,12 +79,8 @@
   );
 }
 
-@property --ring-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
+/* Pixel-style perimeter: a hollow rim around the screen, not a page wash
+   and not a traveling highlight. Two layers — a 2px edge + a tight bloom. */
 .axiom-ring {
   position: fixed;
   inset: 0;
@@ -92,103 +88,81 @@
   height: 100dvh;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.78;
+  border-radius: 0;
+  opacity: 0.86;
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.axiom-ring-glow,
-.axiom-ring-core {
+.axiom-ring-edge,
+.axiom-ring-bloom {
   position: absolute;
-  inset: 4px;
-  border-radius: 38px;
+  inset: 0;
+  border-radius: inherit;
 }
 
-.axiom-ring-glow {
+.axiom-ring-edge {
+  padding: 2px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ring-color, #2ee6d6) 100%, white 16%),
+    var(--ring-color, #2ee6d6) 42%,
+    color-mix(in srgb, var(--ring-color, #2ee6d6) 86%, black 10%) 78%,
+    color-mix(in srgb, var(--ring-color, #2ee6d6) 100%, white 8%)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+.axiom-ring-bloom {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--ring-color, #2ee6d6) 55%, transparent),
-    0 0 22px 2px color-mix(in srgb, var(--ring-color, #2ee6d6) 45%, transparent),
-    inset 0 0 18px 1px color-mix(in srgb, var(--ring-color, #2ee6d6) 38%, transparent);
-}
-
-.axiom-ring-core {
-  border: 2.5px solid transparent;
-  background:
-    linear-gradient(#0000, #0000) padding-box,
-    conic-gradient(
-      from var(--ring-angle),
-      transparent 0%,
-      color-mix(in srgb, var(--ring-color, #2ee6d6) 70%, transparent) 6%,
-      var(--ring-color, #2ee6d6) 11%,
-      #fff 14%,
-      var(--ring-color, #2ee6d6) 18%,
-      transparent 30%,
-      color-mix(in srgb, var(--ring-color, #2ee6d6) 85%, white) 48%,
-      transparent 60%,
-      var(--ring-color, #2ee6d6) 78%,
-      color-mix(in srgb, var(--ring-color, #2ee6d6) 50%, white) 88%,
-      transparent 100%
-    ) border-box;
-  animation: ring-angle 7.5s linear infinite;
-  filter: saturate(1.15);
+    inset 0 0 8px 2px color-mix(in srgb, var(--ring-color, #2ee6d6) 62%, transparent),
+    inset 0 0 18px 5px color-mix(in srgb, var(--ring-color, #2ee6d6) 28%, transparent);
 }
 
 .axiom-ring[data-state="idle"] {
-  opacity: 0.72;
-}
-
-.axiom-ring[data-state="idle"] .axiom-ring-core {
-  animation-duration: 9s;
+  animation: ring-idle 4.4s ease-in-out infinite;
 }
 
 .axiom-ring[data-state="pulse"] {
-  animation: ring-breathe 1.8s ease-in-out infinite;
-}
-
-.axiom-ring[data-state="pulse"] .axiom-ring-core {
-  animation-duration: 3.2s;
+  animation: ring-breathe 1.9s ease-in-out infinite;
 }
 
 .axiom-ring[data-state="flash"] {
-  animation: ring-strobe 0.48s ease-in-out 3;
-}
-
-.axiom-ring[data-state="flash"] .axiom-ring-core {
-  animation-duration: 0.85s;
+  animation: ring-strobe 0.55s ease-in-out 3;
 }
 
 .axiom-ring[data-state="awaiting"] {
-  animation: ring-breathe 1.1s ease-in-out infinite;
-}
-
-.axiom-ring[data-state="awaiting"] .axiom-ring-core {
-  animation-duration: 2.1s;
+  animation: ring-breathe 1.15s ease-in-out infinite;
 }
 
 .axiom-ring[data-state="lock"] {
-  animation: ring-lock 1.25s ease-out forwards;
-}
-
-.axiom-ring[data-state="lock"] .axiom-ring-core {
-  animation-duration: 1.15s;
+  animation: ring-lock 1.2s ease-out forwards;
 }
 
 .axiom-ring[data-state="solid"] {
-  opacity: 1;
+  opacity: 0.96;
 }
 
-.axiom-ring[data-state="solid"] .axiom-ring-core {
-  animation-duration: 6.5s;
-}
-
-@keyframes ring-angle {
-  to {
-    --ring-angle: 360deg;
+@keyframes ring-idle {
+  0%,
+  100% {
+    opacity: 0.74;
+  }
+  50% {
+    opacity: 0.94;
   }
 }
 
 @keyframes ring-breathe {
   0%,
   100% {
-    opacity: 0.5;
+    opacity: 0.48;
   }
   50% {
     opacity: 1;
@@ -199,48 +173,53 @@
   0%,
   40%,
   80% {
-    opacity: 0.28;
+    opacity: 0.32;
   }
   20%,
   60% {
     opacity: 1;
   }
   100% {
-    opacity: 1;
+    opacity: 0.92;
   }
 }
 
 @keyframes ring-lock {
   0% {
-    opacity: 0.4;
+    opacity: 0.42;
   }
-  35% {
+  40% {
     opacity: 1;
   }
   100% {
-    opacity: 1;
+    opacity: 0.96;
   }
 }
 
-@media (min-width: 640px) {
-  .axiom-ring-glow,
-  .axiom-ring-core {
-    inset: 8px;
-    border-radius: 22px;
+@media (max-width: 640px) {
+  .axiom-ring {
+    inset: 5px;
+    width: auto;
+    height: auto;
+    border-radius: 38px;
+  }
+
+  .axiom-ring-bloom {
+    box-shadow:
+      inset 0 0 8px 2px color-mix(in srgb, var(--ring-color, #2ee6d6) 62%, transparent),
+      inset 0 0 18px 5px color-mix(in srgb, var(--ring-color, #2ee6d6) 28%, transparent),
+      0 0 10px 2px color-mix(in srgb, var(--ring-color, #2ee6d6) 42%, transparent);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .axiom-ring-core,
+  .axiom-ring[data-state="idle"],
   .axiom-ring[data-state="pulse"],
   .axiom-ring[data-state="flash"],
   .axiom-ring[data-state="awaiting"],
   .axiom-ring[data-state="lock"] {
     animation: none;
-  }
-
-  .axiom-ring {
-    opacity: 0.85;
+    opacity: 0.86;
   }
 }
 

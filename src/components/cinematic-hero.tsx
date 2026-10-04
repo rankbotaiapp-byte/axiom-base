@@ -1,68 +1,38 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-function ParticleField({ color }: { color: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    const particles = Array.from({ length: 48 }, () => ({
-      x: Math.random(),
-      y: Math.random(),
-      r: Math.random() * 1.6 + 0.3,
-      s: Math.random() * 0.00025 + 0.00008,
-      a: Math.random() * 0.35 + 0.08,
-    }));
-
-    const draw = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const { width, height } = canvas.getBoundingClientRect();
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, width, height);
-      for (const p of particles) {
-        p.y -= p.s * height;
-        if (p.y < -0.02) p.y = 1.02;
-        ctx.beginPath();
-        ctx.fillStyle = color;
-        ctx.globalAlpha = p.a;
-        ctx.arc(p.x * width, p.y * height, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [color]);
-
-  return <canvas ref={ref} className="absolute inset-0 h-full w-full" />;
-}
+import {
+  cameraMotion,
+  introDurationSec,
+  INTRO_FX_EVENT,
+  readIntroFx,
+  writeIntroFx,
+  type IntroPreset,
+} from "@/lib/axiom/intro";
 
 export function CinematicHero({
   imageUrl,
-  videoUrl,
   blendPercent,
-  ringColor,
+  introPreset = "kenburns",
+  introSpeed = 40,
+  introIntensity = 45,
+  replayKey,
+  previewMode = false,
   className,
   children,
 }: {
   imageUrl: string;
-  videoUrl?: string | null;
   blendPercent: number;
-  ringColor: string;
+  introPreset?: IntroPreset;
+  introSpeed?: number;
+  introIntensity?: number;
+  replayKey?: string | number;
+  previewMode?: boolean;
   className?: string;
   children: ReactNode;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [showVideo, setShowVideo] = useState(Boolean(videoUrl));
   const [reduced, setReduced] = useState(false);
+  const [fxOn, setFxOn] = useState(true);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -73,50 +43,74 @@ export function CinematicHero({
   }, []);
 
   useEffect(() => {
-    if (reduced) {
-      setShowVideo(false);
-      return;
-    }
-    const t = window.setTimeout(() => setShowVideo(false), 5200);
-    return () => window.clearTimeout(t);
-  }, [reduced, videoUrl]);
+    if (previewMode) return;
+    const sync = () => setFxOn(readIntroFx());
+    sync();
+    window.addEventListener(INTRO_FX_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(INTRO_FX_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [previewMode]);
+
+  const skip = reduced || (!previewMode && !fxOn);
+  const preset: IntroPreset = skip ? "none" : introPreset;
+  const motionProps = cameraMotion(preset, introIntensity);
+  const duration = introDurationSec(introSpeed);
+  const animate = preset !== "none";
 
   return (
     <section
-      className={cn("relative isolate min-h-[100dvh] overflow-hidden bg-bg", className)}
+      className={cn("relative isolate flex min-h-[100dvh] flex-col overflow-hidden bg-bg", className)}
       style={{ ["--hero-blend" as string]: `${blendPercent}%` }}
     >
-      <div className="hero-blend absolute inset-0">
-        <img
+      <div className="hero-blend absolute inset-0 overflow-hidden">
+        <motion.img
+          key={`${imageUrl}-${preset}-${replayKey ?? "0"}`}
           src={imageUrl}
           alt=""
-          className="absolute inset-0 z-0 h-full w-full object-cover outline-none"
+          className="absolute inset-0 z-0 h-full w-full origin-center object-cover outline-none"
+          initial={animate ? motionProps.initial : { scale: 1, x: "0%", y: "0%", opacity: 1 }}
+          animate={motionProps.animate}
+          transition={
+            animate
+              ? { duration, ease: [0.22, 0.08, 0.2, 1] }
+              : { duration: 0 }
+          }
         />
-        <motion.div
-          className="absolute inset-0 z-10 pointer-events-none"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: showVideo && !reduced ? 1 : 0 }}
-          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {videoUrl && !reduced ? (
-            <video
-              ref={videoRef}
-              className="absolute inset-0 h-full w-full object-cover"
-              src={videoUrl}
-              autoPlay
-              muted
-              playsInline
-              preload="metadata"
-              onEnded={() => setShowVideo(false)}
-              onError={() => setShowVideo(false)}
-            />
-          ) : (
-            <ParticleField color={ringColor} />
-          )}
-          <div className="absolute inset-0 bg-bg/25" />
-        </motion.div>
       </div>
-      <div className="relative z-20 flex min-h-[100dvh] flex-col">{children}</div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[42%] bg-gradient-to-t from-bg to-transparent" />
+      <div className="relative z-20 flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
+  );
+}
+
+export function IntroFxToggle({ className }: { className?: string }) {
+  const [on, setOn] = useState(true);
+
+  useEffect(() => {
+    setOn(readIntroFx());
+    const sync = () => setOn(readIntroFx());
+    window.addEventListener(INTRO_FX_EVENT, sync);
+    return () => window.removeEventListener(INTRO_FX_EVENT, sync);
+  }, []);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => {
+        const next = !on;
+        setOn(next);
+        writeIntroFx(next);
+      }}
+      className={cn(
+        "inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted transition-[color,background-color] duration-150 hover:text-fg",
+        className,
+      )}
+    >
+      Intro FX · {on ? "On" : "Off"}
+    </button>
   );
 }

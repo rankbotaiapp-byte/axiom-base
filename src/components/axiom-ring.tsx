@@ -237,8 +237,8 @@ export function AxiomRing() {
   return (
     <>
       <div className="axiom-ring" data-state={state} aria-hidden="true">
-        <div className="axiom-ring-glow" />
-        <div className="axiom-ring-core" />
+        <span className="axiom-ring-bloom" />
+        <span className="axiom-ring-edge" />
       </div>
       <AnimatePresence>
         {message ? (

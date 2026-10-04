@@ -3,6 +3,7 @@ import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type { AccessMode, Shop } from "@/lib/axiom/types";
 import { cn } from "@/lib/utils";
+import { IntroFxToggle } from "@/components/cinematic-hero";
 
 export function ShopNav({
   shop,
@@ -27,6 +28,7 @@ export function ShopNav({
         <p className="truncate font-display text-xl leading-tight text-fg">{shop.name}</p>
       </Link>
       <nav className="flex items-center gap-1 sm:gap-2">
+        <IntroFxToggle className="hidden sm:inline-flex" />
         <Link
           to="/$shopSlug/book"
           params={{ shopSlug: shop.slug }}

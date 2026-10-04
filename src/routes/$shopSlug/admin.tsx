@@ -8,8 +8,10 @@ import {
   getOperatorData,
   inviteEmployee,
   updateShopBrand,
+  setShopIntro,
 } from "@/lib/axiom/server";
 import { RING_PRESETS } from "@/lib/axiom/niches";
+import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -346,23 +348,42 @@ function BrandPanel({
   const [blend, setBlend] = useState(shop.heroBlendPercent);
   const [color, setColor] = useState(shop.ringColor);
   const [primary, setPrimary] = useState(shop.primaryServiceId ?? services[0]?.id ?? "");
+  const [preset, setPreset] = useState<IntroPreset>(shop.introPreset);
+  const [speed, setSpeed] = useState(shop.introSpeed);
+  const [intensity, setIntensity] = useState(shop.introIntensity);
+  const [replay, setReplay] = useState(0);
   const [saving, setSaving] = useState(false);
+  const canIntro = !readonly || shop.isShowcase;
 
   async function save(extra?: { heroImageUrl?: string; markService?: boolean }) {
-    if (readonly) return;
     setSaving(true);
     try {
-      await updateShopBrand({
-        data: {
-          slug: shop.slug,
-          heroBlendPercent: blend,
-          ringColor: color,
-          heroImageUrl: extra?.heroImageUrl,
-          primaryServiceId: primary || undefined,
-          markHero: true,
-          markService: extra?.markService ?? Boolean(primary),
-        },
-      });
+      if (canIntro) {
+        await setShopIntro({
+          data: {
+            slug: shop.slug,
+            introPreset: preset,
+            introSpeed: speed,
+            introIntensity: intensity,
+          },
+        });
+      }
+      if (!readonly) {
+        await updateShopBrand({
+          data: {
+            slug: shop.slug,
+            heroBlendPercent: blend,
+            ringColor: color,
+            introPreset: preset,
+            introSpeed: speed,
+            introIntensity: intensity,
+            heroImageUrl: extra?.heroImageUrl,
+            primaryServiceId: primary || undefined,
+            markHero: true,
+            markService: extra?.markService ?? Boolean(primary),
+          },
+        });
+      }
       onReload();
     } finally {
       setSaving(false);
@@ -373,6 +394,28 @@ function BrandPanel({
     setColor(next);
     ring.setRingColor(next);
     await ring.persistRingColor(next);
+  }
+
+  async function persistIntro(next?: {
+    introPreset?: IntroPreset;
+    introSpeed?: number;
+    introIntensity?: number;
+  }) {
+    const p = next?.introPreset ?? preset;
+    const s = next?.introSpeed ?? speed;
+    const n = next?.introIntensity ?? intensity;
+    setPreset(p);
+    setSpeed(s);
+    setIntensity(n);
+    setReplay((v) => v + 1);
+    if (!canIntro) return;
+    try {
+      await setShopIntro({
+        data: { slug: shop.slug, introPreset: p, introSpeed: s, introIntensity: n },
+      });
+    } catch {
+      /* preview still shows locally */
+    }
   }
 
   async function onFile(file: File | undefined) {
@@ -386,12 +429,16 @@ function BrandPanel({
       <div className="overflow-hidden rounded-[28px]">
         <CinematicHero
           imageUrl={shop.heroImageUrl}
-          videoUrl={shop.heroVideoUrl}
           blendPercent={blend}
-          ringColor={color}
+          introPreset={preset}
+          introSpeed={speed}
+          introIntensity={intensity}
+          replayKey={replay}
+          previewMode
           className="min-h-[420px]"
         >
           <div className="mt-auto p-6">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Live preview</p>
             <p className="font-display text-4xl">{shop.name}</p>
           </div>
         </CinematicHero>
@@ -410,12 +457,86 @@ function BrandPanel({
           className="mt-2 w-full accent-accent"
         />
         <p className="mt-2 text-xs text-muted">
-          Masks the media into the page so the bottom of the hero dissolves into the dark field.
+          Masks the still into the page so the bottom of the hero dissolves into the dark field.
         </p>
+
+        <div className="mt-8 rounded-[24px] bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Intro Animation Studio</p>
+          <p className="mt-1 font-display text-2xl">Camera entrance</p>
+          <p className="mt-1 text-xs text-muted">
+            The still stays clean — no flares. Pick how the camera moves on load.
+          </p>
+          <div className="mt-4">
+            <Label htmlFor="intro-preset">Preset</Label>
+            <select
+              id="intro-preset"
+              value={preset}
+              disabled={!canIntro}
+              onChange={(e) => void persistIntro({ introPreset: e.target.value as IntroPreset })}
+              className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            >
+              {INTRO_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mt-4">
+            <Label htmlFor="intro-speed">Speed {speed}</Label>
+            <input
+              id="intro-speed"
+              type="range"
+              min={1}
+              max={100}
+              value={speed}
+              disabled={!canIntro}
+              onChange={(e) => {
+                setSpeed(Number(e.target.value));
+                setReplay((n) => n + 1);
+              }}
+              onPointerUp={(e) =>
+                void persistIntro({ introSpeed: Number((e.currentTarget as HTMLInputElement).value) })
+              }
+              className="mt-2 w-full accent-accent"
+            />
+          </div>
+          <div className="mt-4">
+            <Label htmlFor="intro-intensity">Intensity {intensity}</Label>
+            <input
+              id="intro-intensity"
+              type="range"
+              min={0}
+              max={100}
+              value={intensity}
+              disabled={!canIntro}
+              onChange={(e) => {
+                setIntensity(Number(e.target.value));
+                setReplay((n) => n + 1);
+              }}
+              onPointerUp={(e) =>
+                void persistIntro({
+                  introIntensity: Number((e.currentTarget as HTMLInputElement).value),
+                })
+              }
+              className="mt-2 w-full accent-accent"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-4"
+            disabled={!canIntro}
+            onClick={() => setReplay((n) => n + 1)}
+          >
+            Replay preview
+          </Button>
+        </div>
+
         <div className="mt-6">
           <Label htmlFor="ring">Ring color · all dashboards</Label>
           <p className="mt-1 text-xs text-muted">
-            The perimeter glow customers, staff, and this console share. Incoming books flash it;
+            Perimeter glow shared by customers, staff, and this console. Incoming books pulse it;
             confirmations lock it.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -467,6 +588,9 @@ function BrandPanel({
                       slug: shop.slug,
                       heroBlendPercent: blend,
                       ringColor: color,
+                      introPreset: preset,
+                      introSpeed: speed,
+                      introIntensity: intensity,
                       primaryServiceId: v,
                       markHero: true,
                       markService: true,
@@ -498,7 +622,7 @@ function BrandPanel({
             className="mt-2 block w-full text-sm text-muted"
           />
         </div>
-        <Button className="mt-6" disabled={readonly || saving} onClick={() => void save()}>
+        <Button className="mt-6" disabled={saving || (!canIntro && readonly)} onClick={() => void save()}>
           Save brand
         </Button>
       </div>

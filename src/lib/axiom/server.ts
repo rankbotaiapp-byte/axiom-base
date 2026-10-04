@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { DEFAULT_HOURS, NICHES } from "./niches";
+import { parseIntroPreset, type IntroPreset } from "./intro";
 import type {
   AccessMode,
   Appointment,
@@ -28,6 +29,9 @@ type ShopRow = {
   hero_image_url: string;
   hero_video_url: string | null;
   hero_blend_percent: number;
+  intro_preset?: string;
+  intro_speed?: number;
+  intro_intensity?: number;
   primary_service_id: string | null;
   owner_user_id: string | null;
   is_showcase: boolean;
@@ -73,6 +77,9 @@ function mapShop(r: ShopRow): Shop {
     heroImageUrl: r.hero_image_url,
     heroVideoUrl: r.hero_video_url,
     heroBlendPercent: Number(r.hero_blend_percent),
+    introPreset: parseIntroPreset(r.intro_preset),
+    introSpeed: Number(r.intro_speed ?? 40),
+    introIntensity: Number(r.intro_intensity ?? 45),
     primaryServiceId: r.primary_service_id,
     ownerUserId: r.owner_user_id,
     isShowcase: Boolean(r.is_showcase),
@@ -487,6 +494,9 @@ export const updateShopBrand = createServerFn({ method: "POST" })
       slug: string;
       ringColor?: string;
       heroBlendPercent?: number;
+      introPreset?: IntroPreset;
+      introSpeed?: number;
+      introIntensity?: number;
       heroImageUrl?: string;
       name?: string;
       tagline?: string;
@@ -509,6 +519,9 @@ export const updateShopBrand = createServerFn({ method: "POST" })
       update shops set
         ring_color = ${data.ringColor ?? row.ring_color},
         hero_blend_percent = ${data.heroBlendPercent ?? row.hero_blend_percent},
+        intro_preset = ${data.introPreset ?? row.intro_preset ?? "kenburns"},
+        intro_speed = ${data.introSpeed ?? row.intro_speed ?? 40},
+        intro_intensity = ${data.introIntensity ?? row.intro_intensity ?? 45},
         hero_image_url = ${data.heroImageUrl ?? row.hero_image_url},
         name = ${data.name ?? row.name},
         tagline = ${data.tagline ?? row.tagline},
@@ -542,6 +555,40 @@ export const setShopRingColor = createServerFn({ method: "POST" })
     `;
     return { ringColor: color };
   });
+
+export const setShopIntro = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    (d: {
+      slug: string;
+      introPreset: IntroPreset;
+      introSpeed: number;
+      introIntensity: number;
+    }) => d,
+  )
+  .handler(async ({ data, context }) => {
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    const mem = await membership(row.id, context.userId);
+    const allowed =
+      row.owner_user_id === context.userId ||
+      mem?.role === "owner" ||
+      Boolean(row.is_showcase);
+    if (!allowed) throw new Error("Forbidden");
+    const speed = Math.min(100, Math.max(1, Math.round(data.introSpeed)));
+    const intensity = Math.min(100, Math.max(0, Math.round(data.introIntensity)));
+    const preset = parseIntroPreset(data.introPreset);
+    const sql = await getSql();
+    await sql`
+      update shops set
+        intro_preset = ${preset},
+        intro_speed = ${speed},
+        intro_intensity = ${intensity}
+      where id = ${row.id}
+    `;
+    return { introPreset: preset, introSpeed: speed, introIntensity: intensity };
+  });
+
 
 export const inviteEmployee = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

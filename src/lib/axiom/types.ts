@@ -1,3 +1,5 @@
+import type { IntroPreset } from "./intro";
+
 export type ShopNiche = "location" | "field" | "studio";
 
 export type ShopRole = "owner" | "employee" | "customer";
@@ -23,6 +25,9 @@ export type Shop = {
   heroImageUrl: string;
   heroVideoUrl: string | null;
   heroBlendPercent: number;
+  introPreset: IntroPreset;
+  introSpeed: number;
+  introIntensity: number;
   primaryServiceId: string | null;
   ownerUserId: string | null;
   isShowcase: boolean;
