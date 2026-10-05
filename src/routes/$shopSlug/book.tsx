@@ -13,6 +13,7 @@ import {
   releaseCardCheckout,
   startCardCheckout,
 } from "@/lib/axiom/server";
+import { serviceGroups } from "@/lib/axiom/niches";
 import { buildSlots } from "@/lib/axiom/slots";
 import type { AccessMode, Employee } from "@/lib/axiom/types";
 import { formatMoney, initials } from "@/lib/utils";
@@ -118,7 +119,7 @@ function BookPage() {
   const groups = useMemo(() => {
     if (!service) return [];
     return buildSlots({
-      hours: data.shop.hours,
+      hours: data.shop.hours ?? {},
       durationMin: service.durationMin,
       bookedIsos: booked,
     });
@@ -169,18 +170,25 @@ function BookPage() {
 
           <Section title="Service">
             <div className="grid gap-2">
-              {data.services.map((s) => (
-                <Choice
-                  key={s.id}
-                  active={s.id === service?.id}
-                  onClick={() => {
-                    setServiceId(s.id);
-                    setSlot(null);
-                    setPay(false);
-                  }}
-                  title={s.name}
-                  meta={`${formatMoney(s.priceCents)} · ${s.durationMin}m`}
-                />
+              {serviceGroups(data.services).map((group) => (
+                <div key={group.label || "menu"} className="grid gap-2">
+                  {group.label ? (
+                    <p className="pt-2 text-[11px] uppercase tracking-[0.18em] text-muted">{group.label}</p>
+                  ) : null}
+                  {group.items.map((s) => (
+                    <Choice
+                      key={s.id}
+                      active={s.id === service?.id}
+                      onClick={() => {
+                        setServiceId(s.id);
+                        setSlot(null);
+                        setPay(false);
+                      }}
+                      title={s.name}
+                      meta={`${formatMoney(s.priceCents)} · ${s.durationMin}m`}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
           </Section>

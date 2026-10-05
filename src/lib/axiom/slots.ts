@@ -7,7 +7,7 @@ export type DaySlot = {
 };
 
 function parseRange(range: string): { start: number; end: number } | null {
-  if (!range || range === "closed") return null;
+  if (typeof range !== "string" || !range || range === "closed") return null;
   const [a, b] = range.split("-");
   if (!a || !b) return null;
   const [sh, sm] = a.split(":").map(Number);
@@ -31,7 +31,7 @@ export function buildSlots(opts: {
     day.setHours(0, 0, 0, 0);
     day.setDate(day.getDate() + d);
     const key = DAY_KEYS[day.getDay()];
-    const range = parseRange(opts.hours[key] ?? "closed");
+    const range = parseRange(opts.hours?.[key] ?? "closed");
     const dateKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
     const dayLabel = day.toLocaleDateString("en-US", {
       weekday: "short",

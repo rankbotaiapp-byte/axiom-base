@@ -7,7 +7,7 @@ import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { formatMoney, formatPhone, initials } from "@/lib/utils";
-import { nicheCopy, WEEKDAYS } from "@/lib/axiom/niches";
+import { nicheCopy, serviceGroups, WEEKDAYS } from "@/lib/axiom/niches";
 import { resolveHeroMedia } from "@/lib/axiom/media";
 import type { AccessMode } from "@/lib/axiom/types";
 import { getShopAccess, submitInquiry } from "@/lib/axiom/server";
@@ -37,9 +37,12 @@ function CustomerHome() {
       .catch(() => setMode("customer"));
   }, [data.shop.slug, isPending, user]);
 
-  const invited = data.employees[data.employees.length - 1];
+  const employees = data.employees ?? [];
+  const services = data.services ?? [];
+  const hours = data.shop.hours ?? {};
+  const invited = employees[employees.length - 1];
   const copy = nicheCopy(data.shop.niche);
-  const contact = data.employees.find((e) => e.phone)?.phone;
+  const contact = employees.find((e) => e.phone)?.phone;
   const hero = resolveHeroMedia(data.shop);
 
   return (
@@ -51,6 +54,7 @@ function CustomerHome() {
         introPreset={data.shop.introPreset}
         introSpeed={data.shop.introSpeed}
         introIntensity={data.shop.introIntensity}
+        tone={hero.tone}
       >
         <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
         <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
@@ -75,7 +79,7 @@ function CustomerHome() {
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bench}</p>
           <h2 className="mt-2 font-display text-3xl sm:text-4xl">{copy.heading}</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {data.employees.map((e) => (
+            {employees.map((e) => (
               <Link
                 key={e.id}
                 to="/$shopSlug/staff/$employeeId"
@@ -90,7 +94,7 @@ function CustomerHome() {
                   />
                 ) : (
                   <div className="grid size-28 shrink-0 place-items-center rounded-[16px] bg-surface-2 font-display text-2xl">
-                    {initials(e.displayName)}
+                    {initials(e.displayName || "Staff")}
                   </div>
                 )}
                 <div className="py-2 pr-2">
@@ -112,20 +116,29 @@ function CustomerHome() {
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Menu</p>
             <h2 className="mt-2 font-display text-3xl">Services</h2>
-            <ul className="mt-6 divide-y divide-line">
-              {data.services.map((s) => (
-                <li key={s.id} className="flex items-baseline justify-between gap-4 py-4">
-                  <div>
-                    <p className="font-medium">{s.name}</p>
-                    <p className="text-sm text-muted">{s.description}</p>
-                  </div>
-                  <p className="tabular shrink-0 text-sm text-muted">
-                    {formatMoney(s.priceCents)}
-                    <span className="ml-2 text-faint">{s.durationMin}m</span>
-                  </p>
-                </li>
+            <div className="mt-6">
+              {serviceGroups(services).map((group) => (
+                <div key={group.label || "menu"} className="mt-8 first:mt-0">
+                  {group.label ? (
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{group.label}</p>
+                  ) : null}
+                  <ul className="divide-y divide-line">
+                    {group.items.map((s) => (
+                      <li key={s.id} className="flex items-baseline justify-between gap-4 py-4">
+                        <div>
+                          <p className="font-medium">{s.name}</p>
+                          <p className="text-sm text-muted">{s.description}</p>
+                        </div>
+                        <p className="tabular shrink-0 text-sm text-muted">
+                          {formatMoney(s.priceCents)}
+                          <span className="ml-2 text-faint">{s.durationMin}m</span>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Hours</p>
@@ -133,7 +146,7 @@ function CustomerHome() {
               {WEEKDAYS.map(([k, label]) => (
                 <li key={k} className="flex justify-between">
                   <span className="text-muted">{label}</span>
-                  <span className="tabular">{data.shop.hours[k] ?? "closed"}</span>
+                  <span className="tabular">{hours[k] ?? "closed"}</span>
                 </li>
               ))}
             </ul>
@@ -142,7 +155,7 @@ function CustomerHome() {
             <InquiryForm slug={data.shop.slug} />
             {contact ? (
               <a href={`tel:${contact}`} className="mt-2 block text-sm tabular text-muted hover:text-fg">
-                {formatPhone(contact)}
+                {formatPhone(String(contact))}
               </a>
             ) : null}
           </div>

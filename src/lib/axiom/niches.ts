@@ -1,5 +1,6 @@
+import type { IntroPreset } from "./intro";
 import { NICHE_MEDIA } from "./media";
-import type { ShopNiche } from "./types";
+import type { Service, ShopNiche } from "./types";
 
 export type NicheTemplate = {
   niche: ShopNiche;
@@ -14,11 +15,17 @@ export type NicheTemplate = {
   heroImageUrl: string;
   heroVideoUrl: string;
   heroBlendPercent: number;
+  introPreset?: IntroPreset;
+  introSpeed?: number;
+  introIntensity?: number;
+  hours?: Record<string, string>;
+  primaryServiceIndex?: number;
   services: {
     name: string;
     description: string;
     durationMin: number;
     priceCents: number;
+    group?: string;
   }[];
   employees: {
     displayName: string;
@@ -40,7 +47,242 @@ export const RING_PRESETS = [
   { name: "Violet", value: "#B388FF" },
 ] as const;
 
+/** Lead the onboarding row with the newest templates, then the original three. */
+export const NICHE_ORDER: ShopNiche[] = ["fitness", "music", "contractor", "location", "field", "studio"];
+
 export const NICHES: Record<ShopNiche, NicheTemplate> = {
+  fitness: {
+    niche: "fitness",
+    label: "Fitness coaching / Personal training",
+    kicker: "They book the session",
+    blurb: "An assessment, a one-to-one hour, or a small group — the floor on a calendar.",
+    defaultName: "Form Room",
+    tagline: "Show up. We count the rest.",
+    description: "Personal training and small groups in New Era. Book the hour, not a guess.",
+    address: "New Era · the floor opens at six",
+    ringColor: "#E07A73",
+    heroImageUrl: NICHE_MEDIA.fitness.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.fitness.heroVideoUrl,
+    heroBlendPercent: 60,
+    introPreset: "zoomin",
+    introSpeed: 36,
+    introIntensity: 48,
+    primaryServiceIndex: 1,
+    hours: {
+      mon: "06:00-19:00",
+      tue: "06:00-19:00",
+      wed: "06:00-19:00",
+      thu: "06:00-19:00",
+      fri: "06:00-19:00",
+      sat: "07:00-13:00",
+      sun: "closed",
+    },
+    services: [
+      {
+        group: "Assess",
+        name: "Intro assessment",
+        description: "How you move, what hurts, and the first block of work.",
+        durationMin: 45,
+        priceCents: 8000,
+      },
+      {
+        group: "Train",
+        name: "Personal training",
+        description: "One coach, one hour, the program you are actually on.",
+        durationMin: 60,
+        priceCents: 12000,
+      },
+      {
+        group: "Train",
+        name: "Small group",
+        description: "Four people. The same hour, a shared floor.",
+        durationMin: 50,
+        priceCents: 4000,
+      },
+    ],
+    employees: [
+      {
+        displayName: "Nina Voss",
+        title: "Head coach",
+        bio: "Strength first. She writes the block and stays for the ugly reps.",
+        avatarUrl: "",
+        serviceIndexes: [0, 1],
+      },
+      {
+        displayName: "Calvin Brooks",
+        title: "Coach",
+        bio: "Small groups and the people who would rather not train alone.",
+        avatarUrl: "",
+        serviceIndexes: [1, 2],
+      },
+    ],
+    portfolio: [],
+  },
+  music: {
+    niche: "music",
+    label: "Music artist / Rapper",
+    kicker: "They book the night",
+    blurb: "A release, a session, or the show itself — the booth and the room on one calendar.",
+    defaultName: "Lowlight",
+    tagline: "The record, then the room.",
+    description:
+      "Studio time and live sets out of New Era. Book the booth, the mix, or the night.",
+    address: "New Era · books after two",
+    ringColor: "#B388FF",
+    heroImageUrl: NICHE_MEDIA.music.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.music.heroVideoUrl,
+    heroBlendPercent: 68,
+    introPreset: "panlr",
+    introSpeed: 24,
+    introIntensity: 62,
+    primaryServiceIndex: 2,
+    hours: {
+      mon: "closed",
+      tue: "14:00-22:00",
+      wed: "14:00-22:00",
+      thu: "14:00-22:00",
+      fri: "14:00-22:00",
+      sat: "12:00-20:00",
+      sun: "closed",
+    },
+    services: [
+      {
+        group: "Release",
+        name: "Single rollout",
+        description: "Artwork, the date, and the posts that go with the drop.",
+        durationMin: 60,
+        priceCents: 35000,
+      },
+      {
+        group: "Release",
+        name: "Mix + master",
+        description: "One song. Notes back in the same sitting.",
+        durationMin: 90,
+        priceCents: 28000,
+      },
+      {
+        group: "Show",
+        name: "Studio session",
+        description: "Booth time with an engineer. Two songs, or one until it sits right.",
+        durationMin: 120,
+        priceCents: 40000,
+      },
+      {
+        group: "Show",
+        name: "Live set",
+        description: "Book the show. A room, a set length, and the night.",
+        durationMin: 45,
+        priceCents: 80000,
+      },
+      {
+        group: "Show",
+        name: "Feature verse",
+        description: "Write and record a verse on your record.",
+        durationMin: 75,
+        priceCents: 50000,
+      },
+    ],
+    employees: [
+      {
+        displayName: "Mara Quinn",
+        title: "Artist",
+        bio: "Writes in the booth and holds the room when the lights drop.",
+        avatarUrl: "/media/music-mara.jpg",
+        serviceIndexes: [0, 2, 3, 4],
+      },
+      {
+        displayName: "Ellis Ward",
+        title: "Engineer",
+        bio: "Runs the desk. The mix comes back before you leave the block.",
+        avatarUrl: "/media/music-ellis.jpg",
+        serviceIndexes: [1, 2],
+      },
+    ],
+    portfolio: [
+      { employeeIndex: 0, imageUrl: "/media/music-work-2.jpg", caption: "The room" },
+      { employeeIndex: 0, imageUrl: "/media/music-hero.jpg", caption: "Night set" },
+      { employeeIndex: 1, imageUrl: "/media/music-work-1.jpg", caption: "Booth" },
+    ],
+  },
+  contractor: {
+    niche: "contractor",
+    label: "General contractor / Home services",
+    kicker: "They book the job",
+    blurb: "A consult, a measure, or the start day — home work with a scope you can read.",
+    defaultName: "Hearth Line",
+    tagline: "Walk the house. Then we build.",
+    description:
+      "Kitchens, repairs, and the rooms that need a real start day. New Era, and about twenty miles out.",
+    address: "New Era · jobs within 20 miles",
+    ringColor: "#C9A227",
+    heroImageUrl: NICHE_MEDIA.contractor.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.contractor.heroVideoUrl,
+    heroBlendPercent: 56,
+    introPreset: "zoomin",
+    introSpeed: 30,
+    introIntensity: 38,
+    primaryServiceIndex: 0,
+    hours: {
+      mon: "07:30-16:30",
+      tue: "07:30-16:30",
+      wed: "07:30-16:30",
+      thu: "07:30-16:30",
+      fri: "07:30-16:30",
+      sat: "08:00-13:00",
+      sun: "closed",
+    },
+    services: [
+      {
+        group: "Consult",
+        name: "Project consultation",
+        description: "Walk the house. Leave with a scope and a number.",
+        durationMin: 60,
+        priceCents: 15000,
+      },
+      {
+        group: "Consult",
+        name: "Site measure",
+        description: "Rooms, openings, and the list the crew actually builds from.",
+        durationMin: 90,
+        priceCents: 20000,
+      },
+      {
+        group: "Build",
+        name: "Repair call",
+        description: "One problem. A leak, a door, a stair that moves.",
+        durationMin: 120,
+        priceCents: 28000,
+      },
+      {
+        group: "Build",
+        name: "Start day",
+        description: "The first day on a room. The rest of the job is quoted from the consult.",
+        durationMin: 240,
+        priceCents: 65000,
+      },
+    ],
+    employees: [
+      {
+        displayName: "Lena Cho",
+        title: "General contractor",
+        bio: "Scopes the job in plain language, then stays on it until the punch list is short.",
+        avatarUrl: "/media/contractor-lead.jpg",
+        serviceIndexes: [0, 1, 3],
+      },
+      {
+        displayName: "Owen Briggs",
+        title: "Lead carpenter",
+        bio: "Cabinets, stairs, and the repairs that should have been done last year.",
+        avatarUrl: "/media/contractor-crew.jpg",
+        serviceIndexes: [2, 3],
+      },
+    ],
+    portfolio: [
+      { employeeIndex: 0, imageUrl: "/media/contractor-work-1.jpg", caption: "Kitchen" },
+      { employeeIndex: 0, imageUrl: "/media/contractor-hero.jpg", caption: "Start day" },
+      { employeeIndex: 1, imageUrl: "/media/contractor-work-2.jpg", caption: "Front stair" },
+    ],
+  },
   location: {
     niche: "location",
     label: "Storefront",
@@ -232,7 +474,21 @@ export const WEEKDAYS = [
 ] as const;
 
 export function nicheCopy(niche: ShopNiche) {
+  if (niche === "fitness") return { bench: "The floor", heading: "Who coaches the hour." };
+  if (niche === "music") return { bench: "The room", heading: "Who's on the record." };
+  if (niche === "contractor") return { bench: "The crew", heading: "Who walks the job." };
   if (niche === "field") return { bench: "The crew", heading: "Who rolls up." };
   if (niche === "studio") return { bench: "The studio", heading: "Who you'll work with." };
   return { bench: "The bench", heading: "Who you'll sit with." };
+}
+
+export function serviceGroups(services: Service[] | null | undefined): { label: string; items: Service[] }[] {
+  const groups: { label: string; items: Service[] }[] = [];
+  for (const service of services ?? []) {
+    const label = typeof service.group === "string" ? service.group : "";
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(service);
+    else groups.push({ label, items: [service] });
+  }
+  return groups;
 }

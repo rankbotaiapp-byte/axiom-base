@@ -1,6 +1,7 @@
+import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 
-export type ShopNiche = "location" | "field" | "studio";
+export type ShopNiche = "fitness" | "music" | "contractor" | "location" | "field" | "studio";
 
 export type ShopRole = "owner" | "employee" | "customer";
 
@@ -41,6 +42,8 @@ export type Shop = {
   hours: Record<string, string>;
   address: string;
   acceptsCard: boolean;
+  dashboardOverride: boolean;
+  dashboardConfig: DashboardConfig;
   createdAt: string;
 };
 
@@ -54,6 +57,7 @@ export type Employee = {
   avatarUrl: string;
   inviteStatus: "pending" | "claimed";
   serviceIds: string[];
+  dashboardConfig: DashboardConfig;
 };
 
 export type Service = {
@@ -63,6 +67,8 @@ export type Service = {
   description: string;
   durationMin: number;
   priceCents: number;
+  /** Release, booking, or blank. Blank keeps the flat menu used by other niches. */
+  group: string;
 };
 
 export type PortfolioItem = {

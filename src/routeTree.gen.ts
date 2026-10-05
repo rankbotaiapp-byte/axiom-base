@@ -21,6 +21,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiGearGuardianCheckoutRouteImport } from './routes/api/gear-guardian.checkout'
+import { Route as ApiHeroVideoShopIdRouteImport } from './routes/api/hero-video.$shopId'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -83,6 +84,11 @@ const ApiGearGuardianCheckoutRoute = ApiGearGuardianCheckoutRouteImport.update({
   path: '/api/gear-guardian/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHeroVideoShopIdRoute = ApiHeroVideoShopIdRouteImport.update({
+  id: '/api/hero-video/$shopId',
+  path: '/api/hero-video/$shopId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
+  '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
+  '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesById {
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
+  '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRouteTypes {
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
+    | '/api/hero-video/$shopId'
     | '/api/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
+    | '/api/hero-video/$shopId'
     | '/api/stripe/webhook'
   id:
     | '__root__'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
+    | '/api/hero-video/$shopId'
     | '/api/stripe/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   InviteTokenRoute: typeof InviteTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGearGuardianCheckoutRoute: typeof ApiGearGuardianCheckoutRoute
+  ApiHeroVideoShopIdRoute: typeof ApiHeroVideoShopIdRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
 }
 
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGearGuardianCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/hero-video/$shopId': {
+      id: '/api/hero-video/$shopId'
+      path: '/api/hero-video/$shopId'
+      fullPath: '/api/hero-video/$shopId'
+      preLoaderRoute: typeof ApiHeroVideoShopIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
       path: '/api/stripe/webhook'
@@ -316,6 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteTokenRoute: InviteTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGearGuardianCheckoutRoute: ApiGearGuardianCheckoutRoute,
+  ApiHeroVideoShopIdRoute: ApiHeroVideoShopIdRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
