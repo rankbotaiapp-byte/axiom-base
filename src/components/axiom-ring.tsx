@@ -12,11 +12,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { acceptBooking, listShopEvents, setShopRingColor } from "@/lib/axiom/server";
 import type { AccessMode, ShopEvent } from "@/lib/axiom/types";
 
-export type RingState = "idle" | "pulse" | "flash" | "awaiting" | "lock" | "solid";
+export type RingState = "idle" | "pulse" | "flash" | "awaiting" | "lock" | "solid" | "cycle";
+
+const CYCLE_MS = 1650;
 
 type RingContextValue = {
   state: RingState;
   message: string | null;
+  cycle: number;
   pendingId: string | null;
   ringColor: string;
   setPendingId: (id: string | null) => void;
@@ -65,6 +68,7 @@ export function AxiomRingProvider({
 }) {
   const [state, setState] = useState<RingState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [cycle, setCycle] = useState(0);
   const [color, setColor] = useState(initialColor);
   const [pendingId, setPendingIdState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -72,7 +76,12 @@ export function AxiomRingProvider({
   });
   const afterRef = useRef<string | undefined>(undefined);
   const flashTimer = useRef<number | undefined>(undefined);
-  const isStaff = mode === "owner" || mode === "employee";
+  const seenRef = useRef(new Set<string>());
+  const recentColor = useRef<{ payload: string; at: number } | null>(null);
+  const mountedAt = useRef(Date.now());
+  const isStaff = mode === "owner" || mode === "employee" || mode === "preview";
+  const staffRef = useRef(isStaff);
+  staffRef.current = isStaff;
 
   useEffect(() => {
     setColor(initialColor);
@@ -92,45 +101,49 @@ export function AxiomRingProvider({
     setColor(next);
   }, []);
 
+  const burst = useCallback((settle: RingState, msg: string | null) => {
+    setCycle((n) => n + 1);
+    setState("cycle");
+    setMessage(msg);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      setState(settle);
+      setMessage(null);
+    }, CYCLE_MS);
+  }, []);
+
   const announce = useCallback(
     (event: ShopEvent, local: boolean) => {
       if (event.type === "ring_color" && event.payload) {
+        const now = Date.now();
+        const recent = recentColor.current;
+        if (recent && recent.payload === event.payload && now - recent.at < CYCLE_MS + 500) return;
+        recentColor.current = { payload: event.payload, at: now };
+      }
+      const dedupeKey = `${event.type}:${event.appointmentId ?? event.id}`;
+      if (seenRef.current.has(dedupeKey)) return;
+      seenRef.current.add(dedupeKey);
+
+      if (event.type === "ring_color" && event.payload) {
         setColor(event.payload);
+        burst("idle", null);
       }
       if (event.type === "booking_request") {
-        if (local || event.appointmentId === pendingId) {
-          setState("pulse");
-          setMessage("Waiting for confirmation");
-        } else if (isStaff) {
-          setState("flash");
-          window.clearTimeout(flashTimer.current);
-          flashTimer.current = window.setTimeout(() => setState("awaiting"), 1200);
-          setMessage("New booking request");
-        }
+        if (staffRef.current && !local) burst("awaiting", "New booking request");
+        else burst("pulse", "Waiting for confirmation");
       }
       if (event.type === "booking_confirmed") {
-        if (!isStaff && (local || event.appointmentId === pendingId)) {
-          setState("lock");
-          window.clearTimeout(flashTimer.current);
-          flashTimer.current = window.setTimeout(() => setState("solid"), 1400);
-          setMessage("You're booked — locked in");
-        } else if (isStaff) {
-          setState("flash");
-          window.clearTimeout(flashTimer.current);
-          flashTimer.current = window.setTimeout(() => setState("solid"), 1100);
-          setMessage("Confirmation sent");
-        }
+        burst("idle", staffRef.current ? "Confirmation sent" : "You're booked — locked in");
       }
       if (typeof window !== "undefined" && local) {
         broadcast(shopId, event);
       }
     },
-    [isStaff, pendingId, shopId],
+    [burst, shopId],
   );
 
   const persistRingColor = useCallback(
     async (next: string) => {
-      setColor(next);
       const event: ShopEvent = {
         id: `ring-${Date.now()}`,
         type: "ring_color",
@@ -138,14 +151,14 @@ export function AxiomRingProvider({
         payload: next,
         createdAt: new Date().toISOString(),
       };
-      broadcast(shopId, event);
+      announce(event, true);
       try {
         await setShopRingColor({ data: { slug, ringColor: next } });
       } catch {
         /* local preview still shows the color */
       }
     },
-    [shopId, slug],
+    [announce, slug],
   );
 
   useEffect(() => {
@@ -172,12 +185,17 @@ export function AxiomRingProvider({
         if (cancelled || events.length === 0) return;
         const ordered = [...events].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
         afterRef.current = ordered[ordered.length - 1]?.createdAt;
-        for (const e of ordered) announce(e, false);
+        const freshAfter = mountedAt.current - 1500;
+        for (const e of ordered) {
+          const at = new Date(e.createdAt).getTime();
+          if (Number.isFinite(at) && at < freshAfter) continue;
+          announce(e, false);
+        }
       } catch {
         /* poll is best-effort */
       }
     };
-    const id = window.setInterval(tick, 1400);
+    const id = window.setInterval(tick, 400);
     void tick();
     return () => {
       cancelled = true;
@@ -198,22 +216,24 @@ export function AxiomRingProvider({
         true,
       );
     };
-    if (!pendingId) {
+    let appointmentId = pendingId;
+    let eventId = `local-${Date.now()}`;
+    if (!appointmentId) {
       const events = await listShopEvents({ data: { slug } });
       const latest = events.find((e) => e.type === "booking_request");
       if (!latest?.appointmentId) return;
-      await acceptBooking({ data: { slug, appointmentId: latest.appointmentId } });
-      confirm(latest.appointmentId, latest.id);
-      return;
+      appointmentId = latest.appointmentId;
+      eventId = latest.id;
     }
-    await acceptBooking({ data: { slug, appointmentId: pendingId } });
-    confirm(pendingId, `local-${Date.now()}`);
+    confirm(appointmentId, eventId);
+    await acceptBooking({ data: { slug, appointmentId } });
   }, [announce, pendingId, slug]);
 
   const value = useMemo(
     () => ({
       state,
       message,
+      cycle,
       pendingId,
       ringColor: color,
       setPendingId,
@@ -222,7 +242,7 @@ export function AxiomRingProvider({
       announce,
       accept,
     }),
-    [state, message, pendingId, color, setPendingId, setRingColor, persistRingColor, announce, accept],
+    [state, message, cycle, pendingId, color, setPendingId, setRingColor, persistRingColor, announce, accept],
   );
 
   return (
@@ -233,20 +253,21 @@ export function AxiomRingProvider({
 }
 
 export function AxiomRing() {
-  const { state, message } = useAxiomRing();
+  const { state, message, cycle } = useAxiomRing();
   return (
     <>
-      <div className="axiom-ring" data-state={state} aria-hidden="true">
+      <div key={cycle} className="axiom-ring" data-state={state} aria-hidden="true">
         <span className="axiom-ring-bloom" />
         <span className="axiom-ring-edge" />
       </div>
       <AnimatePresence>
         {message ? (
           <motion.div
+            key={cycle}
             initial={{ opacity: 0, y: -12, filter: "blur(4px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, y: -8, filter: "blur(6px)" }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="pointer-events-none fixed inset-x-0 top-0 z-[10000] flex justify-center px-4 pt-[max(12px,env(safe-area-inset-top))]"
           >
             <p className="rounded-full bg-surface/90 px-4 py-2 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.1)]">

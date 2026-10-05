@@ -4,6 +4,7 @@ import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { DEFAULT_HOURS, NICHES } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
+import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
 import type {
   AccessMode,
@@ -44,12 +45,16 @@ type ShopRow = {
   address: string;
   notify_email?: string;
   notify_phone?: string;
+  dashboard_override?: unknown;
+  dashboard_config?: unknown;
   created_at: string;
 };
 
-function parseOnboarding(raw: string): Shop["onboarding"] {
+function parseOnboarding(raw: unknown): Shop["onboarding"] {
+  const empty = { hero: false, service: false, employee: false, testBooked: false };
   try {
-    const j = JSON.parse(raw) as Partial<Shop["onboarding"]>;
+    const j = (typeof raw === "string" ? JSON.parse(raw) : raw) as Partial<Shop["onboarding"]> | null;
+    if (!j || typeof j !== "object") return empty;
     return {
       hero: Boolean(j.hero),
       service: Boolean(j.service),
@@ -57,17 +62,27 @@ function parseOnboarding(raw: string): Shop["onboarding"] {
       testBooked: Boolean(j.testBooked),
     };
   } catch {
-    return { hero: false, service: false, employee: false, testBooked: false };
+    return empty;
   }
 }
 
-function parseHours(raw: string): Record<string, string> {
+function parseHours(raw: unknown): Record<string, string> {
+  const hours = { ...DEFAULT_HOURS };
   try {
-    const j = JSON.parse(raw) as Record<string, string>;
-    return { ...DEFAULT_HOURS, ...j };
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return hours;
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value === "string" && value.trim()) hours[key] = value;
+    }
   } catch {
-    return { ...DEFAULT_HOURS };
+    /* keep the default week */
   }
+  return hours;
+}
+
+function finiteNumber(value: unknown, fallback: number) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function mapShop(r: ShopRow, acceptsCard = false): Shop {
@@ -75,16 +90,23 @@ function mapShop(r: ShopRow, acceptsCard = false): Shop {
     id: r.id,
     slug: r.slug,
     name: r.name,
-    niche: r.niche === "field" ? "field" : r.niche === "studio" ? "studio" : "location",
+    niche:
+      r.niche === "fitness" ||
+      r.niche === "music" ||
+      r.niche === "contractor" ||
+      r.niche === "field" ||
+      r.niche === "studio"
+        ? r.niche
+        : "location",
     tagline: r.tagline,
     description: r.description,
-    ringColor: r.ring_color,
-    heroImageUrl: r.hero_image_url,
-    heroVideoUrl: r.hero_video_url,
-    heroBlendPercent: Number(r.hero_blend_percent),
+    ringColor: r.ring_color || "#2EE6D6",
+    heroImageUrl: r.hero_image_url || "",
+    heroVideoUrl: r.hero_video_url || null,
+    heroBlendPercent: finiteNumber(r.hero_blend_percent, 60),
     introPreset: parseIntroPreset(r.intro_preset),
-    introSpeed: Number(r.intro_speed ?? 40),
-    introIntensity: Number(r.intro_intensity ?? 45),
+    introSpeed: finiteNumber(r.intro_speed ?? 40, 40),
+    introIntensity: finiteNumber(r.intro_intensity ?? 45, 45),
     primaryServiceId: r.primary_service_id,
     ownerUserId: r.owner_user_id,
     isShowcase: Boolean(r.is_showcase),
@@ -93,6 +115,8 @@ function mapShop(r: ShopRow, acceptsCard = false): Shop {
     hours: parseHours(r.hours_json),
     address: r.address,
     acceptsCard,
+    dashboardOverride: isOn(r.dashboard_override),
+    dashboardConfig: parseDashboardConfig(r.dashboard_config),
     createdAt: String(r.created_at),
   };
 }
@@ -102,12 +126,18 @@ function isOn(value: unknown) {
 }
 
 async function shopAcceptsCard(shopId: string) {
-  const sql = await getSql();
-  const rows = await sql<{ stripe_charges_enabled: unknown; stripe_account_id: string | null }>`
-    select stripe_charges_enabled, stripe_account_id
-    from shop_billing where shop_id = ${shopId}
-  `;
-  return isOn(rows[0]?.stripe_charges_enabled) && Boolean(rows[0]?.stripe_account_id);
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ stripe_charges_enabled: unknown; stripe_account_id: string | null }>`
+      select stripe_charges_enabled, stripe_account_id
+      from shop_billing where shop_id = ${shopId}
+    `;
+    return isOn(rows[0]?.stripe_charges_enabled) && Boolean(rows[0]?.stripe_account_id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/stripe_charges_enabled|stripe_account_id|does not exist/i.test(message)) return false;
+    throw err;
+  }
 }
 
 const OPEN_BOOKING_SQL = `
@@ -143,7 +173,7 @@ async function employeeServiceMap(shopId: string): Promise<Map<string, string[]>
 
 async function loadEmployees(shopId: string): Promise<Employee[]> {
   const sql = await getSql();
-  const rows = await sql<{
+  type EmpRow = {
     id: string;
     shop_id: string;
     display_name: string;
@@ -152,10 +182,22 @@ async function loadEmployees(shopId: string): Promise<Employee[]> {
     phone: string;
     avatar_url: string;
     invite_status: "pending" | "claimed";
-  }>`
-    select id, shop_id, display_name, title, bio, phone, avatar_url, invite_status
-    from employees where shop_id = ${shopId} order by created_at asc
-  `;
+    dashboard_config?: unknown;
+  };
+  let rows: EmpRow[];
+  try {
+    rows = await sql<EmpRow>`
+      select id, shop_id, display_name, title, bio, phone, avatar_url, invite_status, dashboard_config
+      from employees where shop_id = ${shopId} order by created_at asc
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/dashboard_config/i.test(message)) throw err;
+    rows = await sql<EmpRow>`
+      select id, shop_id, display_name, title, bio, phone, avatar_url, invite_status
+      from employees where shop_id = ${shopId} order by created_at asc
+    `;
+  }
   const services = await employeeServiceMap(shopId);
   return rows.map((r) => ({
     id: r.id,
@@ -167,30 +209,62 @@ async function loadEmployees(shopId: string): Promise<Employee[]> {
     avatarUrl: r.avatar_url,
     inviteStatus: r.invite_status,
     serviceIds: services.get(r.id) ?? [],
+    dashboardConfig: parseDashboardConfig(r.dashboard_config),
   }));
 }
 
-async function loadServices(shopId: string): Promise<Service[]> {
-  const sql = await getSql();
-  const rows = await sql<{
-    id: string;
-    shop_id: string;
-    name: string;
-    description: string;
-    duration_min: number;
-    price_cents: number;
-  }>`
-    select id, shop_id, name, description, duration_min, price_cents
-    from services where shop_id = ${shopId} order by sort_order asc, name asc
-  `;
-  return rows.map((r) => ({
+function mapServiceRow(r: {
+  id: string;
+  shop_id: string;
+  name: string;
+  description: string;
+  duration_min: number;
+  price_cents: number;
+  group_label?: string | null;
+}): Service {
+  return {
     id: r.id,
     shopId: r.shop_id,
     name: r.name,
     description: r.description,
     durationMin: Number(r.duration_min),
     priceCents: Number(r.price_cents),
-  }));
+    group: r.group_label ?? "",
+  };
+}
+
+async function loadServices(shopId: string): Promise<Service[]> {
+  const sql = await getSql();
+  try {
+    const rows = await sql<{
+      id: string;
+      shop_id: string;
+      name: string;
+      description: string;
+      duration_min: number;
+      price_cents: number;
+      group_label: string | null;
+    }>`
+      select id, shop_id, name, description, duration_min, price_cents, group_label
+      from services where shop_id = ${shopId} order by sort_order asc, name asc
+    `;
+    return rows.map(mapServiceRow);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/group_label/i.test(message)) throw err;
+    const rows = await sql<{
+      id: string;
+      shop_id: string;
+      name: string;
+      description: string;
+      duration_min: number;
+      price_cents: number;
+    }>`
+      select id, shop_id, name, description, duration_min, price_cents
+      from services where shop_id = ${shopId} order by sort_order asc, name asc
+    `;
+    return rows.map((r) => mapServiceRow(r));
+  }
 }
 
 export const getPublicShop = createServerFn({ method: "GET" })
@@ -497,21 +571,24 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
       token: crypto.randomUUID(),
     }));
 
+    const primary = services[template.primaryServiceIndex ?? 0] ?? services[0];
     await sql`
       insert into shops (
         id, slug, name, niche, tagline, description, ring_color,
         hero_image_url, hero_video_url, hero_blend_percent, primary_service_id,
+        intro_preset, intro_speed, intro_intensity,
         owner_user_id, is_showcase, onboarding_step, onboarding_json, hours_json, address
       ) values (
         ${shopId}, ${slug}, ${name}, ${template.niche}, ${template.tagline},
         ${template.description}, ${template.ringColor}, ${template.heroImageUrl},
-        ${template.heroVideoUrl}, ${template.heroBlendPercent}, ${services[0]?.id ?? null},
+        ${template.heroVideoUrl}, ${template.heroBlendPercent}, ${primary?.id ?? null},
+        ${template.introPreset ?? "kenburns"}, ${template.introSpeed ?? 40}, ${template.introIntensity ?? 45},
         ${context.userId}, false, 'tour', ${JSON.stringify({
           hero: false,
           service: false,
           employee: false,
           testBooked: false,
-        })}, ${JSON.stringify(DEFAULT_HOURS)}, ${template.address}
+        })}, ${JSON.stringify(template.hours ?? DEFAULT_HOURS)}, ${template.address}
       )
     `;
     await sql`
@@ -524,8 +601,8 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
     `;
     for (const s of services) {
       await sql`
-        insert into services (id, shop_id, name, description, duration_min, price_cents, sort_order)
-        values (${s.id}, ${shopId}, ${s.name}, ${s.description}, ${s.durationMin}, ${s.priceCents}, ${s.sort})
+        insert into services (id, shop_id, name, description, duration_min, price_cents, sort_order, group_label)
+        values (${s.id}, ${shopId}, ${s.name}, ${s.description}, ${s.durationMin}, ${s.priceCents}, ${s.sort}, ${s.group ?? ""})
       `;
     }
     for (const e of employees) {
@@ -855,6 +932,53 @@ async function loadNotices(shopId: string): Promise<ShopNotice[]> {
     createdAt: String(r.created_at),
   }));
 }
+
+export const setShopDashboard = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; override: boolean; config: DashboardConfig }) => d)
+  .handler(async ({ data, context }) => {
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    if (!row.is_showcase) {
+      const mem = await membership(row.id, context.userId);
+      if (row.owner_user_id !== context.userId && mem?.role !== "owner") throw new Error("Forbidden");
+    }
+    const config = parseDashboardConfig(data.config);
+    const sql = await getSql();
+    await sql`
+      update shops
+      set dashboard_override = ${Boolean(data.override)},
+          dashboard_config = ${JSON.stringify(config)}
+      where id = ${row.id}
+    `;
+    return { override: Boolean(data.override), config };
+  });
+
+export const setEmployeeDashboard = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; employeeId: string; config: DashboardConfig }) => d)
+  .handler(async ({ data, context }) => {
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    const config = parseDashboardConfig(data.config);
+    const sql = await getSql();
+    const emp = await sql<{ id: string }>`
+      select id from employees where id = ${data.employeeId} and shop_id = ${row.id} limit 1
+    `;
+    if (!emp[0]) throw new Error("Staff not found");
+    if (!row.is_showcase) {
+      const mem = await membership(row.id, context.userId);
+      const isOwner = row.owner_user_id === context.userId || mem?.role === "owner";
+      const isSelf = mem?.role === "employee" && mem.employee_id === data.employeeId;
+      if (!isOwner && !isSelf) throw new Error("Forbidden");
+    }
+    await sql`
+      update employees
+      set dashboard_config = ${JSON.stringify(config)}
+      where id = ${data.employeeId}
+    `;
+    return { config };
+  });
 
 async function requireOwnerShop(slug: string, userId: string) {
   const row = await loadShopRow(slug);

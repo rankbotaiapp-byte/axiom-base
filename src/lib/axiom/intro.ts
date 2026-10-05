@@ -20,8 +20,8 @@ export const INTRO_PRESETS: { id: IntroPreset; label: string }[] = [
 export const INTRO_FX_KEY = "axiom:intro-fx";
 export const INTRO_FX_EVENT = "axiom:intro-fx";
 
-export function parseIntroPreset(raw: string | null | undefined): IntroPreset {
-  const v = (raw ?? "").toLowerCase();
+export function parseIntroPreset(raw: unknown): IntroPreset {
+  const v = typeof raw === "string" ? raw.toLowerCase() : "";
   if (INTRO_PRESETS.some((p) => p.id === v)) return v as IntroPreset;
   return "kenburns";
 }

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { createFileRoute, Link, Outlet, notFound } from "@tanstack/react-router";
+import { createFileRoute, isNotFound, Link, Outlet, notFound } from "@tanstack/react-router";
 import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-ring";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
+import { isClientAbort } from "@/lib/client-abort";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type { AccessMode, ShopPublic } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
@@ -52,10 +53,29 @@ function useLiveShop(initial: ShopPublic) {
 }
 
 export const Route = createFileRoute("/$shopSlug")({
-  loader: async ({ params }) => {
-    const data = await getPublicShop({ data: params.shopSlug });
-    if (!data) throw notFound();
-    return data;
+  loader: async ({ params, abortController }) => {
+    try {
+      const data = await getPublicShop({ data: params.shopSlug });
+      if (abortController.signal.aborted || !data) throw notFound();
+      return {
+        ...data,
+        services: data.services ?? [],
+        employees: data.employees ?? [],
+        shop: {
+          ...data.shop,
+          hours: data.shop.hours && typeof data.shop.hours === "object" ? data.shop.hours : {},
+          heroImageUrl: data.shop.heroImageUrl || "",
+          heroBlendPercent: Number.isFinite(data.shop.heroBlendPercent) ? data.shop.heroBlendPercent : 60,
+          introSpeed: Number.isFinite(data.shop.introSpeed) ? data.shop.introSpeed : 40,
+          introIntensity: Number.isFinite(data.shop.introIntensity) ? data.shop.introIntensity : 45,
+        },
+      };
+    } catch (error) {
+      if (isNotFound(error)) throw error;
+      if (abortController.signal.aborted || isClientAbort(error)) throw notFound();
+      console.error(`[shop] failed to load /${params.shopSlug}`, error);
+      throw error;
+    }
   },
   component: ShopLayout,
   notFoundComponent: () => (

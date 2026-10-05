@@ -13,7 +13,10 @@ import {
 } from "@/lib/axiom/server";
 import { RING_PRESETS } from "@/lib/axiom/niches";
 import { resolveHeroMedia } from "@/lib/axiom/media";
+import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
+import { getBearerToken } from "@/lib/auth/client";
 import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
+import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
@@ -51,12 +54,24 @@ function AdminPage() {
   const [data, setData] = useState<OpData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const userId = user?.id;
   useEffect(() => {
-    if (isPending || !user) return;
+    if (isPending || !userId) return;
+    let cancelled = false;
     void getOperatorData({ data: shopSlug })
-      .then(setData)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Forbidden"));
-  }, [isPending, shopSlug, user]);
+      .then((next) => {
+        if (!cancelled) {
+          setError(null);
+          setData(next);
+        }
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Forbidden");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPending, shopSlug, userId]);
 
   useEffect(() => {
     if (!user || !stripe) return;
@@ -67,14 +82,14 @@ function AdminPage() {
   }, [shopSlug, stripe, user]);
 
   useEffect(() => {
-    if (isPending || !user) return;
+    if (isPending || !userId) return;
     const id = window.setInterval(() => {
       void getOperatorData({ data: shopSlug })
         .then(setData)
         .catch(() => undefined);
     }, 12000);
     return () => window.clearInterval(id);
-  }, [isPending, shopSlug, user]);
+  }, [isPending, shopSlug, userId]);
 
   if (isPending || (user && !data && !error)) {
     return (
@@ -174,7 +189,15 @@ function AdminShell({
           <Overview data={data} readonly={readonly} onReload={onReload} />
         ) : null}
         {tab === "settings" ? (
-          <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
+          <div className="grid gap-6">
+            <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
+            <ShopDashboardPanel
+              shop={data.shop}
+              employees={data.employees}
+              disabled={readonly && !data.shop.isShowcase}
+              onReload={onReload}
+            />
+          </div>
         ) : null}
         {tab === "services" ? (
           <ServicesPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
@@ -352,9 +375,6 @@ function Overview({
                     size="sm"
                     onClick={() => {
                       void (async () => {
-                        await acceptBooking({
-                          data: { slug: data.shop.slug, appointmentId: a.id },
-                        });
                         ring.announce(
                           {
                             id: `acc-${a.id}`,
@@ -365,6 +385,9 @@ function Overview({
                           },
                           true,
                         );
+                        await acceptBooking({
+                          data: { slug: data.shop.slug, appointmentId: a.id },
+                        });
                         onReload();
                       })();
                     }}
@@ -410,7 +433,19 @@ function BrandPanel({
   const [intensity, setIntensity] = useState(shop.introIntensity);
   const [replay, setReplay] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [localVideo, setLocalVideo] = useState<string | null>(null);
   const canIntro = !readonly || shop.isShowcase;
+  const hero = resolveHeroMedia(shop);
+  const previewVideo = localVideo ?? hero.videoUrl;
+
+  useEffect(() => {
+    setLocalVideo((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  }, [shop.heroVideoUrl]);
 
   async function save(extra?: { heroImageUrl?: string; markService?: boolean }) {
     setSaving(true);
@@ -481,16 +516,61 @@ function BrandPanel({
     await save({ heroImageUrl: url });
   }
 
+  async function onVideo(file: File | undefined) {
+    if (!file || readonly) return;
+    const mp4 = file.type === "video/mp4" || file.name.toLowerCase().endsWith(".mp4");
+    if (!mp4) {
+      setVideoError("Upload an .mp4 file");
+      return;
+    }
+    if (file.size > HERO_VIDEO_MAX_BYTES) {
+      setVideoError("Video must be 12 MB or smaller");
+      return;
+    }
+    setVideoError(null);
+    const preview = URL.createObjectURL(file);
+    setLocalVideo((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return preview;
+    });
+    setReplay((n) => n + 1);
+    setUploading(true);
+    try {
+      const token = getBearerToken();
+      const res = await fetch(`/api/hero-video/${shop.id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "video/mp4",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: file,
+      });
+      const json = (await res.json()) as { heroVideoUrl?: string; error?: string };
+      if (!res.ok || !json.heroVideoUrl) throw new Error(json.error || "Upload failed");
+      onReload();
+    } catch (err) {
+      setLocalVideo((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return null;
+      });
+      setVideoError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div className="overflow-hidden rounded-[28px]">
         <CinematicHero
-          imageUrl={resolveHeroMedia(shop).imageUrl}
-          videoUrl={resolveHeroMedia(shop).videoUrl}
+          imageUrl={hero.imageUrl}
+          videoUrl={previewVideo}
           blendPercent={blend}
           introPreset={preset}
           introSpeed={speed}
           introIntensity={intensity}
+          tone={hero.tone}
           replayKey={replay}
           previewMode
           className="min-h-[420px]"
@@ -517,14 +597,37 @@ function BrandPanel({
         <p className="mt-2 text-xs text-muted">
           Masks the still into the page so the bottom of the hero dissolves into the dark field.
         </p>
-        <p className="mt-1 text-xs text-muted">{resolveHeroMedia(shop).loopLabel}</p>
+        <p className="mt-1 text-xs text-muted">{localVideo ? "Custom loop · unsaved preview" : hero.loopLabel}</p>
 
         <div className="mt-8 rounded-[24px] bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Intro Animation Studio</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Axiom Hero Studio Editor</p>
           <p className="mt-1 font-display text-2xl">Camera entrance</p>
           <p className="mt-1 text-xs text-muted">
-            The still stays clean — no flares. Pick how the camera moves on load.
+            An uploaded film replaces this shop's default loop. Pan, speed, and the bottom fade stay on it.
           </p>
+          <div className="mt-4">
+            <Label htmlFor="hero-video">Background video</Label>
+            <input
+              id="hero-video"
+              type="file"
+              accept="video/mp4,.mp4"
+              disabled={readonly || uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                void onVideo(file);
+              }}
+              className="mt-2 block w-full text-sm text-muted"
+            />
+            <p className="mt-2 text-xs text-muted">
+              {readonly
+                ? "This preview keeps the niche film. A shop you own can replace it."
+                : uploading
+                  ? "Saving the film…"
+                  : ".mp4, up to 12 MB. Stored for this shop only."}
+            </p>
+            {videoError ? <p className="mt-2 text-sm text-danger">{videoError}</p> : null}
+          </div>
           <div className="mt-4">
             <Label htmlFor="intro-preset">Preset</Label>
             <select

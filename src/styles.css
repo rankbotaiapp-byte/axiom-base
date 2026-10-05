@@ -79,6 +79,27 @@
   );
 }
 
+.hero-stage::after,
+.hero-site::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hero-stage::after {
+  background:
+    radial-gradient(ellipse at center, transparent 40%, rgba(8, 8, 10, 0.72) 100%),
+    linear-gradient(to top, rgba(179, 136, 255, 0.28), transparent 48%);
+}
+
+.hero-site::after {
+  background:
+    radial-gradient(ellipse at center, transparent 52%, rgba(8, 8, 10, 0.4) 100%),
+    linear-gradient(to top, rgba(201, 162, 39, 0.18), transparent 42%);
+}
+
 /* Pixel-style perimeter: a hollow rim around the screen, not a page wash
    and not a traveling highlight. Two layers — a 2px edge + a tight bloom. */
 .axiom-ring {
@@ -149,6 +170,46 @@
   opacity: 0.96;
 }
 
+/* One-shot: hue sweep the moment a booking or color update lands, then ease back. */
+.axiom-ring[data-state="cycle"] {
+  animation: ring-cycle 1.65s linear forwards;
+}
+
+.axiom-ring[data-state="cycle"] .axiom-ring-edge,
+.axiom-ring[data-state="cycle"] .axiom-ring-bloom {
+  animation: ring-chroma 1.65s linear forwards;
+}
+
+@keyframes ring-cycle {
+  0% {
+    opacity: 1;
+  }
+  68% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.74;
+  }
+}
+
+@keyframes ring-chroma {
+  0% {
+    filter: hue-rotate(0deg) saturate(1.2) brightness(1.08);
+  }
+  18% {
+    filter: hue-rotate(78deg) saturate(1.9) brightness(1.28);
+  }
+  42% {
+    filter: hue-rotate(176deg) saturate(1.95) brightness(1.32);
+  }
+  64% {
+    filter: hue-rotate(268deg) saturate(1.75) brightness(1.18);
+  }
+  100% {
+    filter: hue-rotate(360deg) saturate(1) brightness(1);
+  }
+}
+
 @keyframes ring-idle {
   0%,
   100% {
@@ -217,9 +278,16 @@
   .axiom-ring[data-state="pulse"],
   .axiom-ring[data-state="flash"],
   .axiom-ring[data-state="awaiting"],
-  .axiom-ring[data-state="lock"] {
+  .axiom-ring[data-state="lock"],
+  .axiom-ring[data-state="cycle"] {
     animation: none;
     opacity: 0.86;
+  }
+
+  .axiom-ring[data-state="cycle"] .axiom-ring-edge,
+  .axiom-ring[data-state="cycle"] .axiom-ring-bloom {
+    animation: none;
+    filter: none;
   }
 }
 
