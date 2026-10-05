@@ -1,7 +1,18 @@
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 
-export type ShopNiche = "fitness" | "music" | "contractor" | "location" | "tattoo" | "field" | "studio";
+export type ShopNiche =
+  | "fitness"
+  | "music"
+  | "contractor"
+  | "location"
+  | "tattoo"
+  | "field"
+  | "studio"
+  | "guide";
+
+/** flat is one price. person and boat are how a guide outfit charges. */
+export type PriceUnit = "flat" | "person" | "boat";
 
 export type ShopRole = "owner" | "employee" | "customer";
 
@@ -67,8 +78,9 @@ export type Service = {
   description: string;
   durationMin: number;
   priceCents: number;
-  /** Release, booking, or blank. Blank keeps the flat menu used by other niches. */
+  /** Menu section the customer sees above this line. Blank keeps it in the open list. */
   group: string;
+  priceUnit: PriceUnit;
 };
 
 export type PortfolioItem = {

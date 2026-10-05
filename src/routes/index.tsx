@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppWindow, ArrowUpRight, Brush, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
+import { AppWindow, ArrowUpRight, Brush, Compass, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
@@ -99,6 +99,7 @@ function Home() {
                 title={n.label}
                 copy={n.blurb}
                 videoUrl={NICHE_MEDIA[key].heroVideoUrl}
+                imageUrl={NICHE_MEDIA[key].heroImageUrl}
               />
             );
           })}
@@ -148,6 +149,7 @@ function nicheIcon(key: ShopNiche): LucideIcon {
   if (key === "contractor") return HardHat;
   if (key === "tattoo") return Brush;
   if (key === "field") return Truck;
+  if (key === "guide") return Compass;
   if (key === "studio") return AppWindow;
   return Store;
 }
@@ -157,16 +159,22 @@ function NicheCard({
   title,
   copy,
   videoUrl,
+  imageUrl,
 }: {
   icon: ReactNode;
   title: string;
   copy: string;
   videoUrl: string;
+  imageUrl: string;
 }) {
   return (
     <div className="w-64 shrink-0 snap-start overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-      <div className="relative aspect-[16/10] bg-surface-2">
-        <LoopVideo src={videoUrl} className="absolute inset-0" />
+      <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
+        {videoUrl ? (
+          <LoopVideo src={videoUrl} className="absolute inset-0" />
+        ) : imageUrl ? (
+          <img src={imageUrl} alt="" className="media-drift absolute inset-0 h-full w-full object-cover outline-none" />
+        ) : null}
       </div>
       <div className="p-5">
         <div className="flex size-9 items-center justify-center rounded-lg bg-surface-2 text-fg">

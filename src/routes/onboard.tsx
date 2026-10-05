@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { AppWindow, Brush, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
+import { AppWindow, Brush, Compass, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
@@ -20,6 +20,7 @@ function nicheIcon(key: ShopNiche): LucideIcon {
   if (key === "contractor") return HardHat;
   if (key === "tattoo") return Brush;
   if (key === "field") return Truck;
+  if (key === "guide") return Compass;
   if (key === "studio") return AppWindow;
   return Store;
 }
@@ -109,11 +110,19 @@ function Onboard() {
                     : undefined
                 }
               >
-                <span className="relative -mx-0 block aspect-[16/10] bg-surface-2">
-                  <LoopVideo
-                    src={NICHE_MEDIA[key].heroVideoUrl}
-                    className="pointer-events-none absolute inset-0"
-                  />
+                <span className="relative -mx-0 block aspect-[16/10] overflow-hidden bg-surface-2">
+                  {NICHE_MEDIA[key].heroVideoUrl ? (
+                    <LoopVideo
+                      src={NICHE_MEDIA[key].heroVideoUrl}
+                      className="pointer-events-none absolute inset-0"
+                    />
+                  ) : (
+                    <img
+                      src={NICHE_MEDIA[key].heroImageUrl}
+                      alt=""
+                      className="media-drift pointer-events-none absolute inset-0 h-full w-full object-cover outline-none"
+                    />
+                  )}
                 </span>
                 <span className="block p-5">
                   <span className="grid size-9 place-items-center rounded-lg bg-surface-2">

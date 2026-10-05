@@ -110,7 +110,14 @@ export function CinematicHero({
           }
         >
           {imageUrl ? (
-            <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover outline-none" />
+            <img
+              src={imageUrl}
+              alt=""
+              className={cn(
+                "absolute inset-0 h-full w-full object-cover outline-none",
+                !videoUrl && "media-drift",
+              )}
+            />
           ) : null}
           {videoUrl && videoOk ? (
             <video
@@ -126,8 +133,17 @@ export function CinematicHero({
             />
           ) : null}
         </motion.div>
+        {animate ? (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-[3] bg-bg"
+            initial={{ opacity: 0.94 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 1.45, ease: [0.22, 0.08, 0.2, 1] }}
+          />
+        ) : null}
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[42%] bg-gradient-to-t from-bg to-transparent" />
+      <div className="hero-dissolve pointer-events-none absolute inset-x-0 -bottom-px z-10 h-[68%]" />
       <div className="relative z-20 flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );

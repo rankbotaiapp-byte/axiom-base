@@ -68,15 +68,61 @@
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0%,
-    #000 var(--hero-blend, 62%),
+    #000 calc(var(--hero-blend, 58%) - 22%),
+    rgba(0, 0, 0, 0.72) var(--hero-blend, 58%),
+    rgba(0, 0, 0, 0.28) calc(var(--hero-blend, 58%) + 14%),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     #000 0%,
-    #000 var(--hero-blend, 62%),
+    #000 calc(var(--hero-blend, 58%) - 22%),
+    rgba(0, 0, 0, 0.72) var(--hero-blend, 58%),
+    rgba(0, 0, 0, 0.28) calc(var(--hero-blend, 58%) + 14%),
     transparent 100%
   );
+}
+
+.hero-blend img,
+.hero-blend video {
+  outline: none;
+}
+
+/* The photo dissolves into the page. A solid foot of background hides the frame line. */
+.hero-dissolve {
+  background: linear-gradient(
+    to top,
+    var(--color-bg) 0%,
+    var(--color-bg) 10%,
+    color-mix(in srgb, var(--color-bg) 86%, transparent) 26%,
+    color-mix(in srgb, var(--color-bg) 48%, transparent) 48%,
+    color-mix(in srgb, var(--color-bg) 16%, transparent) 70%,
+    transparent 100%
+  );
+}
+
+@keyframes media-drift {
+  0% {
+    transform: scale(1.08) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.14) translate3d(-1.8%, -1.2%, 0);
+  }
+  100% {
+    transform: scale(1.08) translate3d(0, 0, 0);
+  }
+}
+
+.media-drift {
+  animation: media-drift 18s ease-in-out infinite;
+  transform-origin: 46% 58%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-drift {
+    animation: none;
+    transform: none;
+  }
 }
 
 .hero-stage::after,

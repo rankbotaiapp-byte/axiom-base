@@ -35,6 +35,11 @@ export const NICHE_MEDIA: Record<
     heroVideoUrl: "/media/tattoo-gun.mp4",
     loopLabel: "Tattoo loop · tattoo-gun.mp4",
   },
+  guide: {
+    heroImageUrl: "/media/rafting-image.png",
+    heroVideoUrl: "",
+    loopLabel: "River still · rafting-image.png",
+  },
   field: {
     heroImageUrl: "/media/auto-hero.jpg",
     heroVideoUrl: "/media/auto-hero.mp4",

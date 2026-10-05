@@ -1,6 +1,7 @@
 import type { IntroPreset } from "./intro";
 import { NICHE_MEDIA } from "./media";
-import type { Service, ShopNiche } from "./types";
+import type { PriceUnit, Service, ShopNiche } from "./types";
+import { formatMoney } from "@/lib/utils";
 
 export type NicheTemplate = {
   niche: ShopNiche;
@@ -26,6 +27,7 @@ export type NicheTemplate = {
     durationMin: number;
     priceCents: number;
     group?: string;
+    priceUnit?: PriceUnit;
   }[];
   employees: {
     displayName: string;
@@ -48,9 +50,97 @@ export const RING_PRESETS = [
 ] as const;
 
 /** Lead the onboarding row with the newest templates, then the original three. */
-export const NICHE_ORDER: ShopNiche[] = ["fitness", "tattoo", "music", "contractor", "location", "field", "studio"];
+export const NICHE_ORDER: ShopNiche[] = [
+  "guide",
+  "fitness",
+  "tattoo",
+  "music",
+  "contractor",
+  "location",
+  "field",
+  "studio",
+];
 
 export const NICHES: Record<ShopNiche, NicheTemplate> = {
+  guide: {
+    niche: "guide",
+    label: "Guide services",
+    kicker: "They book the boat",
+    blurb: "A shared seat or a private boat — the put-in on a calendar.",
+    defaultName: "Glass Eddy",
+    tagline: "The boat leaves when you do.",
+    description:
+      "Shared seats and private boats on the same stretch. The price covers the guide, the gear, and the shuttle back.",
+    address: "New Era · put-in at the bridge",
+    ringColor: "#7EC8E3",
+    heroImageUrl: NICHE_MEDIA.guide.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.guide.heroVideoUrl,
+    heroBlendPercent: 62,
+    introPreset: "panlr",
+    introSpeed: 28,
+    introIntensity: 42,
+    primaryServiceIndex: 0,
+    hours: {
+      mon: "closed",
+      tue: "07:00-16:00",
+      wed: "07:00-16:00",
+      thu: "07:00-16:00",
+      fri: "07:00-16:00",
+      sat: "07:00-16:00",
+      sun: "07:00-15:00",
+    },
+    services: [
+      {
+        group: "Shared",
+        name: "Morning half-day",
+        description: "Class II. Paddle, vest, and the shuttle back. Six seats on the boat.",
+        durationMin: 240,
+        priceCents: 9500,
+        priceUnit: "person",
+      },
+      {
+        group: "Shared",
+        name: "Full-day canyon",
+        description: "The long line. Lunch on the gravel. Gear included.",
+        durationMin: 480,
+        priceCents: 16500,
+        priceUnit: "person",
+      },
+      {
+        group: "Private",
+        name: "Private half-day",
+        description: "Your group only. Up to six. Same water, no other boat.",
+        durationMin: 240,
+        priceCents: 52000,
+        priceUnit: "boat",
+      },
+      {
+        group: "Private",
+        name: "Private full-day",
+        description: "The canyon for one group. Lunch, gear, and the shuttle.",
+        durationMin: 480,
+        priceCents: 88000,
+        priceUnit: "boat",
+      },
+    ],
+    employees: [
+      {
+        displayName: "Willa Grant",
+        title: "Lead guide",
+        bio: "Reads the line before the boat does. Shared mornings and the private days.",
+        avatarUrl: "",
+        serviceIndexes: [0, 1, 2, 3],
+      },
+      {
+        displayName: "Theo Marsh",
+        title: "Guide",
+        bio: "The early put-in. He runs the half-day and the boats that want a quiet canyon.",
+        avatarUrl: "",
+        serviceIndexes: [0, 2],
+      },
+    ],
+    portfolio: [{ employeeIndex: 0, imageUrl: "/media/rafting-image.png", caption: "The line" }],
+  },
   fitness: {
     niche: "fitness",
     label: "Fitness coaching / Personal training",
@@ -161,25 +251,25 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         priceCents: 28000,
       },
       {
-        group: "Show",
+        group: "Booth",
         name: "Studio session",
         description: "Booth time with an engineer. Two songs, or one until it sits right.",
         durationMin: 120,
         priceCents: 40000,
       },
       {
-        group: "Show",
-        name: "Live set",
-        description: "Book the show. A room, a set length, and the night.",
-        durationMin: 45,
-        priceCents: 80000,
-      },
-      {
-        group: "Show",
+        group: "Booth",
         name: "Feature verse",
         description: "Write and record a verse on your record.",
         durationMin: 75,
         priceCents: 50000,
+      },
+      {
+        group: "Stage",
+        name: "Live set",
+        description: "Book the show. A room, a set length, and the night.",
+        durationMin: 45,
+        priceCents: 80000,
       },
     ],
     employees: [
@@ -298,18 +388,21 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     heroBlendPercent: 58,
     services: [
       {
+        group: "Consult",
         name: "Consult",
         description: "Placement, size, and a date for the work.",
         durationMin: 30,
         priceCents: 4000,
       },
       {
+        group: "Chair",
         name: "Small piece",
         description: "One sitting. Flash or a simple custom.",
         durationMin: 90,
         priceCents: 18000,
       },
       {
+        group: "Chair",
         name: "Session",
         description: "A longer sitting on a piece already drawn.",
         durationMin: 180,
@@ -350,18 +443,21 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     heroBlendPercent: 58,
     services: [
       {
+        group: "Cut",
         name: "Signature cut",
         description: "Consultation, cut, finish.",
         durationMin: 45,
         priceCents: 4800,
       },
       {
+        group: "Cut",
         name: "Skin fade",
         description: "Tight blend, razor line.",
         durationMin: 50,
         priceCents: 5400,
       },
       {
+        group: "Beard",
         name: "Beard sculpt",
         description: "Shape, line-up, oil.",
         durationMin: 25,
@@ -406,22 +502,25 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     heroBlendPercent: 64,
     services: [
       {
+        group: "At the curb",
         name: "Driveway diagnostic",
         description: "Scan and a plain-language report.",
         durationMin: 60,
         priceCents: 12900,
       },
       {
-        name: "Oil + filter",
-        description: "At the curb or in the bay.",
-        durationMin: 45,
-        priceCents: 8900,
-      },
-      {
+        group: "At the curb",
         name: "Mobile rescue",
         description: "Battery, jump, no-start triage.",
         durationMin: 50,
         priceCents: 14900,
+      },
+      {
+        group: "In the bay",
+        name: "Oil + filter",
+        description: "On the hoist. Includes the inspection.",
+        durationMin: 45,
+        priceCents: 8900,
       },
     ],
     employees: [
@@ -430,14 +529,14 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         title: "Lead technician",
         bio: "Drivability and brakes. Listens to the engine — and to you.",
         avatarUrl: "/media/dana.jpg",
-        serviceIndexes: [0, 1],
+        serviceIndexes: [0, 2],
       },
       {
         displayName: "Avery Knox",
         title: "Mobile tech",
         bio: "The van is a rolling bay. Fast on the jobs that should not need a tow.",
         avatarUrl: "/media/gabe.jpg",
-        serviceIndexes: [0, 2],
+        serviceIndexes: [0, 1],
       },
     ],
     portfolio: [
@@ -462,24 +561,28 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     heroBlendPercent: 60,
     services: [
       {
+        group: "Start",
         name: "Discovery call",
         description: "What you run. What the ring should say.",
         durationMin: 45,
         priceCents: 15000,
       },
       {
+        group: "Build",
         name: "Site launch session",
         description: "Live booking page, services, and staff.",
         durationMin: 90,
         priceCents: 48000,
       },
       {
+        group: "Build",
         name: "Console + station",
         description: "Admin, employee board, incoming book.",
         durationMin: 60,
         priceCents: 32000,
       },
       {
+        group: "Build",
         name: "Custom ring + brand",
         description: "Perimeter glow, color, confirmation language.",
         durationMin: 50,
@@ -524,14 +627,131 @@ export const WEEKDAYS = [
   ["sun", "Sun"],
 ] as const;
 
-export function nicheCopy(niche: ShopNiche) {
-  if (niche === "fitness") return { bench: "The floor", heading: "Who coaches the hour." };
-  if (niche === "tattoo") return { bench: "The chair", heading: "Who holds the machine." };
-  if (niche === "music") return { bench: "The room", heading: "Who's on the record." };
-  if (niche === "contractor") return { bench: "The crew", heading: "Who walks the job." };
-  if (niche === "field") return { bench: "The crew", heading: "Who rolls up." };
-  if (niche === "studio") return { bench: "The studio", heading: "Who you'll work with." };
-  return { bench: "The bench", heading: "Who you'll sit with." };
+export type NicheVoice = {
+  bench: string;
+  heading: string;
+  menuKicker: string;
+  menuHeading: string;
+  bookLabel: string;
+  inquiry: string;
+  offerStep: string;
+  staffStep: string;
+  timeStep: string;
+};
+
+const VOICE: Record<ShopNiche, NicheVoice> = {
+  guide: {
+    bench: "The crew",
+    heading: "Who rows with you.",
+    menuKicker: "Departures",
+    menuHeading: "Trips",
+    bookLabel: "Book a trip",
+    inquiry: "Ask the outfit",
+    offerStep: "Trip",
+    staffStep: "Guide",
+    timeStep: "Launch",
+  },
+  fitness: {
+    bench: "The floor",
+    heading: "Who coaches the hour.",
+    menuKicker: "The book",
+    menuHeading: "Sessions",
+    bookLabel: "Book a session",
+    inquiry: "Ask the gym",
+    offerStep: "Session",
+    staffStep: "Coach",
+    timeStep: "Time",
+  },
+  tattoo: {
+    bench: "The chair",
+    heading: "Who holds the machine.",
+    menuKicker: "The book",
+    menuHeading: "Work",
+    bookLabel: "Book the chair",
+    inquiry: "Ask the shop",
+    offerStep: "Piece",
+    staffStep: "Artist",
+    timeStep: "Time",
+  },
+  music: {
+    bench: "The room",
+    heading: "Who's on the record.",
+    menuKicker: "The book",
+    menuHeading: "Sessions",
+    bookLabel: "Book the room",
+    inquiry: "Ask the studio",
+    offerStep: "Session",
+    staffStep: "Who",
+    timeStep: "Time",
+  },
+  contractor: {
+    bench: "The crew",
+    heading: "Who walks the job.",
+    menuKicker: "The book",
+    menuHeading: "Work",
+    bookLabel: "Book a visit",
+    inquiry: "Ask the crew",
+    offerStep: "Visit",
+    staffStep: "Who comes",
+    timeStep: "Arrival",
+  },
+  location: {
+    bench: "The chairs",
+    heading: "Who you'll sit with.",
+    menuKicker: "The book",
+    menuHeading: "Cuts",
+    bookLabel: "Book a chair",
+    inquiry: "Ask the shop",
+    offerStep: "Cut",
+    staffStep: "Barber",
+    timeStep: "Time",
+  },
+  field: {
+    bench: "The crew",
+    heading: "Who rolls up.",
+    menuKicker: "The book",
+    menuHeading: "Calls",
+    bookLabel: "Book a call",
+    inquiry: "Ask the shop",
+    offerStep: "Job",
+    staffStep: "Tech",
+    timeStep: "Arrival",
+  },
+  studio: {
+    bench: "The studio",
+    heading: "Who you'll work with.",
+    menuKicker: "The book",
+    menuHeading: "Engagements",
+    bookLabel: "Book a call",
+    inquiry: "Ask the studio",
+    offerStep: "Engagement",
+    staffStep: "Who",
+    timeStep: "Time",
+  },
+};
+
+export function nicheCopy(niche: ShopNiche): NicheVoice {
+  return VOICE[niche] ?? VOICE.location;
+}
+
+export function formatDuration(minutes: number) {
+  const min = Math.max(0, Math.round(minutes));
+  if (min < 60) return `${min} min`;
+  const hours = Math.floor(min / 60);
+  const rest = min % 60;
+  const hourLabel = hours === 1 ? "1 hr" : `${hours} hr`;
+  return rest === 0 ? hourLabel : `${hourLabel} ${rest} min`;
+}
+
+export function formatPrice(service: { priceCents: number; priceUnit?: PriceUnit }) {
+  const money = formatMoney(service.priceCents);
+  if (service.priceUnit === "person") return `${money} / person`;
+  if (service.priceUnit === "boat") return `${money} / boat`;
+  return money;
+}
+
+export function formatOffer(service: { priceCents: number; priceUnit?: PriceUnit; durationMin: number }) {
+  return `${formatPrice(service)} · ${formatDuration(service.durationMin)}`;
 }
 
 export function serviceGroups(services: Service[] | null | undefined): { label: string; items: Service[] }[] {

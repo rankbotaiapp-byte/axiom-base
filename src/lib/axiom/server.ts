@@ -95,6 +95,7 @@ function mapShop(r: ShopRow, acceptsCard = false): Shop {
       r.niche === "music" ||
       r.niche === "contractor" ||
       r.niche === "tattoo" ||
+      r.niche === "guide" ||
       r.niche === "field" ||
       r.niche === "studio"
         ? r.niche
@@ -222,7 +223,9 @@ function mapServiceRow(r: {
   duration_min: number;
   price_cents: number;
   group_label?: string | null;
+  price_unit?: string | null;
 }): Service {
+  const unit = r.price_unit === "person" || r.price_unit === "boat" ? r.price_unit : "flat";
   return {
     id: r.id,
     shopId: r.shop_id,
@@ -231,6 +234,7 @@ function mapServiceRow(r: {
     durationMin: Number(r.duration_min),
     priceCents: Number(r.price_cents),
     group: r.group_label ?? "",
+    priceUnit: unit,
   };
 }
 
