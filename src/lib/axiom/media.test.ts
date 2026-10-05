@@ -11,7 +11,8 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.music.tone, "stage");
     assert.equal(NICHE_MEDIA.contractor.heroVideoUrl, "/media/contractor-hero.mp4");
     assert.equal(NICHE_MEDIA.contractor.tone, "site");
-    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/barber-hero.mp4");
+    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/clipper.mp4");
+    assert.equal(NICHE_MEDIA.tattoo.heroVideoUrl, "/media/tattoo-gun.mp4");
     assert.equal(NICHE_MEDIA.field.heroVideoUrl, "/media/auto-hero.mp4");
     assert.equal(NICHE_MEDIA.studio.heroVideoUrl, "/media/apps-hero.mp4");
   });
@@ -43,7 +44,7 @@ describe("niche media", () => {
       heroVideoUrl: "/api/hero-video/shop_abc?v=2",
     });
     assert.equal(media.videoUrl, "/api/hero-video/shop_abc?v=2");
-    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/barber-hero.mp4");
+    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/clipper.mp4");
   });
 
   it("uses tiger.mp4 when a fitness shop has no custom film", () => {

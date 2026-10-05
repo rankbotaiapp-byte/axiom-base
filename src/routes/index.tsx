@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppWindow, ArrowUpRight, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
+import { AppWindow, ArrowUpRight, Brush, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
@@ -143,8 +143,10 @@ function Home() {
 }
 
 function nicheIcon(key: ShopNiche): LucideIcon {
+  if (key === "fitness") return Dumbbell;
   if (key === "music") return Mic;
   if (key === "contractor") return HardHat;
+  if (key === "tattoo") return Brush;
   if (key === "field") return Truck;
   if (key === "studio") return AppWindow;
   return Store;

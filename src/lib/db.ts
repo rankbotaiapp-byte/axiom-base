@@ -105,11 +105,29 @@ function createNeonSql(): Promise<Sql> {
   return globalRef.__pgSqlPromise__;
 }
 
+/** PGLite asks the engine for a 2GB block. On an 8GB machine that reservation
+ *  starves the dev server. Cap it at 256MB before the database module loads. */
+function capDatabaseMemory() {
+  const Memory = WebAssembly.Memory;
+  if ((Memory as { capped?: boolean }).capped) return;
+  const maxPages = 4096;
+  function CappedMemory(this: WebAssembly.Memory, descriptor: WebAssembly.MemoryDescriptor) {
+    const maximum = Math.min(descriptor.maximum ?? maxPages, maxPages);
+    const initial = Math.min(descriptor.initial, maximum);
+    return new Memory({ ...descriptor, initial, maximum });
+  }
+  CappedMemory.prototype = Memory.prototype;
+  Object.setPrototypeOf(CappedMemory, Memory);
+  (CappedMemory as { capped?: boolean }).capped = true;
+  WebAssembly.Memory = CappedMemory as unknown as typeof WebAssembly.Memory;
+}
+
 async function createPgliteSql(): Promise<Sql> {
   // Embedded Postgres, imported on demand so it never loads on the Neon path.
   // One in-memory instance per process, shared across HMR module instances, so
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
+    capDatabaseMemory();
     const { PGlite } = await import("@electric-sql/pglite");
     const pg = new PGlite({
       parsers: {

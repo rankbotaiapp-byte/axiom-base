@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { AppWindow, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
+import { AppWindow, Brush, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
@@ -15,8 +15,10 @@ import { Wordmark } from "@/components/shop-chrome";
 export const Route = createFileRoute("/onboard")({ component: Onboard });
 
 function nicheIcon(key: ShopNiche): LucideIcon {
+  if (key === "fitness") return Dumbbell;
   if (key === "music") return Mic;
   if (key === "contractor") return HardHat;
+  if (key === "tattoo") return Brush;
   if (key === "field") return Truck;
   if (key === "studio") return AppWindow;
   return Store;

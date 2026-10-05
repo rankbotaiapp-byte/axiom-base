@@ -94,6 +94,7 @@ function mapShop(r: ShopRow, acceptsCard = false): Shop {
       r.niche === "fitness" ||
       r.niche === "music" ||
       r.niche === "contractor" ||
+      r.niche === "tattoo" ||
       r.niche === "field" ||
       r.niche === "studio"
         ? r.niche

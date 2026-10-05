@@ -48,7 +48,7 @@ export const RING_PRESETS = [
 ] as const;
 
 /** Lead the onboarding row with the newest templates, then the original three. */
-export const NICHE_ORDER: ShopNiche[] = ["fitness", "music", "contractor", "location", "field", "studio"];
+export const NICHE_ORDER: ShopNiche[] = ["fitness", "tattoo", "music", "contractor", "location", "field", "studio"];
 
 export const NICHES: Record<ShopNiche, NicheTemplate> = {
   fitness: {
@@ -283,11 +283,62 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       { employeeIndex: 1, imageUrl: "/media/contractor-work-2.jpg", caption: "Front stair" },
     ],
   },
+  tattoo: {
+    niche: "tattoo",
+    label: "Tattoo shop",
+    kicker: "They book the chair",
+    blurb: "A consult, a small piece, or a session — the book instead of a walk-in.",
+    defaultName: "Iron Ledger",
+    tagline: "Draw it. Then sit for it.",
+    description: "A two-artist shop. Book the consult, then the session. Flash and custom, on the calendar.",
+    address: "New Era · walk in only if the book is open",
+    ringColor: "#E07A73",
+    heroImageUrl: NICHE_MEDIA.tattoo.heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA.tattoo.heroVideoUrl,
+    heroBlendPercent: 58,
+    services: [
+      {
+        name: "Consult",
+        description: "Placement, size, and a date for the work.",
+        durationMin: 30,
+        priceCents: 4000,
+      },
+      {
+        name: "Small piece",
+        description: "One sitting. Flash or a simple custom.",
+        durationMin: 90,
+        priceCents: 18000,
+      },
+      {
+        name: "Session",
+        description: "A longer sitting on a piece already drawn.",
+        durationMin: 180,
+        priceCents: 45000,
+      },
+    ],
+    employees: [
+      {
+        displayName: "Rio Hale",
+        title: "Lead artist",
+        bio: "Linework and the pieces that take more than one afternoon.",
+        avatarUrl: "",
+        serviceIndexes: [0, 1, 2],
+      },
+      {
+        displayName: "Sam Ortega",
+        title: "Artist",
+        bio: "Small work, flash, and the consult that turns into a drawing.",
+        avatarUrl: "",
+        serviceIndexes: [0, 1],
+      },
+    ],
+    portfolio: [],
+  },
   location: {
     niche: "location",
-    label: "Storefront",
+    label: "Barber",
     kicker: "They come to you",
-    blurb: "Barbers, salons, studios — a chair, a room, a line out the door.",
+    blurb: "A chair, a fade, a line out the door.",
     defaultName: "Atlas Cuts",
     tagline: "Precision cuts. No waiting around.",
     description:
@@ -475,6 +526,7 @@ export const WEEKDAYS = [
 
 export function nicheCopy(niche: ShopNiche) {
   if (niche === "fitness") return { bench: "The floor", heading: "Who coaches the hour." };
+  if (niche === "tattoo") return { bench: "The chair", heading: "Who holds the machine." };
   if (niche === "music") return { bench: "The room", heading: "Who's on the record." };
   if (niche === "contractor") return { bench: "The crew", heading: "Who walks the job." };
   if (niche === "field") return { bench: "The crew", heading: "Who rolls up." };

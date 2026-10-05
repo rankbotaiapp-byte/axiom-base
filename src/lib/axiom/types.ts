@@ -1,7 +1,7 @@
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 
-export type ShopNiche = "fitness" | "music" | "contractor" | "location" | "field" | "studio";
+export type ShopNiche = "fitness" | "music" | "contractor" | "location" | "tattoo" | "field" | "studio";
 
 export type ShopRole = "owner" | "employee" | "customer";
 

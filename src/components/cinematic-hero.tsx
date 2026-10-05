@@ -109,10 +109,11 @@ export function CinematicHero({
               : { duration: 0 }
           }
         >
-          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover outline-none" />
+          {imageUrl ? (
+            <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover outline-none" />
+          ) : null}
           {videoUrl && videoOk ? (
             <video
-              key={videoUrl}
               ref={videoRef}
               className="absolute inset-0 z-[1] h-full w-full object-cover"
               src={videoUrl}
@@ -120,10 +121,8 @@ export function CinematicHero({
               loop
               muted
               playsInline
-              poster={imageUrl}
-              onError={(event) => {
-                if (event.currentTarget.error) setVideoOk(false);
-              }}
+              poster={imageUrl || undefined}
+              onError={() => setVideoOk(false)}
             />
           ) : null}
         </motion.div>
@@ -135,8 +134,25 @@ export function CinematicHero({
 }
 
 export function LoopVideo({ src, className }: { src: string; className?: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !src) return;
+    el.muted = true;
+    const play = () => {
+      void el.play().catch(() => undefined);
+    };
+    play();
+    el.addEventListener("canplay", play);
+    return () => el.removeEventListener("canplay", play);
+  }, [src]);
+
+  if (!src) return null;
+
   return (
     <video
+      ref={ref}
       className={cn("h-full w-full object-cover", className)}
       src={src}
       autoPlay
@@ -144,7 +160,6 @@ export function LoopVideo({ src, className }: { src: string; className?: string 
       muted
       playsInline
       preload="auto"
-      aria-hidden="true"
     />
   );
 }

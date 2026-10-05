@@ -27,8 +27,13 @@ export const NICHE_MEDIA: Record<
   },
   location: {
     heroImageUrl: "/media/barber-hero.jpg",
-    heroVideoUrl: "/media/barber-hero.mp4",
-    loopLabel: "Storefront loop · barber-hero.mp4",
+    heroVideoUrl: "/media/clipper.mp4",
+    loopLabel: "Barber loop · clipper.mp4",
+  },
+  tattoo: {
+    heroImageUrl: "",
+    heroVideoUrl: "/media/tattoo-gun.mp4",
+    loopLabel: "Tattoo loop · tattoo-gun.mp4",
   },
   field: {
     heroImageUrl: "/media/auto-hero.jpg",
