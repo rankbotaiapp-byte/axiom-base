@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +9,7 @@ import {
   writeIntroFx,
   type IntroPreset,
 } from "@/lib/axiom/intro";
+import type { HeroTone } from "@/lib/axiom/media";
 
 export function CinematicHero({
   imageUrl,
@@ -19,6 +20,7 @@ export function CinematicHero({
   introIntensity = 45,
   replayKey,
   previewMode = false,
+  tone = null,
   className,
   children,
 }: {
@@ -30,12 +32,14 @@ export function CinematicHero({
   introIntensity?: number;
   replayKey?: string | number;
   previewMode?: boolean;
+  tone?: HeroTone | null;
   className?: string;
   children: ReactNode;
 }) {
   const [reduced, setReduced] = useState(false);
   const [fxOn, setFxOn] = useState(true);
   const [videoOk, setVideoOk] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -61,18 +65,39 @@ export function CinematicHero({
     setVideoOk(true);
   }, [videoUrl]);
 
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !videoUrl) return;
+    el.muted = true;
+    const play = () => {
+      void el.play().catch(() => undefined);
+    };
+    play();
+    el.addEventListener("canplay", play);
+    return () => el.removeEventListener("canplay", play);
+  }, [videoUrl, videoOk]);
+
   const skip = reduced || (!previewMode && !fxOn);
   const preset: IntroPreset = skip ? "none" : introPreset;
-  const motionProps = cameraMotion(preset, introIntensity);
-  const duration = introDurationSec(introSpeed);
+  const intensity = Number.isFinite(introIntensity) ? introIntensity : 45;
+  const speed = Number.isFinite(introSpeed) ? introSpeed : 40;
+  const blend = Number.isFinite(blendPercent) ? blendPercent : 60;
+  const motionProps = cameraMotion(preset, intensity);
+  const duration = introDurationSec(speed);
   const animate = preset !== "none";
 
   return (
     <section
       className={cn("relative isolate flex min-h-[100dvh] flex-col overflow-hidden bg-bg", className)}
-      style={{ ["--hero-blend" as string]: `${blendPercent}%` }}
+      style={{ ["--hero-blend" as string]: `${blend}%` }}
     >
-      <div className="hero-blend absolute inset-0 overflow-hidden">
+      <div
+        className={cn(
+          "hero-blend absolute inset-0 overflow-hidden",
+          tone === "stage" && "hero-stage",
+          tone === "site" && "hero-site",
+        )}
+      >
         <motion.div
           key={`${imageUrl}-${videoUrl ?? ""}-${preset}-${replayKey ?? "0"}`}
           className="absolute inset-0 origin-center"
@@ -85,24 +110,42 @@ export function CinematicHero({
           }
         >
           <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover outline-none" />
-          {videoUrl && videoOk && !reduced ? (
+          {videoUrl && videoOk ? (
             <video
-              className="absolute inset-0 h-full w-full object-cover"
+              key={videoUrl}
+              ref={videoRef}
+              className="absolute inset-0 z-[1] h-full w-full object-cover"
+              src={videoUrl}
               autoPlay
-              muted
               loop
+              muted
               playsInline
               poster={imageUrl}
-              onError={() => setVideoOk(false)}
-            >
-              <source src={videoUrl} type="video/mp4" />
-            </video>
+              onError={(event) => {
+                if (event.currentTarget.error) setVideoOk(false);
+              }}
+            />
           ) : null}
         </motion.div>
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[42%] bg-gradient-to-t from-bg to-transparent" />
       <div className="relative z-20 flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
+  );
+}
+
+export function LoopVideo({ src, className }: { src: string; className?: string }) {
+  return (
+    <video
+      className={cn("h-full w-full object-cover", className)}
+      src={src}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="auto"
+      aria-hidden="true"
+    />
   );
 }
 

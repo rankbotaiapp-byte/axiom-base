@@ -1,10 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppWindow, ArrowUpRight, Store, Truck } from "lucide-react";
+import { AppWindow, ArrowUpRight, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
-import type { Shop } from "@/lib/axiom/types";
+import type { Shop, ShopNiche } from "@/lib/axiom/types";
+import { NICHE_MEDIA } from "@/lib/axiom/media";
+import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
+import { LoopVideo } from "@/components/cinematic-hero";
 import { Wordmark } from "@/components/shop-chrome";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -85,29 +88,27 @@ function Home() {
           </a>
         </div>
 
-        <div className="mt-14 grid gap-3 sm:grid-cols-3">
-          <NicheCard
-            icon={<Store className="size-4" />}
-            title="Storefront"
-            copy="Barbers, salons, studios. They walk in. You run the chair."
-          />
-          <NicheCard
-            icon={<Truck className="size-4" />}
-            title="Field service"
-            copy="Auto, HVAC, trades. You go to the curb — or they come to the lift."
-          />
-          <NicheCard
-            icon={<AppWindow className="size-4" />}
-            title="Studio"
-            copy="Web apps, contractors. You build the shop that books itself."
-          />
+        <div className="mt-14 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
+          {NICHE_ORDER.map((key) => {
+            const n = NICHES[key];
+            const Icon = nicheIcon(key);
+            return (
+              <NicheCard
+                key={key}
+                icon={<Icon className="size-4" />}
+                title={n.label}
+                copy={n.blurb}
+                videoUrl={NICHE_MEDIA[key].heroVideoUrl}
+              />
+            );
+          })}
         </div>
       </section>
 
       <section id="live" className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants · New Era Apps</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Three shops. Already taking chairs.</h2>
+          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Already on the books.</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {showcases.map((s) => (
               <Link
@@ -141,22 +142,37 @@ function Home() {
   );
 }
 
+function nicheIcon(key: ShopNiche): LucideIcon {
+  if (key === "music") return Mic;
+  if (key === "contractor") return HardHat;
+  if (key === "field") return Truck;
+  if (key === "studio") return AppWindow;
+  return Store;
+}
+
 function NicheCard({
   icon,
   title,
   copy,
+  videoUrl,
 }: {
   icon: ReactNode;
   title: string;
   copy: string;
+  videoUrl: string;
 }) {
   return (
-    <div className="rounded-2xl bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-surface-2 text-fg">
-        {icon}
+    <div className="w-64 shrink-0 snap-start overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <div className="relative aspect-[16/10] bg-surface-2">
+        <LoopVideo src={videoUrl} className="absolute inset-0" />
       </div>
-      <p className="mt-4 text-sm font-medium">{title}</p>
-      <p className="mt-1 text-sm text-muted">{copy}</p>
+      <div className="p-5">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-surface-2 text-fg">
+          {icon}
+        </div>
+        <p className="mt-4 text-sm font-medium">{title}</p>
+        <p className="mt-1 text-sm text-muted">{copy}</p>
+      </div>
     </div>
   );
 }
