@@ -3,7 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
 import { newId } from "@/lib/utils";
-import { notifyShop } from "./notify.server";
+import { notifyBookingParties } from "./notify.server";
 
 type StripeObject = Record<string, unknown> & {
   error?: { message?: string };
@@ -118,6 +118,70 @@ export async function createConnectCheckout(opts: {
   return { id: session.id, url: session.url };
 }
 
+export async function createTerritoryCheckout(opts: {
+  leadSlug: string;
+  checkoutId: string;
+  planId: string;
+  planName: string;
+  amountCents: number;
+  cadence: "trial" | "month" | "once";
+  origin: string;
+}) {
+  const success = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1&session_id={CHECKOUT_SESSION_ID}`;
+  const cancel = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1`;
+  const params = new URLSearchParams({
+    success_url: success,
+    cancel_url: cancel,
+    client_reference_id: opts.checkoutId,
+    "line_items[0][quantity]": "1",
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][product_data][name]": opts.planName.slice(0, 120),
+    "metadata[kind]": "territory",
+    "metadata[lead_slug]": opts.leadSlug,
+    "metadata[plan_id]": opts.planId,
+    "metadata[checkout_id]": opts.checkoutId,
+  });
+  if (opts.cadence === "once") {
+    params.set("mode", "payment");
+    params.set("line_items[0][price_data][unit_amount]", String(opts.amountCents));
+  } else {
+    params.set("mode", "subscription");
+    params.set("line_items[0][price_data][unit_amount]", "49700");
+    params.set("line_items[0][price_data][recurring][interval]", "month");
+    if (opts.cadence === "trial") params.set("subscription_data[trial_period_days]", "30");
+  }
+  const session = await stripeFetch("checkout/sessions", params);
+  if (!session.id || !session.url) throw new Error("Stripe did not return a checkout session");
+  return { id: session.id, url: session.url };
+}
+
+export async function settleTerritorySession(sessionId: string) {
+  if (!sessionId.startsWith("cs_")) throw new Error("Invalid session");
+  const session = await stripeFetch(`checkout/sessions/${encodeURIComponent(sessionId)}`);
+  if (session.metadata?.kind !== "territory") throw new Error("This payment is not a territory plan");
+  if (session.status !== "complete") throw new Error("Payment is not complete");
+  const leadSlug = session.metadata.lead_slug ?? "";
+  const planId = session.metadata.plan_id ?? "";
+  const checkoutId = session.metadata.checkout_id ?? "";
+  const { territoryPlan, territorySessionSettled } = await import("./pricing");
+  const plan = territoryPlan(planId);
+  if (!plan) throw new Error("Unknown plan");
+  if (!territorySessionSettled(plan, session.payment_status)) throw new Error("Payment is not complete");
+  const paid = Number(session.amount_total);
+  if (plan.amountCents === 0) {
+    if (Number.isFinite(paid) && paid > 0) throw new Error("Paid amount does not match the plan");
+  } else if (paid !== plan.amountCents) {
+    throw new Error("Paid amount does not match the plan");
+  }
+  const { activateTerritory } = await import("./territory.server");
+  return activateTerritory({
+    leadSlug,
+    planId,
+    paymentRef: sessionId,
+    checkoutId: checkoutId || undefined,
+  });
+}
+
 export async function settlePaidSession(sessionId: string) {
   if (!sessionId.startsWith("cs_")) throw new Error("Invalid session");
   const session = await stripeFetch(`checkout/sessions/${encodeURIComponent(sessionId)}`);
@@ -131,13 +195,25 @@ export async function settlePaidSession(sessionId: string) {
   const rows = await sql<{
     id: string;
     shop_id: string;
+    employee_id: string;
     payment_cents: number;
     payment_status: string;
     customer_name: string;
+    customer_phone: string;
+    customer_email: string;
+    starts_at: string;
+    shop_name: string;
+    service_name: string;
+    employee_name: string;
   }>`
-    select id, shop_id, payment_cents, payment_status, customer_name
-    from appointments
-    where id = ${appointmentId} and payment_ref = ${sessionId}
+    select a.id, a.shop_id, a.employee_id, a.payment_cents, a.payment_status,
+      a.customer_name, a.customer_phone, a.customer_email, a.starts_at,
+      sh.name as shop_name, s.name as service_name, e.display_name as employee_name
+    from appointments a
+    join shops sh on sh.id = a.shop_id
+    join services s on s.id = a.service_id
+    join employees e on e.id = a.employee_id
+    where a.id = ${appointmentId} and a.payment_ref = ${sessionId}
     limit 1
   `;
   const row = rows[0];
@@ -161,16 +237,19 @@ export async function settlePaidSession(sessionId: string) {
     insert into shop_events (id, shop_id, type, appointment_id)
     values (${newId("evt")}, ${shopId}, 'booking_request', ${row.id})
   `;
-  await notifyShop(shopId, {
-    kind: "booking_paid",
-    subject: `Paid booking · ${row.customer_name}`,
-    body: `${row.customer_name} paid ${formatDollars(Number(row.payment_cents))} for a booking.`,
+  await notifyBookingParties({
+    shopId,
+    shopName: row.shop_name,
+    employeeId: row.employee_id,
+    guestName: row.customer_name,
+    guestPhone: row.customer_phone ?? "",
+    guestEmail: row.customer_email ?? "",
+    serviceName: row.service_name,
+    employeeName: row.employee_name,
+    startsAt: String(row.starts_at),
+    phase: "paid",
   });
   return { appointmentId: row.id, shopId, already: false };
-}
-
-function formatDollars(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
 }
 
 function verifyStripeSignature(payload: string, header: string, secret: string) {
@@ -199,14 +278,27 @@ export async function handleStripeWebhook(request: Request) {
   if (!verifyStripeSignature(payload, header, secret)) {
     return Response.json({ error: "Invalid signature" }, { status: 400 });
   }
-  let event: { type?: string; data?: { object?: { id?: string } } };
+  let event: {
+    type?: string;
+    data?: { object?: { id?: string; payment_status?: string; metadata?: { kind?: string } } };
+  };
   try {
-    event = JSON.parse(payload) as { type?: string; data?: { object?: { id?: string } } };
+    event = JSON.parse(payload) as {
+      type?: string;
+      data?: { object?: { id?: string; payment_status?: string; metadata?: { kind?: string } } };
+    };
   } catch {
     return Response.json({ error: "Invalid payload" }, { status: 400 });
   }
-  if (event.type === "checkout.session.completed" && event.data?.object?.id) {
-    await settlePaidSession(event.data.object.id);
+  const object = event.data?.object;
+  if (event.type === "checkout.session.completed" && object?.id) {
+    const territory = object.metadata?.kind === "territory";
+    const status = object.payment_status;
+    if (territory && (status === "paid" || status === "no_payment_required")) {
+      await settleTerritorySession(object.id);
+    } else if (!territory && status === "paid") {
+      await settlePaidSession(object.id);
+    }
   }
   return Response.json({ received: true });
 }

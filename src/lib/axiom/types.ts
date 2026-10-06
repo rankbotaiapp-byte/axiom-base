@@ -1,15 +1,33 @@
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 
-export type ShopNiche =
-  | "fitness"
-  | "music"
-  | "contractor"
-  | "location"
-  | "tattoo"
-  | "field"
-  | "studio"
-  | "guide";
+export const SHOP_NICHES = [
+  "guide",
+  "fitness",
+  "wellness",
+  "lessons",
+  "salon",
+  "beauty",
+  "tattoo",
+  "photo",
+  "pets",
+  "music",
+  "events",
+  "contractor",
+  "clean",
+  "field",
+  "practice",
+  "counsel",
+  "location",
+  "studio",
+  "trade",
+] as const;
+
+export type ShopNiche = (typeof SHOP_NICHES)[number];
+
+export function isShopNiche(value: string): value is ShopNiche {
+  return (SHOP_NICHES as readonly string[]).includes(value);
+}
 
 /** flat is one price. person and boat are how a guide outfit charges. */
 export type PriceUnit = "flat" | "person" | "boat";
@@ -53,6 +71,8 @@ export type Shop = {
   hours: Record<string, string>;
   address: string;
   acceptsCard: boolean;
+  /** True when onboarding chose a one-person book. Staff can still be added later. */
+  worksAlone: boolean;
   dashboardOverride: boolean;
   dashboardConfig: DashboardConfig;
   createdAt: string;
@@ -126,7 +146,8 @@ export type Billing = {
 export type ShopNotice = {
   id: string;
   channel: "inbox" | "email" | "sms" | "webhook";
-  kind: "booking_request" | "booking_paid" | "inquiry";
+  kind: "booking_request" | "booking_paid" | "inquiry" | "booking_confirmed";
+  employeeId: string | null;
   destination: string;
   subject: string;
   body: string;

@@ -2,24 +2,26 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
-import { DEFAULT_HOURS, NICHES } from "./niches";
+import { DEFAULT_HOURS, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
 import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
-import type {
-  AccessMode,
-  Appointment,
-  Billing,
-  Employee,
-  PaymentSetup,
-  ShopNotice,
-  OnboardingStep,
-  PortfolioItem,
-  Service,
-  Shop,
-  ShopEvent,
-  ShopNiche,
-  ShopPublic,
+import {
+  isShopNiche,
+  type AccessMode,
+  type Appointment,
+  type Billing,
+  type Employee,
+  type PaymentSetup,
+  type ShopNotice,
+  type OnboardingStep,
+  type PortfolioItem,
+  type Service,
+  type Shop,
+  type ShopEvent,
+  type PriceUnit,
+  type ShopNiche,
+  type ShopPublic,
 } from "./types";
 
 type ShopRow = {
@@ -43,6 +45,7 @@ type ShopRow = {
   onboarding_json: string;
   hours_json: string;
   address: string;
+  works_alone?: boolean | number | string | null;
   notify_email?: string;
   notify_phone?: string;
   dashboard_override?: unknown;
@@ -85,21 +88,12 @@ function finiteNumber(value: unknown, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function mapShop(r: ShopRow, acceptsCard = false): Shop {
+function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
   return {
     id: r.id,
     slug: r.slug,
     name: r.name,
-    niche:
-      r.niche === "fitness" ||
-      r.niche === "music" ||
-      r.niche === "contractor" ||
-      r.niche === "tattoo" ||
-      r.niche === "guide" ||
-      r.niche === "field" ||
-      r.niche === "studio"
-        ? r.niche
-        : "location",
+    niche: isShopNiche(r.niche) ? r.niche : "location",
     tagline: r.tagline,
     description: r.description,
     ringColor: r.ring_color || "#2EE6D6",
@@ -110,13 +104,14 @@ function mapShop(r: ShopRow, acceptsCard = false): Shop {
     introSpeed: finiteNumber(r.intro_speed ?? 40, 40),
     introIntensity: finiteNumber(r.intro_intensity ?? 45, 45),
     primaryServiceId: r.primary_service_id,
-    ownerUserId: r.owner_user_id,
+    ownerUserId: includeOwner ? r.owner_user_id : null,
     isShowcase: Boolean(r.is_showcase),
     onboardingStep: (r.onboarding_step as OnboardingStep) || "generated",
     onboarding: parseOnboarding(r.onboarding_json),
     hours: parseHours(r.hours_json),
     address: r.address,
     acceptsCard,
+    worksAlone: isOn(r.works_alone),
     dashboardOverride: isOn(r.dashboard_override),
     dashboardConfig: parseDashboardConfig(r.dashboard_config),
     createdAt: String(r.created_at),
@@ -249,14 +244,15 @@ async function loadServices(shopId: string): Promise<Service[]> {
       duration_min: number;
       price_cents: number;
       group_label: string | null;
+      price_unit: string | null;
     }>`
-      select id, shop_id, name, description, duration_min, price_cents, group_label
+      select id, shop_id, name, description, duration_min, price_cents, group_label, price_unit
       from services where shop_id = ${shopId} order by sort_order asc, name asc
     `;
     return rows.map(mapServiceRow);
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (!/group_label/i.test(message)) throw err;
+    if (!/group_label|price_unit/i.test(message)) throw err;
     const rows = await sql<{
       id: string;
       shop_id: string;
@@ -403,14 +399,22 @@ export const getAppointmentPublic = createServerFn({ method: "GET" })
     };
   });
 
+function cleanGuestEmail(raw: string | undefined): string {
+  const email = (raw ?? "").trim().toLowerCase().slice(0, 120);
+  if (!email) return "";
+  if (!isNotifyEmail(email)) throw new Error("Enter a valid email");
+  return email;
+}
+
 async function assertBookable(data: {
   slug: string;
   employeeId: string;
   serviceId: string;
   customerName: string;
-  customerPhone: string;
-  startsAt: string;
-}) {
+    customerPhone: string;
+    customerEmail?: string;
+    startsAt: string;
+  }) {
   const shop = await loadShopRow(data.slug);
   if (!shop) throw new Error("Shop not found");
   const name = data.customerName.trim();
@@ -446,10 +450,31 @@ async function assertBookable(data: {
     shop,
     name,
     phone: data.customerPhone.trim().slice(0, 20),
+    email: cleanGuestEmail(data.customerEmail),
     serviceName: service[0].name,
     priceCents: Number(service[0].price_cents),
     employeeName: employee[0].display_name,
   };
+}
+
+function isSlotTaken(err: unknown): boolean {
+  const queue: unknown[] = [err];
+  const seen = new Set<unknown>();
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+    const row = current as { code?: unknown; message?: unknown; cause?: unknown };
+    if (row.code === "23505") return true;
+    if (
+      typeof row.message === "string" &&
+      (row.message.includes("23505") || row.message.includes("appointments_no_double_booking"))
+    ) {
+      return true;
+    }
+    if (row.cause) queue.push(row.cause);
+  }
+  return false;
 }
 
 export const createBooking = createServerFn({ method: "POST" })
@@ -460,6 +485,7 @@ export const createBooking = createServerFn({ method: "POST" })
       serviceId: string;
       customerName: string;
       customerPhone: string;
+      customerEmail?: string;
       startsAt: string;
       paymentMode: "request" | "demo";
       paymentRef?: string;
@@ -474,25 +500,37 @@ export const createBooking = createServerFn({ method: "POST" })
     }
     const sql = await getSql();
     const id = newId("apt");
-    await sql`
-      insert into appointments (
-        id, shop_id, employee_id, service_id, customer_name, customer_phone,
-        starts_at, status, payment_status, payment_ref, payment_cents
-      ) values (
-        ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
-        ${booked.phone}, ${data.startsAt}, 'pending', ${demo ? "paid" : "unpaid"},
-        ${demo ? data.paymentRef ?? null : null}, ${booked.priceCents}
-      )
-    `;
+    try {
+      await sql`
+        insert into appointments (
+          id, shop_id, employee_id, service_id, customer_name, customer_phone, customer_email,
+          starts_at, status, payment_status, payment_ref, payment_cents
+        ) values (
+          ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
+          ${booked.phone}, ${booked.email}, ${data.startsAt}, 'pending', ${demo ? "paid" : "unpaid"},
+          ${demo ? data.paymentRef ?? null : null}, ${booked.priceCents}
+        )
+      `;
+    } catch (err) {
+      if (isSlotTaken(err)) throw new Error("That time was just taken. Please choose another slot.");
+      throw err;
+    }
     await sql`
       insert into shop_events (id, shop_id, type, appointment_id)
       values (${newId("evt")}, ${booked.shop.id}, 'booking_request', ${id})
     `;
-    const { notifyShop } = await import("./notify.server");
-    await notifyShop(booked.shop.id, {
-      kind: "booking_request",
-      subject: `New booking · ${booked.name}`,
-      body: `${booked.name} requested ${booked.serviceName} with ${booked.employeeName} at ${data.startsAt}.${booked.phone ? ` Phone: ${booked.phone}` : ""}`,
+    const { notifyBookingParties } = await import("./notify.server");
+    await notifyBookingParties({
+      shopId: booked.shop.id,
+      shopName: booked.shop.name,
+      employeeId: data.employeeId,
+      guestName: booked.name,
+      guestPhone: booked.phone,
+      guestEmail: booked.email,
+      serviceName: booked.serviceName,
+      employeeName: booked.employeeName,
+      startsAt: data.startsAt,
+      phase: "request",
     });
     if (!booked.shop.is_showcase) {
       const flags = parseOnboarding(booked.shop.onboarding_json);
@@ -523,8 +561,8 @@ export const getShopAccess = createServerFn({ method: "GET" })
   .handler(async ({ data: slug, context }) => {
     const row = await loadShopRow(slug);
     if (!row) return { mode: "none" as AccessMode, shop: null, employeeId: null as string | null };
-    const shop = mapShop(row);
-    const mem = await membership(shop.id, context.userId);
+    const mem = await membership(row.id, context.userId);
+    const shop = mapShop(row, false, mem?.role === "owner" || row.owner_user_id === context.userId);
     if (mem?.role === "owner") return { mode: "owner" as AccessMode, shop, employeeId: mem.employee_id };
     if (mem?.role === "employee") return { mode: "employee" as AccessMode, shop, employeeId: mem.employee_id };
     if (shop.isShowcase) return { mode: "preview" as AccessMode, shop, employeeId: null };
@@ -541,12 +579,12 @@ export const listMyShops = createServerFn({ method: "GET" })
       where m.user_id = ${context.userId}
       order by s.created_at desc
     `;
-    return rows.map((row) => mapShop(row));
+    return rows.map((row) => mapShop(row, false, row.owner_user_id === context.userId));
   });
 
 export const createShopFromNiche = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((d: { niche: ShopNiche; name: string }) => d)
+  .validator((d: { niche: ShopNiche; name: string; solo?: boolean; ownerName?: string; leadSlug?: string }) => d)
   .handler(async ({ data, context }) => {
     const template = NICHES[data.niche];
     if (!template) throw new Error("Unknown niche");
@@ -570,7 +608,20 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
       id: newId("svc"),
       sort: i,
     }));
-    const employees = template.employees.map((e) => ({
+    const solo = Boolean(data.solo);
+    const roster = solo
+      ? [
+          {
+            displayName: (data.ownerName ?? "").trim() || "You",
+            title: template.soloTitle || template.employees[0]?.title || "Owner",
+            bio: "Clients book you. Confirm the time and the day is set.",
+            avatarUrl: "",
+            phone: "",
+            serviceIndexes: template.services.map((_, index) => index),
+          },
+        ]
+      : template.employees;
+    const employees = roster.map((e) => ({
       ...e,
       id: newId("emp"),
       token: crypto.randomUUID(),
@@ -582,7 +633,7 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
         id, slug, name, niche, tagline, description, ring_color,
         hero_image_url, hero_video_url, hero_blend_percent, primary_service_id,
         intro_preset, intro_speed, intro_intensity,
-        owner_user_id, is_showcase, onboarding_step, onboarding_json, hours_json, address
+        owner_user_id, is_showcase, onboarding_step, onboarding_json, hours_json, address, works_alone
       ) values (
         ${shopId}, ${slug}, ${name}, ${template.niche}, ${template.tagline},
         ${template.description}, ${template.ringColor}, ${template.heroImageUrl},
@@ -591,9 +642,9 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
         ${context.userId}, false, 'tour', ${JSON.stringify({
           hero: false,
           service: false,
-          employee: false,
+          employee: solo,
           testBooked: false,
-        })}, ${JSON.stringify(template.hours ?? DEFAULT_HOURS)}, ${template.address}
+        })}, ${JSON.stringify(template.hours ?? DEFAULT_HOURS)}, ${template.address}, ${solo}
       )
     `;
     await sql`
@@ -606,8 +657,8 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
     `;
     for (const s of services) {
       await sql`
-        insert into services (id, shop_id, name, description, duration_min, price_cents, sort_order, group_label)
-        values (${s.id}, ${shopId}, ${s.name}, ${s.description}, ${s.durationMin}, ${s.priceCents}, ${s.sort}, ${s.group ?? ""})
+        insert into services (id, shop_id, name, description, duration_min, price_cents, sort_order, group_label, price_unit)
+        values (${s.id}, ${shopId}, ${s.name}, ${s.description}, ${s.durationMin}, ${s.priceCents}, ${s.sort}, ${s.group ?? ""}, ${s.priceUnit === "person" || s.priceUnit === "boat" ? s.priceUnit : "flat"})
       `;
     }
     for (const e of employees) {
@@ -616,11 +667,10 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
           id, shop_id, display_name, title, bio, phone, avatar_url, invite_token, invite_status
         ) values (
           ${e.id}, ${shopId}, ${e.displayName}, ${e.title}, ${e.bio}, ${e.phone ?? ""}, ${e.avatarUrl},
-          ${e.token}, 'pending'
+          ${e.token}, ${solo ? "claimed" : "pending"}
         )
       `;
-      const empTemplate = template.employees[employees.indexOf(e)];
-      for (const idx of empTemplate.serviceIndexes) {
+      for (const idx of e.serviceIndexes) {
         const svc = services[idx];
         if (!svc) continue;
         await sql`
@@ -629,13 +679,50 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
         `;
       }
     }
-    for (const p of template.portfolio) {
+    for (const p of solo ? [] : template.portfolio) {
       const emp = employees[p.employeeIndex];
       if (!emp) continue;
       await sql`
         insert into portfolio_items (id, shop_id, employee_id, image_url, caption)
         values (${newId("pf")}, ${shopId}, ${emp.id}, ${p.imageUrl}, ${p.caption})
       `;
+    }
+    const leadSlug = (data.leadSlug ?? "").trim().toLowerCase();
+    if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(leadSlug)) {
+      const claimed = await sql<{ id: string; county: string }>`
+        update preloaded_leads
+        set claimed = true, shop_id = ${shopId}
+        where lead_slug = ${leadSlug} and claimed = false
+        returning id, county
+      `;
+      if (claimed[0]) {
+        await sql`
+          insert into funnel_visits (id, lead_slug, utm_source, county, landed_path, shop_id, verified)
+          values (${newId("fun")}, ${leadSlug}, ${"onboarding"}, ${claimed[0].county}, ${"/onboard"}, ${shopId}, ${true})
+        `;
+        try {
+          await sql`
+            update outreach_sequences
+            set status = 'stopped', stopped_reason = 'claimed'
+            where lead_slug = ${leadSlug} and status = 'active'
+          `;
+          await sql`
+            update outreach_touches
+            set status = 'skipped'
+            where status = 'scheduled'
+              and sequence_id in (
+                select id from outreach_sequences
+                where lead_slug = ${leadSlug} and status = 'stopped' and stopped_reason = 'claimed'
+              )
+          `;
+        } catch {
+          // A shop can be claimed before nurture tables exist.
+        }
+        await sql`
+          insert into shop_events (id, shop_id, type, payload)
+          values (${newId("evt")}, ${shopId}, 'lead_claimed', ${leadSlug})
+        `;
+      }
     }
     return { slug, created: true };
   });
@@ -662,7 +749,7 @@ export const updateShopBrand = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
-    if (row.owner_user_id !== context.userId) throw new Error("Forbidden");
+    await assertCanModifyShop(row, context.userId);
     const flags = parseOnboarding(row.onboarding_json);
     if (data.markHero) flags.hero = true;
     if (data.markService) flags.service = true;
@@ -681,7 +768,7 @@ export const updateShopBrand = createServerFn({ method: "POST" })
         primary_service_id = ${data.primaryServiceId ?? row.primary_service_id},
         onboarding_json = ${JSON.stringify(flags)},
         onboarding_step = ${step}
-      where id = ${row.id} and owner_user_id = ${context.userId}
+      where id = ${row.id}
     `;
     return { ok: true as const, onboarding: flags };
   });
@@ -694,12 +781,7 @@ export const setShopRingColor = createServerFn({ method: "POST" })
     if (!/^#[0-9A-F]{6}$/.test(color)) throw new Error("Invalid color");
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
-    const mem = await membership(row.id, context.userId);
-    const allowed =
-      row.owner_user_id === context.userId ||
-      mem?.role === "owner" ||
-      Boolean(row.is_showcase);
-    if (!allowed) throw new Error("Forbidden");
+    await assertCanModifyShop(row, context.userId);
     const sql = await getSql();
     await sql`update shops set ring_color = ${color} where id = ${row.id}`;
     await sql`
@@ -722,12 +804,7 @@ export const setShopIntro = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
-    const mem = await membership(row.id, context.userId);
-    const allowed =
-      row.owner_user_id === context.userId ||
-      mem?.role === "owner" ||
-      Boolean(row.is_showcase);
-    if (!allowed) throw new Error("Forbidden");
+    await assertCanModifyShop(row, context.userId);
     const speed = Math.min(100, Math.max(1, Math.round(data.introSpeed)));
     const intensity = Math.min(100, Math.max(0, Math.round(data.introIntensity)));
     const preset = parseIntroPreset(data.introPreset);
@@ -749,7 +826,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
-    if (row.owner_user_id !== context.userId) throw new Error("Forbidden");
+    if (!(await allowOperator(row, context.userId))) throw new Error("Forbidden");
     const name = data.displayName.trim();
     if (name.length < 2) throw new Error("Name required");
     const sql = await getSql();
@@ -781,7 +858,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     flags.employee = true;
     await sql`
       update shops set onboarding_json = ${JSON.stringify(flags)}, onboarding_step = 'loop'
-      where id = ${row.id} and owner_user_id = ${context.userId}
+      where id = ${row.id}
     `;
     return { id, token, invitePath: `/invite/${token}` };
   });
@@ -906,36 +983,62 @@ async function mapAppointments(shopId: string, employeeId?: string | null): Prom
   }));
 }
 
-async function loadNotices(shopId: string): Promise<ShopNotice[]> {
+async function loadNotices(shopId: string, employeeId?: string | null): Promise<ShopNotice[]> {
   const sql = await getSql();
-  const rows = await sql<{
+  type NoticeRow = {
     id: string;
     channel: ShopNotice["channel"];
     kind: ShopNotice["kind"];
+    employee_id?: string | null;
     destination: string;
     subject: string;
     body: string;
     status: ShopNotice["status"];
     detail: string;
     created_at: string;
-  }>`
-    select id, channel, kind, destination, subject, body, status, detail, created_at
-    from shop_notifications
-    where shop_id = ${shopId}
-    order by created_at desc
-    limit 30
-  `;
-  return rows.map((r) => ({
+  };
+  const mapRow = (r: NoticeRow): ShopNotice => ({
     id: r.id,
     channel: r.channel,
     kind: r.kind,
+    employeeId: r.employee_id ?? null,
     destination: r.destination,
     subject: r.subject,
     body: r.body,
     status: r.status,
     detail: r.detail,
     createdAt: String(r.created_at),
-  }));
+  });
+  try {
+    const rows = employeeId
+      ? await sql<NoticeRow>`
+          select id, channel, kind, employee_id, destination, subject, body, status, detail, created_at
+          from shop_notifications
+          where shop_id = ${shopId} and employee_id = ${employeeId} and channel = 'inbox'
+          order by created_at desc
+          limit 30
+        `
+      : await sql<NoticeRow>`
+          select id, channel, kind, employee_id, destination, subject, body, status, detail, created_at
+          from shop_notifications
+          where shop_id = ${shopId}
+          order by created_at desc
+          limit 30
+        `;
+    return rows.map(mapRow);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/employee_id/i.test(message)) throw err;
+    if (employeeId) return [];
+    const rows = await sql<NoticeRow>`
+      select id, channel, kind, destination, subject, body, status, detail, created_at
+      from shop_notifications
+      where shop_id = ${shopId}
+      order by created_at desc
+      limit 30
+    `;
+    return rows.map(mapRow);
+  }
 }
 
 export const setShopDashboard = createServerFn({ method: "POST" })
@@ -944,10 +1047,7 @@ export const setShopDashboard = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
-    if (!row.is_showcase) {
-      const mem = await membership(row.id, context.userId);
-      if (row.owner_user_id !== context.userId && mem?.role !== "owner") throw new Error("Forbidden");
-    }
+    await assertCanModifyShop(row, context.userId);
     const config = parseDashboardConfig(data.config);
     const sql = await getSql();
     await sql`
@@ -971,9 +1071,11 @@ export const setEmployeeDashboard = createServerFn({ method: "POST" })
       select id from employees where id = ${data.employeeId} and shop_id = ${row.id} limit 1
     `;
     if (!emp[0]) throw new Error("Staff not found");
-    if (!row.is_showcase) {
+    if (row.is_showcase) {
+      await assertCanModifyShop(row, context.userId);
+    } else {
       const mem = await membership(row.id, context.userId);
-      const isOwner = row.owner_user_id === context.userId || mem?.role === "owner";
+      const isOwner = await allowOperator(row, context.userId);
       const isSelf = mem?.role === "employee" && mem.employee_id === data.employeeId;
       if (!isOwner && !isSelf) throw new Error("Forbidden");
     }
@@ -985,32 +1087,65 @@ export const setEmployeeDashboard = createServerFn({ method: "POST" })
     return { config };
   });
 
+async function allowOperator(
+  row: { id: string; owner_user_id: string | null },
+  userId: string,
+) {
+  if (row.owner_user_id && row.owner_user_id === userId) return true;
+  const mem = await membership(row.id, userId);
+  if (mem?.role === "owner") return true;
+  const { isPlatformOwner } = await import("./platform-owner.server");
+  return isPlatformOwner(userId);
+}
+
+async function assertCanModifyShop(
+  row: { id: string; owner_user_id: string | null; is_showcase: boolean },
+  userId: string,
+) {
+  if (row.is_showcase) {
+    const { isPlatformOwner } = await import("./platform-owner.server");
+    if (!(await isPlatformOwner(userId))) throw new Error("Showcase shops are read-only");
+    return;
+  }
+  if (!(await allowOperator(row, userId))) throw new Error("Forbidden");
+}
+
 async function requireOwnerShop(slug: string, userId: string) {
   const row = await loadShopRow(slug);
   if (!row) throw new Error("Shop not found");
   if (row.is_showcase) throw new Error("Showcase shops are read-only");
-  const mem = await membership(row.id, userId);
-  if (row.owner_user_id !== userId && mem?.role !== "owner") throw new Error("Forbidden");
+  if (!(await allowOperator(row, userId))) throw new Error("Forbidden");
   return row;
 }
 
 export const getOperatorData = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator((slug: string) => slug)
-  .handler(async ({ data: slug, context }) => {
+  .validator((input: string | { slug: string; desk?: "master" }) => {
+    if (typeof input === "string") return { slug: input, desk: undefined as "master" | undefined };
+    if (!input || typeof input.slug !== "string") throw new Error("Shop not found");
+    return { slug: input.slug, desk: input.desk === "master" ? ("master" as const) : undefined };
+  })
+  .handler(async ({ data, context }) => {
+    const slug = data.slug;
     const row = await loadShopRow(slug);
     if (!row) throw new Error("Shop not found");
     const mem = await membership(row.id, context.userId);
     let stripeAccountId: string | null = null;
     let chargesEnabled = false;
     const shop = mapShop(row, false);
-    const mode: AccessMode = mem?.role === "owner"
+    let asMaster = false;
+    if (data.desk === "master" && row.owner_user_id !== context.userId) {
+      const { isPlatformOwner } = await import("./platform-owner.server");
+      asMaster = await isPlatformOwner(context.userId);
+    }
+    let mode: AccessMode = mem?.role === "owner"
       ? "owner"
       : mem?.role === "employee"
         ? "employee"
         : shop.isShowcase
           ? "preview"
           : "none";
+    if (asMaster && !shop.isShowcase) mode = "owner";
     if (mode === "none") throw new Error("Forbidden");
 
     const hidePii = mode === "preview";
@@ -1060,7 +1195,12 @@ export const getOperatorData = createServerFn({ method: "GET" })
       connected: Boolean(stripeAccountId),
       chargesEnabled,
     };
-    const notices = mode === "owner" ? await loadNotices(shop.id) : [];
+    const notices =
+      mode === "owner"
+        ? await loadNotices(shop.id)
+        : mode === "employee" && mem?.employee_id
+          ? await loadNotices(shop.id, mem.employee_id)
+          : [];
 
     return {
       mode,
@@ -1074,6 +1214,7 @@ export const getOperatorData = createServerFn({ method: "GET" })
       notifyEmail: mode === "owner" ? (row.notify_email ?? "") : "",
       notifyPhone: mode === "owner" ? (row.notify_phone ?? "") : "",
       payments,
+      platformDesk: asMaster && mode === "owner",
     };
   });
 
@@ -1083,10 +1224,35 @@ export const acceptBooking = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
-    const mem = await membership(row.id, context.userId);
-    const allowed = mem || row.owner_user_id === context.userId || Boolean(row.is_showcase);
-    if (!allowed) throw new Error("Forbidden");
     const sql = await getSql();
+    const pending = await sql<{
+      id: string;
+      employee_id: string;
+      customer_name: string;
+      customer_phone: string;
+      customer_email: string;
+      starts_at: string;
+      service_name: string;
+      employee_name: string;
+    }>`
+      select a.id, a.employee_id, a.customer_name, a.customer_phone, a.customer_email, a.starts_at,
+        s.name as service_name, e.display_name as employee_name
+      from appointments a
+      join services s on s.id = a.service_id
+      join employees e on e.id = a.employee_id
+      where a.id = ${data.appointmentId} and a.shop_id = ${row.id} and a.status = 'pending'
+      limit 1
+    `;
+    const booking = pending[0];
+    if (!booking) throw new Error("Booking not found");
+    if (row.is_showcase) {
+      await assertCanModifyShop(row, context.userId);
+    } else {
+      const mem = await membership(row.id, context.userId);
+      const isOwner = row.owner_user_id === context.userId || mem?.role === "owner" || (await allowOperator(row, context.userId));
+      const isAssignee = mem?.role === "employee" && mem.employee_id === booking.employee_id;
+      if (!isOwner && !isAssignee) throw new Error("Forbidden");
+    }
     const updated = await sql<{ id: string }>`
       update appointments
       set status = 'confirmed'
@@ -1098,6 +1264,19 @@ export const acceptBooking = createServerFn({ method: "POST" })
       insert into shop_events (id, shop_id, type, appointment_id)
       values (${newId("evt")}, ${row.id}, 'booking_confirmed', ${data.appointmentId})
     `;
+    const { notifyBookingParties } = await import("./notify.server");
+    await notifyBookingParties({
+      shopId: row.id,
+      shopName: row.name,
+      employeeId: booking.employee_id,
+      guestName: booking.customer_name,
+      guestPhone: booking.customer_phone,
+      guestEmail: booking.customer_email ?? "",
+      serviceName: booking.service_name,
+      employeeName: booking.employee_name,
+      startsAt: String(booking.starts_at),
+      phase: "confirmed",
+    });
     return { ok: true as const };
   });
 
@@ -1183,21 +1362,34 @@ export const saveShopServices = createServerFn({ method: "POST" })
   .validator(
     (d: {
       slug: string;
-      services: { id?: string; name: string; description: string; durationMin: number; priceCents: number }[];
+      services: {
+        id?: string;
+        name: string;
+        description: string;
+        durationMin: number;
+        priceCents: number;
+        group?: string;
+        priceUnit?: PriceUnit;
+      }[];
       removeIds: string[];
     }) => d,
   )
   .handler(async ({ data, context }) => {
     const row = await requireOwnerShop(data.slug, context.userId);
     if (data.services.length < 1 || data.services.length > 24) throw new Error("Add at least one service");
+    const niche = isShopNiche(row.niche) ? row.niche : "location";
+    const allowed = priceUnitsFor(niche);
     const sql = await getSql();
     const kept: string[] = [];
     for (const [index, service] of data.services.entries()) {
       const name = service.name.trim();
       if (name.length < 2 || name.length > 80) throw new Error("Service name is required");
       const description = service.description.trim().slice(0, 240);
+      const group = (service.group ?? "").trim().slice(0, 40);
       const duration = Math.round(Number(service.durationMin));
       const price = Math.round(Number(service.priceCents));
+      const priceUnit = service.priceUnit ?? "flat";
+      if (!allowed.includes(priceUnit)) throw new Error("That charge does not fit this trade");
       if (!Number.isFinite(duration) || duration < 10 || duration > 480) {
         throw new Error("Duration must be between 10 and 480 minutes");
       }
@@ -1209,7 +1401,9 @@ export const saveShopServices = createServerFn({ method: "POST" })
               description = ${description},
               duration_min = ${duration},
               price_cents = ${price},
-              sort_order = ${index}
+              sort_order = ${index},
+              group_label = ${group},
+              price_unit = ${priceUnit}
           where id = ${service.id} and shop_id = ${row.id}
           returning id
         `;
@@ -1218,8 +1412,11 @@ export const saveShopServices = createServerFn({ method: "POST" })
       } else {
         const id = newId("svc");
         await sql`
-          insert into services (id, shop_id, name, description, duration_min, price_cents, sort_order)
-          values (${id}, ${row.id}, ${name}, ${description}, ${duration}, ${price}, ${index})
+          insert into services (
+            id, shop_id, name, description, duration_min, price_cents, sort_order, group_label, price_unit
+          ) values (
+            ${id}, ${row.id}, ${name}, ${description}, ${duration}, ${price}, ${index}, ${group}, ${priceUnit}
+          )
         `;
         const employees = await sql<{ id: string }>`select id from employees where shop_id = ${row.id}`;
         for (const employee of employees) {
@@ -1232,13 +1429,21 @@ export const saveShopServices = createServerFn({ method: "POST" })
         kept.push(id);
       }
     }
+    const catalog = await sql<{ id: string }>`
+      select id from services where shop_id = ${row.id}
+    `;
+    const ownedIds = new Set(catalog.map((service) => service.id));
     for (const removeId of data.removeIds) {
-      if (kept.includes(removeId)) continue;
+      if (kept.includes(removeId) || !ownedIds.has(removeId)) continue;
       const used = await sql<{ id: string }>`
         select id from appointments where service_id = ${removeId} and shop_id = ${row.id} limit 1
       `;
       if (used[0]) throw new Error("That service already has bookings");
-      await sql`delete from employee_services where service_id = ${removeId}`;
+      await sql`
+        delete from employee_services
+        where service_id = ${removeId}
+          and employee_id in (select id from employees where shop_id = ${row.id})
+      `;
       await sql`delete from services where id = ${removeId} and shop_id = ${row.id}`;
     }
     if (!row.primary_service_id || !kept.includes(row.primary_service_id)) {
@@ -1275,6 +1480,7 @@ export const startCardCheckout = createServerFn({ method: "POST" })
       serviceId: string;
       customerName: string;
       customerPhone: string;
+      customerEmail?: string;
       startsAt: string;
     }) => d,
   )
@@ -1295,15 +1501,20 @@ export const startCardCheckout = createServerFn({ method: "POST" })
       throw new Error("This shop is not accepting cards yet");
     }
     const id = newId("apt");
-    await sql`
-      insert into appointments (
-        id, shop_id, employee_id, service_id, customer_name, customer_phone,
-        starts_at, status, payment_status, payment_cents
-      ) values (
-        ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
-        ${booked.phone}, ${data.startsAt}, 'pending', 'processing', ${booked.priceCents}
-      )
-    `;
+    try {
+      await sql`
+        insert into appointments (
+          id, shop_id, employee_id, service_id, customer_name, customer_phone, customer_email,
+          starts_at, status, payment_status, payment_cents
+        ) values (
+          ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
+          ${booked.phone}, ${booked.email}, ${data.startsAt}, 'pending', 'processing', ${booked.priceCents}
+        )
+      `;
+    } catch (err) {
+      if (isSlotTaken(err)) throw new Error("That time was just taken. Please choose another slot.");
+      throw err;
+    }
     const { createConnectCheckout, requestOrigin } = await import("./payments.server");
     const origin = requestOrigin();
     let fee = Math.round((booked.priceCents * Number(billing[0].gear_guardian_bps)) / 10000);

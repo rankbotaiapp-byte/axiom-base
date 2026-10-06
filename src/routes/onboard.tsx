@@ -1,38 +1,44 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { AppWindow, Brush, Compass, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
+import { nicheIcon } from "@/components/niche-icon";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
 import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
 import { LoopVideo } from "@/components/cinematic-hero";
-import type { Shop, ShopNiche } from "@/lib/axiom/types";
+import { isShopNiche, type Shop, type ShopNiche } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Wordmark } from "@/components/shop-chrome";
 
 export const Route = createFileRoute("/onboard")({ component: Onboard });
 
-function nicheIcon(key: ShopNiche): LucideIcon {
-  if (key === "fitness") return Dumbbell;
-  if (key === "music") return Mic;
-  if (key === "contractor") return HardHat;
-  if (key === "tattoo") return Brush;
-  if (key === "field") return Truck;
-  if (key === "guide") return Compass;
-  if (key === "studio") return AppWindow;
-  return Store;
-}
-
 function Onboard() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const [existing, setExisting] = useState<Shop[] | null>(null);
   const [niche, setNiche] = useState<ShopNiche | null>(null);
+  const [solo, setSolo] = useState<boolean | null>(null);
   const [name, setName] = useState("");
+  const [leadSlug, setLeadSlug] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(LEAD_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { leadSlug?: string; tradeType?: string };
+      if (typeof saved.leadSlug === "string") setLeadSlug(saved.leadSlug);
+      if (typeof saved.tradeType === "string" && saved.tradeType) {
+        setNiche(isShopNiche(saved.tradeType) ? saved.tradeType : "trade");
+      }
+    } catch {
+      /* a bad saved lead should not block onboarding */
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -67,7 +73,13 @@ function Onboard() {
     setError(null);
     try {
       const result = await createShopFromNiche({
-        data: { niche, name: name.trim() || NICHES[niche].defaultName },
+        data: {
+          niche,
+          name: name.trim() || NICHES[niche].defaultName,
+          solo: solo === true,
+          ownerName: user?.displayName ?? "",
+          leadSlug,
+        },
       });
       await navigate({
         to: "/$shopSlug",
@@ -85,10 +97,31 @@ function Onboard() {
       <Wordmark />
       <div className="mx-auto mt-12 max-w-3xl">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Guided loop</p>
-        <h1 className="mt-3 font-display text-4xl leading-none sm:text-5xl">What kind of shop is this?</h1>
+        <h1 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Who is on the book?</h1>
         <p className="mt-3 max-w-lg text-muted">
-          We generate a live booking site with dummy staff, services, and a cinematic hero. You can rename it in the next breath.
+          Some trades are one person. Some have a station for each person. Pick that first, then the trade. You can rename every line after.
         </p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setSolo(true)}
+            className="rounded-2xl bg-surface p-5 text-left shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            style={solo === true ? { boxShadow: "0 0 0 1px var(--color-fg)" } : undefined}
+          >
+            <p className="font-display text-2xl">Just me</p>
+            <p className="mt-2 text-sm text-muted">Clients book you. There is no staff list to hand out.</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSolo(false)}
+            className="rounded-2xl bg-surface p-5 text-left shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            style={solo === false ? { boxShadow: "0 0 0 1px var(--color-fg)" } : undefined}
+          >
+            <p className="font-display text-2xl">A team</p>
+            <p className="mt-2 text-sm text-muted">Each person gets a station and sees their own book.</p>
+          </button>
+        </div>
+        <h2 className="mt-12 font-display text-3xl">What do you sell?</h2>
 
         <div className="mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
           {NICHE_ORDER.map((key) => {
@@ -116,12 +149,16 @@ function Onboard() {
                       src={NICHE_MEDIA[key].heroVideoUrl}
                       className="pointer-events-none absolute inset-0"
                     />
-                  ) : (
+                  ) : NICHE_MEDIA[key].heroImageUrl ? (
                     <img
                       src={NICHE_MEDIA[key].heroImageUrl}
                       alt=""
                       className="media-drift pointer-events-none absolute inset-0 h-full w-full object-cover outline-none"
                     />
+                  ) : (
+                    <span className="grid h-full place-items-center text-muted">
+                      <Icon className="size-8" />
+                    </span>
                   )}
                 </span>
                 <span className="block p-5">
@@ -150,7 +187,7 @@ function Onboard() {
             <Button
               className="mt-4 w-full"
               size="lg"
-              disabled={busy}
+              disabled={busy || solo === null}
               onClick={() => void generate()}
             >
               {busy ? "Generating site…" : "Generate live site"}

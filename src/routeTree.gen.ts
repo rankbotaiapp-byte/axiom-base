@@ -18,10 +18,12 @@ import { Route as ShopSlugAdminRouteImport } from './routes/$shopSlug/admin'
 import { Route as ShopSlugBookRouteImport } from './routes/$shopSlug/book'
 import { Route as ShopSlugEmployeeRouteImport } from './routes/$shopSlug/employee'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/index'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiGearGuardianCheckoutRouteImport } from './routes/api/gear-guardian.checkout'
 import { Route as ApiHeroVideoShopIdRouteImport } from './routes/api/hero-video.$shopId'
+import { Route as ApiOutreachCronRouteImport } from './routes/api/outreach.cron'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -69,6 +71,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MasterAdminIndexRoute = MasterAdminIndexRouteImport.update({
+  id: '/master-admin/',
+  path: '/master-admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopSlugStaffEmployeeIdRoute = ShopSlugStaffEmployeeIdRouteImport.update({
   id: '/staff/$employeeId',
   path: '/staff/$employeeId',
@@ -89,6 +96,11 @@ const ApiHeroVideoShopIdRoute = ApiHeroVideoShopIdRouteImport.update({
   path: '/api/hero-video/$shopId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOutreachCronRoute = ApiOutreachCronRouteImport.update({
+  id: '/api/outreach/cron',
+  path: '/api/outreach/cron',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
@@ -105,10 +117,12 @@ export interface FileRoutesByFullPath {
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
+  '/master-admin/': typeof MasterAdminIndexRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -120,10 +134,12 @@ export interface FileRoutesByTo {
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug': typeof ShopSlugIndexRoute
+  '/master-admin': typeof MasterAdminIndexRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesById {
@@ -137,10 +153,12 @@ export interface FileRoutesById {
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
+  '/master-admin/': typeof MasterAdminIndexRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRouteTypes {
@@ -155,10 +173,12 @@ export interface FileRouteTypes {
     | '/$shopSlug/employee'
     | '/invite/$token'
     | '/$shopSlug/'
+    | '/master-admin/'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/outreach/cron'
     | '/api/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -170,10 +190,12 @@ export interface FileRouteTypes {
     | '/$shopSlug/employee'
     | '/invite/$token'
     | '/$shopSlug'
+    | '/master-admin'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/outreach/cron'
     | '/api/stripe/webhook'
   id:
     | '__root__'
@@ -186,10 +208,12 @@ export interface FileRouteTypes {
     | '/$shopSlug/employee'
     | '/invite/$token'
     | '/$shopSlug/'
+    | '/master-admin/'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/outreach/cron'
     | '/api/stripe/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -199,9 +223,11 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardRoute: typeof OnboardRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  MasterAdminIndexRoute: typeof MasterAdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGearGuardianCheckoutRoute: typeof ApiGearGuardianCheckoutRoute
   ApiHeroVideoShopIdRoute: typeof ApiHeroVideoShopIdRoute
+  ApiOutreachCronRoute: typeof ApiOutreachCronRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
 }
 
@@ -270,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/master-admin/': {
+      id: '/master-admin/'
+      path: '/master-admin'
+      fullPath: '/master-admin/'
+      preLoaderRoute: typeof MasterAdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$shopSlug/staff/$employeeId': {
       id: '/$shopSlug/staff/$employeeId'
       path: '/staff/$employeeId'
@@ -296,6 +329,13 @@ declare module '@tanstack/react-router' {
       path: '/api/hero-video/$shopId'
       fullPath: '/api/hero-video/$shopId'
       preLoaderRoute: typeof ApiHeroVideoShopIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/outreach/cron': {
+      id: '/api/outreach/cron'
+      path: '/api/outreach/cron'
+      fullPath: '/api/outreach/cron'
+      preLoaderRoute: typeof ApiOutreachCronRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stripe/webhook': {
@@ -334,9 +374,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardRoute: OnboardRoute,
   InviteTokenRoute: InviteTokenRoute,
+  MasterAdminIndexRoute: MasterAdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGearGuardianCheckoutRoute: ApiGearGuardianCheckoutRoute,
   ApiHeroVideoShopIdRoute: ApiHeroVideoShopIdRoute,
+  ApiOutreachCronRoute: ApiOutreachCronRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport

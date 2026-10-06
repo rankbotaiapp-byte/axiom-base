@@ -17,6 +17,7 @@ import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { getBearerToken } from "@/lib/auth/client";
 import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
+import { nicheCopy } from "@/lib/axiom/niches";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,10 @@ import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service,
 import { CinematicHero } from "@/components/cinematic-hero";
 
 export const Route = createFileRoute("/$shopSlug/admin")({
-  validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh" } => {
-    if (s.stripe === "return" || s.stripe === "refresh") return { stripe: s.stripe };
-    return {};
+  validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master" } => {
+    const stripe = s.stripe === "return" || s.stripe === "refresh" ? s.stripe : undefined;
+    const desk = s.desk === "master" ? "master" : undefined;
+    return { ...(stripe ? { stripe } : {}), ...(desk ? { desk } : {}) };
   },
   component: AdminPage,
 });
@@ -45,11 +47,16 @@ type OpData = {
   notifyEmail: string;
   notifyPhone: string;
   payments: PaymentSetup;
+  platformDesk?: boolean;
 };
+
+function operatorQuery(slug: string, desk?: "master") {
+  return desk === "master" ? { slug, desk } : slug;
+}
 
 function AdminPage() {
   const { shopSlug } = Route.useParams();
-  const { stripe } = Route.useSearch();
+  const { stripe, desk } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [data, setData] = useState<OpData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +65,7 @@ function AdminPage() {
   useEffect(() => {
     if (isPending || !userId) return;
     let cancelled = false;
-    void getOperatorData({ data: shopSlug })
+    void getOperatorData({ data: operatorQuery(shopSlug, desk) })
       .then((next) => {
         if (!cancelled) {
           setError(null);
@@ -71,25 +78,25 @@ function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [isPending, shopSlug, userId]);
+  }, [desk, isPending, shopSlug, userId]);
 
   useEffect(() => {
     if (!user || !stripe) return;
     void refreshStripeConnect({ data: shopSlug })
-      .then(() => getOperatorData({ data: shopSlug }))
+      .then(() => getOperatorData({ data: operatorQuery(shopSlug, desk) }))
       .then(setData)
       .catch(() => undefined);
-  }, [shopSlug, stripe, user]);
+  }, [desk, shopSlug, stripe, user]);
 
   useEffect(() => {
     if (isPending || !userId) return;
     const id = window.setInterval(() => {
-      void getOperatorData({ data: shopSlug })
+      void getOperatorData({ data: operatorQuery(shopSlug, desk) })
         .then(setData)
         .catch(() => undefined);
     }, 12000);
     return () => window.clearInterval(id);
-  }, [isPending, shopSlug, userId]);
+  }, [desk, isPending, shopSlug, userId]);
 
   if (isPending || (user && !data && !error)) {
     return (
@@ -117,7 +124,7 @@ function AdminPage() {
   }
 
   return <AdminShell data={data} readonly={data.mode === "preview"} onReload={() => {
-    void getOperatorData({ data: shopSlug }).then(setData);
+    void getOperatorData({ data: operatorQuery(shopSlug, desk) }).then(setData);
   }} />;
 }
 
@@ -131,6 +138,16 @@ function AdminShell({
   onReload: () => void;
 }) {
   const [tab, setTab] = useState<"overview" | "settings" | "services" | "brand" | "team" | "alerts" | "billing">("overview");
+  const copy = nicheCopy(data.shop.niche);
+  const tabLabel: Record<typeof tab, string> = {
+    overview: "Overview",
+    settings: "Settings",
+    services: copy.menuHeading,
+    brand: "Look",
+    team: copy.staffStep,
+    alerts: "Alerts",
+    billing: "Billing",
+  };
   const setup = data.shop.onboarding;
   const needsSetup = !readonly && (!setup.hero || !setup.service || !setup.employee);
 
@@ -139,12 +156,23 @@ function AdminShell({
       <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8">
         <div>
           <Wordmark />
+          {data.platformDesk ? (
+            <p className="mt-2 text-sm text-copper">Platform desk. Changes write onto this shop's book.</p>
+          ) : null}
           <p className="mt-2 text-sm text-muted">
             {data.shop.name}
             {readonly ? " · live demo preview" : ""}
           </p>
         </div>
         <div className="flex gap-2">
+          {data.platformDesk ? (
+            <Link
+              to="/master-admin"
+              className="inline-flex h-11 items-center rounded-xl px-3 text-sm text-copper hover:text-fg"
+            >
+              Master desk
+            </Link>
+          ) : null}
           <Link
             to="/$shopSlug"
             params={{ shopSlug: data.shop.slug }}
@@ -172,14 +200,14 @@ function AdminShell({
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className="h-11 rounded-xl px-3 text-sm capitalize"
+            className="h-11 shrink-0 rounded-xl px-3 text-sm"
             style={
               tab === t
                 ? { background: "var(--color-surface)", color: "var(--color-fg)" }
                 : { color: "var(--color-muted)" }
             }
           >
-            {t}
+            {tabLabel[t]}
           </button>
         ))}
       </nav>
@@ -260,7 +288,13 @@ function SetupStrip({
           {flags.service ? "Primary service" : "2 · Primary service"}
         </li>
         <li className={flags.employee ? "text-ok" : "text-muted"}>
-          {flags.employee ? "Staff invited" : "3 · Invite one employee"}
+          {shop.worksAlone
+            ? flags.employee
+              ? "You're on the book"
+              : "3 · Put your name on the book"
+            : flags.employee
+              ? "Staff invited"
+              : "3 · Invite one employee"}
         </li>
       </ol>
       {!readonly && flags.hero && flags.service && flags.employee ? (
@@ -810,6 +844,11 @@ function TeamPanel({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
+      {shop.worksAlone ? (
+        <p className="text-sm text-muted lg:col-span-2">
+          You started alone. The customer books you. Add a second name here when the book needs one.
+        </p>
+      ) : null}
       <ul className="grid gap-3">
         {employees.map((e) => (
           <li key={e.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3">

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { isMp4 } from "./hero-video.ts";
-import { NICHE_MEDIA, resolveHeroMedia } from "./media.ts";
+import { leadHeroFor, NICHE_MEDIA, resolveHeroMedia } from "./media.ts";
+import { SHOP_NICHES } from "./types.ts";
 import { isNotifyEmail, toE164 } from "./notify-target.ts";
 
 describe("niche media", () => {
@@ -55,6 +56,35 @@ describe("niche media", () => {
     });
     assert.equal(media.videoUrl, "/media/tiger.mp4");
     assert.equal(media.loopLabel, "Training loop · tiger.mp4");
+  });
+
+  it("gives every niche a still or a film, and routes named trades", () => {
+    for (const niche of SHOP_NICHES) {
+      const media = NICHE_MEDIA[niche];
+      assert.ok(media.heroImageUrl || media.heroVideoUrl, niche);
+    }
+    assert.equal(leadHeroFor("wellness", "Bear Creek Bodywork").heroImageUrl, "/media/heroes/wellness.jpg");
+    assert.equal(leadHeroFor("wellness", "Bear Creek Bodywork").introPreset, "fade");
+    assert.equal(NICHE_MEDIA.beauty.heroImageUrl, "/media/heroes/beauty.jpg");
+    assert.equal(NICHE_MEDIA.lessons.heroImageUrl, "/media/heroes/lessons.jpg");
+    assert.equal(NICHE_MEDIA.pets.heroImageUrl, "/media/heroes/pets.jpg");
+    assert.equal(NICHE_MEDIA.clean.heroImageUrl, "/media/heroes/clean.jpg");
+    assert.equal(NICHE_MEDIA.counsel.heroImageUrl, "/media/heroes/counsel.jpg");
+    assert.equal(NICHE_MEDIA.salon.heroImageUrl, "/media/heroes/salon.jpg");
+    assert.equal(NICHE_MEDIA.events.heroImageUrl, "/media/heroes/events.jpg");
+    assert.equal(NICHE_MEDIA.guide.heroVideoUrl, "/media/heroes/guide.mp4");
+    assert.equal(NICHE_MEDIA.photo.heroVideoUrl, "/media/heroes/photo.mp4");
+    assert.equal(leadHeroFor("field", "Rogue HVAC").heroImageUrl, "/media/heroes/hvac.jpg");
+    assert.equal(NICHE_MEDIA.practice.heroImageUrl, "/media/heroes/practice.jpg");
+    assert.equal(leadHeroFor("contractor", "Summit Roofing").heroImageUrl, "/media/heroes/roofing.jpg");
+    assert.equal(leadHeroFor("contractor", "Valley Electric").heroImageUrl, "/media/heroes/electrical.jpg");
+    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
+    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
+    assert.equal(NICHE_MEDIA.contractor.heroImageUrl, "/media/heroes/contractor.jpg");
+    assert.equal(leadHeroFor("field", "Oak Lawn Care").heroImageUrl, "/media/heroes/landscaping.jpg");
+    assert.equal(leadHeroFor("food-truck", "Urban Eats", "Mobile food truck").heroImageUrl, "/media/heroes/food-truck.jpg");
+    assert.equal(leadHeroFor("trade", "Main Street Plumbing").heroImageUrl, "/media/heroes/plumbing.jpg");
+    assert.equal(leadHeroFor("field", "Curb Call Rogue").heroVideoUrl, "/media/auto-hero.mp4");
   });
 
   it("falls back to the niche film when the shop row has no video", () => {

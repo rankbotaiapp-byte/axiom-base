@@ -1,6 +1,7 @@
 import type { IntroPreset } from "./intro";
+import { defaultUnit, unitsForTemplate } from "./menu";
 import { NICHE_MEDIA } from "./media";
-import type { PriceUnit, Service, ShopNiche } from "./types";
+import { SHOP_NICHES, type PriceUnit, type Service, type ShopNiche } from "./types";
 import { formatMoney } from "@/lib/utils";
 
 export type NicheTemplate = {
@@ -21,6 +22,10 @@ export type NicheTemplate = {
   introIntensity?: number;
   hours?: Record<string, string>;
   primaryServiceIndex?: number;
+  /** Title used when onboarding chooses a one-person book. */
+  soloTitle?: string;
+  /** Charge units this trade may use. Omitted trades stay a flat fee. */
+  priceUnits?: PriceUnit[];
   services: {
     name: string;
     description: string;
@@ -50,16 +55,7 @@ export const RING_PRESETS = [
 ] as const;
 
 /** Lead the onboarding row with the newest templates, then the original three. */
-export const NICHE_ORDER: ShopNiche[] = [
-  "guide",
-  "fitness",
-  "tattoo",
-  "music",
-  "contractor",
-  "location",
-  "field",
-  "studio",
-];
+export const NICHE_ORDER: ShopNiche[] = [...SHOP_NICHES];
 
 export const NICHES: Record<ShopNiche, NicheTemplate> = {
   guide: {
@@ -75,11 +71,12 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#7EC8E3",
     heroImageUrl: NICHE_MEDIA.guide.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.guide.heroVideoUrl,
-    heroBlendPercent: 62,
-    introPreset: "panlr",
-    introSpeed: 28,
-    introIntensity: 42,
+    heroBlendPercent: NICHE_MEDIA.guide.heroBlendPercent,
+    introPreset: NICHE_MEDIA.guide.introPreset,
+    introSpeed: NICHE_MEDIA.guide.introSpeed,
+    introIntensity: NICHE_MEDIA.guide.introIntensity,
     primaryServiceIndex: 0,
+    priceUnits: ["flat", "person", "boat"],
     hours: {
       mon: "closed",
       tue: "07:00-16:00",
@@ -153,10 +150,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#E07A73",
     heroImageUrl: NICHE_MEDIA.fitness.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.fitness.heroVideoUrl,
-    heroBlendPercent: 60,
-    introPreset: "zoomin",
-    introSpeed: 36,
-    introIntensity: 48,
+    heroBlendPercent: NICHE_MEDIA.fitness.heroBlendPercent,
+    introPreset: NICHE_MEDIA.fitness.introPreset,
+    introSpeed: NICHE_MEDIA.fitness.introSpeed,
+    introIntensity: NICHE_MEDIA.fitness.introIntensity,
     primaryServiceIndex: 1,
     hours: {
       mon: "06:00-19:00",
@@ -221,10 +218,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#B388FF",
     heroImageUrl: NICHE_MEDIA.music.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.music.heroVideoUrl,
-    heroBlendPercent: 68,
-    introPreset: "panlr",
-    introSpeed: 24,
-    introIntensity: 62,
+    heroBlendPercent: NICHE_MEDIA.music.heroBlendPercent,
+    introPreset: NICHE_MEDIA.music.introPreset,
+    introSpeed: NICHE_MEDIA.music.introSpeed,
+    introIntensity: NICHE_MEDIA.music.introIntensity,
     primaryServiceIndex: 2,
     hours: {
       mon: "closed",
@@ -307,10 +304,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#C9A227",
     heroImageUrl: NICHE_MEDIA.contractor.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.contractor.heroVideoUrl,
-    heroBlendPercent: 56,
-    introPreset: "zoomin",
-    introSpeed: 30,
-    introIntensity: 38,
+    heroBlendPercent: NICHE_MEDIA.contractor.heroBlendPercent,
+    introPreset: NICHE_MEDIA.contractor.introPreset,
+    introSpeed: NICHE_MEDIA.contractor.introSpeed,
+    introIntensity: NICHE_MEDIA.contractor.introIntensity,
     primaryServiceIndex: 0,
     hours: {
       mon: "07:30-16:30",
@@ -385,7 +382,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#E07A73",
     heroImageUrl: NICHE_MEDIA.tattoo.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.tattoo.heroVideoUrl,
-    heroBlendPercent: 58,
+    heroBlendPercent: NICHE_MEDIA.tattoo.heroBlendPercent,
+    introPreset: NICHE_MEDIA.tattoo.introPreset,
+    introSpeed: NICHE_MEDIA.tattoo.introSpeed,
+    introIntensity: NICHE_MEDIA.tattoo.introIntensity,
     services: [
       {
         group: "Consult",
@@ -440,7 +440,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#E7B48A",
     heroImageUrl: NICHE_MEDIA.location.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.location.heroVideoUrl,
-    heroBlendPercent: 58,
+    heroBlendPercent: NICHE_MEDIA.location.heroBlendPercent,
+    introPreset: NICHE_MEDIA.location.introPreset,
+    introSpeed: NICHE_MEDIA.location.introSpeed,
+    introIntensity: NICHE_MEDIA.location.introIntensity,
     services: [
       {
         group: "Cut",
@@ -499,7 +502,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#7EC8E3",
     heroImageUrl: NICHE_MEDIA.field.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.field.heroVideoUrl,
-    heroBlendPercent: 64,
+    heroBlendPercent: NICHE_MEDIA.field.heroBlendPercent,
+    introPreset: NICHE_MEDIA.field.introPreset,
+    introSpeed: NICHE_MEDIA.field.introSpeed,
+    introIntensity: NICHE_MEDIA.field.introIntensity,
     services: [
       {
         group: "At the curb",
@@ -558,7 +564,10 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
     ringColor: "#2EE6D6",
     heroImageUrl: NICHE_MEDIA.studio.heroImageUrl,
     heroVideoUrl: NICHE_MEDIA.studio.heroVideoUrl,
-    heroBlendPercent: 60,
+    heroBlendPercent: NICHE_MEDIA.studio.heroBlendPercent,
+    introPreset: NICHE_MEDIA.studio.introPreset,
+    introSpeed: NICHE_MEDIA.studio.introSpeed,
+    introIntensity: NICHE_MEDIA.studio.introIntensity,
     services: [
       {
         group: "Start",
@@ -605,7 +614,263 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       { employeeIndex: 0, imageUrl: "/media/apps-hero.jpg", caption: "Studio" },
     ],
   },
+  salon: bookable({
+    niche: "salon",
+    label: "Hair salon",
+    kicker: "They book the chair",
+    blurb: "A cut, a color, a finish — the chair on a calendar.",
+    defaultName: "Halo Room",
+    tagline: "Sit down. Leave finished.",
+    description: "Color and cuts by appointment. The chair is yours for the block you booked.",
+    address: "New Era · chairs by appointment",
+    ringColor: "#E7B48A",
+    soloTitle: "Stylist",
+    services: [
+      { group: "Cut", name: "Cut + style", description: "Consultation, cut, and the finish.", durationMin: 60, priceCents: 8500 },
+      { group: "Color", name: "Color consult", description: "The formula, the time, and a date for the work.", durationMin: 30, priceCents: 4000 },
+      { group: "Color", name: "Gloss + style", description: "Tone and a blowout. One sitting.", durationMin: 90, priceCents: 16000 },
+    ],
+    employees: [
+      { displayName: "Noor Ellis", title: "Lead stylist", bio: "Color first, then the cut that holds it.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Jules Park", title: "Stylist", bio: "Cuts and the gloss that should not take all afternoon.", avatarUrl: "", serviceIndexes: [0, 2] },
+    ],
+  }),
+  beauty: bookable({
+    niche: "beauty",
+    label: "Nails, lashes, makeup",
+    kicker: "They book the set",
+    blurb: "A set, a fill, a face — booked, not a walk-in.",
+    defaultName: "Set Apart",
+    tagline: "The set, then you leave.",
+    description: "Nails, lashes, and makeup on a clock. You book the set. We hold the chair.",
+    address: "New Era · sets by appointment",
+    ringColor: "#E07A73",
+    soloTitle: "Artist",
+    services: [
+      { group: "Nails", name: "Gel set", description: "Shape, color, and a finish that lasts.", durationMin: 75, priceCents: 6500 },
+      { group: "Lashes", name: "Lash fill", description: "A fill on a set you already wear.", durationMin: 60, priceCents: 8500 },
+      { group: "Face", name: "Makeup", description: "The face for the event. You leave ready.", durationMin: 50, priceCents: 9500 },
+    ],
+    employees: [
+      { displayName: "Imani Cole", title: "Lead artist", bio: "Sets and the face that has to last all night.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Remy Sol", title: "Artist", bio: "Nails and the fills that stay on schedule.", avatarUrl: "", serviceIndexes: [0, 1] },
+    ],
+  }),
+  wellness: bookable({
+    niche: "wellness",
+    label: "Massage and bodywork",
+    kicker: "They book the hour",
+    blurb: "A table, a pressure, a block of quiet.",
+    defaultName: "Still Water",
+    tagline: "The hour is yours.",
+    description: "Bodywork by appointment. Tell us the pressure. We keep the room.",
+    address: "New Era · tables on the hour",
+    ringColor: "#7EC8E3",
+    soloTitle: "Practitioner",
+    services: [
+      { group: "Table", name: "Relaxation", description: "Sixty minutes. Even pressure. You set the quiet.", durationMin: 60, priceCents: 11000 },
+      { group: "Table", name: "Deep work", description: "Ninety minutes on the places that actually hurt.", durationMin: 90, priceCents: 15000 },
+      { group: "Start", name: "First session", description: "What hurts, what helps, and the first hour.", durationMin: 75, priceCents: 13000 },
+    ],
+    employees: [
+      { displayName: "Sasha Nguyen", title: "Lead practitioner", bio: "Listens first. The pressure follows what you actually said.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Eden Walsh", title: "Practitioner", bio: "The longer sessions and the first visits.", avatarUrl: "", serviceIndexes: [1, 2] },
+    ],
+  }),
+  lessons: bookable({
+    niche: "lessons",
+    label: "Lessons and tutoring",
+    kicker: "They book the lesson",
+    blurb: "One student, or a small group, on a repeating hour.",
+    defaultName: "Second Chair",
+    tagline: "Show up. We work the hour.",
+    description: "Lessons and tutoring by the block. The same hour, every week, if you want it.",
+    address: "New Era · lessons after school",
+    ringColor: "#C9A227",
+    soloTitle: "Teacher",
+    services: [
+      { group: "One to one", name: "Private lesson", description: "One student. The work you are actually on.", durationMin: 50, priceCents: 7000 },
+      { group: "One to one", name: "Placement", description: "Where you are, and the plan for the next month.", durationMin: 40, priceCents: 5000 },
+      { group: "Group", name: "Small group", description: "Up to four. The same lesson, shared.", durationMin: 60, priceCents: 3500 },
+    ],
+    employees: [
+      { displayName: "Priya Shah", title: "Lead teacher", bio: "Writes the plan and stays for the hard problem.", avatarUrl: "", serviceIndexes: [0, 1] },
+      { displayName: "Jonah Reed", title: "Teacher", bio: "Small groups and the students who would rather not study alone.", avatarUrl: "", serviceIndexes: [0, 2] },
+    ],
+  }),
+  photo: bookable({
+    niche: "photo",
+    label: "Photography",
+    kicker: "They book the session",
+    blurb: "A portrait, a mini, or the plan for the event.",
+    defaultName: "North Light",
+    tagline: "We shoot the hour you booked.",
+    description: "Sessions by appointment. You get the time, the place, and the edit that follows.",
+    address: "New Era · studio and on location",
+    ringColor: "#B388FF",
+    soloTitle: "Photographer",
+    services: [
+      { group: "Session", name: "Portrait hour", description: "One hour. One person or a pair. The edit included.", durationMin: 60, priceCents: 25000 },
+      { group: "Session", name: "Mini", description: "Twenty directed frames. A short block.", durationMin: 30, priceCents: 15000 },
+      { group: "Plan", name: "Event consult", description: "The timeline, the light, and the date.", durationMin: 45, priceCents: 10000 },
+    ],
+    employees: [
+      { displayName: "Ada Morales", title: "Photographer", bio: "Portraits and the events that need a timeline.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Kit Romero", title: "Photographer", bio: "Minis and the second camera.", avatarUrl: "", serviceIndexes: [1, 2] },
+    ],
+  }),
+  pets: bookable({
+    niche: "pets",
+    label: "Pet grooming",
+    kicker: "They book the groom",
+    blurb: "A bath, a full groom, or just the nails.",
+    defaultName: "Good Coat",
+    tagline: "In clean. Out finished.",
+    description: "Grooms by appointment so the dog is not waiting in a crate all afternoon.",
+    address: "New Era · grooms by appointment",
+    ringColor: "#E7B48A",
+    soloTitle: "Groomer",
+    services: [
+      { group: "Groom", name: "Full groom", description: "Bath, cut, ears, and nails. Breed cut or your notes.", durationMin: 90, priceCents: 8500 },
+      { group: "Groom", name: "Bath + brush", description: "A clean coat. No haircut.", durationMin: 45, priceCents: 4500 },
+      { group: "Quick", name: "Nail trim", description: "Nails only. In and out.", durationMin: 20, priceCents: 1800 },
+    ],
+    employees: [
+      { displayName: "Harper Lin", title: "Lead groomer", bio: "Full grooms and the dogs that need a calm room.", avatarUrl: "", serviceIndexes: [0, 1] },
+      { displayName: "Casey Dunn", title: "Groomer", bio: "Baths, nails, and the short appointments.", avatarUrl: "", serviceIndexes: [1, 2] },
+    ],
+  }),
+  clean: bookable({
+    niche: "clean",
+    label: "Home cleaning",
+    kicker: "They book the visit",
+    blurb: "A standard clean, a deep clean, or the move-out.",
+    defaultName: "Clear House",
+    tagline: "We arrive when the book says.",
+    description: "Home cleans on a clock. You book the visit. We bring the kit.",
+    address: "New Era · visits within 15 miles",
+    ringColor: "#2EE6D6",
+    soloTitle: "Cleaner",
+    services: [
+      { group: "Visit", name: "Standard clean", description: "Kitchen, baths, floors. A home that is already lived in.", durationMin: 120, priceCents: 16000 },
+      { group: "Visit", name: "Deep clean", description: "The corners the weekly clean skips.", durationMin: 240, priceCents: 28000 },
+      { group: "Move", name: "Move-out", description: "Empty rooms. The handoff clean.", durationMin: 240, priceCents: 32000 },
+    ],
+    employees: [
+      { displayName: "Rosa Alvarez", title: "Lead", bio: "Walks the house first, then the crew follows her list.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Ben Cho", title: "Cleaner", bio: "Standard visits and the deep cleans.", avatarUrl: "", serviceIndexes: [0, 1] },
+    ],
+  }),
+  practice: bookable({
+    niche: "practice",
+    label: "Practice",
+    kicker: "They book the visit",
+    blurb: "A new visit, a follow-up, or a consult — the chair on a calendar.",
+    defaultName: "Lane Practice",
+    tagline: "The visit starts on time.",
+    description: "A small practice. New visits and follow-ups are booked. The room is ready when you arrive.",
+    address: "New Era · visits by appointment",
+    ringColor: "#7EC8E3",
+    soloTitle: "Practitioner",
+    services: [
+      { group: "Visit", name: "New visit", description: "The first time. History, the plan, and the block.", durationMin: 60, priceCents: 18000 },
+      { group: "Visit", name: "Follow-up", description: "A return visit on a plan you already have.", durationMin: 30, priceCents: 9000 },
+      { group: "Visit", name: "Consult", description: "A question and a recommendation. No procedure.", durationMin: 30, priceCents: 7500 },
+    ],
+    employees: [
+      { displayName: "Dr. Leah Okonkwo", title: "Practitioner", bio: "New visits and the plan that follows.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Micah Berg", title: "Practitioner", bio: "Follow-ups and consults.", avatarUrl: "", serviceIndexes: [1, 2] },
+    ],
+  }),
+  counsel: bookable({
+    niche: "counsel",
+    label: "Advisor",
+    kicker: "They book the consult",
+    blurb: "An intro, a working session, or a review.",
+    defaultName: "Plain Counsel",
+    tagline: "The hour has an agenda.",
+    description: "Consults for people who need a clear hour, not a waiting room.",
+    address: "New Era · calls and the office",
+    ringColor: "#C9A227",
+    soloTitle: "Advisor",
+    services: [
+      { group: "Consult", name: "Intro consult", description: "What you need, and whether we are the right hour.", durationMin: 30, priceCents: 0 },
+      { group: "Consult", name: "Working session", description: "One problem. Notes you can use after.", durationMin: 60, priceCents: 20000 },
+      { group: "Review", name: "Review", description: "A look at the work already done.", durationMin: 45, priceCents: 15000 },
+    ],
+    employees: [
+      { displayName: "Helen Park", title: "Advisor", bio: "Starts with the question, ends with a next step.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Omar Aziz", title: "Advisor", bio: "Working sessions and reviews.", avatarUrl: "", serviceIndexes: [1, 2] },
+    ],
+  }),
+  events: bookable({
+    niche: "events",
+    label: "Events",
+    kicker: "They book the date",
+    blurb: "A consult, the ceremony, or the set.",
+    defaultName: "Hold the Date",
+    tagline: "The date is held when you book it.",
+    description: "Event work by the block. Consult first, then the day itself.",
+    address: "New Era · and the venue",
+    ringColor: "#B388FF",
+    soloTitle: "Lead",
+    services: [
+      { group: "Plan", name: "Date consult", description: "The timeline, the room, and whether the date is open.", durationMin: 45, priceCents: 0 },
+      { group: "Day", name: "Ceremony", description: "The ceremony block. You have the lead for that hour.", durationMin: 90, priceCents: 80000 },
+      { group: "Day", name: "Reception set", description: "The longer block. Sound, the room, the night.", durationMin: 240, priceCents: 150000 },
+    ],
+    employees: [
+      { displayName: "Vera Lang", title: "Lead", bio: "Holds the timeline and the room.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Chris Adeyemi", title: "Operator", bio: "The set and the second half of the night.", avatarUrl: "", serviceIndexes: [2] },
+    ],
+  }),
+  trade: bookable({
+    niche: "trade",
+    label: "Your trade",
+    kicker: "They book a time",
+    blurb: "If the list does not name it, start here and rename every line.",
+    defaultName: "Open Book",
+    tagline: "A time, a price, a yes.",
+    description: "A booking page for a trade that is not on the list yet. Rename the lines. The book still works.",
+    address: "New Era",
+    ringColor: "#2EE6D6",
+    soloTitle: "Owner",
+    services: [
+      { group: "Start", name: "Intro", description: "A short first meeting. Rename this to what you actually sell.", durationMin: 30, priceCents: 0 },
+      { group: "Book", name: "Standard booking", description: "The usual block. Change the name, the price, and the length.", durationMin: 60, priceCents: 10000 },
+      { group: "Book", name: "Longer block", description: "When the work needs more than an hour.", durationMin: 120, priceCents: 18000 },
+    ],
+    employees: [
+      { displayName: "Alex Morgan", title: "Owner", bio: "Takes the book until you rename this to yourself.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+    ],
+  }),
 };
+
+function bookable(input: {
+  niche: ShopNiche;
+  label: string;
+  kicker: string;
+  blurb: string;
+  defaultName: string;
+  tagline: string;
+  description: string;
+  address: string;
+  ringColor: string;
+  soloTitle: string;
+  services: NicheTemplate["services"];
+  employees: NicheTemplate["employees"];
+}): NicheTemplate {
+  return {
+    ...input,
+    heroImageUrl: NICHE_MEDIA[input.niche].heroImageUrl,
+    heroVideoUrl: NICHE_MEDIA[input.niche].heroVideoUrl,
+    heroBlendPercent: NICHE_MEDIA[input.niche].heroBlendPercent,
+    introPreset: NICHE_MEDIA[input.niche].introPreset,
+    introSpeed: NICHE_MEDIA[input.niche].introSpeed,
+    introIntensity: NICHE_MEDIA[input.niche].introIntensity,
+    portfolio: [],
+  };
+}
 
 export const DEFAULT_HOURS: Record<string, string> = {
   mon: "09:00-18:00",
@@ -637,6 +902,9 @@ export type NicheVoice = {
   offerStep: string;
   staffStep: string;
   timeStep: string;
+  timeHint: string;
+  requestLabel: string;
+  gallery: string;
 };
 
 const VOICE: Record<ShopNiche, NicheVoice> = {
@@ -650,6 +918,9 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     offerStep: "Trip",
     staffStep: "Guide",
     timeStep: "Launch",
+    timeHint: "Pick a launch",
+    requestLabel: "Request this launch",
+    gallery: "On the water",
   },
   fitness: {
     bench: "The floor",
@@ -661,6 +932,9 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     offerStep: "Session",
     staffStep: "Coach",
     timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this session",
+    gallery: "The floor",
   },
   tattoo: {
     bench: "The chair",
@@ -672,6 +946,9 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     offerStep: "Piece",
     staffStep: "Artist",
     timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this sitting",
+    gallery: "The work",
   },
   music: {
     bench: "The room",
@@ -681,8 +958,11 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     bookLabel: "Book the room",
     inquiry: "Ask the studio",
     offerStep: "Session",
-    staffStep: "Who",
+    staffStep: "Artist",
     timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this session",
+    gallery: "The room",
   },
   contractor: {
     bench: "The crew",
@@ -694,6 +974,9 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     offerStep: "Visit",
     staffStep: "Who comes",
     timeStep: "Arrival",
+    timeHint: "Pick an arrival",
+    requestLabel: "Request this visit",
+    gallery: "The jobs",
   },
   location: {
     bench: "The chairs",
@@ -705,6 +988,9 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     offerStep: "Cut",
     staffStep: "Barber",
     timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this chair",
+    gallery: "The chair",
   },
   field: {
     bench: "The crew",
@@ -716,6 +1002,9 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     offerStep: "Job",
     staffStep: "Tech",
     timeStep: "Arrival",
+    timeHint: "Pick an arrival",
+    requestLabel: "Request this call",
+    gallery: "The jobs",
   },
   studio: {
     bench: "The studio",
@@ -725,13 +1014,185 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     bookLabel: "Book a call",
     inquiry: "Ask the studio",
     offerStep: "Engagement",
+    staffStep: "Who builds it",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this call",
+    gallery: "The work",
+  },
+  salon: {
+    bench: "The chairs",
+    heading: "Who styles you.",
+    menuKicker: "The book",
+    menuHeading: "Styles",
+    bookLabel: "Book a chair",
+    inquiry: "Ask the salon",
+    offerStep: "Style",
+    staffStep: "Stylist",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this chair",
+    gallery: "The work",
+  },
+  beauty: {
+    bench: "The artists",
+    heading: "Who does the set.",
+    menuKicker: "The book",
+    menuHeading: "Sets",
+    bookLabel: "Book a set",
+    inquiry: "Ask the studio",
+    offerStep: "Set",
+    staffStep: "Artist",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this set",
+    gallery: "The work",
+  },
+  wellness: {
+    bench: "The room",
+    heading: "Who holds the hour.",
+    menuKicker: "The book",
+    menuHeading: "Sessions",
+    bookLabel: "Book a session",
+    inquiry: "Ask the studio",
+    offerStep: "Session",
+    staffStep: "Practitioner",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this session",
+    gallery: "The room",
+  },
+  lessons: {
+    bench: "The teachers",
+    heading: "Who teaches the hour.",
+    menuKicker: "The book",
+    menuHeading: "Lessons",
+    bookLabel: "Book a lesson",
+    inquiry: "Ask the teacher",
+    offerStep: "Lesson",
+    staffStep: "Teacher",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this lesson",
+    gallery: "The work",
+  },
+  photo: {
+    bench: "The photographers",
+    heading: "Who shoots the hour.",
+    menuKicker: "The book",
+    menuHeading: "Sessions",
+    bookLabel: "Book a session",
+    inquiry: "Ask the studio",
+    offerStep: "Session",
+    staffStep: "Photographer",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this session",
+    gallery: "The work",
+  },
+  pets: {
+    bench: "The groomers",
+    heading: "Who finishes the coat.",
+    menuKicker: "The book",
+    menuHeading: "Grooms",
+    bookLabel: "Book a groom",
+    inquiry: "Ask the shop",
+    offerStep: "Groom",
+    staffStep: "Groomer",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this groom",
+    gallery: "The work",
+  },
+  clean: {
+    bench: "The crew",
+    heading: "Who comes to the house.",
+    menuKicker: "The book",
+    menuHeading: "Cleans",
+    bookLabel: "Book a clean",
+    inquiry: "Ask the crew",
+    offerStep: "Clean",
+    staffStep: "Who comes",
+    timeStep: "Arrival",
+    timeHint: "Pick an arrival",
+    requestLabel: "Request this clean",
+    gallery: "The jobs",
+  },
+  practice: {
+    bench: "The practice",
+    heading: "Who sees you.",
+    menuKicker: "The book",
+    menuHeading: "Visits",
+    bookLabel: "Book a visit",
+    inquiry: "Ask the practice",
+    offerStep: "Visit",
+    staffStep: "Practitioner",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this visit",
+    gallery: "The practice",
+  },
+  counsel: {
+    bench: "The advisors",
+    heading: "Who takes the hour.",
+    menuKicker: "The book",
+    menuHeading: "Consults",
+    bookLabel: "Book a consult",
+    inquiry: "Ask the office",
+    offerStep: "Consult",
+    staffStep: "Advisor",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this consult",
+    gallery: "The work",
+  },
+  events: {
+    bench: "The crew",
+    heading: "Who holds the date.",
+    menuKicker: "The book",
+    menuHeading: "Dates",
+    bookLabel: "Book the date",
+    inquiry: "Ask the lead",
+    offerStep: "Date",
+    staffStep: "Who works it",
+    timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this date",
+    gallery: "The dates",
+  },
+  trade: {
+    bench: "The book",
+    heading: "Who takes the time.",
+    menuKicker: "The book",
+    menuHeading: "Offerings",
+    bookLabel: "Book a time",
+    inquiry: "Ask",
+    offerStep: "Booking",
     staffStep: "Who",
     timeStep: "Time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this time",
+    gallery: "The work",
   },
 };
 
 export function nicheCopy(niche: ShopNiche): NicheVoice {
   return VOICE[niche] ?? VOICE.location;
+}
+
+export const PRICE_UNIT_LABEL: Record<PriceUnit, string> = {
+  flat: "Flat fee",
+  person: "Per person",
+  boat: "Per boat",
+};
+
+/** Units the admin may assign, taken from that trade's template. */
+export function priceUnitsFor(niche: ShopNiche): PriceUnit[] {
+  return unitsForTemplate(NICHES[niche]?.priceUnits);
+}
+
+export function defaultPriceUnit(niche: ShopNiche): PriceUnit {
+  return defaultUnit(priceUnitsFor(niche));
 }
 
 export function formatDuration(minutes: number) {

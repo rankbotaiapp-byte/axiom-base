@@ -88,6 +88,16 @@
   outline: none;
 }
 
+/* Darkens the top bar so the shop name stays readable on a bright still or loop. */
+.hero-scrim {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-bg) 82%, transparent) 0%,
+    color-mix(in srgb, var(--color-bg) 42%, transparent) 55%,
+    transparent 100%
+  );
+}
+
 /* The photo dissolves into the page. A solid foot of background hides the frame line. */
 .hero-dissolve {
   background: linear-gradient(

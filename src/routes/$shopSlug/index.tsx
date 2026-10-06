@@ -6,19 +6,20 @@ import { LoopOverlay, TourOverlay } from "@/components/tour-overlay";
 import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { formatMoney, formatPhone, initials } from "@/lib/utils";
-import { nicheCopy, serviceGroups, WEEKDAYS } from "@/lib/axiom/niches";
-import { resolveHeroMedia } from "@/lib/axiom/media";
+import { formatPhone, initials } from "@/lib/utils";
+import { formatOffer, nicheCopy, serviceGroups, WEEKDAYS } from "@/lib/axiom/niches";
+import { NICHE_MEDIA, resolveHeroMedia } from "@/lib/axiom/media";
 import type { AccessMode } from "@/lib/axiom/types";
 import { getShopAccess, submitInquiry } from "@/lib/axiom/server";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useShopPageData } from "./route";
 
 export const Route = createFileRoute("/$shopSlug/")({
-  validateSearch: (s: Record<string, unknown>): { tour?: boolean; loop?: boolean } => {
-    const out: { tour?: boolean; loop?: boolean } = {};
+  validateSearch: (s: Record<string, unknown>): { tour?: boolean; loop?: boolean; requested?: boolean } => {
+    const out: { tour?: boolean; loop?: boolean; requested?: boolean } = {};
     if (s.tour === true || s.tour === "1" || s.tour === "true") out.tour = true;
     if (s.loop === true || s.loop === "1" || s.loop === "true") out.loop = true;
+    if (s.requested === true || s.requested === "1" || s.requested === "true") out.requested = true;
     return out;
   },
   component: CustomerHome,
@@ -44,6 +45,7 @@ function CustomerHome() {
   const copy = nicheCopy(data.shop.niche);
   const contact = employees.find((e) => e.phone)?.phone;
   const hero = resolveHeroMedia(data.shop);
+  const nicheFilm = NICHE_MEDIA[data.shop.niche];
 
   return (
     <div className="bg-bg">
@@ -55,11 +57,16 @@ function CustomerHome() {
         introSpeed={data.shop.introSpeed}
         introIntensity={data.shop.introIntensity}
         tone={hero.tone}
+        fallbackImageUrl={nicheFilm.heroImageUrl}
+        fallbackVideoUrl={nicheFilm.heroVideoUrl}
       >
-        <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
+        <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
+        <div className="relative z-10">
+          <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
+        </div>
         <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{data.shop.address}</p>
-          <h1 className="mt-3 max-w-3xl font-display text-[clamp(3rem,10vw,6.5rem)] leading-[0.92]">
+          <h1 className="mt-3 max-w-3xl break-words font-display text-[clamp(3rem,10vw,6.5rem)] leading-[0.92]">
             {data.shop.name}
           </h1>
           <p className="mt-4 max-w-lg text-base text-fg/80 sm:text-lg">{data.shop.tagline}</p>
@@ -68,7 +75,7 @@ function CustomerHome() {
             params={{ shopSlug: data.shop.slug }}
             className="mt-8 inline-flex h-12 items-center gap-2 rounded-xl bg-fg px-5 text-sm font-medium text-bg"
           >
-            Book now
+            {copy.bookLabel}
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -76,6 +83,11 @@ function CustomerHome() {
 
       <section className="px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-5xl">
+          {search.requested ? (
+            <p className="mb-10 max-w-lg text-sm text-muted">
+              Request received. This shop has it. If you left a phone or email, a confirmation follows when the time is accepted.
+            </p>
+          ) : null}
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bench}</p>
           <h2 className="mt-2 font-display text-3xl sm:text-4xl">{copy.heading}</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -114,8 +126,8 @@ function CustomerHome() {
       <section className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto grid max-w-5xl gap-10 md:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Menu</p>
-            <h2 className="mt-2 font-display text-3xl">Services</h2>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.menuKicker}</p>
+            <h2 className="mt-2 font-display text-3xl">{copy.menuHeading}</h2>
             <div className="mt-6">
               {serviceGroups(services).map((group) => (
                 <div key={group.label || "menu"} className="mt-8 first:mt-0">
@@ -129,10 +141,7 @@ function CustomerHome() {
                           <p className="font-medium">{s.name}</p>
                           <p className="text-sm text-muted">{s.description}</p>
                         </div>
-                        <p className="tabular shrink-0 text-sm text-muted">
-                          {formatMoney(s.priceCents)}
-                          <span className="ml-2 text-faint">{s.durationMin}m</span>
-                        </p>
+                        <p className="tabular shrink-0 text-sm text-muted">{formatOffer(s)}</p>
                       </li>
                     ))}
                   </ul>
@@ -152,7 +161,7 @@ function CustomerHome() {
             </ul>
             <p className="mt-6 text-sm text-muted">{data.shop.description}</p>
             <p className="mt-2 text-sm text-muted">{data.shop.address}</p>
-            <InquiryForm slug={data.shop.slug} />
+            <InquiryForm slug={data.shop.slug} label={copy.inquiry} />
             {contact ? (
               <a href={`tel:${contact}`} className="mt-2 block text-sm tabular text-muted hover:text-fg">
                 {formatPhone(String(contact))}
@@ -173,7 +182,7 @@ function CustomerHome() {
           params={{ shopSlug: data.shop.slug }}
           className="flex h-12 items-center justify-center rounded-xl bg-fg text-sm font-medium text-bg"
         >
-          Book now
+          {copy.bookLabel}
         </Link>
       </div>
 
@@ -183,7 +192,7 @@ function CustomerHome() {
   );
 }
 
-function InquiryForm({ slug }: { slug: string }) {
+function InquiryForm({ slug, label }: { slug: string; label: string }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
@@ -207,7 +216,7 @@ function InquiryForm({ slug }: { slug: string }) {
           .finally(() => setBusy(false));
       }}
     >
-      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Ask the shop</p>
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{label}</p>
       {sent ? <p className="text-sm text-ok">Sent. They have it on the console.</p> : null}
       <div>
         <Label htmlFor="inq-name">Name</Label>

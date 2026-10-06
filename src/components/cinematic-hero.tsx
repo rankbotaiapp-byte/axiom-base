@@ -21,6 +21,8 @@ export function CinematicHero({
   replayKey,
   previewMode = false,
   tone = null,
+  fallbackImageUrl = "",
+  fallbackVideoUrl = "",
   className,
   children,
 }: {
@@ -33,12 +35,16 @@ export function CinematicHero({
   replayKey?: string | number;
   previewMode?: boolean;
   tone?: HeroTone | null;
+  fallbackImageUrl?: string;
+  fallbackVideoUrl?: string;
   className?: string;
   children: ReactNode;
 }) {
   const [reduced, setReduced] = useState(false);
   const [fxOn, setFxOn] = useState(true);
   const [videoOk, setVideoOk] = useState(true);
+  const [imageSrc, setImageSrc] = useState(imageUrl);
+  const [videoSrc, setVideoSrc] = useState(videoUrl ?? "");
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -62,12 +68,14 @@ export function CinematicHero({
   }, [previewMode]);
 
   useEffect(() => {
-    setVideoOk(true);
-  }, [videoUrl]);
+    setImageSrc(imageUrl);
+    setVideoSrc(videoUrl ?? "");
+    setVideoOk(Boolean(videoUrl));
+  }, [imageUrl, videoUrl]);
 
   useEffect(() => {
     const el = videoRef.current;
-    if (!el || !videoUrl) return;
+    if (!el || !videoSrc) return;
     el.muted = true;
     const play = () => {
       void el.play().catch(() => undefined);
@@ -75,7 +83,7 @@ export function CinematicHero({
     play();
     el.addEventListener("canplay", play);
     return () => el.removeEventListener("canplay", play);
-  }, [videoUrl, videoOk]);
+  }, [videoSrc, videoOk]);
 
   const skip = reduced || (!previewMode && !fxOn);
   const preset: IntroPreset = skip ? "none" : introPreset;
@@ -99,7 +107,7 @@ export function CinematicHero({
         )}
       >
         <motion.div
-          key={`${imageUrl}-${videoUrl ?? ""}-${preset}-${replayKey ?? "0"}`}
+          key={`${imageSrc}-${videoSrc}-${preset}-${replayKey ?? "0"}`}
           className="absolute inset-0 origin-center"
           initial={animate ? motionProps.initial : { scale: 1, x: "0%", y: "0%", opacity: 1 }}
           animate={motionProps.animate}
@@ -109,27 +117,41 @@ export function CinematicHero({
               : { duration: 0 }
           }
         >
-          {imageUrl ? (
+          {imageSrc ? (
             <img
-              src={imageUrl}
+              src={imageSrc}
               alt=""
               className={cn(
                 "absolute inset-0 h-full w-full object-cover outline-none",
-                !videoUrl && "media-drift",
+                !videoSrc && "media-drift",
               )}
+              onError={() => {
+                if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
+                  setImageSrc(fallbackImageUrl);
+                  return;
+                }
+                setImageSrc("");
+              }}
             />
           ) : null}
-          {videoUrl && videoOk ? (
+          {videoSrc && videoOk ? (
             <video
               ref={videoRef}
               className="absolute inset-0 z-[1] h-full w-full object-cover"
-              src={videoUrl}
+              src={videoSrc}
               autoPlay
               loop
               muted
               playsInline
-              poster={imageUrl || undefined}
-              onError={() => setVideoOk(false)}
+              poster={imageSrc || undefined}
+              onError={() => {
+                if (fallbackVideoUrl && videoSrc !== fallbackVideoUrl) {
+                  setVideoSrc(fallbackVideoUrl);
+                  setVideoOk(true);
+                  return;
+                }
+                setVideoOk(false);
+              }}
             />
           ) : null}
         </motion.div>

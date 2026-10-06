@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { nicheCopy } from "@/lib/axiom/niches";
 import type { AccessMode, Shop } from "@/lib/axiom/types";
 import { cn } from "@/lib/utils";
 import { IntroFxToggle } from "@/components/cinematic-hero";
@@ -15,6 +16,7 @@ export function ShopNav({
   highlightAdmin?: boolean;
 }) {
   const { user } = useCurrentUserState();
+  const copy = nicheCopy(shop.niche);
   return (
     <header className="flex items-center justify-between gap-3 px-4 py-4 sm:px-8">
       <Link
@@ -34,7 +36,7 @@ export function ShopNav({
           params={{ shopSlug: shop.slug }}
           className="hidden h-11 items-center rounded-xl px-3 text-sm text-muted transition-[color] duration-150 hover:text-fg sm:inline-flex"
         >
-          Book
+          {copy.bookLabel}
         </Link>
         {mode === "owner" || mode === "preview" || highlightAdmin ? (
           <Link

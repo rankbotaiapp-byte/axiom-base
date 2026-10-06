@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   beginStripeConnect,
   saveShopServices,
@@ -7,8 +8,10 @@ import {
 } from "@/lib/axiom/server";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { defaultPriceUnit, nicheCopy, PRICE_UNIT_LABEL, priceUnitsFor } from "@/lib/axiom/niches";
+import { insertRow, moveRow, moveSection, nextSectionName, renameSection, sectionsOf } from "@/lib/axiom/menu";
 import { formatMoney } from "@/lib/utils";
-import type { Appointment, Billing, PaymentSetup, Service, Shop, ShopNotice } from "@/lib/axiom/types";
+import type { Appointment, Billing, PaymentSetup, PriceUnit, Service, Shop, ShopNotice } from "@/lib/axiom/types";
 
 export function SettingsPanel({
   shop,
@@ -101,9 +104,11 @@ type DraftService = {
   description: string;
   durationMin: string;
   price: string;
+  group: string;
+  priceUnit: PriceUnit;
 };
 
-function toDraft(service: Service): DraftService {
+function toDraft(service: Service, units: PriceUnit[]): DraftService {
   return {
     key: service.id,
     id: service.id,
@@ -111,6 +116,20 @@ function toDraft(service: Service): DraftService {
     description: service.description,
     durationMin: String(service.durationMin),
     price: (service.priceCents / 100).toFixed(2),
+    group: service.group,
+    priceUnit: units.includes(service.priceUnit) ? service.priceUnit : "flat",
+  };
+}
+
+function blankLine(group: string, priceUnit: PriceUnit): DraftService {
+  return {
+    key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: "",
+    description: "",
+    durationMin: "45",
+    price: "48.00",
+    group,
+    priceUnit,
   };
 }
 
@@ -125,19 +144,37 @@ export function ServicesPanel({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [rows, setRows] = useState<DraftService[]>(() => services.map(toDraft));
+  const [rows, setRows] = useState<DraftService[]>(() => {
+    const allowed = priceUnitsFor(shop.niche);
+    return services.map((service) => toDraft(service, allowed));
+  });
   const [removed, setRemoved] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The admin desk refreshes on a timer. Ignore a new array that still holds the same menu,
+  // or an in-progress edit is wiped before Save.
+  const serverMenu = services
+    .map((service) =>
+      [service.id, service.name, service.description, service.durationMin, service.priceCents, service.group, service.priceUnit].join("\u001f"),
+    )
+    .join("\u001e");
 
   useEffect(() => {
-    setRows(services.map(toDraft));
+    const allowed = priceUnitsFor(shop.niche);
+    setRows(services.map((service) => toDraft(service, allowed)));
     setRemoved([]);
-  }, [services]);
+    // serverMenu is the identity of this menu. `services` is read from the render that changed it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverMenu, shop.niche]);
+
+  const copy = nicheCopy(shop.niche);
+  const units = priceUnitsFor(shop.niche);
+  const sections = sectionsOf(rows);
+  const showUnits = units.length > 1;
 
   return (
     <form
-      className="grid max-w-3xl gap-3"
+      className="grid max-w-3xl gap-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (readonly) return;
@@ -153,6 +190,8 @@ export function ServicesPanel({
               description: row.description,
               durationMin: Number(row.durationMin),
               priceCents: Math.round(Number(row.price) * 100),
+              group: row.group,
+              priceUnit: row.priceUnit,
             })),
           },
         })
@@ -162,84 +201,188 @@ export function ServicesPanel({
       }}
     >
       <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Menu</p>
-        <p className="mt-1 font-display text-3xl">Services and prices</p>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.menuKicker}</p>
+        <p className="mt-1 font-display text-3xl">{copy.menuHeading}</p>
+        <p className="text-sm text-muted">
+          Rename a section, reorder the lines, and set the price, the length, and how that price is charged.
+          Lines that share a section name sit together on the customer page.
+        </p>
       </div>
-      {rows.map((row, index) => (
-        <div key={row.key} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-          <div className="grid gap-3 sm:grid-cols-[1fr_7rem_7rem]">
-            <div>
-              <Label htmlFor={`svc-name-${row.key}`}>Name</Label>
+      {sections.map((section, sectionIndex) => (
+        <section
+          key={`section-${section.start}`}
+          className="rounded-[24px] bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+        >
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <Label htmlFor={`section-${section.start}`}>Section</Label>
               <Input
-                id={`svc-name-${row.key}`}
-                value={row.name}
+                id={`section-${section.start}`}
+                value={section.label}
+                maxLength={40}
+                placeholder="No heading"
                 disabled={readonly}
-                onChange={(e) => updateRow(setRows, index, { name: e.target.value })}
+                onChange={(event) =>
+                  setRows((current) => renameSection(current, section.start, section.count, event.target.value))
+                }
               />
             </div>
-            <div>
-              <Label htmlFor={`svc-price-${row.key}`}>Price USD</Label>
-              <Input
-                id={`svc-price-${row.key}`}
-                inputMode="decimal"
-                value={row.price}
-                disabled={readonly}
-                onChange={(e) => updateRow(setRows, index, { price: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`svc-min-${row.key}`}>Minutes</Label>
-              <Input
-                id={`svc-min-${row.key}`}
-                inputMode="numeric"
-                value={row.durationMin}
-                disabled={readonly}
-                onChange={(e) => updateRow(setRows, index, { durationMin: e.target.value })}
-              />
-            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-11 px-0"
+              aria-label="Move section up"
+              disabled={readonly || sectionIndex === 0}
+              onClick={() => setRows((current) => moveSection(current, sectionIndex, -1))}
+            >
+              <ChevronUp className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-11 px-0"
+              aria-label="Move section down"
+              disabled={readonly || sectionIndex === sections.length - 1}
+              onClick={() => setRows((current) => moveSection(current, sectionIndex, 1))}
+            >
+              <ChevronDown className="size-4" />
+            </Button>
           </div>
-          <div className="mt-3">
-            <Label htmlFor={`svc-desc-${row.key}`}>Description</Label>
-            <Input
-              id={`svc-desc-${row.key}`}
-              value={row.description}
-              disabled={readonly}
-              onChange={(e) => updateRow(setRows, index, { description: e.target.value })}
-            />
+          <div className="mt-4 grid gap-3">
+            {rows.slice(section.start, section.start + section.count).map((row, offset) => {
+              const index = section.start + offset;
+              return (
+                <div key={row.key} className="rounded-2xl bg-surface-2 p-4">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_7rem_7rem]">
+                    <div>
+                      <Label htmlFor={`svc-name-${row.key}`}>Name</Label>
+                      <Input
+                        id={`svc-name-${row.key}`}
+                        value={row.name}
+                        disabled={readonly}
+                        onChange={(e) => updateRow(setRows, index, { name: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`svc-price-${row.key}`}>
+                        {row.priceUnit === "person" ? "USD / person" : row.priceUnit === "boat" ? "USD / boat" : "Price USD"}
+                      </Label>
+                      <Input
+                        id={`svc-price-${row.key}`}
+                        inputMode="decimal"
+                        value={row.price}
+                        disabled={readonly}
+                        onChange={(e) => updateRow(setRows, index, { price: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`svc-min-${row.key}`}>Minutes</Label>
+                      <Input
+                        id={`svc-min-${row.key}`}
+                        inputMode="numeric"
+                        value={row.durationMin}
+                        disabled={readonly}
+                        onChange={(e) => updateRow(setRows, index, { durationMin: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  {showUnits ? (
+                    <fieldset className="mt-3" disabled={readonly}>
+                      <legend className="text-sm text-muted">Charge</legend>
+                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Charge">
+                        {units.map((unit) => (
+                          <Button
+                            key={unit}
+                            type="button"
+                            size="md"
+                            variant={row.priceUnit === unit ? "primary" : "secondary"}
+                            aria-pressed={row.priceUnit === unit}
+                            onClick={() => updateRow(setRows, index, { priceUnit: unit })}
+                          >
+                            {PRICE_UNIT_LABEL[unit]}
+                          </Button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ) : null}
+                  <div className="mt-3">
+                    <Label htmlFor={`svc-desc-${row.key}`}>Description</Label>
+                    <Input
+                      id={`svc-desc-${row.key}`}
+                      value={row.description}
+                      disabled={readonly}
+                      onChange={(e) => updateRow(setRows, index, { description: e.target.value })}
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Move line up"
+                      disabled={readonly || index === 0}
+                      onClick={() => setRows((current) => moveRow(current, index, -1))}
+                    >
+                      <ChevronUp className="size-4" />
+                      Up
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Move line down"
+                      disabled={readonly || index === rows.length - 1}
+                      onClick={() => setRows((current) => moveRow(current, index, 1))}
+                    >
+                      <ChevronDown className="size-4" />
+                      Down
+                    </Button>
+                    <button
+                      type="button"
+                      className="ml-auto text-sm text-muted hover:text-fg"
+                      disabled={readonly || rows.length < 2}
+                      onClick={() => {
+                        if (row.id) setRemoved((ids) => [...ids, row.id as string]);
+                        setRows((current) => current.filter((_, i) => i !== index));
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <button
+          <Button
             type="button"
-            className="mt-3 text-sm text-muted hover:text-fg"
-            disabled={readonly || rows.length < 2}
-            onClick={() => {
-              if (row.id) setRemoved((ids) => [...ids, row.id as string]);
-              setRows((current) => current.filter((_, i) => i !== index));
-            }}
+            variant="ghost"
+            size="sm"
+            className="mt-3"
+            disabled={readonly}
+            onClick={() =>
+              setRows((current) => insertRow(current, section.start + section.count, blankLine(section.label, defaultPriceUnit(shop.niche))))
+            }
           >
-            Remove
-          </button>
-        </div>
+            Add line
+          </Button>
+        </section>
       ))}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="ghost"
-          disabled={readonly}
+          disabled={readonly || rows.length >= 24}
           onClick={() =>
-            setRows((current) => [
-              ...current,
-              {
-                key: `new-${current.length}-${Date.now()}`,
-                name: "",
-                description: "",
-                durationMin: "45",
-                price: "48.00",
-              },
-            ])
+            setRows((current) => {
+              const name = nextSectionName(sectionsOf(current).map((section) => section.label));
+              return [...current, blankLine(name, defaultPriceUnit(shop.niche))];
+            })
           }
         >
-          Add service
+          Add section
         </Button>
         <Button type="submit" disabled={readonly || busy}>
           {busy ? "Saving" : "Save menu"}

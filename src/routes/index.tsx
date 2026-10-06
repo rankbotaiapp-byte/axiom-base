@@ -1,37 +1,90 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppWindow, ArrowUpRight, Brush, Compass, Dumbbell, HardHat, Mic, Store, Truck, type LucideIcon } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { nicheIcon } from "@/components/niche-icon";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
+import { ensureFunnelSession, masterGate, recordFunnelHit } from "@/lib/axiom/master";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
-import type { Shop, ShopNiche } from "@/lib/axiom/types";
+import type { Shop } from "@/lib/axiom/types";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
 import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
 import { LoopVideo } from "@/components/cinematic-hero";
 import { Wordmark } from "@/components/shop-chrome";
+import { LeadTerritory } from "@/components/territory-offer";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>) => parseFunnelSearch(search),
+  component: Home,
+});
 
 function Home() {
+  const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [mine, setMine] = useState<Shop[] | null>(null);
   const [showcases, setShowcases] = useState<Shop[]>([]);
+  const [masterOpen, setMasterOpen] = useState(false);
+  const [leadName, setLeadName] = useState("");
 
   useEffect(() => {
     void listShowcaseShops().then(setShowcases).catch(() => setShowcases([]));
   }, []);
 
   useEffect(() => {
+    const leadSlug = search.b || search.lead_slug || "";
+    const utmSource = search.utm_source || "";
+    const county = search.county || "";
+    const stopToken = search.t || "";
+    if (search.pitch) return;
+    if (!leadSlug && !utmSource && !county) return;
+    const seen = `axiom.hit:${leadSlug}|${utmSource}|${county}|${stopToken}`;
+    if (sessionStorage.getItem(seen) === "1") return;
+    sessionStorage.setItem(seen, "1");
+    if (leadSlug) {
+      sessionStorage.setItem(
+        LEAD_STORAGE_KEY,
+        JSON.stringify({ leadSlug, utmSource, county }),
+      );
+    }
+    void ensureFunnelSession()
+      .then(() => recordFunnelHit({ data: { leadSlug, utmSource, county, stopToken } }))
+      .then((hit) => {
+        if (!hit.businessName) return;
+        setLeadName(hit.businessName);
+        sessionStorage.setItem(
+          LEAD_STORAGE_KEY,
+          JSON.stringify({
+            leadSlug: leadSlug || undefined,
+            tradeType: hit.tradeType,
+            county: hit.county,
+            utmSource,
+          }),
+        );
+      })
+      .catch(() => undefined);
+  }, [search.b, search.county, search.lead_slug, search.pitch, search.t, search.utm_source]);
+
+  useEffect(() => {
     if (!user) {
       setMine(null);
+      setMasterOpen(false);
       return;
     }
     void listMyShops()
       .then(setMine)
       .catch(() => setMine([]));
+    void masterGate()
+      .then((gate) => setMasterOpen(gate.open))
+      .catch(() => setMasterOpen(false));
   }, [user]);
 
   const owned = mine?.filter((s) => s.ownerUserId === user?.id) ?? [];
+  const leadSlug = search.b || search.lead_slug || "";
+
+  if (search.pitch && leadSlug) {
+    return <LeadTerritory leadSlug={leadSlug} layout="pitch" sessionId={search.session_id} />;
+  }
 
   return (
     <main className="min-h-dvh bg-bg">
@@ -48,6 +101,11 @@ function Home() {
                 </Link>
               </SignedOut>
               <SignedIn>
+                {masterOpen ? (
+                  <Link to="/master-admin" className="text-sm text-muted hover:text-fg">
+                    Master
+                  </Link>
+                ) : null}
                 <UserButton />
               </SignedIn>
             </>
@@ -60,6 +118,9 @@ function Home() {
         <h1 className="mt-4 max-w-3xl font-display text-[clamp(2.6rem,8vw,5.6rem)] leading-[0.95] tracking-[-0.03em]">
           Your shop, live before the second cup of coffee.
         </h1>
+        {leadName ? (
+          <p className="mt-6 text-sm text-copper">This link is saved for {leadName}.</p>
+        ) : null}
         <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
           Pick a niche. Axiom stands up a booking site, an operator console, and a staff station — then lights the edge of the screen when the first appointment lands.
         </p>
@@ -106,6 +167,8 @@ function Home() {
         </div>
       </section>
 
+      {leadSlug ? <LeadTerritory leadSlug={leadSlug} layout="page" sessionId={search.session_id} /> : null}
+
       <section id="live" className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants · New Era Apps</p>
@@ -141,17 +204,6 @@ function Home() {
       </section>
     </main>
   );
-}
-
-function nicheIcon(key: ShopNiche): LucideIcon {
-  if (key === "fitness") return Dumbbell;
-  if (key === "music") return Mic;
-  if (key === "contractor") return HardHat;
-  if (key === "tattoo") return Brush;
-  if (key === "field") return Truck;
-  if (key === "guide") return Compass;
-  if (key === "studio") return AppWindow;
-  return Store;
 }
 
 function NicheCard({

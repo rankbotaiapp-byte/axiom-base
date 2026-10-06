@@ -13,10 +13,10 @@ import {
   releaseCardCheckout,
   startCardCheckout,
 } from "@/lib/axiom/server";
-import { serviceGroups } from "@/lib/axiom/niches";
+import { formatOffer, formatPrice, nicheCopy, serviceGroups } from "@/lib/axiom/niches";
 import { buildSlots } from "@/lib/axiom/slots";
 import type { AccessMode, Employee } from "@/lib/axiom/types";
-import { formatMoney, initials } from "@/lib/utils";
+import { initials } from "@/lib/utils";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useShopPageData } from "./route";
 
@@ -49,6 +49,7 @@ function BookPage() {
   const [slot, setSlot] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [pay, setPay] = useState(false);
   const [booked, setBooked] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,7 @@ function BookPage() {
   );
   const employee =
     eligible.find((e) => e.id === employeeId) ?? eligible[0] ?? data.employees[0];
+  const copy = nicheCopy(data.shop.niche);
 
   useEffect(() => {
     if (employee && employee.id !== employeeId) setEmployeeId(employee.id);
@@ -137,6 +139,7 @@ function BookPage() {
         serviceId: service.id,
         customerName: name,
         customerPhone: phone,
+        customerEmail: email,
         startsAt: slot,
         paymentMode: payMode === "demo" ? "demo" : "request",
         paymentRef,
@@ -153,7 +156,11 @@ function BookPage() {
       },
       true,
     );
-    await navigate({ to: "/$shopSlug", params: { shopSlug: data.shop.slug } });
+    await navigate({
+      to: "/$shopSlug",
+      params: { shopSlug: data.shop.slug },
+      search: { requested: true },
+    });
   }
 
   async function onPaid(paymentRef: string) {
@@ -165,10 +172,10 @@ function BookPage() {
       <ShopNav shop={data.shop} mode={mode} />
       <div className="mx-auto grid max-w-5xl gap-8 px-5 pt-4 sm:px-10 lg:grid-cols-[1fr_22rem]">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Book</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bookLabel}</p>
           <h1 className="mt-2 font-display text-4xl">{data.shop.name}</h1>
 
-          <Section title="Service">
+          <Section title={copy.offerStep}>
             <div className="grid gap-2">
               {serviceGroups(data.services).map((group) => (
                 <div key={group.label || "menu"} className="grid gap-2">
@@ -185,7 +192,7 @@ function BookPage() {
                         setPay(false);
                       }}
                       title={s.name}
-                      meta={`${formatMoney(s.priceCents)} · ${s.durationMin}m`}
+                      meta={formatOffer(s)}
                     />
                   ))}
                 </div>
@@ -193,7 +200,7 @@ function BookPage() {
             </div>
           </Section>
 
-          <Section title="Specialist">
+          <Section title={copy.staffStep}>
             <div className="grid gap-2 sm:grid-cols-2">
               {eligible.map((e) => (
                 <StaffChoice
@@ -210,7 +217,7 @@ function BookPage() {
             </div>
           </Section>
 
-          <Section title="Time">
+          <Section title={copy.timeStep}>
             <div className="grid gap-5">
               {groups.map((g) => (
                 <div key={g.dateKey}>
@@ -251,7 +258,7 @@ function BookPage() {
               {service?.name} with {employee?.displayName}
             </p>
             <p className="mt-1 font-display text-3xl">
-              {service ? formatMoney(service.priceCents) : "—"}
+              {service ? formatPrice(service) : "—"}
             </p>
             {slot ? (
               <p className="mt-2 text-sm text-muted">
@@ -264,7 +271,7 @@ function BookPage() {
                 })}
               </p>
             ) : (
-              <p className="mt-2 text-sm text-faint">Pick a time</p>
+              <p className="mt-2 text-sm text-faint">{copy.timeHint}</p>
             )}
 
             {!pay ? (
@@ -291,6 +298,7 @@ function BookPage() {
                             serviceId: service.id,
                             customerName: name,
                             customerPhone: phone,
+                            customerEmail: email,
                             startsAt: slot,
                           },
                         }).then((result) => {
@@ -317,6 +325,16 @@ function BookPage() {
                     placeholder="Optional"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="ce">Email</Label>
+                  <Input
+                    id="ce"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
                 <p className="text-xs text-muted">
                   {payMode === "stripe"
                     ? "No account. Stripe opens next and pays this shop directly."
@@ -329,10 +347,10 @@ function BookPage() {
                   {busy
                     ? "Working"
                     : payMode === "stripe"
-                      ? `Pay ${service ? formatMoney(service.priceCents) : ""}`
+                      ? `Pay ${service ? formatPrice(service) : ""}`
                       : payMode === "demo"
                         ? "Continue to Gear Guardian"
-                        : "Request this time"}
+                        : copy.requestLabel}
                 </Button>
               </form>
             ) : service ? (

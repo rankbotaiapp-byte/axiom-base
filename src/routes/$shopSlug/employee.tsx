@@ -5,7 +5,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { effectiveDashboard } from "@/lib/axiom/dashboard";
 import { WEEKDAYS } from "@/lib/axiom/niches";
 import { addPortfolioItem, acceptBooking, getOperatorData, getPortfolio } from "@/lib/axiom/server";
-import type { AccessMode, Appointment, Employee, PortfolioItem, Shop } from "@/lib/axiom/types";
+import type { AccessMode, Appointment, Employee, PortfolioItem, Shop, ShopNotice } from "@/lib/axiom/types";
 import { EmployeeDashboardEditor } from "@/components/dashboard-controls";
 import { Wordmark } from "@/components/shop-chrome";
 import { Input, Label } from "@/components/ui/input";
@@ -25,6 +25,7 @@ function EmployeePage() {
   const [mode, setMode] = useState<AccessMode>("none");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [notices, setNotices] = useState<ShopNotice[]>([]);
   const [gallery, setGallery] = useState<PortfolioItem[]>([]);
   const [localConfig, setLocalConfig] = useState<Employee["dashboardConfig"] | null>(null);
 
@@ -39,6 +40,7 @@ function EmployeePage() {
         setShop(d.shop);
         setMode(d.mode);
         setAppointments(d.appointments);
+        setNotices(d.notices);
         const emp =
           d.employees.find((e) => e.id === d.employeeId) ??
           d.employees[0] ??
@@ -78,6 +80,9 @@ function EmployeePage() {
     stationEmployee && personalConfig
       ? effectiveDashboard(stationShop.dashboardOverride, stationShop.dashboardConfig, personalConfig)
       : null;
+  const stationNotices = notices.filter(
+    (notice) => notice.channel === "inbox" && employee && notice.employeeId === employee.id,
+  );
   const editorEmployee =
     stationEmployee && personalConfig
       ? { ...stationEmployee, dashboardConfig: personalConfig }
@@ -125,6 +130,24 @@ function EmployeePage() {
         <p className="mt-10 text-sm text-faint">This station is clear.</p>
       ) : null}
 
+      <section className="mt-10">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Station</p>
+        <h2 className="mt-2 font-display text-3xl">Inbox</h2>
+        <ul className="mt-4 grid gap-2">
+          {stationNotices.length === 0 ? (
+            <li className="text-sm text-faint">No notices for this station yet.</li>
+          ) : (
+            stationNotices.map((notice) => (
+              <li key={notice.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <p className="text-xs uppercase tracking-wider text-faint">{notice.kind.split("_").join(" ")}</p>
+                <p className="mt-1 font-medium">{notice.subject}</p>
+                <p className="mt-1 text-sm text-muted">{notice.body}</p>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+
       {layout?.sections.includes("schedule") ? (
       <section className="mt-10">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted">My book</p>
@@ -167,9 +190,9 @@ function EmployeePage() {
                           await acceptBooking({
                             data: { slug: shop.slug, appointmentId: a.id },
                           });
-                          setAppointments((prev) =>
-                            prev.map((x) => (x.id === a.id ? { ...x, status: "confirmed" } : x)),
-                          );
+                          const next = await getOperatorData({ data: shop.slug });
+                          setAppointments(next.appointments);
+                          setNotices(next.notices);
                         })();
                       }}
                     >

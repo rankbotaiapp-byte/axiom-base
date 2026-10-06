@@ -113,6 +113,9 @@ create index if not exists employees_token_idx on employees (invite_token);
 create index if not exists services_shop_idx on services (shop_id);
 create index if not exists appointments_shop_idx on appointments (shop_id, starts_at);
 create index if not exists appointments_emp_idx on appointments (employee_id, starts_at);
+create unique index if not exists appointments_no_double_booking
+  on appointments (employee_id, starts_at)
+  where status in ('pending', 'confirmed');
 create index if not exists portfolio_emp_idx on portfolio_items (employee_id);
 create index if not exists shop_events_shop_idx on shop_events (shop_id, created_at);
 create index if not exists shop_members_user_idx on shop_members (user_id);

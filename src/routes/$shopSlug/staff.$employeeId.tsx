@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { getPortfolio } from "@/lib/axiom/server";
-import { formatMoney, formatPhone, initials } from "@/lib/utils";
+import { formatOffer, nicheCopy } from "@/lib/axiom/niches";
+import { formatPhone, initials } from "@/lib/utils";
 import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { useShopPageData } from "./route";
 
@@ -18,6 +19,7 @@ function StaffPage() {
   const data = useShopPageData();
   const employee = data.employees.find((e) => e.id === employeeId);
   if (!employee) throw notFound();
+  const copy = nicheCopy(data.shop.niche);
   const offered = data.services.filter(
     (s) => employee.serviceIds.includes(s.id) || employee.serviceIds.length === 0,
   );
@@ -56,25 +58,26 @@ function StaffPage() {
               search={{ employee: employee.id }}
               className="mt-6 inline-flex h-12 items-center rounded-xl bg-fg px-5 text-sm font-medium text-bg"
             >
-              Book with {employee.displayName.split(" ")[0]}
+              {copy.bookLabel}
             </Link>
           </div>
         </div>
 
         <section className="mt-12">
-          <h2 className="font-display text-2xl">Services</h2>
+          <h2 className="font-display text-2xl">{copy.menuHeading}</h2>
           <ul className="mt-4 divide-y divide-line">
             {offered.map((s) => (
               <li key={s.id} className="flex justify-between py-3 text-sm">
                 <span>{s.name}</span>
-                <span className="tabular text-muted">{formatMoney(s.priceCents)}</span>
+                <span className="tabular text-muted">{formatOffer(s)}</span>
               </li>
             ))}
           </ul>
         </section>
 
+        {items.length > 0 ? (
         <section className="mt-12">
-          <h2 className="font-display text-2xl">Work</h2>
+          <h2 className="font-display text-2xl">{copy.gallery}</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {items.map((p) => (
               <figure key={p.id} className="overflow-hidden rounded-2xl">
@@ -86,6 +89,7 @@ function StaffPage() {
             ))}
           </div>
         </section>
+        ) : null}
       </div>
       <PoweredBy />
     </main>
