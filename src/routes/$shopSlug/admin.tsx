@@ -11,13 +11,15 @@ import {
   updateShopBrand,
   setShopIntro,
 } from "@/lib/axiom/server";
-import { RING_PRESETS } from "@/lib/axiom/niches";
+import { NICHES, RING_PRESETS, nicheCopy } from "@/lib/axiom/niches";
 import { resolveHeroMedia } from "@/lib/axiom/media";
 import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { getBearerToken } from "@/lib/auth/client";
 import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
+import { LAYOUT_BLOCKS, NEON_PRESETS, type LayoutBlock } from "@/lib/axiom/storefront";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
-import { nicheCopy } from "@/lib/axiom/niches";
+import { cityFromAddress } from "@/lib/axiom/avatar";
+import { AskEricAvatar } from "@/components/AskEricAvatar";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
@@ -262,6 +264,12 @@ function AdminShell({
           />
         ) : null}
       </div>
+      <AskEricAvatar
+        businessName={data.shop.name}
+        trade={NICHES[data.shop.niche].label}
+        city={cityFromAddress(data.shop.address)}
+        welcome={data.mode === "owner" && !data.platformDesk ? data.shop.slug : undefined}
+      />
     </main>
   );
 }
@@ -325,6 +333,8 @@ function Overview({
   const pending = data.appointments.filter((a) => a.status === "pending");
   const paid = data.appointments.filter((a) => a.paymentStatus === "paid");
   const revenue = paid.reduce((s, a) => s + a.paymentCents, 0);
+  const cancelled = data.appointments.filter((a) => a.status === "cancelled");
+  const leaked = cancelled.reduce((sum, item) => sum + item.paymentCents, 0);
   const chart = useMemo(() => {
     const days: { day: string; cents: number }[] = [];
     for (let i = 6; i >= 0; i -= 1) {
@@ -348,8 +358,9 @@ function Overview({
       <div>
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Captured" value={formatMoney(revenue)} />
-          <Stat label="Bookings" value={String(data.appointments.length)} />
-        </div>
+        <Stat label="Bookings" value={String(data.appointments.length)} />
+        <Stat label="Left on the table" value={formatMoney(leaked)} hint={`${cancelled.length} cancelled`} />
+      </div>
         <div className="mt-4 h-48 rounded-2xl bg-surface p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chart}>
@@ -392,7 +403,23 @@ function Overview({
         </ul>
       </div>
       <div>
-        <h3 className="text-sm font-medium text-muted">Incoming</h3>
+        <h3 className="text-sm font-medium text-muted">Audit reports</h3>
+        {data.notices.filter((notice) => notice.channel === "inbox" && notice.subject.startsWith("Audit")).length === 0 ? (
+          <p className="mt-3 text-sm text-faint">No photo audits yet.</p>
+        ) : (
+          <ul className="mt-3 grid gap-2">
+            {data.notices
+              .filter((notice) => notice.channel === "inbox" && notice.subject.startsWith("Audit"))
+              .slice(0, 6)
+              .map((notice) => (
+                <li key={notice.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                  <p className="font-medium">{notice.subject.replace(/^Audit · /, "")}</p>
+                  <p className="mt-1 whitespace-pre-line text-sm text-muted">{notice.body}</p>
+                </li>
+              ))}
+          </ul>
+        )}
+        <h3 className="mt-8 text-sm font-medium text-muted">Incoming</h3>
         {pending.length === 0 ? (
           <p className="mt-3 text-sm text-faint">Quiet board. New requests light the ring.</p>
         ) : (
@@ -409,24 +436,24 @@ function Overview({
                     size="sm"
                     onClick={() => {
                       void (async () => {
+                        const result = await acceptBooking({
+                          data: { slug: data.shop.slug, appointmentId: a.id },
+                        });
                         ring.announce(
                           {
                             id: `acc-${a.id}`,
                             type: "booking_confirmed",
                             appointmentId: a.id,
-                            payload: null,
+                            payload: result.detail,
                             createdAt: new Date().toISOString(),
                           },
                           true,
                         );
-                        await acceptBooking({
-                          data: { slug: data.shop.slug, appointmentId: a.id },
-                        });
                         onReload();
                       })();
                     }}
                   >
-                    Accept
+                    Confirm
                   </Button>
                 ) : null}
               </li>
@@ -438,11 +465,12 @@ function Overview({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="lift-card rounded-2xl bg-surface/80 p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] backdrop-blur-md">
       <p className="text-xs text-muted">{label}</p>
       <p className="mt-1 font-display text-3xl tabular">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-faint">{hint}</p> : null}
     </div>
   );
 }
@@ -465,6 +493,10 @@ function BrandPanel({
   const [preset, setPreset] = useState<IntroPreset>(shop.introPreset);
   const [speed, setSpeed] = useState(shop.introSpeed);
   const [intensity, setIntensity] = useState(shop.introIntensity);
+  const [glow, setGlow] = useState(shop.glowEnabled);
+  const [neon, setNeon] = useState(shop.neonAccent || shop.ringColor);
+  const [layout, setLayout] = useState<LayoutBlock[]>(shop.layout);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [replay, setReplay] = useState(0);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -507,6 +539,9 @@ function BrandPanel({
             primaryServiceId: primary || undefined,
             markHero: true,
             markService: extra?.markService ?? Boolean(primary),
+            neonAccent: neon,
+            glowEnabled: glow,
+            layout,
           },
         });
       }
@@ -596,7 +631,7 @@ function BrandPanel({
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <div className="overflow-hidden rounded-[28px]">
+      <div className="overflow-hidden rounded-[28px]" style={{ ["--neon" as string]: neon, ["--glow" as string]: glow ? "0.7" : "0" }}>
         <CinematicHero
           imageUrl={hero.imageUrl}
           videoUrl={previewVideo}
@@ -637,7 +672,7 @@ function BrandPanel({
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Axiom Hero Studio Editor</p>
           <p className="mt-1 font-display text-2xl">Camera entrance</p>
           <p className="mt-1 text-xs text-muted">
-            An uploaded film replaces this shop's default loop. Pan, speed, and the bottom fade stay on it.
+            An uploaded film replaces this shop's default loop. The entrance plays first. Scroll this page and the film, wash, and title move apart.
           </p>
           <div className="mt-4">
             <Label htmlFor="hero-video">Background video</Label>
@@ -717,6 +752,9 @@ function BrandPanel({
               }
               className="mt-2 w-full accent-accent"
             />
+            <p className="mt-2 text-xs text-muted">
+              Higher intensity widens the scroll split and gives a film a slight rate lift while the hero is on screen.
+            </p>
           </div>
           <Button
             type="button"
@@ -765,6 +803,115 @@ function BrandPanel({
               className="h-11 w-16 cursor-pointer rounded-xl bg-surface-2"
             />
           </div>
+        </div>
+        <div className="mt-6">
+          <Label htmlFor="neon-glow">Neon accent</Label>
+          <p className="mt-1 text-xs text-muted">Glass edges on the public page. The ring stays the perimeter.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {NEON_PRESETS.map((presetColor) => (
+              <button
+                key={presetColor.value}
+                type="button"
+                aria-label={presetColor.name}
+                disabled={readonly}
+                onClick={() => {
+                  setNeon(presetColor.value);
+                  void updateShopBrand({
+                    data: { slug: shop.slug, neonAccent: presetColor.value, glowEnabled: glow, layout },
+                  }).then(() => onReload());
+                }}
+                className="size-10 rounded-full"
+                style={{
+                  background: presetColor.value,
+                  boxShadow:
+                    neon.toUpperCase() === presetColor.value
+                      ? `0 0 0 2px var(--color-bg), 0 0 0 4px ${presetColor.value}`
+                      : "0 0 0 1px rgba(243,241,235,0.16)",
+                }}
+              />
+            ))}
+            <button
+              id="neon-glow"
+              type="button"
+              disabled={readonly}
+              aria-pressed={glow}
+              onClick={() => {
+                const next = !glow;
+                setGlow(next);
+                void updateShopBrand({
+                  data: { slug: shop.slug, neonAccent: neon, glowEnabled: next, layout },
+                }).then(() => onReload());
+              }}
+              className="glass-btn h-11 rounded-full px-4 text-sm"
+            >
+              {glow ? "Glow on" : "Glow off"}
+            </button>
+          </div>
+        </div>
+        <div className="mt-6">
+          <Label>Page order</Label>
+          <ul className="mt-3 grid gap-2">
+            {layout.map((block, index) => (
+              <li
+                key={block}
+                draggable={!readonly}
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex == null || dragIndex === index) return;
+                  const next = [...layout];
+                  const [item] = next.splice(dragIndex, 1);
+                  if (!item) return;
+                  next.splice(index, 0, item);
+                  setDragIndex(null);
+                  setLayout(next);
+                  void updateShopBrand({
+                    data: { slug: shop.slug, neonAccent: neon, glowEnabled: glow, layout: next },
+                  }).then(() => onReload());
+                }}
+                className="flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3 py-2"
+              >
+                <span className="text-sm capitalize">{block}</span>
+                <span className="flex gap-1">
+                  <button
+                    type="button"
+                    disabled={readonly || index === 0}
+                    className="h-9 rounded-lg px-2 text-xs text-muted disabled:opacity-40"
+                    onClick={() => {
+                      const next = [...layout];
+                      const [item] = next.splice(index, 1);
+                      if (!item) return;
+                      next.splice(index - 1, 0, item);
+                      setLayout(next);
+                      void updateShopBrand({
+                        data: { slug: shop.slug, neonAccent: neon, glowEnabled: glow, layout: next },
+                      }).then(() => onReload());
+                    }}
+                  >
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    disabled={readonly || index === layout.length - 1}
+                    className="h-9 rounded-lg px-2 text-xs text-muted disabled:opacity-40"
+                    onClick={() => {
+                      const next = [...layout];
+                      const [item] = next.splice(index, 1);
+                      if (!item) return;
+                      next.splice(index + 1, 0, item);
+                      setLayout(next);
+                      void updateShopBrand({
+                        data: { slug: shop.slug, neonAccent: neon, glowEnabled: glow, layout: next },
+                      }).then(() => onReload());
+                    }}
+                  >
+                    Down
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-faint">The film stays first. {LAYOUT_BLOCKS.join(", ")} follow it.</p>
         </div>
         <div className="mt-6">
           <Label htmlFor="primary">Primary service</Label>

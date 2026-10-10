@@ -42,6 +42,35 @@ export function introDurationSec(speed: number) {
   return 3 + ((100 - s) / 100) * 9;
 }
 
+/**
+ * Pixel travel at the end of a hero scroll.
+ * The film lags (slowest), the tone wash and light move farther the same way,
+ * and the title travels the opposite way so it leaves faster.
+ * Intensity 0 keeps every layer still. Speed, already stored per shop, only leans on that distance.
+ */
+export function parallaxTravel(intensity: number, speed = 40) {
+  const depth = Math.min(100, Math.max(0, intensity)) / 100;
+  if (depth === 0) return { background: 0, wash: 0, light: 0, foreground: 0 };
+  const pace = 0.85 + 0.3 * (Math.min(100, Math.max(1, speed)) / 100);
+  return {
+    background: Math.round((16 + 48 * depth) * pace),
+    wash: Math.round((32 + 80 * depth) * pace),
+    light: Math.round((48 + 100 * depth) * pace),
+    foreground: -Math.round((24 + 70 * depth) * pace),
+  };
+}
+
+/**
+ * Loop rate while the hero crosses the viewport. 1 at rest and once the hero
+ * has left, so a film off-screen is not still being scrubbed.
+ */
+export function heroPlaybackRate(progress: number, intensity: number) {
+  const p = Math.min(1, Math.max(0, progress));
+  if (p <= 0.04 || p >= 0.96) return 1;
+  const depth = Math.min(100, Math.max(0, intensity)) / 100;
+  return 1 + 0.18 * depth * Math.sin(p * Math.PI);
+}
+
 export function cameraMotion(preset: IntroPreset, intensity: number) {
   const i = Math.min(100, Math.max(0, intensity)) / 100;
   const zoom = 1 + 0.18 * i;

@@ -6,6 +6,7 @@ import {
   updateNotifyChannels,
   updateShopProfile,
 } from "@/lib/axiom/server";
+import { FeedbackToggles } from "@/components/feedback-toggles";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { defaultPriceUnit, nicheCopy, PRICE_UNIT_LABEL, priceUnitsFor } from "@/lib/axiom/niches";
@@ -72,6 +73,13 @@ export function SettingsPanel({
       <Button type="submit" className="mt-5" disabled={readonly || busy}>
         {busy ? "Saving" : "Save business"}
       </Button>
+      <div className="mt-8 border-t border-line pt-6">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Alerts</p>
+        <p className="mt-1 font-display text-2xl">This desk</p>
+        <div className="mt-4">
+          <FeedbackToggles scope="shop" />
+        </div>
+      </div>
     </form>
   );
 }

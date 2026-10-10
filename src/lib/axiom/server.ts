@@ -2,10 +2,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
+import { nicheForLead } from "./directory";
 import { DEFAULT_HOURS, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
 import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
+import {
+  parseGlowEnabled,
+  parseLayout,
+  parseNeonAccent,
+  parseThemeProfile,
+  parseWeek,
+  type LayoutBlock,
+  type WeekKey,
+} from "./storefront";
 import {
   isShopNiche,
   type AccessMode,
@@ -50,6 +60,10 @@ type ShopRow = {
   notify_phone?: string;
   dashboard_override?: unknown;
   dashboard_config?: unknown;
+  theme_profile?: string;
+  neon_accent?: string;
+  glow_enabled?: boolean | number | string | null;
+  layout_json?: string;
   created_at: string;
 };
 
@@ -89,11 +103,12 @@ function finiteNumber(value: unknown, fallback: number) {
 }
 
 function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
+  const niche = isShopNiche(r.niche) ? r.niche : "location";
   return {
     id: r.id,
     slug: r.slug,
     name: r.name,
-    niche: isShopNiche(r.niche) ? r.niche : "location",
+    niche,
     tagline: r.tagline,
     description: r.description,
     ringColor: r.ring_color || "#2EE6D6",
@@ -114,6 +129,10 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     worksAlone: isOn(r.works_alone),
     dashboardOverride: isOn(r.dashboard_override),
     dashboardConfig: parseDashboardConfig(r.dashboard_config),
+    themeProfile: parseThemeProfile(r.theme_profile, niche),
+    neonAccent: parseNeonAccent(r.neon_accent),
+    glowEnabled: parseGlowEnabled(r.glow_enabled),
+    layout: parseLayout(r.layout_json),
     createdAt: String(r.created_at),
   };
 }
@@ -180,16 +199,17 @@ async function loadEmployees(shopId: string): Promise<Employee[]> {
     avatar_url: string;
     invite_status: "pending" | "claimed";
     dashboard_config?: unknown;
+    availability_json?: string;
   };
   let rows: EmpRow[];
   try {
     rows = await sql<EmpRow>`
-      select id, shop_id, display_name, title, bio, phone, avatar_url, invite_status, dashboard_config
+      select id, shop_id, display_name, title, bio, phone, avatar_url, invite_status, dashboard_config, availability_json
       from employees where shop_id = ${shopId} order by created_at asc
     `;
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (!/dashboard_config/i.test(message)) throw err;
+    if (!/dashboard_config|availability_json/i.test(message)) throw err;
     rows = await sql<EmpRow>`
       select id, shop_id, display_name, title, bio, phone, avatar_url, invite_status
       from employees where shop_id = ${shopId} order by created_at asc
@@ -207,6 +227,7 @@ async function loadEmployees(shopId: string): Promise<Employee[]> {
     inviteStatus: r.invite_status,
     serviceIds: services.get(r.id) ?? [],
     dashboardConfig: parseDashboardConfig(r.dashboard_config),
+    availability: parseWeek(r.availability_json),
   }));
 }
 
@@ -341,28 +362,35 @@ export const listShopEvents = createServerFn({ method: "GET" })
           id: string;
           type: ShopEvent["type"];
           appointment_id: string | null;
+          employee_id: string | null;
           payload: string | null;
           created_at: string;
         }>`
-          select id, type, appointment_id, payload, created_at from shop_events
-          where shop_id = ${row.id} and created_at > ${data.after}
-          order by created_at asc limit 40
+          select e.id, e.type, e.appointment_id, a.employee_id, e.payload, e.created_at
+          from shop_events e
+          left join appointments a on a.id = e.appointment_id
+          where e.shop_id = ${row.id} and e.created_at > ${data.after}
+          order by e.created_at asc limit 40
         `
       : await sql<{
           id: string;
           type: ShopEvent["type"];
           appointment_id: string | null;
+          employee_id: string | null;
           payload: string | null;
           created_at: string;
         }>`
-          select id, type, appointment_id, payload, created_at from shop_events
-          where shop_id = ${row.id}
-          order by created_at desc limit 12
+          select e.id, e.type, e.appointment_id, a.employee_id, e.payload, e.created_at
+          from shop_events e
+          left join appointments a on a.id = e.appointment_id
+          where e.shop_id = ${row.id}
+          order by e.created_at desc limit 12
         `;
     return rows.map((r) => ({
       id: r.id,
       type: r.type,
       appointmentId: r.appointment_id,
+      employeeId: r.employee_id,
       payload: r.payload,
       createdAt: String(r.created_at),
     }));
@@ -582,22 +610,71 @@ export const listMyShops = createServerFn({ method: "GET" })
     return rows.map((row) => mapShop(row, false, row.owner_user_id === context.userId));
   });
 
-export const createShopFromNiche = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((d: { niche: ShopNiche; name: string; solo?: boolean; ownerName?: string; leadSlug?: string }) => d)
-  .handler(async ({ data, context }) => {
-    const template = NICHES[data.niche];
-    if (!template) throw new Error("Unknown niche");
-    const sql = await getSql();
-    const existing = await sql<{ slug: string }>`
-      select s.slug from shops s
-      join shop_members m on m.shop_id = s.id
-      where m.user_id = ${context.userId} and m.role = 'owner'
-      order by s.created_at desc limit 1
-    `;
-    if (existing[0]) return { slug: existing[0].slug, created: false };
+type ShopSql = Awaited<ReturnType<typeof getSql>>;
 
-    const name = data.name.trim() || template.defaultName;
+async function claimPreloadedLead(sql: ShopSql, leadSlug: string, shopId: string) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(leadSlug)) return;
+  const claimed = await sql<{ id: string; county: string }>`
+    update preloaded_leads
+    set claimed = true, shop_id = ${shopId}
+    where lead_slug = ${leadSlug} and claimed = false
+    returning id, county
+  `;
+  if (!claimed[0]) return;
+  await sql`
+    insert into funnel_visits (id, lead_slug, utm_source, county, landed_path, shop_id, verified)
+    values (${newId("fun")}, ${leadSlug}, ${"onboarding"}, ${claimed[0].county}, ${"/onboard"}, ${shopId}, ${true})
+  `;
+  try {
+    await sql`
+      update outreach_sequences
+      set status = 'stopped', stopped_reason = 'claimed'
+      where lead_slug = ${leadSlug} and status = 'active'
+    `;
+    await sql`
+      update outreach_touches
+      set status = 'skipped'
+      where status = 'scheduled'
+        and sequence_id in (
+          select id from outreach_sequences
+          where lead_slug = ${leadSlug} and status = 'stopped' and stopped_reason = 'claimed'
+        )
+    `;
+  } catch {
+    // A shop can be claimed before nurture tables exist.
+  }
+  await sql`
+    insert into shop_events (id, shop_id, type, payload)
+    values (${newId("evt")}, ${shopId}, 'lead_claimed', ${leadSlug})
+  `;
+}
+
+/** Copies a niche template into a shop owned by `userId`. One shop per account. */
+export async function provisionShopFromNiche(input: {
+  userId: string;
+  niche: ShopNiche;
+  name: string;
+  solo?: boolean;
+  ownerName?: string;
+  leadSlug?: string;
+}): Promise<{ slug: string; shopId: string; created: boolean }> {
+  const template = NICHES[input.niche];
+  if (!template) throw new Error("Unknown niche");
+  if (!input.userId) throw new Error("Sign in before opening this shop");
+  const sql = await getSql();
+  const existing = await sql<{ id: string; slug: string }>`
+    select s.id, s.slug from shops s
+    join shop_members m on m.shop_id = s.id
+    where m.user_id = ${input.userId} and m.role = 'owner'
+    order by s.created_at desc limit 1
+  `;
+  const leadSlug = (input.leadSlug ?? "").trim().toLowerCase();
+  if (existing[0]) {
+    await claimPreloadedLead(sql, leadSlug, existing[0].id);
+    return { slug: existing[0].slug, shopId: existing[0].id, created: false };
+  }
+
+  const name = input.name.trim() || template.defaultName;
     let slug = slugify(name);
     const taken = await sql<{ slug: string }>`select slug from shops where slug = ${slug}`;
     if (taken[0]) slug = `${slug}-${crypto.randomUUID().slice(0, 4)}`;
@@ -608,11 +685,11 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
       id: newId("svc"),
       sort: i,
     }));
-    const solo = Boolean(data.solo);
+    const solo = Boolean(input.solo);
     const roster = solo
       ? [
           {
-            displayName: (data.ownerName ?? "").trim() || "You",
+            displayName: (input.ownerName ?? "").trim() || "You",
             title: template.soloTitle || template.employees[0]?.title || "Owner",
             bio: "Clients book you. Confirm the time and the day is set.",
             avatarUrl: "",
@@ -639,7 +716,7 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
         ${template.description}, ${template.ringColor}, ${template.heroImageUrl},
         ${template.heroVideoUrl}, ${template.heroBlendPercent}, ${primary?.id ?? null},
         ${template.introPreset ?? "kenburns"}, ${template.introSpeed ?? 40}, ${template.introIntensity ?? 45},
-        ${context.userId}, false, 'tour', ${JSON.stringify({
+        ${input.userId}, false, 'tour', ${JSON.stringify({
           hero: false,
           service: false,
           employee: solo,
@@ -649,7 +726,7 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
     `;
     await sql`
       insert into shop_members (shop_id, user_id, role)
-      values (${shopId}, ${context.userId}, 'owner')
+      values (${shopId}, ${input.userId}, 'owner')
     `;
     await sql`
       insert into shop_billing (shop_id, plan, status, price_cents, gear_guardian_bps)
@@ -687,45 +764,68 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
         values (${newId("pf")}, ${shopId}, ${emp.id}, ${p.imageUrl}, ${p.caption})
       `;
     }
-    const leadSlug = (data.leadSlug ?? "").trim().toLowerCase();
-    if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(leadSlug)) {
-      const claimed = await sql<{ id: string; county: string }>`
-        update preloaded_leads
-        set claimed = true, shop_id = ${shopId}
-        where lead_slug = ${leadSlug} and claimed = false
-        returning id, county
-      `;
-      if (claimed[0]) {
-        await sql`
-          insert into funnel_visits (id, lead_slug, utm_source, county, landed_path, shop_id, verified)
-          values (${newId("fun")}, ${leadSlug}, ${"onboarding"}, ${claimed[0].county}, ${"/onboard"}, ${shopId}, ${true})
-        `;
-        try {
-          await sql`
-            update outreach_sequences
-            set status = 'stopped', stopped_reason = 'claimed'
-            where lead_slug = ${leadSlug} and status = 'active'
-          `;
-          await sql`
-            update outreach_touches
-            set status = 'skipped'
-            where status = 'scheduled'
-              and sequence_id in (
-                select id from outreach_sequences
-                where lead_slug = ${leadSlug} and status = 'stopped' and stopped_reason = 'claimed'
-              )
-          `;
-        } catch {
-          // A shop can be claimed before nurture tables exist.
-        }
-        await sql`
-          insert into shop_events (id, shop_id, type, payload)
-          values (${newId("evt")}, ${shopId}, 'lead_claimed', ${leadSlug})
-        `;
-      }
-    }
-    return { slug, created: true };
+    await claimPreloadedLead(sql, leadSlug, shopId);
+    return { slug, shopId, created: true };
+}
+
+export const createShopFromNiche = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { niche: ShopNiche; name: string; solo?: boolean; ownerName?: string; leadSlug?: string }) => d)
+  .handler(async ({ data, context }) => {
+    return provisionShopFromNiche({
+      userId: context.userId,
+      niche: data.niche,
+      name: data.name,
+      solo: data.solo,
+      ownerName: data.ownerName,
+      leadSlug: data.leadSlug,
+    });
   });
+
+/** After a verified territory payment, build that lead's shop for the paying account. */
+export async function provisionTerritoryForPayer(input: {
+  leadSlug: string;
+  userId: string;
+}): Promise<{ slug: string; shopId: string; created: boolean } | null> {
+  if (!input.userId || input.userId === "dev-user") return null;
+  const sql = await getSql();
+  const leads = await sql<{
+    business_name: string;
+    trade_type: string;
+    trade_label: string;
+    shop_id: string | null;
+  }>`
+    select business_name, trade_type, trade_label, shop_id
+    from preloaded_leads
+    where lead_slug = ${input.leadSlug}
+    limit 1
+  `;
+  const lead = leads[0];
+  if (!lead) return null;
+  if (lead.shop_id) {
+    const shops = await sql<{ id: string; slug: string; owner_user_id: string | null }>`
+      select id, slug, owner_user_id from shops where id = ${lead.shop_id} limit 1
+    `;
+    const shop = shops[0];
+    if (!shop) return null;
+    if (shop.owner_user_id && shop.owner_user_id !== input.userId) return null;
+    if (!shop.owner_user_id) {
+      await sql`update shops set owner_user_id = ${input.userId} where id = ${shop.id}`;
+      await sql`
+        insert into shop_members (shop_id, user_id, role)
+        values (${shop.id}, ${input.userId}, 'owner')
+        on conflict (shop_id, user_id) do nothing
+      `;
+    }
+    return { slug: shop.slug, shopId: shop.id, created: false };
+  }
+  return provisionShopFromNiche({
+    userId: input.userId,
+    niche: nicheForLead(lead.trade_type, lead.trade_label ?? ""),
+    name: lead.business_name,
+    leadSlug: input.leadSlug,
+  });
+}
 
 export const updateShopBrand = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -744,6 +844,9 @@ export const updateShopBrand = createServerFn({ method: "POST" })
       markHero?: boolean;
       markService?: boolean;
       onboardingStep?: OnboardingStep;
+      neonAccent?: string;
+      glowEnabled?: boolean;
+      layout?: LayoutBlock[];
     }) => d,
   )
   .handler(async ({ data, context }) => {
@@ -770,7 +873,47 @@ export const updateShopBrand = createServerFn({ method: "POST" })
         onboarding_step = ${step}
       where id = ${row.id}
     `;
+    try {
+      await sql`
+        update shops set
+          neon_accent = ${data.neonAccent ?? row.neon_accent ?? ""},
+          glow_enabled = ${data.glowEnabled ?? row.glow_enabled ?? true},
+          layout_json = ${JSON.stringify(data.layout ?? parseLayout(row.layout_json))}
+        where id = ${row.id}
+      `;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (!/neon_accent|glow_enabled|layout_json/i.test(message)) throw err;
+    }
     return { ok: true as const, onboarding: flags };
+  });
+
+const WEEK_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+
+export const setEmployeeAvailability = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; employeeId: string; day: string; on: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    if (!WEEK_KEYS.includes(data.day as WeekKey)) throw new Error("Unknown day");
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    const sql = await getSql();
+    const staff = await sql<{ id: string; claimed_user_id: string | null; availability_json: string }>`
+      select id, claimed_user_id, availability_json from employees
+      where id = ${data.employeeId} and shop_id = ${row.id}
+      limit 1
+    `;
+    const employee = staff[0];
+    if (!employee) throw new Error("Staff profile not found");
+    const owner = row.owner_user_id === context.userId;
+    if (!owner && employee.claimed_user_id !== context.userId) throw new Error("Forbidden");
+    const week = parseWeek(employee.availability_json);
+    week[data.day as WeekKey] = Boolean(data.on);
+    await sql`
+      update employees set availability_json = ${JSON.stringify(week)}
+      where id = ${employee.id} and shop_id = ${row.id}
+    `;
+    return { ok: true as const, availability: week };
   });
 
 export const setShopRingColor = createServerFn({ method: "POST" })
@@ -1041,6 +1184,35 @@ async function loadNotices(shopId: string, employeeId?: string | null): Promise<
   }
 }
 
+async function deliverPendingAudits(shopId: string) {
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ id: string; customer_name: string; summary: string }>`
+      select a.id, a.customer_name, a.summary
+      from lead_audits a
+      left join preloaded_leads l on l.lead_slug = a.lead_slug
+      where a.delivered = false
+        and (a.shop_id = ${shopId} or l.shop_id = ${shopId})
+      order by a.created_at asc
+      limit 20
+    `;
+    if (rows.length === 0) return;
+    const { notifyShop } = await import("./notify.server");
+    for (const row of rows) {
+      await notifyShop(shopId, {
+        kind: "inquiry",
+        subject: `Audit · ${row.customer_name}`,
+        body: row.summary,
+      });
+      await sql`update lead_audits set delivered = true, shop_id = ${shopId} where id = ${row.id}`;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/lead_audits/i.test(message)) return;
+    console.error("audit delivery failed", shopId, message);
+  }
+}
+
 export const setShopDashboard = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((d: { slug: string; override: boolean; config: DashboardConfig }) => d)
@@ -1195,6 +1367,7 @@ export const getOperatorData = createServerFn({ method: "GET" })
       connected: Boolean(stripeAccountId),
       chargesEnabled,
     };
+    if (mode === "owner") await deliverPendingAudits(shop.id);
     const notices =
       mode === "owner"
         ? await loadNotices(shop.id)
@@ -1260,9 +1433,17 @@ export const acceptBooking = createServerFn({ method: "POST" })
       returning id
     `;
     if (!updated[0]) throw new Error("Booking not found");
+    const when = new Date(String(booking.starts_at)).toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const detail = `${booking.service_name} · ${when}`;
     await sql`
-      insert into shop_events (id, shop_id, type, appointment_id)
-      values (${newId("evt")}, ${row.id}, 'booking_confirmed', ${data.appointmentId})
+      insert into shop_events (id, shop_id, type, appointment_id, payload)
+      values (${newId("evt")}, ${row.id}, 'booking_confirmed', ${data.appointmentId}, ${detail})
     `;
     const { notifyBookingParties } = await import("./notify.server");
     await notifyBookingParties({
@@ -1277,7 +1458,71 @@ export const acceptBooking = createServerFn({ method: "POST" })
       startsAt: String(booking.starts_at),
       phase: "confirmed",
     });
-    return { ok: true as const };
+    return { ok: true as const, detail };
+  });
+
+export const confirmLatestAudit = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((slug: string) => slug)
+  .handler(async ({ data: slug, context }) => {
+    const row = await loadShopRow(slug);
+    if (!row) throw new Error("Shop not found");
+    const sql = await getSql();
+    if (row.is_showcase) {
+      await assertCanModifyShop(row, context.userId);
+    } else {
+      const mem = await membership(row.id, context.userId);
+      const isOwner =
+        row.owner_user_id === context.userId || mem?.role === "owner" || (await allowOperator(row, context.userId));
+      const isEmployee = mem?.role === "employee";
+      if (!isOwner && !isEmployee) throw new Error("Forbidden");
+    }
+    const open = await sql<{ id: string; customer_name: string; lane: string }>`
+      select a.id, a.customer_name, a.lane
+      from lead_audits a
+      where a.shop_id = ${row.id}
+        and not exists (
+          select 1 from shop_events e
+          where e.shop_id = a.shop_id
+            and e.type = 'audit_confirmed'
+            and e.payload like a.id || '|%'
+        )
+      order by a.created_at desc
+      limit 1
+    `;
+    const audit = open[0];
+    if (!audit) throw new Error("No open estimate");
+    const detail = `${audit.customer_name} · ${audit.lane}`;
+    try {
+      await sql`update lead_audits set status = 'confirmed' where id = ${audit.id}`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (!/status/i.test(message)) throw error;
+    }
+    await sql`
+      insert into shop_events (id, shop_id, type, payload)
+      values (${newId("evt")}, ${row.id}, 'audit_confirmed', ${`${audit.id}|${detail}`})
+    `;
+    return { ok: true as const, id: audit.id, detail };
+  });
+
+export const getAuditStatus = createServerFn({ method: "GET" })
+  .validator((id: string) => {
+    const value = String(id ?? "");
+    if (!/^aud_[a-z0-9]+$/i.test(value)) throw new Error("Unknown audit");
+    return value;
+  })
+  .handler(async ({ data }) => {
+    const sql = await getSql();
+    const rows = await sql<{ payload: string }>`
+      select payload from shop_events
+      where type = 'audit_confirmed' and payload like ${`${data}|%`}
+      order by created_at desc
+      limit 1
+    `;
+    const payload = rows[0]?.payload ?? "";
+    if (!payload.startsWith(`${data}|`)) return { status: "open" as const, detail: "" };
+    return { status: "confirmed" as const, detail: payload.slice(data.length + 1) };
   });
 
 export const addPortfolioItem = createServerFn({ method: "POST" })
@@ -1470,6 +1715,99 @@ export const submitInquiry = createServerFn({ method: "POST" })
       body: `${name} wrote: ${message}${phone ? ` Phone: ${phone}` : ""}`,
     });
     return { ok: true as const };
+  });
+
+export const submitAudit = createServerFn({ method: "POST" })
+  .validator(
+    (d: {
+      shopSlug?: string;
+      leadSlug?: string;
+      name?: string;
+      channel?: string;
+      contact?: string;
+      lane?: string;
+      lowCents?: number;
+      highCents?: number;
+      impact?: number;
+    }) => {
+      const name = String(d?.name ?? "").trim();
+      const channel = d?.channel === "email" ? "email" : d?.channel === "text" ? "text" : "";
+      const contact = String(d?.contact ?? "").trim().slice(0, 120);
+      const lane = String(d?.lane ?? "").trim().slice(0, 40);
+      const lowCents = Math.round(Number(d?.lowCents));
+      const highCents = Math.round(Number(d?.highCents));
+      const impact = Math.round(Number(d?.impact));
+      const shopSlug = String(d?.shopSlug ?? "").trim().toLowerCase();
+      const leadSlug = String(d?.leadSlug ?? "").trim().toLowerCase();
+      if (name.length < 2 || name.length > 80) throw new Error("Name required");
+      if (!channel) throw new Error("Choose text or email");
+      if (!lane) throw new Error("Pick a bracket first");
+      if (!Number.isFinite(lowCents) || !Number.isFinite(highCents) || lowCents < 0 || highCents < lowCents) {
+        throw new Error("This menu has no priced lines yet");
+      }
+      if (!Number.isFinite(impact) || impact < 1 || impact > 99) throw new Error("Run the audit again");
+      if (channel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) throw new Error("Email required");
+      if (channel === "text" && contact.replace(/\D/g, "").length < 7) throw new Error("Phone required");
+      if (shopSlug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(shopSlug)) throw new Error("Shop not found");
+      if (leadSlug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(leadSlug)) throw new Error("Unknown business");
+      if (!shopSlug && !leadSlug) throw new Error("Unknown business");
+      return { shopSlug, leadSlug, name, channel, contact, lane, lowCents, highCents, impact };
+    },
+  )
+  .handler(async ({ data }) => {
+    const { allowInquiry, notifyShop } = await import("./notify.server");
+    const { formatAuditReport } = await import("./storefront");
+    const sql = await getSql();
+    let shopId = "";
+    if (data.shopSlug) {
+      const shop = await loadShopRow(data.shopSlug);
+      if (!shop) throw new Error("Shop not found");
+      shopId = shop.id;
+    } else if (data.leadSlug) {
+      try {
+        const linked = await sql<{ shop_id: string | null }>`
+          select shop_id from preloaded_leads where lead_slug = ${data.leadSlug} limit 1
+        `;
+        shopId = linked[0]?.shop_id ?? "";
+      } catch {
+        shopId = "";
+      }
+    }
+    const key = shopId || `lead:${data.leadSlug}`;
+    if (!allowInquiry(key)) throw new Error("Too many reports. Call the shop instead.");
+    const channel = data.channel === "email" ? "email" : "text";
+    const summary = formatAuditReport({
+      name: data.name,
+      channel,
+      contact: data.contact,
+      lane: data.lane,
+      lowCents: data.lowCents,
+      highCents: data.highCents,
+      impact: data.impact,
+    });
+    const id = newId("aud");
+    const delivered = Boolean(shopId);
+    await sql`
+      insert into lead_audits (
+        id, lead_slug, shop_id, customer_name, channel, contact, lane,
+        low_cents, high_cents, impact, summary, delivered
+      ) values (
+        ${id}, ${data.leadSlug}, ${shopId || null}, ${data.name}, ${data.channel}, ${data.contact},
+        ${data.lane}, ${data.lowCents}, ${data.highCents}, ${data.impact}, ${summary}, ${delivered}
+      )
+    `;
+    if (shopId) {
+      await notifyShop(shopId, {
+        kind: "inquiry",
+        subject: `Audit · ${data.name}`,
+        body: summary,
+      });
+      await sql`
+        insert into shop_events (id, shop_id, type, payload)
+        values (${newId("evt")}, ${shopId}, 'audit_request', ${`${data.name} · ${data.lane}`})
+      `;
+    }
+    return { ok: true as const, delivered, id };
   });
 
 export const startCardCheckout = createServerFn({ method: "POST" })

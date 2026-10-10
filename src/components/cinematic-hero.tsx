@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useScroll } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   cameraMotion,
+  heroPlaybackRate,
   introDurationSec,
   INTRO_FX_EVENT,
+  parallaxTravel,
   readIntroFx,
   writeIntroFx,
   type IntroPreset,
@@ -46,6 +48,21 @@ export function CinematicHero({
   const [imageSrc, setImageSrc] = useState(imageUrl);
   const [videoSrc, setVideoSrc] = useState(videoUrl ?? "");
   const videoRef = useRef<HTMLVideoElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  /**
+   * Progress is 0 while the hero's top is at the top of the viewport and 1
+   * when its bottom reaches that edge. Touch scrolling updates the same value.
+   * The vh unit keeps this on the scroll listener. A named offset can be
+   * promoted to a view timeline that stops reporting once it has been measured.
+   */
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0vh", "end 0vh"],
+  });
+  const backgroundY = useMotionValue(0);
+  const washY = useMotionValue(0);
+  const lightY = useMotionValue(0);
+  const foregroundY = useMotionValue(0);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -93,72 +110,119 @@ export function CinematicHero({
   const motionProps = cameraMotion(preset, intensity);
   const duration = introDurationSec(speed);
   const animate = preset !== "none";
+  const depthOn = !skip && intensity > 0;
+
+  useEffect(() => {
+    // One scroll position drives every layer. Speeds come from parallaxTravel:
+    // film slowest, wash and light farther, title in the opposite direction.
+    const apply = (progress: number) => {
+      const travel = parallaxTravel(depthOn ? intensity : 0, speed);
+      backgroundY.set(progress * travel.background);
+      washY.set(progress * travel.wash);
+      lightY.set(progress * travel.light);
+      foregroundY.set(progress * travel.foreground);
+      const el = videoRef.current;
+      if (!el) return;
+      const next = depthOn ? heroPlaybackRate(progress, intensity) : 1;
+      if (el.playbackRate !== next) el.playbackRate = next;
+    };
+    apply(scrollYProgress.get());
+    const stop = scrollYProgress.on("change", apply);
+    return () => {
+      stop();
+      backgroundY.set(0);
+      washY.set(0);
+      lightY.set(0);
+      foregroundY.set(0);
+      if (videoRef.current) videoRef.current.playbackRate = 1;
+    };
+  }, [scrollYProgress, depthOn, intensity, speed, backgroundY, washY, lightY, foregroundY]);
 
   return (
     <section
+      ref={sectionRef}
       className={cn("relative isolate flex min-h-[100dvh] flex-col overflow-hidden bg-bg", className)}
       style={{ ["--hero-blend" as string]: `${blend}%` }}
     >
-      <div
-        className={cn(
-          "hero-blend absolute inset-0 overflow-hidden",
-          tone === "stage" && "hero-stage",
-          tone === "site" && "hero-site",
-        )}
-      >
+      <div className="hero-blend absolute inset-0 overflow-hidden">
+        {/* Slowest layer. Overscan keeps the crop covered while it lags the scroll. */}
         <motion.div
-          key={`${imageSrc}-${videoSrc}-${preset}-${replayKey ?? "0"}`}
-          className="absolute inset-0 origin-center"
-          initial={animate ? motionProps.initial : { scale: 1, x: "0%", y: "0%", opacity: 1 }}
-          animate={motionProps.animate}
-          transition={
-            animate
-              ? { duration, ease: [0.22, 0.08, 0.2, 1] }
-              : { duration: 0 }
-          }
+          className={cn("absolute inset-0 origin-center", depthOn && "will-change-transform")}
+          style={{ y: backgroundY, scale: depthOn ? 1.12 : 1 }}
         >
-          {imageSrc ? (
-            <img
-              src={imageSrc}
-              alt=""
-              className={cn(
-                "absolute inset-0 h-full w-full object-cover outline-none",
-                !videoSrc && "media-drift",
-              )}
-              onError={() => {
-                if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
-                  setImageSrc(fallbackImageUrl);
-                  return;
-                }
-                setImageSrc("");
-              }}
-            />
-          ) : null}
-          {videoSrc && videoOk ? (
-            <video
-              ref={videoRef}
-              className="absolute inset-0 z-[1] h-full w-full object-cover"
-              src={videoSrc}
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster={imageSrc || undefined}
-              onError={() => {
-                if (fallbackVideoUrl && videoSrc !== fallbackVideoUrl) {
-                  setVideoSrc(fallbackVideoUrl);
-                  setVideoOk(true);
-                  return;
-                }
-                setVideoOk(false);
-              }}
-            />
-          ) : null}
+          <motion.div
+            key={`${imageSrc}-${videoSrc}-${preset}-${replayKey ?? "0"}`}
+            className="absolute inset-0 origin-center"
+            initial={animate ? motionProps.initial : { scale: 1, x: "0%", y: "0%", opacity: 1 }}
+            animate={motionProps.animate}
+            transition={
+              animate
+                ? { duration, ease: [0.22, 0.08, 0.2, 1] }
+                : { duration: 0 }
+            }
+          >
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt=""
+                className={cn(
+                  "absolute inset-0 h-full w-full object-cover outline-none",
+                  !videoSrc && "media-drift",
+                )}
+                onError={() => {
+                  if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
+                    setImageSrc(fallbackImageUrl);
+                    return;
+                  }
+                  setImageSrc("");
+                }}
+              />
+            ) : null}
+            {videoSrc && videoOk ? (
+              <video
+                ref={videoRef}
+                className="absolute inset-0 z-[1] h-full w-full object-cover"
+                src={videoSrc}
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster={imageSrc || undefined}
+                onError={() => {
+                  if (fallbackVideoUrl && videoSrc !== fallbackVideoUrl) {
+                    setVideoSrc(fallbackVideoUrl);
+                    setVideoOk(true);
+                    return;
+                  }
+                  setVideoOk(false);
+                }}
+              />
+            ) : null}
+          </motion.div>
         </motion.div>
+        {tone ? (
+          <motion.div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute inset-0 z-[2]",
+              depthOn && "will-change-transform",
+              tone === "stage" && "hero-stage",
+              tone === "site" && "hero-site",
+            )}
+            style={{ y: washY }}
+          />
+        ) : null}
+        {depthOn ? (
+          <motion.div
+            aria-hidden
+            className="hero-atmosphere pointer-events-none absolute inset-0 z-[3] will-change-transform"
+            style={{ y: lightY }}
+          />
+        ) : null}
         {animate ? (
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-[3] bg-bg"
+            className="pointer-events-none absolute inset-0 z-[4] bg-bg"
             initial={{ opacity: 0.94 }}
             animate={{ opacity: 0 }}
             transition={{ duration: 1.45, ease: [0.22, 0.08, 0.2, 1] }}
@@ -166,8 +230,31 @@ export function CinematicHero({
         ) : null}
       </div>
       <div className="hero-dissolve pointer-events-none absolute inset-x-0 -bottom-px z-10 h-[68%]" />
-      <div className="relative z-20 flex min-h-0 flex-1 flex-col">{children}</div>
+      <motion.div
+        className={cn(
+          "relative z-20 flex min-h-0 flex-1 flex-col",
+          depthOn && "will-change-transform",
+        )}
+        style={{ y: foregroundY }}
+      >
+        {children}
+      </motion.div>
     </section>
+  );
+}
+
+export function InsetFilm({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: string }) {
+  if (!videoUrl && !imageUrl) return null;
+  return (
+    <figure className="overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
+        {videoUrl ? (
+          <LoopVideo src={videoUrl} className="absolute inset-0" />
+        ) : (
+          <img src={imageUrl} alt="" className="h-full w-full object-cover outline-none" />
+        )}
+      </div>
+    </figure>
   );
 }
 

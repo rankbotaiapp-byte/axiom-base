@@ -4,6 +4,7 @@ import {
   channelFromPackage,
   followUpBody,
   followUpSchedule,
+  deskPreviewPath,
   funnelUrl,
   nurtureStatus,
   isEmailReady,
@@ -210,4 +211,35 @@ test("campaign urls put the lead slug in b", () => {
   assert.equal(url.searchParams.get("t"), null);
   const armed = new URL(funnelUrl("https://axiom.example/", { leadSlug: "glass-eddy", county: "Grand County", stopToken: "ab".repeat(16) }));
   assert.equal(armed.searchParams.get("t"), "ab".repeat(16));
+  assert.equal(url.searchParams.get("greet"), null);
+  const greeted = new URL(
+    funnelUrl("https://axiom.example/", {
+      leadSlug: "glass-eddy",
+      county: "Grand County",
+      greet: true,
+      businessName: "Glass Eddy",
+      trade: "Guide services",
+      city: "Merlin",
+    }),
+  );
+  assert.equal(greeted.searchParams.get("greet"), "1");
+  assert.equal(greeted.searchParams.get("biz"), "Glass Eddy");
+  assert.equal(greeted.searchParams.get("trade"), "Guide services");
+  assert.equal(greeted.searchParams.get("city"), "Merlin");
+  assert.equal(greeted.searchParams.get("b"), "glass-eddy");
+});
+
+test("desk preview links are tagged for the master desk", () => {
+  const path = deskPreviewPath({
+    leadSlug: "north-glass",
+    county: "Jackson",
+    city: "Medford",
+    businessName: "North Glass",
+    trade: "Field service",
+  });
+  const url = new URL(path, "https://axiom.example/");
+  assert.equal(url.searchParams.get("b"), "north-glass");
+  assert.equal(url.searchParams.get("utm_source"), "desk");
+  assert.equal(url.searchParams.get("pitch"), null);
+  assert.equal(url.searchParams.get("biz"), "North Glass");
 });

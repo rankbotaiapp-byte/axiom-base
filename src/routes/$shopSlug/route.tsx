@@ -95,16 +95,24 @@ function ShopLayout() {
   const data = useLiveShop(initial);
   const { user, isPending } = useCurrentUserState();
   const [mode, setMode] = useState<AccessMode>("customer");
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isPending) return;
     if (!user) {
       setMode("customer");
+      setEmployeeId(null);
       return;
     }
     void getShopAccess({ data: data.shop.slug })
-      .then((a) => setMode(a.mode === "none" ? "customer" : a.mode))
-      .catch(() => setMode("customer"));
+      .then((a) => {
+        setMode(a.mode === "none" ? "customer" : a.mode);
+        setEmployeeId(a.employeeId);
+      })
+      .catch(() => {
+        setMode("customer");
+        setEmployeeId(null);
+      });
   }, [data.shop.slug, isPending, user]);
 
   return (
@@ -114,27 +122,27 @@ function ShopLayout() {
         slug={data.shop.slug}
         ringColor={data.shop.ringColor}
         mode={mode}
+        watchEmployeeId={employeeId}
       >
         <AxiomRing />
-        <AcceptBar slug={data.shop.slug} mode={mode} />
+        <AcceptBar mode={mode} />
         <Outlet />
       </AxiomRingProvider>
     </LiveShopContext.Provider>
   );
 }
 
-function AcceptBar({ slug, mode }: { slug: string; mode: AccessMode }) {
-  const { state, accept, message } = useAxiomRing();
+function AcceptBar({ mode }: { mode: AccessMode }) {
+  const { accept, incoming } = useAxiomRing();
   const staff = mode === "owner" || mode === "employee" || mode === "preview";
-  const show =
-    staff && (state === "pulse" || state === "awaiting" || message === "New booking request");
-  if (!show) return null;
+  if (!staff || !incoming) return null;
+  const estimate = incoming === "estimate";
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl bg-surface p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.12)]">
+      <div className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl bg-surface p-3 shadow-[0_0_0_1px_rgba(46,230,214,0.45)]">
         <div>
-          <p className="text-sm font-medium">Incoming booking</p>
-          <p className="text-xs text-muted">Accept to lock the ring and notify the guest.</p>
+          <p className="text-sm font-medium">{estimate ? "Incoming estimate" : "Incoming booking"}</p>
+          <p className="text-xs text-muted">Confirm to lock the ring and notify the guest.</p>
         </div>
         <Button
           size="sm"
@@ -142,7 +150,7 @@ function AcceptBar({ slug, mode }: { slug: string; mode: AccessMode }) {
             void accept().catch(() => undefined);
           }}
         >
-          Accept
+          Confirm
         </Button>
       </div>
     </div>

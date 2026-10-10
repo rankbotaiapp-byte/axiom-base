@@ -17,6 +17,7 @@ import { Route as ShopSlugIndexRouteImport } from './routes/$shopSlug/index'
 import { Route as ShopSlugAdminRouteImport } from './routes/$shopSlug/admin'
 import { Route as ShopSlugBookRouteImport } from './routes/$shopSlug/book'
 import { Route as ShopSlugEmployeeRouteImport } from './routes/$shopSlug/employee'
+import { Route as ApiGetAvatarTokenRouteImport } from './routes/api/get-avatar-token'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/index'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
@@ -65,6 +66,11 @@ const ShopSlugEmployeeRoute = ShopSlugEmployeeRouteImport.update({
   id: '/employee',
   path: '/employee',
   getParentRoute: () => ShopSlugRouteRoute,
+} as any)
+const ApiGetAvatarTokenRoute = ApiGetAvatarTokenRouteImport.update({
+  id: '/api/get-avatar-token',
+  path: '/api/get-avatar-token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
+  '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
+  '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug': typeof ShopSlugIndexRoute
   '/master-admin': typeof MasterAdminIndexRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
+  '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
+    | '/api/get-avatar-token'
     | '/invite/$token'
     | '/$shopSlug/'
     | '/master-admin/'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
+    | '/api/get-avatar-token'
     | '/invite/$token'
     | '/$shopSlug'
     | '/master-admin'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
+    | '/api/get-avatar-token'
     | '/invite/$token'
     | '/$shopSlug/'
     | '/master-admin/'
@@ -222,6 +234,7 @@ export interface RootRouteChildren {
   ShopSlugRouteRoute: typeof ShopSlugRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardRoute: typeof OnboardRoute
+  ApiGetAvatarTokenRoute: typeof ApiGetAvatarTokenRoute
   InviteTokenRoute: typeof InviteTokenRoute
   MasterAdminIndexRoute: typeof MasterAdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -288,6 +301,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$shopSlug/employee'
       preLoaderRoute: typeof ShopSlugEmployeeRouteImport
       parentRoute: typeof ShopSlugRouteRoute
+    }
+    '/api/get-avatar-token': {
+      id: '/api/get-avatar-token'
+      path: '/api/get-avatar-token'
+      fullPath: '/api/get-avatar-token'
+      preLoaderRoute: typeof ApiGetAvatarTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/invite/$token': {
       id: '/invite/$token'
@@ -373,6 +393,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopSlugRouteRoute: ShopSlugRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardRoute: OnboardRoute,
+  ApiGetAvatarTokenRoute: ApiGetAvatarTokenRoute,
   InviteTokenRoute: InviteTokenRoute,
   MasterAdminIndexRoute: MasterAdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

@@ -17,10 +17,12 @@ const NICHE_LABELS: Record<ShopNiche, string> = {
   contractor: "General contractor / Home services",
   clean: "Home cleaning",
   field: "Field service",
+  security: "Private security",
   practice: "Practice",
   counsel: "Advisor",
   location: "Barber",
   studio: "Studio",
+  retail: "Retail / Merchandise",
   trade: "Your trade",
 };
 
@@ -33,6 +35,13 @@ const ALIASES: Record<string, ShopNiche> = {
   advisor: "counsel",
   counsel: "counsel",
   consulting: "counsel",
+  "private security": "security",
+  security: "security",
+  retail: "retail",
+  merchandise: "retail",
+  gear: "retail",
+  ecommerce: "retail",
+  "e-commerce": "retail",
 };
 
 const TRADE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -70,6 +79,19 @@ export function classifyTrade(raw: string): ClassifiedTrade {
 
 export function isTradeKey(value: string): boolean {
   return value === "all" || (TRADE_KEY.test(value) && value.length <= 48);
+}
+
+/** The niche template a paid lead should be built from. Unknown trades use the open template. */
+export function nicheForLead(tradeType: string, tradeLabel = ""): ShopNiche {
+  if (isShopNiche(tradeType)) return tradeType;
+  const label = tradeLabel.trim() || tradeType.replace(/-/g, " ");
+  try {
+    const classified = classifyTrade(label);
+    if (classified.known && isShopNiche(classified.tradeType)) return classified.tradeType;
+  } catch {
+    // An empty or unnamed trade still gets a bookable shop.
+  }
+  return "trade";
 }
 
 export type LeadSort = "name" | "city" | "trade";

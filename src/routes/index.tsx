@@ -83,7 +83,18 @@ function Home() {
   const leadSlug = search.b || search.lead_slug || "";
 
   if (search.pitch && leadSlug) {
-    return <LeadTerritory leadSlug={leadSlug} layout="pitch" sessionId={search.session_id} />;
+    return (
+      <LeadTerritory
+        leadSlug={leadSlug}
+        layout="pitch"
+        sessionId={search.session_id}
+        greet={search.greet}
+        businessName={search.biz}
+        trade={search.trade}
+        city={search.city}
+        simulate={search.utm_source === "desk"}
+      />
+    );
   }
 
   return (
@@ -167,7 +178,18 @@ function Home() {
         </div>
       </section>
 
-      {leadSlug ? <LeadTerritory leadSlug={leadSlug} layout="page" sessionId={search.session_id} /> : null}
+      {leadSlug ? (
+        <LeadTerritory
+          leadSlug={leadSlug}
+          layout="page"
+          sessionId={search.session_id}
+          greet={search.greet}
+          businessName={search.biz}
+          trade={search.trade}
+          city={search.city}
+          simulate={search.utm_source === "desk"}
+        />
+      ) : null}
 
       <section id="live" className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">

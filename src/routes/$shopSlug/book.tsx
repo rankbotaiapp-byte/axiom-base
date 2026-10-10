@@ -13,7 +13,9 @@ import {
   releaseCardCheckout,
   startCardCheckout,
 } from "@/lib/axiom/server";
+import { ProductShelf } from "@/components/product-shelf";
 import { formatOffer, formatPrice, nicheCopy, serviceGroups } from "@/lib/axiom/niches";
+import { offerModel, shelfFor } from "@/lib/axiom/storefront";
 import { buildSlots } from "@/lib/axiom/slots";
 import type { AccessMode, Employee } from "@/lib/axiom/types";
 import { initials } from "@/lib/utils";
@@ -91,9 +93,9 @@ function BookPage() {
         announce(
           {
             id: `local-${result.appointmentId}`,
-            type: "booking_request",
+            type: "payment_received",
             appointmentId: result.appointmentId,
-            payload: null,
+            payload: "Paid",
             createdAt: new Date().toISOString(),
           },
           true,
@@ -165,6 +167,31 @@ function BookPage() {
 
   async function onPaid(paymentRef: string) {
     await finishBooking(paymentRef);
+  }
+
+  if (offerModel(data.shop.niche) === "product") {
+    return (
+      <main className="min-h-dvh bg-bg pb-16">
+        <ShopNav shop={data.shop} mode={mode} />
+        <div className="mx-auto max-w-5xl px-5 pt-6 sm:px-10">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bookLabel}</p>
+          <h1 className="mt-2 break-words font-display text-4xl">{data.shop.name}</h1>
+          <div className="mt-8">
+            <ProductShelf
+              items={shelfFor(
+                data.shop.niche,
+                data.services.map((service) => ({
+                  id: service.id,
+                  name: service.name,
+                  description: service.description,
+                  priceCents: service.priceCents,
+                })),
+              )}
+            />
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (

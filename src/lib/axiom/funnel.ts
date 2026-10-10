@@ -18,6 +18,10 @@ export type FunnelSearch = {
   t?: string;
   pitch?: boolean;
   session_id?: string;
+  greet?: boolean;
+  biz?: string;
+  trade?: string;
+  city?: string;
 };
 
 function clip(value: unknown, max: number): string {
@@ -62,6 +66,10 @@ export function parseFunnelSearch(source: Record<string, unknown>): FunnelSearch
     ...(query.county ? { county: query.county } : {}),
     ...(query.stopToken ? { t: query.stopToken } : {}),
     ...(source.pitch === true || source.pitch === "1" || source.pitch === "true" ? { pitch: true as const } : {}),
+    ...(source.greet === true || source.greet === "1" || source.greet === "true" ? { greet: true as const } : {}),
+    ...(clip(source.biz, 80) ? { biz: clip(source.biz, 80) } : {}),
+    ...(clip(source.trade, 80) ? { trade: clip(source.trade, 80) } : {}),
+    ...(clip(source.city, 80) ? { city: clip(source.city, 80) } : {}),
     ...(/^cs_[A-Za-z0-9_]+$/.test(clip(source.session_id, 80))
       ? { session_id: clip(source.session_id, 80) }
       : {}),
@@ -80,28 +88,28 @@ export const OUTREACH_STRATEGIES = [
     id: "done-for-you",
     label: "Done-For-You Hook",
     line: "The booking page is already built. They only claim it.",
-    text: "{owner} — {business} has {website}. A {trade} booking page for {city} is already built. Claim it before another shop in {county} does.\n{url}",
+    text: "{owner} — {business} has {website}. A {trade} booking page for {city} is already built. Claim it before another shop in {county} does.\n{url}\nAsk Eric greets {business} on that page.",
     emailSubject: "{owner}, the {business} page is already live",
     emailBody:
-      "Hi {owner},\n\n{business} has {website}. The {trade} page for {city} is built, ahead of the other shops in {county}. Reviews on file: {reviews}.\n\nClaim it here:\n{url}\n\nOnce you open it, the page is yours.",
+      "Hi {owner},\n\n{business} has {website}. The {trade} page for {city} is built, ahead of the other shops in {county}. Reviews on file: {reviews}.\n\nClaim it here:\n{url}\n\nAsk Eric greets {business} on that page.\n\nOnce you open it, the page is yours.",
   },
   {
     id: "missed-calls",
     label: "Missed Calls Hook",
     line: "A call they miss while with a client becomes a booking.",
-    text: "{owner}, calls to the {line} at {business} go quiet mid-appointment. Your {trade} page in {city} takes the request.\n{url}",
+    text: "{owner}, calls to the {line} at {business} go quiet mid-appointment. Your {trade} page in {city} takes the request.\n{url}\nAsk Eric greets {business} on that page.",
     emailSubject: "The {line} at {business} didn't pick up",
     emailBody:
-      "Hi {owner},\n\nWhile you're with a client, the {line} at {business} goes to voicemail and that {trade} job walks to the next shop in {county}.\n\nThis page takes the booking instead:\n{url}\n\nThey pick a time. You see it when you're free.",
+      "Hi {owner},\n\nWhile you're with a client, the {line} at {business} goes to voicemail and that {trade} job walks to the next shop in {county}.\n\nThis page takes the booking instead:\n{url}\n\nAsk Eric greets {business} on that page.\n\nThey pick a time. You see it when you're free.",
   },
   {
     id: "competitor-edge",
     label: "Competitor Edge Hook",
     line: "Other shops in the county already take the online book.",
-    text: "{owner} — other {trade} shops in {county} are taking the online book. {business} is listed with {reviews} and {website}.\n{url}",
+    text: "{owner} — other {trade} shops in {county} are taking the online book. {business} is listed with {reviews} and {website}.\n{url}\nAsk Eric greets {business} on that page.",
     emailSubject: "{county} shops are ahead of {business}",
     emailBody:
-      "Hi {owner},\n\nPeople in {county} already book {trade} work without calling. {business} is listed with {reviews} and {website}.\n\nYour page is ready:\n{url}\n\nOpen it and the link is yours.",
+      "Hi {owner},\n\nPeople in {county} already book {trade} work without calling. {business} is listed with {reviews} and {website}.\n\nYour page is ready:\n{url}\n\nAsk Eric greets {business} on that page.\n\nOpen it and the link is yours.",
   },
 ] as const;
 
@@ -359,12 +367,52 @@ export function strategyLabelFromPackage(stored: string): string {
   }
 }
 
-export function funnelUrl(origin: string, lead: { leadSlug: string; county: string; stopToken?: string }): string {
+export function funnelUrl(
+  origin: string,
+  lead: {
+    leadSlug: string;
+    county: string;
+    stopToken?: string;
+    greet?: boolean;
+    businessName?: string;
+    trade?: string;
+    city?: string;
+  },
+): string {
   const base = origin.replace(/\/$/, "");
   const url = new URL("/", base.endsWith("/") ? base : `${base}/`);
   url.searchParams.set("b", lead.leadSlug);
   if (lead.county) url.searchParams.set("county", lead.county);
   url.searchParams.set("utm_source", "regional");
   if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+  if (lead.greet) {
+    url.searchParams.set("greet", "1");
+    const business = (lead.businessName ?? "").trim().slice(0, 80);
+    const trade = (lead.trade ?? "").trim().slice(0, 80);
+    const city = (lead.city ?? "").trim().slice(0, 80);
+    if (business) url.searchParams.set("biz", business);
+    if (trade) url.searchParams.set("trade", trade);
+    if (city) url.searchParams.set("city", city);
+  }
   return url.toString();
+}
+
+/** One prospect, pre-configured. Opens are logged because this is not the pitch layout. */
+export function deskPreviewPath(lead: {
+  leadSlug: string;
+  county?: string;
+  city?: string;
+  businessName?: string;
+  trade?: string;
+}): string {
+  const params = new URLSearchParams({ b: lead.leadSlug, utm_source: "desk" });
+  const county = (lead.county ?? "").trim();
+  const city = (lead.city ?? "").trim();
+  const business = (lead.businessName ?? "").trim();
+  const trade = (lead.trade ?? "").trim();
+  if (county) params.set("county", county);
+  if (city) params.set("city", city);
+  if (business) params.set("biz", business);
+  if (trade) params.set("trade", trade);
+  return `/?${params.toString()}`;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
-import { CinematicHero } from "@/components/cinematic-hero";
+import { CinematicHero, InsetFilm } from "@/components/cinematic-hero";
 import { GearGuardianCheckout } from "@/components/gear-guardian-checkout";
 import { Wordmark } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,14 @@ import { nicheCopy, NICHES } from "@/lib/axiom/niches";
 import { TERRITORY_PLANS, type TerritoryPlanId } from "@/lib/axiom/pricing";
 import { isShopNiche } from "@/lib/axiom/types";
 import { formatMoney } from "@/lib/utils";
+import { AskEricAvatar } from "@/components/AskEricAvatar";
+import { ProductShelf } from "@/components/product-shelf";
+import { AuditEcho } from "@/components/audit-echo";
+import { NeonField, SnapEstimate } from "@/components/snap-estimate";
+import { offerModel, shelfFor } from "@/lib/axiom/storefront";
+import { OnboardingVideoModal } from "@/components/OnboardingVideoModal";
+import { SnapSimulation } from "@/components/snap-simulation";
+import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 
 type Preview = Awaited<ReturnType<typeof getLeadPreview>>;
 
@@ -23,10 +32,20 @@ export function LeadTerritory({
   leadSlug,
   layout,
   sessionId,
+  greet = false,
+  businessName = "",
+  trade = "",
+  city = "",
+  simulate = false,
 }: {
   leadSlug: string;
   layout: "pitch" | "page";
   sessionId?: string;
+  greet?: boolean;
+  businessName?: string;
+  trade?: string;
+  city?: string;
+  simulate?: boolean;
 }) {
   const [lead, setLead] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +54,8 @@ export function LeadTerritory({
   const [processor, setProcessor] = useState<"trial" | "desk" | "stripe" | "">("");
   const [busy, setBusy] = useState(false);
   const [held, setHeld] = useState("");
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
@@ -54,13 +75,21 @@ export function LeadTerritory({
     if (!sessionId) return;
     let cancelled = false;
     void confirmTerritorySession({ data: sessionId })
-      .then(() => getLeadPreview({ data: leadSlug }))
-      .then((next) => {
-        if (!cancelled) {
-          setLead(next);
-          setCheckoutId("");
-          setProcessor("");
+      .then(async (settled) => {
+        if (cancelled) return;
+        if (settled.shop?.slug) {
+          await navigate({
+            to: "/$shopSlug",
+            params: { shopSlug: settled.shop.slug },
+            search: settled.shop.created ? { tour: true } : {},
+          });
+          return;
         }
+        const next = await getLeadPreview({ data: leadSlug });
+        if (cancelled) return;
+        setLead(next);
+        setCheckoutId("");
+        setProcessor("");
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Payment did not finish");
@@ -106,15 +135,36 @@ export function LeadTerritory({
     }
   }
 
+  const avatar = (
+    <AskEricAvatar
+      businessName={lead?.businessName || businessName}
+      trade={
+        lead?.tradeLabel ||
+        (lead && isShopNiche(lead.tradeType) ? NICHES[lead.tradeType].label : "") ||
+        trade
+      }
+      city={lead?.city || city}
+      startOpen={greet}
+    />
+  );
+
   if (!lead && !error) {
     return (
-      <div className="grid min-h-[40vh] place-items-center">
-        <div className="h-10 w-40 animate-pulse rounded-full bg-fg/10" />
-      </div>
+      <>
+        <div className="grid min-h-[40vh] place-items-center">
+          <div className="h-10 w-40 animate-pulse rounded-full bg-fg/10" />
+        </div>
+        {avatar}
+      </>
     );
   }
   if (!lead) {
-    return <p className="px-5 py-16 text-sm text-muted">{error}</p>;
+    return (
+      <>
+        <p className="px-5 py-16 text-sm text-muted">{error}</p>
+        {avatar}
+      </>
+    );
   }
 
   const hero = leadHeroFor(lead.tradeType, lead.businessName, lead.tradeLabel);
@@ -129,7 +179,7 @@ export function LeadTerritory({
     <div>
       <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Territory</p>
       <h2 className="mt-2 font-display text-3xl leading-none sm:text-4xl">
-        {live ? "This territory is live." : "Choose how it goes live."}
+        {live ? "This territory is live." : simulate ? "Claim Your Storefront & Booking Engine" : "Choose how it goes live."}
       </h2>
       {live && lead.activation ? (
         <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">{renewalCopy(lead.activation)}</p>
@@ -187,6 +237,97 @@ export function LeadTerritory({
     </div>
   );
 
+  const simulation = simulate ? (
+    <SnapSimulation
+      niche={niche.niche}
+      imageUrl={hero.heroImageUrl}
+      prices={niche.services.map((service) => service.priceCents)}
+    />
+  ) : null;
+
+  const claim = simulate ? (
+    <div className="mb-8">
+      <button
+        type="button"
+        className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-fg px-4 py-3 text-center text-sm font-medium text-bg"
+        onClick={() => {
+          sessionStorage.setItem(
+            LEAD_STORAGE_KEY,
+            JSON.stringify({
+              leadSlug,
+              tradeType: lead.tradeType,
+              county: lead.county,
+              utmSource: "desk",
+            }),
+          );
+          setShowWelcomeModal(true);
+        }}
+      >
+        Claim Your Storefront & Booking Engine
+      </button>
+      <p className="mt-2 text-sm text-muted">
+        A short welcome plays first. The plans on this page start the subscription.
+      </p>
+      <OnboardingVideoModal
+        isOpen={showWelcomeModal}
+        onClose={() => {
+          setShowWelcomeModal(false);
+          void navigate({ to: "/onboard" });
+        }}
+        shopName={lead.businessName || businessName}
+      />
+    </div>
+  ) : null;
+
+  const customer =
+    offerModel(niche.niche) === "product" ? (
+      <div>
+        {simulation}
+        {claim}
+        <ProductShelf items={shelfFor(niche.niche, niche.services)} />
+      </div>
+    ) : (
+      <div className="min-w-0">
+        {simulation}
+        {claim}
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.menuKicker}</p>
+        <ul className="mt-3 divide-y divide-line">
+          {services.map((service) => (
+            <li key={service.name} className="flex min-w-0 items-baseline justify-between gap-4 py-4">
+              <div className="min-w-0">
+                <p className="break-words font-medium">{service.name}</p>
+                <p className="text-sm text-muted">{service.description}</p>
+              </div>
+              <p className="shrink-0 text-sm text-muted">{formatMoney(service.priceCents)}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            className="glass-btn"
+            onClick={() => setHeld(services[0]?.name ?? "the next opening")}
+          >
+            {copy.bookLabel}
+          </Button>
+          {held ? <p className="text-sm text-muted">Held for the demo. Nothing was booked.</p> : null}
+        </div>
+        <div className="mt-8">
+          <SnapEstimate
+            niche={niche.niche}
+            bookLabel={copy.bookLabel}
+            leadSlug={leadSlug}
+            lines={niche.services.map((service) => ({
+              name: service.name,
+              description: service.description,
+              priceCents: service.priceCents,
+            }))}
+          />
+        </div>
+      </div>
+    );
+
   const film = (
     <CinematicHero
       imageUrl={hero.heroImageUrl}
@@ -217,55 +358,50 @@ export function LeadTerritory({
       <>
         {film}
         <section id="territory" className="px-5 py-16 sm:px-10">
-          <div className="mx-auto max-w-xl">{offer}</div>
+          <div className="mx-auto max-w-xl">
+            {hero.insetImageUrl || hero.insetLoopUrl ? (
+              <div className="mb-8">
+                <InsetFilm imageUrl={hero.insetImageUrl} videoUrl={hero.insetLoopUrl} />
+              </div>
+            ) : null}
+            <AuditEcho />
+            {customer}
+            <div className="mt-10">{offer}</div>
+          </div>
         </section>
+        {avatar}
       </>
     );
   }
 
   return (
-    <main className="min-h-dvh bg-bg">
+    <main className="min-h-dvh bg-bg" style={{ ["--neon" as string]: niche.ringColor }}>
+      <NeonField active />
       {film}
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:px-10">
         <section>
           <p className="mt-4 max-w-xl text-base text-muted sm:text-lg">
             {lead.contactName ? `Built for ${lead.contactName}. ` : ""}
-            {known ? niche.tagline : `${tradeName} bookings, on one page.`}
+            {known ? niche.tagline : `${tradeName} ${offerModel(niche.niche) === "product" ? "orders" : "bookings"}, on one page.`}
             {lead.reviewScore != null ? ` ${lead.reviewScore} from ${lead.reviewCount ?? 0} reviews.` : ""}
           </p>
+          {hero.insetImageUrl || hero.insetLoopUrl ? (
+            <div className="mt-8 max-w-xl">
+              <InsetFilm imageUrl={hero.insetImageUrl} videoUrl={hero.insetLoopUrl} />
+            </div>
+          ) : null}
           <p className="mt-6 text-[11px] uppercase tracking-[0.22em] text-muted">
             {live ? "Live production" : "Simulation"}
           </p>
-          <div className="mt-8">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.menuKicker}</p>
-              <ul className="mt-3 divide-y divide-line">
-                {services.map((service) => (
-                  <li key={service.name} className="flex items-baseline justify-between gap-4 py-4">
-                    <div>
-                      <p className="font-medium">{service.name}</p>
-                      <p className="text-sm text-muted">{service.description}</p>
-                    </div>
-                    <p className="shrink-0 text-sm text-muted">{formatMoney(service.priceCents)}</p>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setHeld(services[0]?.name ?? "the next opening")}
-                >
-                  {copy.bookLabel} · Tomorrow 10:00
-                </Button>
-                {held ? <p className="text-sm text-muted">Held for the demo. Nothing was booked.</p> : null}
-              </div>
-            </div>
+          <AuditEcho />
+          <div className="mt-8 min-w-0">{customer}</div>
           <p className="mt-8 max-w-md text-sm text-faint">
             This screen is the customer view. Leave the desk on the other device.
           </p>
         </section>
         <section className="lg:pt-16">{offer}</section>
       </div>
+      {avatar}
     </main>
   );
 }

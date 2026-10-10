@@ -824,6 +824,47 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
       { displayName: "Chris Adeyemi", title: "Operator", bio: "The set and the second half of the night.", avatarUrl: "", serviceIndexes: [2] },
     ],
   }),
+  security: bookable({
+    niche: "security",
+    label: "Private security",
+    kicker: "They book the post",
+    blurb: "A consult, a standing post, or the night of an event.",
+    defaultName: "Night Watch",
+    tagline: "The door is covered when you book it.",
+    description: "Private posts and event details. Book the shift, not a maybe.",
+    address: "New Era · and the site",
+    ringColor: "#7EC8E3",
+    soloTitle: "Lead",
+    services: [
+      { group: "Start", name: "Site consult", description: "Walk the door, the lot, and what the post actually needs.", durationMin: 45, priceCents: 0 },
+      { group: "Post", name: "Standing post", description: "One officer, one shift, the site you named.", durationMin: 240, priceCents: 32000 },
+      { group: "Post", name: "Event detail", description: "The night of the event. Door, floor, and the close.", durationMin: 300, priceCents: 48000 },
+    ],
+    employees: [
+      { displayName: "Reed Calder", title: "Lead", bio: "Walks the site first. The post follows his list.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+      { displayName: "Imani Brooks", title: "Officer", bio: "Event nights and the shifts that run late.", avatarUrl: "", serviceIndexes: [1, 2] },
+    ],
+  }),
+  retail: bookable({
+    niche: "retail",
+    label: "Retail / Merchandise",
+    kicker: "They order the item",
+    blurb: "A cap, a print, or the bundle. Counted stock, no calendar.",
+    defaultName: "Counter Goods",
+    tagline: "The item is yours when you order it.",
+    description: "Merchandise with a price, an attribute, and a count on the shelf.",
+    address: "New Era · the counter",
+    ringColor: "#E7B48A",
+    soloTitle: "Counter",
+    services: [
+      { group: "Apparel", name: "House cap", description: "Embroidered mark. One size.", durationMin: 0, priceCents: 3200 },
+      { group: "Print", name: "Shop print", description: "18×24 poster of the mark.", durationMin: 0, priceCents: 2400 },
+      { group: "Bundle", name: "Counter bundle", description: "The cap and the print together.", durationMin: 0, priceCents: 4800 },
+    ],
+    employees: [
+      { displayName: "June Hale", title: "Counter", bio: "Packs the order and keeps the count honest.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
+    ],
+  }),
   trade: bookable({
     niche: "trade",
     label: "Your trade",
@@ -1160,6 +1201,34 @@ const VOICE: Record<ShopNiche, NicheVoice> = {
     requestLabel: "Request this date",
     gallery: "The dates",
   },
+  security: {
+    bench: "The post",
+    heading: "Who covers the door.",
+    menuKicker: "The book",
+    menuHeading: "Posts",
+    bookLabel: "Book a post",
+    inquiry: "Ask the lead",
+    offerStep: "Post",
+    staffStep: "Officer",
+    timeStep: "Shift",
+    timeHint: "Pick a start",
+    requestLabel: "Request this post",
+    gallery: "The sites",
+  },
+  retail: {
+    bench: "The counter",
+    heading: "What is on the shelf.",
+    menuKicker: "The shelf",
+    menuHeading: "Items",
+    bookLabel: "Order product",
+    inquiry: "Ask the counter",
+    offerStep: "Item",
+    staffStep: "Counter",
+    timeStep: "Pickup",
+    timeHint: "When you want it",
+    requestLabel: "Order product",
+    gallery: "The goods",
+  },
   trade: {
     bench: "The book",
     heading: "Who takes the time.",
@@ -1212,6 +1281,7 @@ export function formatPrice(service: { priceCents: number; priceUnit?: PriceUnit
 }
 
 export function formatOffer(service: { priceCents: number; priceUnit?: PriceUnit; durationMin: number }) {
+  if (service.durationMin <= 0) return formatPrice(service);
   return `${formatPrice(service)} · ${formatDuration(service.durationMin)}`;
 }
 

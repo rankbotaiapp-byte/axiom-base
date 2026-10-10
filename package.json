@@ -16,7 +16,7 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/axiom/media.test.ts src/lib/axiom/dashboard.test.ts src/lib/axiom/menu.test.ts src/lib/axiom/booking-notice.test.ts src/lib/axiom/funnel.test.ts src/lib/axiom/regional-roster.test.ts src/lib/axiom/outreach-queue.test.ts src/lib/axiom/funnel-guard.test.ts src/lib/axiom/pricing.test.ts src/lib/axiom/directory.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/axiom/media.test.ts src/lib/axiom/dashboard.test.ts src/lib/axiom/menu.test.ts src/lib/axiom/booking-notice.test.ts src/lib/axiom/funnel.test.ts src/lib/axiom/regional-roster.test.ts src/lib/axiom/outreach-queue.test.ts src/lib/axiom/funnel-guard.test.ts src/lib/axiom/pricing.test.ts src/lib/axiom/directory.test.ts src/lib/axiom/bulk-import.test.ts src/lib/axiom/avatar.test.ts src/lib/axiom/storefront.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -60,6 +60,7 @@
     "jose": "6.2.9",
     "kysely": "^0.28.5",
     "lightningcss": "^1.28.0",
+    "livekit-client": "^2.22.3",
     "lucide-react": "^0.510.0",
     "nitro": "3.0.260610-beta",
     "pg": "^8.16.3",

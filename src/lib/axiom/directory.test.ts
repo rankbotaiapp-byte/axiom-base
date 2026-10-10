@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyTrade, isTradeKey, nicheLabel, sortLeads } from "./directory.ts";
+import { classifyTrade, isTradeKey, nicheForLead, nicheLabel, sortLeads } from "./directory.ts";
 import { leadHeroFor } from "./media.ts";
 
 test("known directory labels stay on the built-in niche", () => {
@@ -26,7 +26,15 @@ test("a named trade still uses its own still", () => {
   assert.equal(hvac.known, false);
   assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "/media/heroes/hvac.jpg");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
+  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/deer-hunting-guide.mp4");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
+});
+
+test("a paid lead uses its niche template", () => {
+  assert.equal(nicheForLead("tattoo", "Tattoo shop"), "tattoo");
+  assert.equal(nicheForLead("barber", "Barber"), "location");
+  assert.equal(nicheForLead("dog-walking", "Dog walking"), "trade");
+  assert.equal(nicheForLead("atv-sports-rentals", "ATV sports rentals"), "trade");
 });
 
 test("leads sort by trade without losing rows", () => {

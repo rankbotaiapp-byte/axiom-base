@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql } from "@/lib/db";
+import { dbSource, getSql } from "@/lib/db";
 import { newId } from "@/lib/utils";
 import {
   channelFromPackage,
   followUpBody,
   followUpSchedule,
+  deskPreviewPath,
   funnelUrl,
   isEmailReady,
   isLeadSlug,
@@ -27,7 +28,7 @@ import {
 } from "./funnel";
 import { NICHES } from "./niches";
 import { hashStopToken, newStopToken } from "./funnel-guard";
-import { planTrickleChunks } from "./outreach-queue";
+import { nextSendInstant, parseSendTiming, planSmartChunks, timingProfileFor, type SendTiming } from "./outreach-queue";
 import { toE164 } from "./notify-target";
 import { HOME_REGION_COUNTIES, HOME_REGION_LABEL, homeRegionLeads } from "./regional-roster";
 import { classifyTrade, isTradeKey, nicheLabel } from "./directory";
@@ -334,6 +335,7 @@ export const getMasterDesk = createServerFn({ method: "GET" })
       ]),
       activations,
       outreach,
+      database: dbSource === "neon" ? ("postgres" as const) : ("memory" as const),
       shops: shops.map((shop) => ({
         id: shop.id,
         slug: shop.slug,
@@ -460,6 +462,145 @@ export const addPreloadedLeads = createServerFn({ method: "POST" })
       saved.push({ ...lead, leadSlug: slug });
     }
     return { leads: saved };
+  });
+
+export type OutreachFunnelRow = {
+  leadSlug: string;
+  businessName: string;
+  niche: string;
+  contact: string;
+  city: string;
+  path: string;
+  opened: boolean;
+  tested: boolean;
+  converted: boolean;
+  createdAt: string;
+};
+
+export const createOutreachFunnel = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    (input: { businessName?: string; niche?: string; contact?: string; city?: string; county?: string }) => {
+      const businessName = String(input?.businessName ?? "").trim();
+      const niche = String(input?.niche ?? "").trim();
+      const contact = String(input?.contact ?? "").trim().slice(0, 120);
+      const city = String(input?.city ?? "").trim();
+      const county = String(input?.county ?? "").trim() || city;
+      const email = contact.includes("@") ? contact.toLowerCase() : "";
+      const phone = email ? "" : contact;
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Email required");
+      if (!email && phone.replace(/\D/g, "").length < 7) throw new Error("Email or phone is required");
+      return { businessName, niche, email, phone, city, county };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    await assertPlatformOwner(context.userId);
+    const lead = cleanLead({
+      businessName: data.businessName,
+      tradeType: data.niche,
+      city: data.city,
+      county: data.county,
+      contactEmail: data.email,
+      contactPhone: data.phone,
+    });
+    const sql = await getSql();
+    let slug = lead.leadSlug;
+    for (let n = 2; n < 50; n += 1) {
+      const taken = await sql<{ lead_slug: string }>`
+        select lead_slug from preloaded_leads where lead_slug = ${slug} limit 1
+      `;
+      if (!taken[0]) break;
+      slug = `${lead.leadSlug.slice(0, 58)}-${n}`;
+    }
+    try {
+      await sql`
+        insert into preloaded_leads (
+          id, business_name, trade_type, trade_label, city, county, lead_slug, claimed,
+          contact_email, contact_phone, contact_name, review_score, review_count, has_website, phone_line, source
+        ) values (
+          ${newId("lead")}, ${lead.businessName}, ${lead.tradeType}, ${lead.tradeLabel}, ${lead.city},
+          ${lead.county}, ${slug}, false, ${lead.contactEmail}, ${lead.contactPhone},
+          ${lead.contactName}, ${lead.reviewScore}, ${lead.reviewCount}, ${lead.hasWebsite}, ${lead.phoneLine},
+          ${"desk"}
+        )
+      `;
+    } catch (err) {
+      if (!missingRelation(err, "source")) throw err;
+      await writePreloadedLead(sql, lead, slug);
+    }
+    const path = deskPreviewPath({
+      leadSlug: slug,
+      county: lead.county,
+      city: lead.city,
+      businessName: lead.businessName,
+      trade: lead.tradeLabel || lead.tradeType,
+    });
+    return { leadSlug: slug, path, businessName: lead.businessName, niche: lead.tradeLabel || lead.tradeType };
+  });
+
+export const listOutreachFunnels = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<OutreachFunnelRow[]> => {
+    await assertPlatformOwner(context.userId);
+    const sql = await getSql();
+    try {
+      const rows = await sql<{
+        lead_slug: string;
+        business_name: string;
+        trade_label: string;
+        trade_type: string;
+        contact_email: string;
+        contact_phone: string;
+        city: string;
+        county: string;
+        claimed: boolean;
+        account_mode: string;
+        created_at: string;
+        opens: number;
+        trials: number;
+        audits: number;
+        subscribed: boolean;
+      }>`
+        select l.lead_slug, l.business_name, l.trade_label, l.trade_type, l.contact_email, l.contact_phone,
+          l.city, l.county, l.claimed, l.account_mode, l.created_at,
+          (select count(*)::int from funnel_visits v where v.lead_slug = l.lead_slug) as opens,
+          (select count(*)::int from funnel_visits v where v.lead_slug = l.lead_slug and v.utm_source = 'snap') as trials,
+          (select count(*)::int from lead_audits a where a.lead_slug = l.lead_slug) as audits,
+          exists(select 1 from territory_activations t where t.lead_slug = l.lead_slug) as subscribed
+        from preloaded_leads l
+        where l.source = 'desk'
+        order by l.created_at desc
+        limit 40
+      `;
+      return rows.map((row) => ({
+        leadSlug: row.lead_slug,
+        businessName: row.business_name,
+        niche: row.trade_label || row.trade_type,
+        contact: row.contact_email || row.contact_phone,
+        city: row.city,
+        path: deskPreviewPath({
+          leadSlug: row.lead_slug,
+          county: row.county,
+          city: row.city,
+          businessName: row.business_name,
+          trade: row.trade_label || row.trade_type,
+        }),
+        opened: Number(row.opens) > 0,
+        tested: Number(row.trials) > 0 || Number(row.audits) > 0,
+        converted: Boolean(row.claimed) || Boolean(row.subscribed) || row.account_mode === "live",
+        createdAt: stamp(row.created_at),
+      }));
+    } catch (err) {
+      if (
+        missingRelation(err, "source") ||
+        missingRelation(err, "lead_audits") ||
+        missingRelation(err, "account_mode") ||
+        missingRelation(err, "territory_activations")
+      ) {
+        return [];
+      }
+      throw err;
+    }
   });
 
 async function writePreloadedLead(
@@ -988,6 +1129,7 @@ async function enrollFollowUps(
     releaseAt?: Map<string, string>;
     audience?: OutreachLead[];
     stopTokens?: Map<string, string>;
+    timing?: SendTiming;
   },
 ): Promise<{ enrolled: number; skippedClicked: number; alreadyLooping: number }> {
   const slugs = slugList(input.leads).split(",").filter(Boolean);
@@ -1008,6 +1150,7 @@ async function enrollFollowUps(
       and lead_slug = any(string_to_array(${list}, ','))
   `;
   const active = new Set(activeRows.map((row) => row.lead_slug));
+  const timing = parseSendTiming(input.timing);
   const plan = followUpSchedule(new Date());
   let enrolled = 0;
   let skippedClicked = 0;
@@ -1024,17 +1167,25 @@ async function enrollFollowUps(
     const sequenceId = newId("seq");
     const stopToken = input.stopTokens?.get(slug) ?? "";
     const stopHash = stopToken ? await hashStopToken(stopToken) : "";
+    const lead = input.audience?.find((item) => item.leadSlug === slug);
+    const leadTrade = lead?.tradeType || input.tradeType;
+    const profile = timing === "smart" ? timingProfileFor(leadTrade) : "general";
+    const anchorIso = input.releaseAt?.get(slug) ?? plan[0]?.scheduledAt ?? new Date().toISOString();
+    const anchor = new Date(anchorIso);
     await sql`
       insert into outreach_sequences (
-        id, lead_slug, campaign_id, channel, county, trade_type, strategy, status, stop_token_hash
+        id, lead_slug, campaign_id, channel, county, trade_type, strategy, status, stop_token_hash, timing
       ) values (
         ${sequenceId}, ${slug}, ${input.campaignId}, ${input.channel},
-        ${input.county}, ${input.tradeType}, ${input.strategy}, ${"active"}, ${stopHash}
+        ${input.county}, ${leadTrade}, ${input.strategy}, ${"active"}, ${stopHash}, ${timing}
       )
     `;
-    const lead = input.audience?.find((item) => item.leadSlug === slug);
     for (const step of plan) {
-      const scheduledAt = step.day === 0 ? (input.releaseAt?.get(slug) ?? step.scheduledAt) : step.scheduledAt;
+      const nominal = new Date(anchor.getTime() + step.day * 86_400_000);
+      const scheduledAt =
+        step.day === 0 || Number.isNaN(nominal.getTime())
+          ? anchorIso
+          : nextSendInstant(nominal, timing, profile).toISOString();
       const status = step.day === 0 ? "scheduled" : step.status;
       const template = followUpBody(step.day, input.channel, input);
       const body = lead
@@ -1114,6 +1265,7 @@ export const launchOutreachBatch = createServerFn({ method: "POST" })
     emailSubject?: string;
     emailBody?: string;
     channel?: string;
+    timing?: string;
   }) => {
     const region = readRegion(input, true);
     const rawChannel = input.channel === "email" || input.channel === "sms" ? input.channel : "";
@@ -1135,6 +1287,7 @@ export const launchOutreachBatch = createServerFn({ method: "POST" })
       emailSubject,
       emailBody,
       template: packOutreachPackage({ strategy, text, emailSubject, emailBody, channel }),
+      timing: parseSendTiming(input.timing),
     };
   })
   .handler(async ({ data, context }) => {
@@ -1160,13 +1313,22 @@ export const launchOutreachBatch = createServerFn({ method: "POST" })
     const stopTokens = new Map(batch.map((lead) => [lead.leadSlug, newStopToken()] as const));
     const tracked = batch.map((lead) => ({
       ...lead,
-      url: funnelUrl(origin, { leadSlug: lead.leadSlug, county: lead.county, stopToken: stopTokens.get(lead.leadSlug) }),
+      url: funnelUrl(origin, {
+        leadSlug: lead.leadSlug,
+        county: lead.county,
+        stopToken: stopTokens.get(lead.leadSlug),
+        greet: true,
+        businessName: lead.businessName,
+        trade: tradeLabel(lead.tradeType, lead.tradeLabel),
+        city: lead.city,
+      }),
     }));
     const started = new Date();
-    const chunks = planTrickleChunks(tracked, {
+    const chunks = planSmartChunks(tracked, {
       chunkSize: config.chunkSize,
       intervalSeconds: config.intervalSeconds,
       start: started,
+      timing: data.timing,
     }).map((chunk) => ({
       ...chunk,
       messages: chunk.items.map((lead) =>
@@ -1186,11 +1348,11 @@ export const launchOutreachBatch = createServerFn({ method: "POST" })
       await sql`
         insert into outreach_dispatches (
           id, campaign_id, channel, mode, chunk_index, chunk_count, lead_count,
-          interval_seconds, payload, status, scheduled_at, county
+          interval_seconds, payload, status, scheduled_at, county, timing, profile
         ) values (
           ${newId("dsp")}, ${id}, ${channel}, ${config.mode}, ${chunk.index}, ${chunks.length},
           ${chunk.messages.length}, ${config.intervalSeconds}, ${JSON.stringify(chunk.messages)},
-          ${"queued"}, ${chunk.scheduledAt}, ${data.county}
+          ${"queued"}, ${chunk.scheduledAt}, ${data.county}, ${data.timing}, ${chunk.profile}
         )
       `;
     }
@@ -1208,6 +1370,7 @@ export const launchOutreachBatch = createServerFn({ method: "POST" })
       releaseAt,
       audience: tracked,
       stopTokens,
+      timing: data.timing,
     });
     queue.ensureOutreachWorker();
     const drained = await queue.drainOutreachQueue(sql);
@@ -1224,6 +1387,8 @@ export const launchOutreachBatch = createServerFn({ method: "POST" })
       intervalSeconds: config.intervalSeconds,
       chunkSize: config.chunkSize,
       chunks: chunks.length,
+      timing: data.timing,
+      firstAt: chunks[0]?.scheduledAt ?? null,
       released: drained.released ? 1 : 0,
       enrolled: nurture.enrolled,
       skippedClicked: nurture.skippedClicked,
@@ -1367,6 +1532,14 @@ export const beginTerritoryCheckout = createServerFn({ method: "POST" })
     const opened = await territory.openTerritoryCheckout(data.leadSlug, plan.id, processor);
     try {
       const origin = await requestOrigin();
+      let userId = "";
+      try {
+        const { getSessionUser } = await import("@/lib/auth/verify.server");
+        const buyer = await getSessionUser();
+        if (buyer?.id && buyer.id !== "dev-user") userId = buyer.id;
+      } catch {
+        // A signed-out buyer can still pay. The shop opens once their account matches.
+      }
       const session = await payments.createTerritoryCheckout({
         leadSlug: data.leadSlug,
         checkoutId: opened.checkoutId,
@@ -1375,6 +1548,7 @@ export const beginTerritoryCheckout = createServerFn({ method: "POST" })
         amountCents: plan.amountCents,
         cadence: plan.cadence,
         origin,
+        userId,
       });
       return { checkoutId: opened.checkoutId, processor, url: session.url };
     } catch (err) {
@@ -1410,4 +1584,53 @@ export const confirmTerritorySession = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const payments = await import("./payments.server");
     return payments.settleTerritorySession(data);
+  });
+
+export type PlatformPulse = {
+  id: string;
+  type: string;
+  shopName: string;
+  detail: string;
+  createdAt: string;
+};
+
+export const listPlatformPulse = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<PlatformPulse[]> => {
+    await assertPlatformOwner(context.userId);
+    const sql = await getSql();
+    try {
+    const rows = await sql<{
+      id: string;
+      type: string;
+      shop_name: string;
+      detail: string | null;
+      created_at: string;
+    }>`
+      select id, type, shop_name, detail, created_at from (
+        select e.id, e.type, s.name as shop_name, e.payload as detail, e.created_at
+        from shop_events e
+        join shops s on s.id = e.shop_id
+        where e.type in (
+          'booking_request', 'booking_confirmed', 'payment_received', 'audit_request', 'audit_confirmed'
+        )
+        union all
+        select a.id, 'audit_request', coalesce(s.name, a.lead_slug), a.summary, a.created_at
+        from lead_audits a
+        left join shops s on s.id = a.shop_id
+        where a.shop_id is null
+      ) pulse
+      order by created_at desc
+      limit 12
+    `;
+    return rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      shopName: row.shop_name,
+      detail: (row.detail ?? "").replace(/^aud_[a-z0-9]+\|/i, ""),
+      createdAt: stamp(row.created_at),
+    }));
+    } catch {
+      return [];
+    }
   });

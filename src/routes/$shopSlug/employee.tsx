@@ -4,7 +4,7 @@ import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { effectiveDashboard } from "@/lib/axiom/dashboard";
 import { WEEKDAYS } from "@/lib/axiom/niches";
-import { addPortfolioItem, acceptBooking, getOperatorData, getPortfolio } from "@/lib/axiom/server";
+import { addPortfolioItem, acceptBooking, getOperatorData, getPortfolio, setEmployeeAvailability } from "@/lib/axiom/server";
 import type { AccessMode, Appointment, Employee, PortfolioItem, Shop, ShopNotice } from "@/lib/axiom/types";
 import { EmployeeDashboardEditor } from "@/components/dashboard-controls";
 import { Wordmark } from "@/components/shop-chrome";
@@ -130,9 +130,19 @@ function EmployeePage() {
         <p className="mt-10 text-sm text-faint">This station is clear.</p>
       ) : null}
 
+      {employee ? (
+        <StationProfile
+          shopSlug={shop.slug}
+          employee={employee}
+          appointments={appointments.filter((item) => item.employeeId === employee.id)}
+          locked={mode === "preview"}
+          onAvailability={(availability) => setEmployee({ ...employee, availability })}
+        />
+      ) : null}
+
       <section className="mt-10">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Station</p>
-        <h2 className="mt-2 font-display text-3xl">Inbox</h2>
+        <h2 className="mt-2 font-display text-3xl">Client notes</h2>
         <ul className="mt-4 grid gap-2">
           {stationNotices.length === 0 ? (
             <li className="text-sm text-faint">No notices for this station yet.</li>
@@ -177,26 +187,26 @@ function EmployeePage() {
                       size="sm"
                       onClick={() => {
                         void (async () => {
+                            const result = await acceptBooking({
+                            data: { slug: shop.slug, appointmentId: a.id },
+                          });
                           ring.announce(
                             {
                               id: `acc-${a.id}`,
                               type: "booking_confirmed",
                               appointmentId: a.id,
-                              payload: null,
+                              payload: result.detail,
                               createdAt: new Date().toISOString(),
                             },
                             true,
                           );
-                          await acceptBooking({
-                            data: { slug: shop.slug, appointmentId: a.id },
-                          });
                           const next = await getOperatorData({ data: shop.slug });
                           setAppointments(next.appointments);
                           setNotices(next.notices);
                         })();
                       }}
                     >
-                      Accept
+                      Confirm
                     </Button>
                   ) : (
                     <span className="text-xs uppercase tracking-wider text-faint">{a.status}</span>
@@ -221,6 +231,68 @@ function EmployeePage() {
 
       {layout?.sections.includes("hours") ? <ShopHours hours={stationShop.hours} /> : null}
     </main>
+  );
+}
+
+function StationProfile({
+  shopSlug,
+  employee,
+  appointments,
+  locked,
+  onAvailability,
+}: {
+  shopSlug: string;
+  employee: Employee;
+  appointments: Appointment[];
+  locked: boolean;
+  onAvailability: (availability: Employee["availability"]) => void;
+}) {
+  const confirmed = appointments.filter((item) => item.status === "confirmed").length;
+  const pending = appointments.filter((item) => item.status === "pending").length;
+  const completed = appointments.filter((item) => item.status === "completed").length;
+  return (
+    <section className="mt-10">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Profile</p>
+      <h2 className="mt-2 font-display text-3xl">{employee.displayName}</h2>
+      <p className="mt-1 text-sm text-muted">{employee.title}</p>
+      {employee.bio ? <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{employee.bio}</p> : null}
+      <dl className="mt-6 grid grid-cols-3 gap-3">
+        <Metric label="Waiting" value={pending} />
+        <Metric label="Confirmed" value={confirmed} />
+        <Metric label="Finished" value={completed} />
+      </dl>
+      <p className="mt-8 text-[11px] uppercase tracking-[0.2em] text-muted">Days on the book</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {WEEKDAYS.map(([key, label]) => {
+          const on = employee.availability[key as keyof Employee["availability"]];
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={on}
+              disabled={locked}
+              onClick={() => {
+                void setEmployeeAvailability({
+                  data: { slug: shopSlug, employeeId: employee.id, day: key, on: !on },
+                }).then((result) => onAvailability(result.availability));
+              }}
+              className={`glass-btn h-11 rounded-full px-4 text-sm ${on ? "text-fg" : "text-faint"}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
+      <dt className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</dt>
+      <dd className="mt-2 font-display text-3xl tabular">{value}</dd>
+    </div>
   );
 }
 

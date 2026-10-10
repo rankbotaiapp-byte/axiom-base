@@ -15,6 +15,7 @@
   --color-copper: #e7b48a;
   --color-steel: #7ec8e3;
   --color-ok: #8fce8a;
+  --color-emerald: #3ddc97;
   --color-danger: #e07a73;
 
   --radius-sm: 8px;
@@ -135,6 +136,114 @@
   }
 }
 
+/* Light between the film and the type. It only mounts while scroll depth is on. */
+.glass-btn {
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 42%, transparent),
+    0 0 28px color-mix(in srgb, var(--neon, var(--color-accent)) calc(var(--glow, 0.45) * 28%), transparent);
+}
+
+.lift-card {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.lift-card:hover,
+.lift-card:active {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 32px color-mix(in srgb, var(--neon, var(--color-accent)) 14%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 36%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lift-card {
+    transition: none;
+  }
+  .lift-card:hover,
+  .lift-card:active {
+    transform: none;
+  }
+}
+
+.audit-well {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 70%, transparent),
+    0 0 28px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  animation: audit-breathe 3.2s ease-in-out infinite;
+}
+
+.audit-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent),
+    var(--color-emerald),
+    transparent
+  );
+  box-shadow: 0 0 18px var(--color-accent);
+  animation: audit-scan 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes audit-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 70%, transparent),
+      0 0 28px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-emerald) 75%, transparent),
+      0 0 36px color-mix(in srgb, var(--color-emerald) 40%, transparent);
+  }
+}
+
+@keyframes audit-scan {
+  0% {
+    top: 10%;
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    top: 86%;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audit-well,
+  .audit-laser {
+    animation: none;
+  }
+  .audit-laser {
+    top: 50%;
+    opacity: 0.7;
+  }
+}
+
+.hero-atmosphere {
+  background: radial-gradient(
+    90% 55% at 50% 18%,
+    color-mix(in srgb, var(--color-fg) 12%, transparent),
+    transparent 70%
+  );
+}
+
 .hero-stage::after,
 .hero-site::after {
   content: "";
@@ -224,6 +333,15 @@
 
 .axiom-ring[data-state="solid"] {
   opacity: 0.96;
+}
+
+.axiom-ring[data-state="alert"] {
+  animation: ring-strobe 0.42s ease-in-out 5;
+}
+
+.axiom-ring[data-state="alert"] .axiom-ring-edge,
+.axiom-ring[data-state="alert"] .axiom-ring-bloom {
+  animation: ring-chroma 1.4s linear 2;
 }
 
 /* One-shot: hue sweep the moment a booking or color update lands, then ease back. */
@@ -335,13 +453,16 @@
   .axiom-ring[data-state="flash"],
   .axiom-ring[data-state="awaiting"],
   .axiom-ring[data-state="lock"],
+  .axiom-ring[data-state="alert"],
   .axiom-ring[data-state="cycle"] {
     animation: none;
     opacity: 0.86;
   }
 
   .axiom-ring[data-state="cycle"] .axiom-ring-edge,
-  .axiom-ring[data-state="cycle"] .axiom-ring-bloom {
+  .axiom-ring[data-state="cycle"] .axiom-ring-bloom,
+  .axiom-ring[data-state="alert"] .axiom-ring-edge,
+  .axiom-ring[data-state="alert"] .axiom-ring-bloom {
     animation: none;
     filter: none;
   }

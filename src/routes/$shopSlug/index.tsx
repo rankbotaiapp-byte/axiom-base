@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
-import { CinematicHero, IntroFxToggle } from "@/components/cinematic-hero";
+import { CinematicHero, InsetFilm, IntroFxToggle } from "@/components/cinematic-hero";
+import { ProductShelf } from "@/components/product-shelf";
+import { NeonField, SnapEstimate } from "@/components/snap-estimate";
+import { offerModel, shelfFor } from "@/lib/axiom/storefront";
 import { LoopOverlay, TourOverlay } from "@/components/tour-overlay";
 import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
@@ -47,40 +50,8 @@ function CustomerHome() {
   const hero = resolveHeroMedia(data.shop);
   const nicheFilm = NICHE_MEDIA[data.shop.niche];
 
-  return (
-    <div className="bg-bg">
-      <CinematicHero
-        imageUrl={hero.imageUrl}
-        videoUrl={hero.videoUrl}
-        blendPercent={data.shop.heroBlendPercent}
-        introPreset={data.shop.introPreset}
-        introSpeed={data.shop.introSpeed}
-        introIntensity={data.shop.introIntensity}
-        tone={hero.tone}
-        fallbackImageUrl={nicheFilm.heroImageUrl}
-        fallbackVideoUrl={nicheFilm.heroVideoUrl}
-      >
-        <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
-        <div className="relative z-10">
-          <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
-        </div>
-        <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{data.shop.address}</p>
-          <h1 className="mt-3 max-w-3xl break-words font-display text-[clamp(3rem,10vw,6.5rem)] leading-[0.92]">
-            {data.shop.name}
-          </h1>
-          <p className="mt-4 max-w-lg text-base text-fg/80 sm:text-lg">{data.shop.tagline}</p>
-          <Link
-            to="/$shopSlug/book"
-            params={{ shopSlug: data.shop.slug }}
-            className="mt-8 inline-flex h-12 items-center gap-2 rounded-xl bg-fg px-5 text-sm font-medium text-bg"
-          >
-            {copy.bookLabel}
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      </CinematicHero>
-
+  const neon = data.shop.neonAccent || data.shop.ringColor;
+  const staffBlock = (
       <section className="px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-5xl">
           {search.requested ? (
@@ -96,7 +67,7 @@ function CustomerHome() {
                 key={e.id}
                 to="/$shopSlug/staff/$employeeId"
                 params={{ shopSlug: data.shop.slug, employeeId: e.id }}
-                className="flex gap-4 overflow-hidden rounded-[24px] bg-surface p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+                className="lift-card flex gap-4 overflow-hidden rounded-[24px] bg-surface/80 p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] backdrop-blur-md"
               >
                 {e.avatarUrl ? (
                   <img
@@ -120,9 +91,46 @@ function CustomerHome() {
               </Link>
             ))}
           </div>
+          {nicheFilm.insetImageUrl || nicheFilm.insetLoopUrl ? (
+            <div className="mt-8 max-w-xl">
+              <InsetFilm imageUrl={nicheFilm.insetImageUrl} videoUrl={nicheFilm.insetLoopUrl} />
+            </div>
+          ) : null}
         </div>
       </section>
-
+  );
+  const product = offerModel(data.shop.niche) === "product";
+  const shelf = shelfFor(
+    data.shop.niche,
+    services.map((service) => ({
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      priceCents: service.priceCents,
+    })),
+  );
+  const estimateBlock = (
+    <section className="px-5 pb-4 sm:px-10">
+      <div className="mx-auto max-w-5xl">
+        {product ? (
+          <ProductShelf items={shelf} />
+        ) : (
+          <SnapEstimate
+            niche={data.shop.niche}
+            bookLabel={copy.bookLabel}
+            shopSlug={data.shop.slug}
+            lines={services.map((service) => ({
+              name: service.name,
+              description: service.description,
+              priceCents: service.priceCents,
+            }))}
+            bookTo={`/${data.shop.slug}/book`}
+          />
+        )}
+      </div>
+    </section>
+  );
+  const menuBlock = (
       <section className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto grid max-w-5xl gap-10 md:grid-cols-[1.2fr_0.8fr]">
           <div>
@@ -135,15 +143,21 @@ function CustomerHome() {
                     <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{group.label}</p>
                   ) : null}
                   <ul className="divide-y divide-line">
-                    {group.items.map((s) => (
-                      <li key={s.id} className="flex items-baseline justify-between gap-4 py-4">
-                        <div>
-                          <p className="font-medium">{s.name}</p>
+                    {group.items.map((s) => {
+                      const item = shelf.find((row) => row.id === s.id || row.name === s.name);
+                      return (
+                      <li key={s.id} className="flex min-w-0 items-baseline justify-between gap-4 py-4">
+                        <div className="min-w-0">
+                          <p className="break-words font-medium">{s.name}</p>
                           <p className="text-sm text-muted">{s.description}</p>
+                          {item ? (
+                            <p className="text-sm text-muted">{item.attribute} · {item.stock} in stock</p>
+                          ) : null}
                         </div>
                         <p className="tabular shrink-0 text-sm text-muted">{formatOffer(s)}</p>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -170,6 +184,47 @@ function CustomerHome() {
           </div>
         </div>
       </section>
+  );
+  const blocks = { staff: staffBlock, estimate: estimateBlock, menu: menuBlock };
+
+  return (
+    <div className="bg-bg" data-neon={data.shop.glowEnabled ? "on" : "off"} style={{ ["--neon" as string]: neon }}>
+      <NeonField active={data.shop.glowEnabled} />
+      <CinematicHero
+        imageUrl={hero.imageUrl}
+        videoUrl={hero.videoUrl}
+        blendPercent={data.shop.heroBlendPercent}
+        introPreset={data.shop.introPreset}
+        introSpeed={data.shop.introSpeed}
+        introIntensity={data.shop.introIntensity}
+        tone={hero.tone}
+        fallbackImageUrl={nicheFilm.heroImageUrl}
+        fallbackVideoUrl={nicheFilm.heroVideoUrl}
+      >
+        <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
+        <div className="relative z-10">
+          <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
+        </div>
+        <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{data.shop.address}</p>
+          <h1 className="mt-3 max-w-3xl break-words font-display text-[clamp(3rem,10vw,6.5rem)] leading-[0.92]">
+            {data.shop.name}
+          </h1>
+          <p className="mt-4 max-w-lg text-base text-fg/80 sm:text-lg">{data.shop.tagline}</p>
+          <Link
+            to="/$shopSlug/book"
+            params={{ shopSlug: data.shop.slug }}
+            className="glass-btn mt-8 inline-flex h-12 items-center gap-2 rounded-xl px-5 text-sm font-medium"
+          >
+            {copy.bookLabel}
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      </CinematicHero>
+
+      {data.shop.layout.map((block) => (
+        <div key={block}>{blocks[block]}</div>
+      ))}
 
       <PoweredBy />
 
@@ -180,7 +235,7 @@ function CustomerHome() {
         <Link
           to="/$shopSlug/book"
           params={{ shopSlug: data.shop.slug }}
-          className="flex h-12 items-center justify-center rounded-xl bg-fg text-sm font-medium text-bg"
+          className="glass-btn flex h-12 items-center justify-center rounded-xl text-sm font-medium"
         >
           {copy.bookLabel}
         </Link>

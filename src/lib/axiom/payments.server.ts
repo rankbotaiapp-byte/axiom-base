@@ -13,6 +13,8 @@ type StripeObject = Record<string, unknown> & {
   status?: string;
   amount_total?: number;
   charges_enabled?: boolean;
+  customer_email?: string | null;
+  customer_details?: { email?: string | null } | null;
   metadata?: Record<string, string> | null;
 };
 
@@ -126,6 +128,7 @@ export async function createTerritoryCheckout(opts: {
   amountCents: number;
   cadence: "trial" | "month" | "once";
   origin: string;
+  userId?: string;
 }) {
   const success = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1&session_id={CHECKOUT_SESSION_ID}`;
   const cancel = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1`;
@@ -141,6 +144,7 @@ export async function createTerritoryCheckout(opts: {
     "metadata[plan_id]": opts.planId,
     "metadata[checkout_id]": opts.checkoutId,
   });
+  if (opts.userId && opts.userId !== "dev-user") params.set("metadata[user_id]", opts.userId);
   if (opts.cadence === "once") {
     params.set("mode", "payment");
     params.set("line_items[0][price_data][unit_amount]", String(opts.amountCents));
@@ -174,12 +178,46 @@ export async function settleTerritorySession(sessionId: string) {
     throw new Error("Paid amount does not match the plan");
   }
   const { activateTerritory } = await import("./territory.server");
-  return activateTerritory({
+  const activation = await activateTerritory({
     leadSlug,
     planId,
     paymentRef: sessionId,
     checkoutId: checkoutId || undefined,
   });
+  const ownerId = await territoryOwnerId(session);
+  if (!ownerId) return { ...activation, shop: null };
+  const { provisionTerritoryForPayer } = await import("./server");
+  const shop = await provisionTerritoryForPayer({ leadSlug, userId: ownerId });
+  return { ...activation, shop };
+}
+
+/** The account that paid. Metadata is the signed-in buyer. Email matches an existing account. */
+async function territoryOwnerId(session: StripeObject): Promise<string | null> {
+  const metaId = (session.metadata?.user_id ?? "").trim();
+  const detailEmail =
+    session.customer_details && typeof session.customer_details.email === "string"
+      ? session.customer_details.email
+      : "";
+  const email = (detailEmail || session.customer_email || "").trim().toLowerCase();
+  const sql = await getSql();
+  if (metaId && metaId !== "dev-user") {
+    const rows = await sql<{ id: string }>`select id from "user" where id = ${metaId} limit 1`;
+    if (rows[0]) return rows[0].id;
+  }
+  if (email && !email.endsWith("@example.com") && !email.endsWith(".example")) {
+    const rows = await sql<{ id: string }>`select id from "user" where lower("email") = ${email} limit 1`;
+    if (rows[0]) return rows[0].id;
+  }
+  try {
+    const { getSessionUser } = await import("@/lib/auth/verify.server");
+    const current = await getSessionUser();
+    if (!current || current.id === "dev-user") return null;
+    if (metaId && current.id === metaId) return current.id;
+    if (email && current.email?.toLowerCase() === email) return current.id;
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export async function settlePaidSession(sessionId: string) {
@@ -234,8 +272,8 @@ export async function settlePaidSession(sessionId: string) {
   if (!updated[0]) return { appointmentId: row.id, shopId, already: true };
 
   await sql`
-    insert into shop_events (id, shop_id, type, appointment_id)
-    values (${newId("evt")}, ${shopId}, 'booking_request', ${row.id})
+    insert into shop_events (id, shop_id, type, appointment_id, payload)
+    values (${newId("evt")}, ${shopId}, 'payment_received', ${row.id}, ${`Paid · ${row.service_name}`})
   `;
   await notifyBookingParties({
     shopId,
@@ -295,6 +333,7 @@ export async function handleStripeWebhook(request: Request) {
     const territory = object.metadata?.kind === "territory";
     const status = object.payment_status;
     if (territory && (status === "paid" || status === "no_payment_required")) {
+      // Re-fetches the session from Stripe, marks the territory live, then opens the shop.
       await settleTerritorySession(object.id);
     } else if (!territory && status === "paid") {
       await settlePaidSession(object.id);

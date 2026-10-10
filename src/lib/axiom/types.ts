@@ -1,5 +1,6 @@
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
+import type { LayoutBlock, ThemeProfile } from "./storefront";
 
 export const SHOP_NICHES = [
   "guide",
@@ -16,10 +17,12 @@ export const SHOP_NICHES = [
   "contractor",
   "clean",
   "field",
+  "security",
   "practice",
   "counsel",
   "location",
   "studio",
+  "retail",
   "trade",
 ] as const;
 
@@ -75,6 +78,10 @@ export type Shop = {
   worksAlone: boolean;
   dashboardOverride: boolean;
   dashboardConfig: DashboardConfig;
+  themeProfile: ThemeProfile;
+  neonAccent: string;
+  glowEnabled: boolean;
+  layout: LayoutBlock[];
   createdAt: string;
 };
 
@@ -89,6 +96,7 @@ export type Employee = {
   inviteStatus: "pending" | "claimed";
   serviceIds: string[];
   dashboardConfig: DashboardConfig;
+  availability: Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", boolean>;
 };
 
 export type Service = {
@@ -126,12 +134,19 @@ export type Appointment = {
   paymentRef: string | null;
 };
 
-export type ShopEventType = "booking_request" | "booking_confirmed" | "ring_color";
+export type ShopEventType =
+  | "booking_request"
+  | "booking_confirmed"
+  | "payment_received"
+  | "audit_request"
+  | "audit_confirmed"
+  | "ring_color";
 
 export type ShopEvent = {
   id: string;
   type: ShopEventType;
   appointmentId: string | null;
+  employeeId?: string | null;
   payload: string | null;
   createdAt: string;
 };

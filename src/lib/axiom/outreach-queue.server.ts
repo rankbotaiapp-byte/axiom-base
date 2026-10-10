@@ -5,12 +5,19 @@ import { isDueNurtureStep, nurtureReleasePlan, splitOutreachEmail } from "./funn
 import { isLeadSlug } from "./funnel";
 import { toE164 } from "./notify-target";
 import {
+  insideSendWindow,
+  nextSendInstant,
   outreachMayCallProviders,
   parseChunkSize,
   parseOutreachMode,
+  parseSendTiming,
+  parseTimingProfile,
   parseTrickleSeconds,
+  timingProfileFor,
   trickleMayRelease,
   type OutreachMode,
+  type SendTiming,
+  type TimingProfile,
 } from "./outreach-queue";
 
 export type QueueMessage = {
@@ -33,6 +40,8 @@ type DueDispatch = {
   payload: string;
   interval_seconds: number;
   county: string;
+  timing: string;
+  profile: string;
 };
 
 export function readOutreachConfig(): { mode: OutreachMode; intervalSeconds: number; chunkSize: number } {
@@ -74,9 +83,15 @@ async function tickOutreachQueue(): Promise<void> {
   }
 }
 
+function dispatchWindow(row: { timing: string; profile: string }): { timing: SendTiming; profile: TimingProfile } {
+  const timing = parseSendTiming(row.timing);
+  return { timing, profile: timing === "smart" ? parseTimingProfile(row.profile) : "general" };
+}
+
 /**
  * Release at most one due chunk. Overdue chunks stay queued until a full
  * interval has passed since the previous release, so a restart cannot dump the backlog.
+ * Nights, Fridays, and weekends push the chunk to the next open window.
  */
 export async function drainOutreachQueue(sql: Sql): Promise<{ released: boolean }> {
   await sql`
@@ -87,13 +102,27 @@ export async function drainOutreachQueue(sql: Sql): Promise<{ released: boolean 
   `;
   const due = await sql<DueDispatch>`
     select id, campaign_id, channel, mode, chunk_index, chunk_count, lead_count,
-      payload, interval_seconds, county
+      payload, interval_seconds, county, timing, profile
     from outreach_dispatches
     where status = 'queued' and scheduled_at <= now()
     order by scheduled_at asc, chunk_index asc
-    limit 1
+    limit 12
   `;
-  const row = due[0];
+  const now = new Date();
+  let row: DueDispatch | undefined;
+  for (const candidate of due) {
+    const window = dispatchWindow(candidate);
+    if (insideSendWindow(now, window.timing, window.profile)) {
+      row = candidate;
+      break;
+    }
+    const next = nextSendInstant(now, window.timing, window.profile).toISOString();
+    await sql`
+      update outreach_dispatches
+      set scheduled_at = ${next}
+      where id = ${candidate.id} and status = 'queued'
+    `;
+  }
   if (!row) return { released: false };
   const intervalSeconds = parseTrickleSeconds(String(row.interval_seconds));
   const recent = await sql<{ sent_at: unknown }>`
@@ -217,6 +246,8 @@ type DueTouch = {
   lead_slug: string;
   channel: string;
   county: string;
+  trade_type: string;
+  timing: string;
   contact_email: string | null;
   contact_phone: string | null;
 };
@@ -230,6 +261,39 @@ export async function drainNurtureTouches(sql: Sql): Promise<{ released: number 
   const credentialsReady = config.mode === "live" ? (await import("./notify.server")).missingOutreachCredentials().length === 0 : false;
   const plan = nurtureReleasePlan(config.mode, credentialsReady);
   if (plan === "hold") return { released: 0 };
+
+  const due = await sql<DueTouch>`
+    select t.id, t.step, t.body, t.attempts, s.id as sequence_id, s.lead_slug, s.channel, s.county,
+      s.trade_type, s.timing, l.contact_email, l.contact_phone
+    from outreach_touches t
+    join outreach_sequences s on s.id = t.sequence_id
+    left join preloaded_leads l on l.lead_slug = s.lead_slug
+    where t.status = 'scheduled'
+      and t.step in (3, 6)
+      and t.scheduled_at <= now()
+      and s.status = 'active'
+    order by t.scheduled_at asc, t.step asc
+    limit 24
+  `;
+  const now = new Date();
+  const batch: DueTouch[] = [];
+  for (const row of due) {
+    if (!isDueNurtureStep(numStep(row.step))) continue;
+    const timing = parseSendTiming(row.timing);
+    const profile = timing === "smart" ? timingProfileFor(row.trade_type) : "general";
+    if (!insideSendWindow(now, timing, profile)) {
+      const next = nextSendInstant(now, timing, profile).toISOString();
+      await sql`
+        update outreach_touches
+        set scheduled_at = ${next}
+        where id = ${row.id} and status = 'scheduled'
+      `;
+      continue;
+    }
+    batch.push(row);
+    if (batch.length >= config.chunkSize) break;
+  }
+  if (batch.length === 0) return { released: 0 };
 
   const recent = await sql<{ sent_at: unknown }>`
     select sent_at from (
@@ -245,22 +309,6 @@ export async function drainNurtureTouches(sql: Sql): Promise<{ released: number 
   const lastSent = recent[0]?.sent_at;
   const lastSentAt = lastSent == null ? null : lastSent instanceof Date ? lastSent.toISOString() : String(lastSent);
   if (!trickleMayRelease(lastSentAt, new Date(), config.intervalSeconds)) return { released: 0 };
-
-  const due = await sql<DueTouch>`
-    select t.id, t.step, t.body, t.attempts, s.id as sequence_id, s.lead_slug, s.channel, s.county,
-      l.contact_email, l.contact_phone
-    from outreach_touches t
-    join outreach_sequences s on s.id = t.sequence_id
-    left join preloaded_leads l on l.lead_slug = s.lead_slug
-    where t.status = 'scheduled'
-      and t.step in (3, 6)
-      and t.scheduled_at <= now()
-      and s.status = 'active'
-    order by t.scheduled_at asc, t.step asc
-    limit ${config.chunkSize}
-  `;
-  const batch = due.filter((row) => isDueNurtureStep(numStep(row.step)));
-  if (batch.length === 0) return { released: 0 };
 
   let sent = 0;
   let failed = 0;

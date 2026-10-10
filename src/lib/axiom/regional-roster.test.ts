@@ -1,49 +1,85 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isEmailReady, isLeadSlug } from "./funnel.ts";
-import { HOME_REGION_COUNTIES, HOME_REGION_LABEL, homeRegionLeads } from "./regional-roster.ts";
+import { classifyTrade } from "./directory.ts";
+import { isEmailReady, isLeadSlug, isSmsReady, leadChannelTags } from "./funnel.ts";
+import { leadHeroFor } from "./media.ts";
+import {
+  HOME_REGION_CITIES,
+  HOME_REGION_COPIES,
+  HOME_REGION_COUNTIES,
+  HOME_REGION_LABEL,
+  REGIONAL_VERTICALS,
+  homeRegionLeads,
+} from "./regional-roster.ts";
 import { SHOP_NICHES } from "./types.ts";
 
-const CITIES: Record<(typeof HOME_REGION_COUNTIES)[number], string[]> = {
-  "Jackson County": ["Medford", "Ashland", "Central Point", "Jacksonville", "Eagle Point", "Talent", "Phoenix", "White City", "Shady Cove"],
-  "Josephine County": ["Grants Pass", "Cave Junction", "Merlin", "Wilderville", "Selma"],
-  "Douglas County": ["Roseburg", "Winston", "Sutherlin", "Myrtle Creek", "Glide", "Canyonville"],
-};
-
-test("the southern oregon roster covers every trade in each county", () => {
+test("the southern oregon roster loads a large mixed set in the named cities", () => {
   const leads = homeRegionLeads();
+  const cityCount = HOME_REGION_COUNTIES.reduce((sum, county) => sum + HOME_REGION_CITIES[county].length, 0);
   assert.equal(HOME_REGION_LABEL, "Southern Oregon");
-  assert.equal(leads.length, SHOP_NICHES.length * 2 * HOME_REGION_COUNTIES.length);
-  assert.deepEqual(
-    HOME_REGION_COUNTIES.map((county) => county),
-    [...new Set(leads.map((lead) => lead.county))],
-  );
+  assert.ok(leads.length > 1000);
+  assert.equal(leads.length, cityCount * REGIONAL_VERTICALS.length * HOME_REGION_COPIES);
+  assert.ok(HOME_REGION_COPIES > 2);
+
   for (const county of HOME_REGION_COUNTIES) {
     const rows = leads.filter((lead) => lead.county === county);
-    assert.equal(rows.length, SHOP_NICHES.length * 2);
-    for (const niche of SHOP_NICHES) {
-      assert.equal(rows.filter((lead) => lead.tradeType === niche).length, 2);
+    const allowed = HOME_REGION_CITIES[county];
+    assert.equal(rows.length, allowed.length * REGIONAL_VERTICALS.length * HOME_REGION_COPIES);
+    for (const lead of rows) assert.ok(allowed.includes(lead.city), `${lead.city} is not in ${county}`);
+    for (const city of allowed) {
+      assert.ok(rows.some((lead) => lead.city === city));
     }
-    for (const lead of rows) {
-      assert.ok(CITIES[county].includes(lead.city), `${lead.city} is not in ${county}`);
-    }
+    const tags = rows.map((lead) => leadChannelTags(lead).join("|"));
+    assert.ok(tags.some((tag) => tag === "SMS-ready"));
+    assert.ok(tags.some((tag) => tag === "Email-ready"));
+    assert.ok(tags.some((tag) => tag === "SMS-ready|Email-ready"));
+    assert.ok(tags.some((tag) => tag === "No channel"));
   }
-  assert.ok(leads.some((lead) => lead.city === "Medford" && lead.county === "Jackson County"));
-  assert.ok(leads.some((lead) => lead.city === "Grants Pass" && lead.county === "Josephine County"));
-  assert.ok(leads.some((lead) => lead.city === "Roseburg" && lead.county === "Douglas County"));
+
   const slugs = leads.map((lead) => lead.leadSlug);
   assert.equal(new Set(slugs).size, slugs.length);
   const phones = leads.map((lead) => lead.contactPhone);
   assert.equal(new Set(phones).size, phones.length);
+
+  const niches = new Set<string>();
   for (const lead of leads) {
     assert.equal(isLeadSlug(lead.leadSlug), true);
     assert.ok(lead.contactName.length > 1);
     assert.ok(lead.reviewCount > 0);
     assert.ok(lead.reviewScore >= 0 && lead.reviewScore <= 5);
-    assert.equal(typeof lead.hasWebsite, "boolean");
     assert.ok(lead.phoneLine === "mobile" || lead.phoneLine === "landline");
     assert.match(lead.contactPhone, /^541-555-\d{4}$/);
+    assert.equal(isSmsReady(lead.phoneLine), lead.phoneLine === "mobile");
     if (lead.hasWebsite) assert.equal(isEmailReady(lead.contactEmail), true);
     else assert.equal(lead.contactEmail, "");
+    niches.add(classifyTrade(lead.tradeType).tradeType);
   }
+  for (const niche of SHOP_NICHES) {
+    if (niche === "trade") continue;
+    assert.ok(niches.has(niche), niche);
+  }
+  assert.ok(niches.has("hvac"));
+  assert.ok(niches.has("dog-walking"));
+  assert.ok(niches.has("mobile-food-truck"));
+
+  function heroFor(category: string) {
+    const lead = leads.find((row) => row.tradeType === category);
+    if (!lead) throw new Error(`missing ${category}`);
+    const classified = classifyTrade(lead.tradeType);
+    return leadHeroFor(classified.tradeType, lead.businessName, classified.tradeLabel);
+  }
+
+  assert.equal(heroFor("Guide services").heroVideoUrl, "/media/heroes/guide.mp4");
+  assert.equal(heroFor("Photography").heroVideoUrl, "/media/heroes/photo.mp4");
+  assert.equal(heroFor("Barber").heroVideoUrl, "/media/clipper.mp4");
+  assert.equal(heroFor("Hair salon").heroImageUrl, "/media/heroes/salon.jpg");
+  assert.equal(heroFor("HVAC").heroImageUrl, "/media/heroes/hvac.jpg");
+  assert.equal(heroFor("Plumbing").heroImageUrl, "/media/heroes/plumbing.jpg");
+  assert.equal(heroFor("Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
+  assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/deer-hunting-guide.mp4");
+  assert.equal(heroFor("Private security").heroVideoUrl, "/media/heroes/private-security.mp4");
+  assert.equal(heroFor("Mobile food truck").heroImageUrl, "/media/heroes/food-truck.jpg");
+  assert.equal(heroFor("Air conditioning").heroImageUrl, "/media/heroes/hvac.jpg");
+  assert.equal(heroFor("Dog walking").heroImageUrl, "/media/heroes/trade.jpg");
+  assert.equal(heroFor("Mobile mechanic").heroImageUrl, "/media/heroes/trade.jpg");
 });

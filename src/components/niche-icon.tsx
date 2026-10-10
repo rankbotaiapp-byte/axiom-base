@@ -13,6 +13,8 @@ import {
   Mic,
   PawPrint,
   Scissors,
+  Shield,
+  ShoppingBag,
   Sparkles,
   SprayCan,
   Store,
@@ -37,10 +39,12 @@ const ICONS: Record<ShopNiche, LucideIcon> = {
   contractor: HardHat,
   clean: SprayCan,
   field: Truck,
+  security: Shield,
   practice: HeartPulse,
   counsel: Briefcase,
   location: Store,
   studio: AppWindow,
+  retail: ShoppingBag,
   trade: Wrench,
 };
 

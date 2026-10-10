@@ -804,7 +804,7 @@ function createRenderStep(runNextFrame) {
 }
 //#endregion
 //#region node_modules/motion-dom/dist/es/frameloop/batcher.mjs
-var maxElapsed = 40;
+var maxElapsed$1 = 40;
 function createRenderBatcher(scheduleNextBatch, allowKeepAlive, state = {
 	delta: 0,
 	timestamp: 0,
@@ -822,7 +822,7 @@ function createRenderBatcher(scheduleNextBatch, allowKeepAlive, state = {
 		const useManualTiming = MotionGlobalConfig.useManualTiming;
 		const timestamp = useManualTiming ? state.timestamp : performance.now();
 		runNextFrame = false;
-		if (!useManualTiming) state.delta = useDefaultElapsed ? 1e3 / 60 : Math.max(Math.min(timestamp - state.timestamp, maxElapsed), 1);
+		if (!useManualTiming) state.delta = useDefaultElapsed ? 1e3 / 60 : Math.max(Math.min(timestamp - state.timestamp, maxElapsed$1), 1);
 		state.timestamp = timestamp;
 		state.isProcessing = true;
 		setup.process(state);
@@ -1421,7 +1421,7 @@ function fillOffset(offset, remaining) {
 }
 //#endregion
 //#region node_modules/motion-dom/dist/es/animation/keyframes/offsets/default.mjs
-function defaultOffset(arr) {
+function defaultOffset$1(arr) {
 	const offset = [0];
 	fillOffset(offset, arr.length - 1);
 	return offset;
@@ -1465,7 +1465,7 @@ function keyframes({ duration = 300, keyframes: keyframeValues, times, ease = "e
 			}
 		};
 	}
-	const mapTimeToKeyframe = interpolate(convertOffsetToTimes(times && times.length === keyframeValues.length ? times : defaultOffset(keyframeValues), duration), keyframeValues, { ease: Array.isArray(easingFunctions) ? easingFunctions : defaultEasing(keyframeValues, easingFunctions) });
+	const mapTimeToKeyframe = interpolate(convertOffsetToTimes(times && times.length === keyframeValues.length ? times : defaultOffset$1(keyframeValues), duration), keyframeValues, { ease: Array.isArray(easingFunctions) ? easingFunctions : defaultEasing(keyframeValues, easingFunctions) });
 	return {
 		calculatedDuration: duration,
 		next: (t) => {
@@ -2379,6 +2379,7 @@ function memoSupports(callback, supportsFlag) {
 //#endregion
 //#region node_modules/motion-dom/dist/es/utils/supports/scroll-timeline.mjs
 var supportsScrollTimeline = /* @__PURE__ */ memoSupports(() => window.ScrollTimeline !== void 0, "scrollTimeline");
+var supportsViewTimeline = /* @__PURE__ */ memoSupports(() => window.ViewTimeline !== void 0, "viewTimeline");
 //#endregion
 //#region node_modules/motion-dom/dist/es/utils/supports/linear-easing.mjs
 var supportsLinearEasing = /*@__PURE__*/ memoSupports(() => {
@@ -10071,4 +10072,618 @@ var motion = /*@__PURE__*/ createMotionProxy({
 	...layout
 }, createDomVisualElement);
 //#endregion
-export { AnimatePresence as n, motion as t };
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/info.mjs
+/**
+* A time in milliseconds, beyond which we consider the scroll velocity to be 0.
+*/
+var maxElapsed = 50;
+var createAxisInfo = () => ({
+	current: 0,
+	offset: [],
+	progress: 0,
+	scrollLength: 0,
+	targetOffset: 0,
+	targetLength: 0,
+	containerLength: 0,
+	velocity: 0
+});
+var createScrollInfo = () => ({
+	time: 0,
+	x: createAxisInfo(),
+	y: createAxisInfo()
+});
+/**
+* Also iterated with for...in as the list of axes.
+*/
+var axisKeys = {
+	x: {
+		length: "Width",
+		position: "Left"
+	},
+	y: {
+		length: "Height",
+		position: "Top"
+	}
+};
+function updateAxisInfo(element, axisName, info, time) {
+	const axis = info[axisName];
+	const { length, position } = axisKeys[axisName];
+	const prev = axis.current;
+	const prevTime = info.time;
+	axis.current = Math.abs(element[`scroll${position}`]);
+	axis.containerLength = element[`client${length}`];
+	axis.targetLength = element[`scroll${length}`];
+	axis.scrollLength = axis.targetLength - axis.containerLength;
+	axis.offset.length = 0;
+	axis.offset[0] = 0;
+	axis.offset[1] = axis.scrollLength;
+	axis.progress = /* @__PURE__ */ progress(0, axis.scrollLength, axis.current);
+	const elapsed = time - prevTime;
+	axis.velocity = elapsed > maxElapsed ? 0 : /* @__PURE__ */ velocityPerSecond(axis.current - prev, elapsed);
+}
+/**
+* Measures a scroll container. Runs once per container per frame; every
+* handler on that container derives its info from the result.
+*/
+function updateScrollInfo(element, info, time) {
+	for (const axis in axisKeys) updateAxisInfo(element, axis, info, time);
+	info.time = time;
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/offsets/edge.mjs
+var namedEdges = {
+	start: 0,
+	center: .5,
+	end: 1
+};
+function resolveEdge(edge, length, inset = 0) {
+	let delta = 0;
+	/**
+	* If we have this edge defined as a preset, replace the definition
+	* with the numerical value.
+	*/
+	if (edge in namedEdges) edge = namedEdges[edge];
+	/**
+	* Handle unit values
+	*/
+	if (typeof edge === "string") {
+		const asNumber = parseFloat(edge);
+		if (edge.endsWith("px")) delta = asNumber;
+		else if (edge.endsWith("%")) edge = asNumber / 100;
+		else if (edge.endsWith("vw")) delta = asNumber / 100 * document.documentElement.clientWidth;
+		else if (edge.endsWith("vh")) delta = asNumber / 100 * document.documentElement.clientHeight;
+		else edge = asNumber;
+	}
+	/**
+	* If the edge is defined as a number, handle as a progress value.
+	*/
+	if (typeof edge === "number") delta = length * edge;
+	return inset + delta;
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/offsets/offset.mjs
+var defaultOffset = [0, 0];
+function resolveOffset(offset, containerLength, targetLength, targetInset) {
+	let offsetDefinition = Array.isArray(offset) ? offset : defaultOffset;
+	let targetPoint = 0;
+	let containerPoint = 0;
+	if (typeof offset === "number")
+ /**
+	* If we're provided offset: [0, 0.5, 1] then each number x should become
+	* [x, x], so we default to the behaviour of mapping 0 => 0 of both target
+	* and container etc.
+	*/
+	offsetDefinition = [offset, offset];
+	else if (typeof offset === "string") {
+		offset = offset.trim();
+		if (offset.includes(" ")) offsetDefinition = offset.split(" ");
+		else
+ /**
+		* If we're provided a definition like "100px" then we want to apply
+		* that only to the top of the target point, leaving the container at 0.
+		* Whereas a named offset like "end" should be applied to both.
+		*/
+		offsetDefinition = [offset, namedEdges[offset] ? offset : `0`];
+	}
+	targetPoint = resolveEdge(offsetDefinition[0], targetLength, targetInset);
+	containerPoint = resolveEdge(offsetDefinition[1], containerLength);
+	return targetPoint - containerPoint;
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/offsets/presets.mjs
+var ScrollOffset = { All: [[0, 0], [1, 1]] };
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/offsets/index.mjs
+/**
+* Resolved offsets map to evenly spaced progress values, so progress is
+* derived from the segment index rather than building an interpolator.
+*/
+function offsetsToProgress(offsets, v) {
+	const n = offsets.length - 1;
+	if (n < 1) return 0;
+	const reverse = offsets[0] > offsets[n];
+	const at = (i) => offsets[reverse ? n - i : i];
+	/**
+	* Matches interpolate(), which checks for a zero-length first range
+	* before reversing descending offsets.
+	*/
+	if (offsets[0] === offsets[1] && v < at(0)) return reverse ? 1 : 0;
+	let i = 0;
+	while (i < n - 1 && v >= at(i + 1)) i++;
+	const p = (i + /* @__PURE__ */ progress(at(i), at(i + 1), v)) / n;
+	return reverse ? 1 - p : p;
+}
+function resolveOffsets(info, options) {
+	const { offset: offsetDefinition = ScrollOffset.All, axis = "y" } = options;
+	const axisInfo = info[axis];
+	/**
+	* Reset the length of the resolved offset array rather than creating a new one.
+	*/
+	axisInfo.offset.length = 0;
+	/**
+	* Populate the offset array by resolving the user's offset definition into
+	* a list of pixel scroll offsets.
+	*/
+	const numOffsets = offsetDefinition.length;
+	for (let i = 0; i < numOffsets; i++) axisInfo.offset[i] = resolveOffset(offsetDefinition[i], axisInfo.containerLength, axisInfo.targetLength, axisInfo.targetOffset);
+	axisInfo.progress = clamp(0, 1, offsetsToProgress(axisInfo.offset, axisInfo.current));
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/offsets/inset.mjs
+function calcInset(element, container) {
+	const inset = {
+		x: 0,
+		y: 0
+	};
+	let current = element;
+	while (current && current !== container) if (isHTMLElement(current)) {
+		inset.x += current.offsetLeft;
+		inset.y += current.offsetTop;
+		current = current.offsetParent;
+	} else if (current.tagName === "svg") {
+		/**
+		* This isn't an ideal approach to measuring the offset of <svg /> tags.
+		* It would be preferable, given they behave like HTMLElements in most ways
+		* to use offsetLeft/Top. But these don't exist on <svg />. Likewise we
+		* can't use .getBBox() like most SVG elements as these provide the offset
+		* relative to the SVG itself, which for <svg /> is usually 0x0.
+		*/
+		const svgBoundingBox = current.getBoundingClientRect();
+		current = current.parentElement;
+		const parentBoundingBox = current.getBoundingClientRect();
+		inset.x += svgBoundingBox.left - parentBoundingBox.left;
+		inset.y += svgBoundingBox.top - parentBoundingBox.top;
+	} else if (current instanceof SVGGraphicsElement) {
+		const { x, y } = current.getBBox();
+		inset.x += x;
+		inset.y += y;
+		let svg = null;
+		let parent = current.parentNode;
+		while (!svg) {
+			if (parent.tagName === "svg") svg = parent;
+			parent = current.parentNode;
+		}
+		current = svg;
+	} else break;
+	return inset;
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/on-scroll-handler.mjs
+function getTargetSize(target) {
+	return "getBBox" in target && target.tagName !== "svg" ? target.getBBox() : {
+		width: target.clientWidth,
+		height: target.clientHeight
+	};
+}
+function createOnScrollHandler(container, onScroll, info, options = {}) {
+	const { target } = options;
+	/**
+	* Handlers without a target or offset are notified with the container's
+	* shared info object, so they measure nothing themselves.
+	*/
+	const needsOwnInfo = target || options.offset;
+	return {
+		measure: (containerInfo) => {
+			if (!needsOwnInfo) return;
+			info.time = containerInfo.time;
+			for (const key in axisKeys) {
+				const axis = key;
+				const { offset } = info[axis];
+				Object.assign(info[axis], containerInfo[axis]);
+				info[axis].offset = offset;
+			}
+			if (target && target !== container) {
+				const inset = calcInset(target, container);
+				const size = getTargetSize(target);
+				info.x.targetOffset = inset.x;
+				info.y.targetOffset = inset.y;
+				info.x.targetLength = size.width;
+				info.y.targetLength = size.height;
+			}
+			resolveOffsets(info, options);
+		},
+		notify: (containerInfo) => onScroll(needsOwnInfo ? info : containerInfo)
+	};
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/track.mjs
+var scrollListeners = /* @__PURE__ */ new WeakMap();
+var resizeListeners = /* @__PURE__ */ new WeakMap();
+var onScrollHandlers = /* @__PURE__ */ new WeakMap();
+var dimensionCheckProcesses = /* @__PURE__ */ new WeakMap();
+var getEventTarget = (element) => element === document.scrollingElement ? window : element;
+function scrollInfo(onScroll, { container = document.scrollingElement, trackContentSize = false, ...options } = {}) {
+	if (!container) return noop;
+	let containerHandlers = onScrollHandlers.get(container);
+	/**
+	* Get the onScroll handlers for this container.
+	* If one isn't found, create a new one.
+	*/
+	if (!containerHandlers) {
+		containerHandlers = /* @__PURE__ */ new Set();
+		onScrollHandlers.set(container, containerHandlers);
+	}
+	const containerHandler = createOnScrollHandler(container, onScroll, createScrollInfo(), options);
+	containerHandlers.add(containerHandler);
+	/**
+	* Check if there's a scroll event listener for this container.
+	* If not, create one.
+	*/
+	if (!scrollListeners.has(container)) {
+		const containerInfo = createScrollInfo();
+		const measureAll = () => {
+			updateScrollInfo(container, containerInfo, frameData.timestamp);
+			for (const handler of containerHandlers) handler.measure(containerInfo);
+			frame.preUpdate(notifyAll);
+		};
+		const notifyAll = () => {
+			for (const handler of containerHandlers) handler.notify(containerInfo);
+		};
+		const listener = () => frame.read(measureAll);
+		scrollListeners.set(container, listener);
+		const target = getEventTarget(container);
+		window.addEventListener("resize", listener);
+		if (container !== document.documentElement) resizeListeners.set(container, resize(container, listener));
+		target.addEventListener("scroll", listener);
+		listener();
+	}
+	/**
+	* Enable content size tracking if requested and not already enabled.
+	*/
+	if (trackContentSize && !dimensionCheckProcesses.has(container)) {
+		const listener = scrollListeners.get(container);
+		const size = {
+			width: container.scrollWidth,
+			height: container.scrollHeight
+		};
+		const checkScrollDimensions = () => {
+			const newWidth = container.scrollWidth;
+			const newHeight = container.scrollHeight;
+			if (size.width !== newWidth || size.height !== newHeight) {
+				listener();
+				size.width = newWidth;
+				size.height = newHeight;
+			}
+		};
+		const dimensionCheckProcess = frame.read(checkScrollDimensions, true);
+		dimensionCheckProcesses.set(container, dimensionCheckProcess);
+	}
+	const listener = scrollListeners.get(container);
+	frame.read(listener, false, true);
+	return () => {
+		cancelFrame(listener);
+		/**
+		* Check if we even have any handlers for this container.
+		*/
+		const currentHandlers = onScrollHandlers.get(container);
+		if (!currentHandlers) return;
+		currentHandlers.delete(containerHandler);
+		if (currentHandlers.size) return;
+		/**
+		* If no more handlers, remove the scroll listener too. The handler
+		* set goes with it, as a measure still queued from this listener
+		* would otherwise notify handlers added by a later scrollInfo call.
+		*/
+		onScrollHandlers.delete(container);
+		const scrollListener = scrollListeners.get(container);
+		scrollListeners.delete(container);
+		if (scrollListener) {
+			getEventTarget(container).removeEventListener("scroll", scrollListener);
+			resizeListeners.get(container)?.();
+			window.removeEventListener("resize", scrollListener);
+		}
+		const dimensionCheckProcess = dimensionCheckProcesses.get(container);
+		if (dimensionCheckProcess) {
+			cancelFrame(dimensionCheckProcess);
+			dimensionCheckProcesses.delete(container);
+		}
+	};
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/utils/can-use-native-timeline.mjs
+function canUseNativeTimeline(target) {
+	if (typeof window === "undefined") return false;
+	return target ? supportsViewTimeline() : supportsScrollTimeline();
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/utils/get-timeline.mjs
+var timelineCache = /* @__PURE__ */ new Map();
+/**
+* Native timelines are only attached to WAAPI animations. Offsets are
+* applied to each animation as a range, so a timeline is shared by every
+* offset.
+*/
+function getTimeline({ container, target, axis }) {
+	let containerCache = timelineCache.get(container);
+	if (!containerCache) {
+		containerCache = /* @__PURE__ */ new Map();
+		timelineCache.set(container, containerCache);
+	}
+	const targetKey = target ?? "self";
+	let targetCache = containerCache.get(targetKey);
+	if (!targetCache) {
+		targetCache = {};
+		containerCache.set(targetKey, targetCache);
+	}
+	return targetCache[axis] || (targetCache[axis] = target ? new ViewTimeline({
+		subject: target,
+		axis
+	}) : new ScrollTimeline({
+		source: container,
+		axis
+	}));
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/utils/offset-to-range.mjs
+/**
+* Resolved offsets are linear in the target and container lengths, so
+* probing them gives [target progress, container progress, pixels].
+* vw/vh can resolve to 0px, so they're rejected up front.
+*/
+var toIntersection = (o) => {
+	if (/v/u.test(o)) return [];
+	const px = resolveOffset(o, 0, 0, 0);
+	return [
+		resolveOffset(o, 0, 1, 0) - px,
+		px - resolveOffset(o, 1, 0, 0),
+		px
+	];
+};
+var toRange = ([t, c, px]) => !px && (c === 0 || c === 1) && `${c ? "entry" : "exit"}-crossing ${t * 100}%`;
+/**
+* Maps an offset to an equivalent ViewTimeline range. Returns undefined when
+* there isn't one, which signals the caller to fall back to JS-based scroll
+* tracking.
+*/
+function offsetToViewTimelineRange(offset = ScrollOffset.All) {
+	if (offset.length !== 2) return;
+	const [start, end] = offset.map(toIntersection);
+	const points = [toRange(start), toRange(end)];
+	const a = end[0] - start[0];
+	const b = start[1] - end[1];
+	if (points[0] && points[1] && (a || b)) return {
+		points,
+		a,
+		b,
+		cover: !start[0] && a === 1 && b === 1
+	};
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/attach-animation.mjs
+function attachToAnimation(animation, options) {
+	const { target, container, axis } = options;
+	const range = target && offsetToViewTimelineRange(options.offset);
+	/**
+	* Use native timeline when:
+	* - No target and no offset: ScrollTimeline
+	* - Target with mappable offset: ViewTimeline with named range
+	* - Otherwise: fall back to JS observe. A ScrollTimeline has no offset,
+	*   so page offsets are applied by the JS timeline.
+	*/
+	const native = canUseNativeTimeline(target) && (target ? !!range : !options.offset);
+	const animations = /* @__PURE__ */ new Map();
+	const observed = /* @__PURE__ */ new Set();
+	let stopObserving;
+	let reverse = false;
+	/**
+	* When an offset's second point comes first, its range is swapped and
+	* the animation played backwards. The range is set after the direction,
+	* as that's what realigns a running animation with its timeline. Chrome
+	* skips that realignment when the range changes in the frame the
+	* animation starts, leaving it offset for good, so it's replayed too.
+	*/
+	const apply = (direction, waapi) => {
+		const [start, end] = range.points;
+		waapi.effect.updateTiming({ direction: reverse ? direction === "normal" ? "reverse" : "alternate-reverse" : direction });
+		Object.assign(waapi, {
+			rangeStart: reverse ? end : start,
+			rangeEnd: reverse ? start : end
+		});
+		waapi.play();
+	};
+	const stops = [animation.attachTimeline({
+		/**
+		* Read only by WAAPI animations, so values driven from JS don't
+		* create a native timeline they won't use.
+		*/
+		get timeline() {
+			return native ? getTimeline(options) : void 0;
+		},
+		onAttach: range && ((waapi) => {
+			const direction = waapi.effect.getTiming().direction;
+			animations.set(waapi, direction);
+			apply(direction, waapi);
+		}),
+		/**
+		* Values driven from JS all track the offset with scrollInfo,
+		* which measures once per frame for all of them.
+		*/
+		observe: (valueAnimation) => {
+			valueAnimation.pause();
+			observed.add(valueAnimation);
+			stopObserving || (stopObserving = scrollInfo((info) => {
+				observed.forEach((observedAnimation) => {
+					observedAnimation.time = observedAnimation.iterationDuration * info[axis].progress;
+				});
+			}, options));
+			return () => observed.delete(valueAnimation);
+		}
+	})];
+	if (native && range) {
+		const { a, b } = range;
+		const length = axis === "y" ? "clientHeight" : "clientWidth";
+		/**
+		* Offsets like All only run forwards when the target is longer than
+		* the container, so their direction is remeasured on resize.
+		*/
+		const update = () => {
+			if (reverse !== (reverse = a * target[length] + b * container[length] < 0)) animations.forEach(apply);
+		};
+		update();
+		if (a * b < 0) stops.push(resize(update), resize([target, container], update));
+	}
+	return () => {
+		stops.forEach((stop) => stop());
+		stopObserving?.();
+	};
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/render/dom/scroll/index.mjs
+function scroll(onScroll, { axis = "y", source, container = document.scrollingElement, ...options } = {}) {
+	if (!container) return noop;
+	const optionsWithDefaults = {
+		axis,
+		container: source || container,
+		...options
+	};
+	return typeof onScroll === "function" ? scrollInfo((info) => onScroll(info[axis].progress, info), optionsWithDefaults) : attachToAnimation(onScroll, optionsWithDefaults);
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/value/use-scroll.mjs
+var createScrollMotionValues = () => ({
+	scrollX: motionValue(0),
+	scrollY: motionValue(0),
+	scrollXProgress: motionValue(0),
+	scrollYProgress: motionValue(0)
+});
+var isRefPending = (ref) => {
+	if (!ref) return false;
+	return !ref.current;
+};
+function makeAccelerateConfig(axis, options, container, target) {
+	return {
+		factory: (animation) => {
+			let cleanup;
+			const start = () => {
+				if (isRefPending(container) || isRefPending(target)) {
+					microtask.read(start);
+					return;
+				}
+				cleanup = scroll(animation, {
+					...options,
+					axis,
+					container: container?.current || void 0,
+					target: target?.current || void 0
+				});
+			};
+			microtask.read(start);
+			return () => {
+				cancelMicrotask(start);
+				cleanup?.();
+			};
+		},
+		times: [0, 1],
+		keyframes: [0, 1],
+		ease: (v) => v,
+		duration: 1
+	};
+}
+function canAccelerateScroll(target, offset) {
+	if (typeof window === "undefined") return false;
+	return target ? supportsViewTimeline() && !!offsetToViewTimelineRange(offset) : supportsScrollTimeline() && !offset;
+}
+function useScroll({ container, target, ...options } = {}) {
+	const values = useConstant(createScrollMotionValues);
+	if (canAccelerateScroll(target, options.offset)) {
+		values.scrollXProgress.accelerate = makeAccelerateConfig("x", options, container, target);
+		values.scrollYProgress.accelerate = makeAccelerateConfig("y", options, container, target);
+	}
+	const scrollAnimation = (0, import_react.useRef)(null);
+	const needsStart = (0, import_react.useRef)(false);
+	const start = (0, import_react.useCallback)(() => {
+		scrollAnimation.current = scroll((_progress, { x, y }) => {
+			values.scrollX.set(x.current);
+			values.scrollXProgress.set(x.progress);
+			values.scrollY.set(y.current);
+			values.scrollYProgress.set(y.progress);
+		}, {
+			...options,
+			container: container?.current || void 0,
+			target: target?.current || void 0
+		});
+		return () => {
+			scrollAnimation.current?.();
+		};
+	}, [
+		container,
+		target,
+		JSON.stringify(options.offset)
+	]);
+	useIsomorphicLayoutEffect(() => {
+		needsStart.current = false;
+		if (isRefPending(container) || isRefPending(target)) {
+			needsStart.current = true;
+			return;
+		} else return start();
+	}, [start]);
+	(0, import_react.useEffect)(() => {
+		if (!needsStart.current) return;
+		let cleanup;
+		const tryStart = () => {
+			const containerPending = isRefPending(container);
+			const targetPending = isRefPending(target);
+			if (!containerPending && !targetPending) cleanup = start();
+		};
+		microtask.read(tryStart);
+		return () => {
+			cancelMicrotask(tryStart);
+			cleanup?.();
+		};
+	}, [start]);
+	return values;
+}
+//#endregion
+//#region node_modules/framer-motion/dist/es/value/use-motion-value.mjs
+/**
+* Creates a `MotionValue` to track the state and velocity of a value.
+*
+* Usually, these are created automatically. For advanced use-cases, like use with `useTransform`, you can create `MotionValue`s externally and pass them into the animated component via the `style` prop.
+*
+* ```jsx
+* export const MyComponent = () => {
+*   const scale = useMotionValue(1)
+*
+*   return <motion.div style={{ scale }} />
+* }
+* ```
+*
+* @param initial - The initial state.
+*
+* @public
+*/
+function useMotionValue(initial) {
+	const value = useConstant(() => motionValue(initial));
+	/**
+	* If this motion value is being used in static mode, like on
+	* the Framer canvas, force components to rerender when the motion
+	* value is updated.
+	*/
+	const { isStatic } = (0, import_react.useContext)(MotionConfigContext);
+	if (isStatic) {
+		const [, setLatest] = (0, import_react.useState)(initial);
+		(0, import_react.useEffect)(() => value.on("change", setLatest), []);
+	}
+	return value;
+}
+//#endregion
+export { AnimatePresence as i, useScroll as n, motion as r, useMotionValue as t };

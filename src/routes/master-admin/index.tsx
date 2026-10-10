@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { ArrowUpRight, Copy, Mail, Radio, Smartphone } from "lucide-react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -15,7 +15,9 @@ import {
 } from "@/lib/axiom/funnel";
 import {
   addPreloadedLeads,
+  createOutreachFunnel,
   generateRegionalFunnel,
+  listOutreachFunnels,
   getMasterDesk,
   launchOutreachBatch,
   preloadRegionalRoster,
@@ -25,11 +27,22 @@ import {
 import { nicheLabel, sortLeads, type LeadSort } from "@/lib/axiom/directory";
 import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
 import { pitchHref } from "@/lib/axiom/pricing";
+import {
+  formatSendSlot,
+  nextSendInstant,
+  sendWindowBlurb,
+  timingProfileFor,
+  type SendTiming,
+} from "@/lib/axiom/outreach-queue";
 import { HOME_REGION_COUNTIES, HOME_REGION_LABEL } from "@/lib/axiom/regional-roster";
 import { isShopNiche, type ShopNiche } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { FeedbackToggles } from "@/components/feedback-toggles";
 import { Wordmark } from "@/components/shop-chrome";
+import { pulseHaptic, readFeedback } from "@/lib/axiom/feedback";
+import { listPlatformPulse, type PlatformPulse } from "@/lib/axiom/master";
+import { importBulkLeads, type BulkImportResult } from "@/lib/axiom/bulk-import";
 import { formatMoney } from "@/lib/utils";
 
 export const Route = createFileRoute("/master-admin/")({
@@ -157,6 +170,10 @@ function DeskView({
         <Kpi label="Revenue captured" value={formatMoney(desk.kpis.revenueCents)} />
       </section>
 
+      <PlatformWire />
+
+      <CommandStrip desk={desk} />
+
       <section className="mt-8">
         <h2 className="font-display text-2xl">Activations</h2>
         <p className="mt-2 max-w-xl text-sm text-muted">
@@ -260,6 +277,10 @@ function DeskView({
         chunkSize={desk.outreach.chunkSize}
         trades={desk.attribution}
       />
+
+      <BulkIngest />
+
+      <StrategicFunnel />
 
       <FunnelTool />
 
@@ -398,6 +419,7 @@ function OutreachEngine({
   const [selected, setSelected] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<"load" | "email" | "sms" | "preload" | null>(null);
+  const [smartTiming, setSmartTiming] = useState(false);
 
   const leads = preview?.leads ?? [];
   const countyKey = county.trim().toLowerCase();
@@ -434,6 +456,11 @@ function OutreachEngine({
         : tradeOptions.find((item) => item.value === trade)?.label || nicheLabel(trade),
     ...phrases,
   };
+  const timingMode: SendTiming = smartTiming ? "smart" : "immediate";
+  const timingProfile = trade === "all" ? "mixed" : timingProfileFor(trade);
+  const windowProfile = timingProfile === "mixed" ? "general" : timingProfile;
+  const nextWindow = nextSendInstant(new Date(), timingMode, windowProfile);
+  const windowOpen = nextWindow.getTime() <= Date.now() + 30_000;
   const renderedText = renderOutreachMessage(text, tokens);
   const renderedEmail = `${renderOutreachMessage(emailSubject, tokens)}\n\n${renderOutreachMessage(emailBody, tokens)}`;
 
@@ -485,7 +512,16 @@ function OutreachEngine({
     setNote(null);
     try {
       const result = await launchOutreachBatch({
-        data: { county, tradeType: trade, strategy, text, emailSubject, emailBody, channel },
+        data: {
+          county,
+          tradeType: trade,
+          strategy,
+          text,
+          emailSubject,
+          emailBody,
+          channel,
+          timing: smartTiming ? "smart" : "immediate",
+        },
       });
       const next = await previewOutreach({ data: { county, tradeType: trade } });
       setPreview(next);
@@ -499,9 +535,20 @@ function OutreachEngine({
         result.mode === "live"
           ? "Live mode. Twilio and Resend were present, and each chunk sends on its own timer."
           : "Simulation mode. Each chunk is written to the live wire. No email or SMS is sent.";
-      const first = result.released > 0 ? "The first chunk is on the wire." : "The first chunk waits for the current trickle gap.";
+      const heldUntil = result.firstAt ? new Date(result.firstAt) : null;
+      const held = heldUntil != null && heldUntil.getTime() > Date.now() + 5_000;
+      const first =
+        result.released > 0
+          ? "The first chunk is on the wire."
+          : held && heldUntil
+            ? `Dispatch stays queued until ${formatSendSlot(heldUntil)}.`
+            : "The first chunk waits for the current trickle gap.";
+      const hours =
+        result.timing === "smart"
+          ? "Smart timing holds each trade for its own hours."
+          : "Weekday hours hold the queue until Monday–Thursday, 8:00 AM–7:00 PM Pacific.";
       setNote(
-        `Queued ${result.leadCount} ${kind} in ${result.county} with ${hook}. ${loops} scheduled through Day 6. ${chunks}, ${result.intervalSeconds} seconds apart. ${safety} ${first}${skipped}${looping}`,
+        `Queued ${result.leadCount} ${kind} in ${result.county} with ${hook}. ${loops} scheduled through Day 6. ${chunks}, ${result.intervalSeconds} seconds apart. ${safety} ${hours} ${first}${skipped}${looping}`,
       );
       onLaunched();
     } catch (err) {
@@ -718,6 +765,26 @@ function OutreachEngine({
           <p className="mt-2 text-sm text-muted">Day 0 leaves with its chunk</p>
         </article>
       </div>
+      <button
+        type="button"
+        aria-pressed={smartTiming}
+        onClick={() => setSmartTiming((on) => !on)}
+        className="mt-4 w-full rounded-2xl bg-surface px-4 py-4 text-left"
+        style={{
+          boxShadow: smartTiming ? "inset 0 0 0 2px var(--color-accent)" : "0 0 0 1px rgba(243,241,235,0.08)",
+        }}
+      >
+        <p className="text-xs uppercase tracking-[0.16em] text-muted">Smart Timing Mode</p>
+        <p className="mt-2 text-sm font-medium">{smartTiming ? "On" : "Off"}</p>
+        <p className="mt-1 text-sm text-muted">{sendWindowBlurb(timingMode, timingProfile)}</p>
+        <p className="mt-2 text-sm text-fg">
+          {smartTiming && trade === "all"
+            ? "A mixed list holds each business for its own window."
+            : windowOpen
+              ? "The window is open. Chunks can leave on the trickle timer."
+              : `Next window opens ${formatSendSlot(nextWindow)}.`}
+        </p>
+      </button>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button type="button" disabled={busy !== null || emailReady === 0} onClick={() => void launch("email")}>
           <Mail className="size-4" aria-hidden />
@@ -731,7 +798,7 @@ function OutreachEngine({
       <p className="mt-3 text-sm text-muted">
         {preview == null
           ? "Load a county to sort the list into channels."
-          : "A mobile line is SMS-ready. A real address is email-ready. A launch queues chunks instead of sending the list at once. Day 3 and Day 6 go out on their dates. Only the private link in the message stops that lead. Simulation only writes the live wire."}
+          : "A mobile line is SMS-ready. A real address is email-ready. A launch queues chunks instead of sending the list at once. Day 3 and Day 6 wait for the same hours as the batch. Only the private link in the message stops that lead. Simulation only writes the live wire."}
       </p>
       {note ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
     </section>
@@ -761,6 +828,273 @@ function DraftPreview({ label, body }: { label: string; body: string }) {
         {body}
       </pre>
     </div>
+  );
+}
+
+function BulkIngest() {
+  const [csv, setCsv] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<BulkImportResult | null>(null);
+
+  async function loadFile(file: File | undefined) {
+    if (!file) return;
+    const name = file.name.toLowerCase();
+    const textType = file.type === "" || file.type.startsWith("text/") || file.type.includes("csv");
+    if (!name.endsWith(".csv") && !textType) {
+      setError("Choose a .csv file");
+      return;
+    }
+    const text = await file.text();
+    setCsv(text);
+    setFileName(file.name);
+    setError(null);
+    setResult(null);
+  }
+
+  async function run() {
+    const body = csv.trim();
+    if (!body) {
+      setError("Paste a CSV or choose a file");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await importBulkLeads({ data: { csv: body } });
+      setResult(next);
+    } catch (err: unknown) {
+      setResult(null);
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const invalid = result?.invalid ?? [];
+  const shown = invalid.slice(0, 40);
+
+  return (
+    <section className="mt-10">
+      <h2 className="font-display text-2xl">Bulk lead ingestion</h2>
+      <p className="mt-2 max-w-xl text-sm text-muted">
+        Upload a .csv or paste the sheet. Columns: Business, City, County, Niche, Email, Phone, Website. A claimed or live business stays as it is.
+      </p>
+      <div className="mt-4 grid gap-4">
+        <Field label="CSV file">
+          <input
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            className="block w-full text-sm text-muted file:mr-3 file:h-11 file:cursor-pointer file:rounded-xl file:border-0 file:bg-surface-2 file:px-4 file:text-sm file:font-medium file:text-fg"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              void loadFile(file);
+              event.target.value = "";
+            }}
+          />
+          {fileName ? <p className="text-sm text-muted">{fileName} is in the box below. Edit it, then run the import.</p> : null}
+        </Field>
+        <Field label="Or paste CSV">
+          <textarea
+            value={csv}
+            onChange={(event) => {
+              setCsv(event.target.value);
+              setResult(null);
+            }}
+            rows={10}
+            spellCheck={false}
+            placeholder={"Business,City,County,Niche,Email,Phone,Website"}
+            className="min-h-56 w-full resize-y rounded-xl bg-surface px-3 py-3 text-base text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)] placeholder:text-muted"
+            aria-label="CSV text"
+          />
+        </Field>
+        <div>
+          <Button type="button" disabled={busy || csv.trim().length === 0} onClick={() => void run()}>
+            {busy ? "Importing" : "Run Bulk Import"}
+          </Button>
+        </div>
+      </div>
+      {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      {result ? (
+        <div className="mt-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi label="Inserted" value={result.inserted.toLocaleString()} />
+            <Kpi label="Updated" value={result.updated.toLocaleString()} />
+            <Kpi label="Unchanged" value={result.unchanged.toLocaleString()} />
+            <Kpi label="Invalid" value={invalid.length.toLocaleString()} />
+          </div>
+          {result.merged > 0 ? (
+            <p className="mt-3 text-sm text-muted">
+              {result.merged.toLocaleString()} repeated {result.merged === 1 ? "business was" : "businesses were"} folded into one row.
+            </p>
+          ) : null}
+          <div className="mt-4 rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">Invalid rows</p>
+            {shown.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">Every row was usable.</p>
+            ) : (
+              <ul className="mt-3 max-h-64 space-y-2 overflow-auto text-sm">
+                {shown.map((row) => (
+                  <li key={`${row.line}-${row.reason}`}>
+                    <span className="text-muted">Line {row.line}</span>
+                    <span className="text-fg"> · {row.reason}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {invalid.length > shown.length ? (
+              <p className="mt-3 text-sm text-muted">
+                {invalid.length - shown.length} more invalid {invalid.length - shown.length === 1 ? "row" : "rows"} were left out of this list.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function StrategicFunnel() {
+  const [businessName, setBusinessName] = useState("");
+  const [niche, setNiche] = useState<string>(NICHE_ORDER[0] ?? "trade");
+  const [contact, setContact] = useState("");
+  const [city, setCity] = useState("");
+  const [path, setPath] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof listOutreachFunnels>>>([]);
+
+  useEffect(() => {
+    let stop = false;
+    const load = () => {
+      void listOutreachFunnels()
+        .then((next) => {
+          if (!stop) setRows(next);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    const timer = window.setInterval(load, 5000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <section className="mt-10">
+      <h2 className="font-display text-2xl">Strategic outreach</h2>
+      <p className="mt-2 max-w-xl text-sm text-muted">
+        One prospect, one preview. The link opens their niche with a before-and-after sample and the claim button. Nothing is emailed from here.
+      </p>
+      <form
+        className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setBusy(true);
+          setNote(null);
+          setCopied(false);
+          void createOutreachFunnel({ data: { businessName, niche, contact, city } })
+            .then(async (result) => {
+              setPath(result.path);
+              setBusinessName("");
+              setContact("");
+              setCity("");
+              const next = await listOutreachFunnels();
+              setRows(next);
+            })
+            .catch((err: unknown) => setNote(err instanceof Error ? err.message : "Could not build the link"))
+            .finally(() => setBusy(false));
+        }}
+      >
+        <Field label="Business">
+          <Input value={businessName} onChange={(event) => setBusinessName(event.target.value)} required />
+        </Field>
+        <Field label="Niche">
+          <select
+            value={niche}
+            onChange={(event) => setNiche(event.target.value)}
+            className="h-10 rounded-xl bg-surface px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            aria-label="Niche"
+          >
+            {NICHE_ORDER.map((id) => (
+              <option key={id} value={id}>
+                {NICHES[id].label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Email or phone">
+          <Input value={contact} onChange={(event) => setContact(event.target.value)} required />
+        </Field>
+        <Field label="City">
+          <Input value={city} onChange={(event) => setCity(event.target.value)} required />
+        </Field>
+        <div className="sm:col-span-2 lg:col-span-4">
+          <Button type="submit" disabled={busy}>
+            {busy ? "Building" : "Generate preview link"}
+          </Button>
+        </div>
+      </form>
+      {note ? <p className="mt-3 text-sm text-danger">{note}</p> : null}
+      {path ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p className="break-all text-sm">{path}</p>
+          <button
+            type="button"
+            className="text-sm text-muted"
+            onClick={() => {
+              void navigator.clipboard.writeText(window.location.origin + path).then(() => {
+                setCopied(true);
+              });
+            }}
+          >
+            {copied ? "Copied" : "Copy link"}
+          </button>
+        </div>
+      ) : null}
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full min-w-[40rem] text-left text-sm">
+          <thead className="text-muted">
+            <tr>
+              <th className="py-2 pr-3 font-medium">Prospect</th>
+              <th className="py-2 pr-3 font-medium">Niche</th>
+              <th className="py-2 pr-3 font-medium">Contact</th>
+              <th className="py-2 pr-3 font-medium">Opened</th>
+              <th className="py-2 pr-3 font-medium">Tested</th>
+              <th className="py-2 font-medium">Subscriber</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td className="py-4 text-muted" colSpan={6}>
+                  No desk funnels yet.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.leadSlug} className="border-t border-line">
+                  <td className="py-3 pr-3">
+                    <a href={row.path} className="font-medium hover:underline">
+                      {row.businessName}
+                    </a>
+                    <span className="mt-1 block text-muted">{row.city}</span>
+                  </td>
+                  <td className="py-3 pr-3">{row.niche}</td>
+                  <td className="py-3 pr-3">{row.contact}</td>
+                  <td className="py-3 pr-3">{row.opened ? "Yes" : "—"}</td>
+                  <td className="py-3 pr-3">{row.tested ? "Yes" : "—"}</td>
+                  <td className="py-3">{row.converted ? "Yes" : "—"}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -932,6 +1266,128 @@ function FunnelTool() {
           </ul>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+const PULSE_LABEL: Record<string, string> = {
+  booking_request: "Booking",
+  booking_confirmed: "Confirmed",
+  payment_received: "Payment",
+  audit_request: "Estimate",
+  audit_confirmed: "Estimate locked",
+};
+
+function PlatformWire() {
+  const [rows, setRows] = useState<PlatformPulse[]>([]);
+  const [lit, setLit] = useState(false);
+  const seen = useRef(new Set<string>());
+  const primed = useRef(false);
+
+  useEffect(() => {
+    let stop = false;
+    const tick = () => {
+      void listPlatformPulse()
+        .then((next) => {
+          if (stop) return;
+          const fresh = next.filter((row) => !seen.current.has(row.id));
+          for (const row of next) seen.current.add(row.id);
+          setRows(next);
+          if (!primed.current) {
+            primed.current = true;
+            return;
+          }
+          if (fresh.length === 0) return;
+          const prefs = readFeedback("master");
+          if (prefs.neon) {
+            setLit(true);
+            window.setTimeout(() => setLit(false), 1600);
+          }
+          if (prefs.haptics) pulseHaptic("incoming");
+        })
+        .catch(() => undefined);
+    };
+    tick();
+    const timer = window.setInterval(tick, 2000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <section className="mt-8">
+      {lit ? <div className="axiom-ring" data-state="alert" aria-hidden="true" /> : null}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="font-display text-2xl">Live wire</h2>
+          <p className="mt-2 max-w-xl text-sm text-muted">
+            Bookings, payments, and estimates from every shop land here as they happen.
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 max-w-xl">
+        <FeedbackToggles scope="master" />
+      </div>
+      <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        {rows.length === 0 ? (
+          <li className="px-4 py-6 text-sm text-muted">No live events yet.</li>
+        ) : (
+          rows.map((row, index) => (
+            <li
+              key={row.id}
+              className={`px-4 py-3 text-sm ${index === 0 && lit ? "shadow-[inset_3px_0_0_0_#2ee6d6]" : ""}`}
+            >
+              <p className="font-medium">
+                {PULSE_LABEL[row.type] ?? row.type} · {row.shopName}
+              </p>
+              {row.detail ? <p className="mt-1 whitespace-pre-line text-muted">{row.detail}</p> : null}
+            </li>
+          ))
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function CommandStrip({ desk }: { desk: Desk }) {
+  const jackson = desk.attribution.filter((row) => row.county.toLowerCase().includes("jackson"));
+  const jacksonLeads = jackson.reduce((sum, row) => sum + row.leads, 0);
+  const queues = new Map<string, number>();
+  for (const row of desk.attribution) {
+    const label = row.tradeLabel || row.tradeType;
+    queues.set(label, (queues.get(label) ?? 0) + row.leads);
+  }
+  const splits = [...queues.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return (
+    <section className="mt-6 grid gap-3 lg:grid-cols-3">
+      <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Jackson County</p>
+        <p className="mt-2 font-display text-3xl tabular">{jacksonLeads.toLocaleString()}</p>
+        <p className="mt-1 text-sm text-muted">{jackson.length} trade queues on the regional list</p>
+      </div>
+      <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Trickle worker</p>
+        <p className="mt-2 font-display text-3xl capitalize">{desk.outreach.mode}</p>
+        <p className="mt-1 text-sm text-muted">
+          {desk.outreach.chunkSize} leads every {desk.outreach.intervalSeconds}s · database {desk.database}
+        </p>
+      </div>
+      <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Niche queues</p>
+        <ul className="mt-3 space-y-1 text-sm">
+          {splits.length === 0 ? (
+            <li className="text-muted">No regional lists yet.</li>
+          ) : (
+            splits.map(([label, count]) => (
+              <li key={label} className="flex justify-between gap-3">
+                <span className="truncate">{label}</span>
+                <span className="tabular text-muted">{count.toLocaleString()}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
     </section>
   );
 }
