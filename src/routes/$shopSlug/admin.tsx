@@ -18,12 +18,13 @@ import { getBearerToken } from "@/lib/auth/client";
 import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
 import { LAYOUT_BLOCKS, NEON_PRESETS, type LayoutBlock } from "@/lib/axiom/storefront";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
-import { cityFromAddress } from "@/lib/axiom/avatar";
+import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
 import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
 import { setAvatarScreen } from "@/components/avatar-help";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { TradeDesk } from "@/components/trade-desk";
+import { ProspectScan } from "@/components/prospect-scan";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -434,6 +435,13 @@ function Overview({
               ))}
           </ul>
         )}
+        <div className="mt-8">
+          <ProspectScan
+            slug={data.shop.slug}
+            city={placeFromCityLine(cityFromAddress(data.shop.address))}
+            disabled={readonly && !data.shop.isShowcase}
+          />
+        </div>
         <h3 className="mt-8 text-sm font-medium text-muted">Incoming</h3>
         {pending.length === 0 ? (
           <p className="mt-3 text-sm text-faint">Quiet board. New requests light the ring.</p>

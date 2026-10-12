@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { askEricAvatarId, avatarMintAllowed, avatarSessionPayload, cityFromAddress, ericGreeting, ownerWelcome } from "./avatar.ts";
+import { askEricAvatarId, avatarMintAllowed, avatarSessionPayload, cityFromAddress, ericGreeting, ownerWelcome, placeFromCityLine } from "./avatar.ts";
 
 test("Eric greets with the business, trade, and city", () => {
   assert.equal(
@@ -10,6 +10,8 @@ test("Eric greets with the business, trade, and city", () => {
   assert.match(ericGreeting({ businessName: "  ", trade: "", city: "" }), /your shop/);
   assert.equal(cityFromAddress("12 Oak St, Medford, OR"), "Medford");
   assert.equal(cityFromAddress("Ashland"), "Ashland");
+  assert.equal(placeFromCityLine(cityFromAddress("New Era · we come to you")), "New Era");
+  assert.equal(placeFromCityLine(cityFromAddress("12 Main Street, New Era")), "New Era");
 });
 
 test("the owner desk welcome names Eric and the overnight book", () => {

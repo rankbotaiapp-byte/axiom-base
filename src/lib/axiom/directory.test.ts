@@ -36,7 +36,8 @@ test("a named trade still uses its own still", () => {
 test("a paid lead uses its niche template", () => {
   assert.equal(nicheForLead("tattoo", "Tattoo shop"), "tattoo");
   assert.equal(nicheForLead("barber", "Barber"), "location");
-  assert.equal(nicheForLead("dog-walking", "Dog walking"), "pets");
+  assert.equal(nicheForLead("dog-walking", "Dog walking"), "dogwalk");
+  assert.equal(nicheForLead("auto-detailing", "Auto detailing"), "detailer");
   assert.equal(nicheForLead("atv-sports-rentals", "ATV sports rentals"), "trade");
 });
 
@@ -66,7 +67,9 @@ test("registry titles map onto platform niches", () => {
   assert.equal(classifyTrade("Services").tradeType, "field");
   assert.equal(classifyTrade("Sole proprietor").tradeType, "trade");
   assert.equal(classifyTrade("Self-employed").tradeType, "trade");
-  assert.equal(classifyTrade("Dog walking").tradeType, "pets");
+  assert.equal(classifyTrade("Dog walking").tradeType, "dogwalk");
+  assert.equal(classifyTrade("Auto detailing").tradeType, "detailer");
+  assert.equal(classifyTrade("Mobile detailer").tradeType, "detailer");
   assert.equal(classifyTrade("Clock Repair").tradeType, "clock-repair");
   assert.equal(classifyTrade("Block Concrete").tradeType, "contractor");
 });

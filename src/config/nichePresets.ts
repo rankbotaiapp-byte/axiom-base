@@ -485,6 +485,80 @@ export const NICHE_PRESETS: readonly NichePreset[] = [
     ],
     bookingCta: "Book the truck",
   },
+  {
+    id: "dogwalk",
+    shopNiche: "dogwalk",
+    label: "Dog walking",
+    title: "Leash Line",
+    tagline: "The walk is booked before the leash is clipped.",
+    accent: "#C4A15A",
+    keywords: ["dog walker near me", "dog walking", "midday dog walk", "pack walk", "puppy walk"],
+    auditTitle: "What does the dog need?",
+    auditNote: "So the walker brings the right leash.",
+    auditQuestions: [
+      {
+        id: "walk",
+        label: "The visit",
+        choices: [
+          { value: "Solo", label: "One dog" },
+          { value: "Pack", label: "A few dogs" },
+          { value: "Midday", label: "A short midday check" },
+        ],
+      },
+      {
+        id: "energy",
+        label: "How is the dog on a leash?",
+        choices: [
+          { value: "Easy", label: "Easy" },
+          { value: "Pulls", label: "Pulls a bit" },
+          { value: "Strong", label: "Needs a strong walker" },
+        ],
+      },
+    ],
+    services: [
+      { name: "Solo walk", detail: "One dog, one loop, back at the door.", priceLabel: "$25", durationMin: 30 },
+      { name: "Pack walk", detail: "Two or three dogs from the same house.", priceLabel: "$40", durationMin: 45 },
+      { name: "Midday visit", detail: "A short walk and a water check.", priceLabel: "$20", durationMin: 20 },
+    ],
+    bookingCta: "Book the walk",
+  },
+  {
+    id: "detailer",
+    shopNiche: "detailer",
+    label: "Mobile detailer",
+    title: "Curb Shine",
+    tagline: "The van is booked before it leaves the curb.",
+    accent: "#7EC8E3",
+    keywords: ["mobile detailer", "auto detailing", "mobile car wash", "interior detail", "driveway detail"],
+    auditTitle: "What does the car need?",
+    auditNote: "So the van brings the right kit.",
+    auditQuestions: [
+      {
+        id: "job",
+        label: "The visit",
+        choices: [
+          { value: "Exterior", label: "An exterior wash" },
+          { value: "Interior", label: "The interior" },
+          { value: "Full", label: "A full detail" },
+        ],
+      },
+      {
+        id: "size",
+        label: "What kind of vehicle?",
+        choices: [
+          { value: "Car", label: "A car" },
+          { value: "Suv", label: "An SUV" },
+          { value: "Truck", label: "A truck or van" },
+        ],
+      },
+    ],
+    services: [
+      { name: "Exterior wash", detail: "Rinse, wash, and dry in the driveway.", priceLabel: "$80", durationMin: 60 },
+      { name: "Interior reset", detail: "Vacuum, wipe-down, and the windows.", priceLabel: "$140", durationMin: 90 },
+      { name: "Full detail", detail: "Outside and inside, including the wheels.", priceLabel: "$250", durationMin: 180 },
+    ],
+    bookingCta: "Book the detail",
+  },
 ];
 
 const BY_ID = new Map(NICHE_PRESETS.map((preset) => [preset.id, preset]));

@@ -83,6 +83,8 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.creator.heroVideoUrl, "/media/heroes/contentcreator.mp4");
     assert.equal(NICHE_MEDIA.landscaper.heroVideoUrl, "/media/heroes/landscaper.mp4");
     assert.equal(NICHE_MEDIA.foodtruck.heroVideoUrl, "/media/heroes/mobile-foodtruck.mp4");
+    assert.equal(NICHE_MEDIA.dogwalk.heroVideoUrl, "/media/heroes/dogwalking.mp4");
+    assert.equal(NICHE_MEDIA.detailer.heroVideoUrl, "/media/heroes/mobile-detailer.mp4");
     assert.equal(NICHE_MEDIA.entertainer.heroVideoUrl, "/media/heroes/entertainer.mp4");
     const tattoo = resolveHeroMedia({
       niche: "tattoo",

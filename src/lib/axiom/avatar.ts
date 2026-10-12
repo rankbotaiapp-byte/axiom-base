@@ -54,6 +54,11 @@ export function cityFromAddress(address: string): string {
   return clipAvatarField(city);
 }
 
+/** City used to match a prospect batch. Drops the service note after a middot. */
+export function placeFromCityLine(city: string): string {
+  return (city.split("·")[0] ?? "").trim();
+}
+
 /**
  * HeyGen prints this avatar id without hyphens. LiveAvatar's session token
  * takes the same id as a UUID.

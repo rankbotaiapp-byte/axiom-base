@@ -102,6 +102,18 @@ const LAYOUTS: Record<ShopNiche, NicheLayout> = {
     kicker: "The window",
     heading: "What the truck is booked for.",
   },
+  dogwalk: {
+    modules: ["kinds", "radius"],
+    fields: ["kinds", "radiusMiles", "note"],
+    kicker: "The leash",
+    heading: "What the walk covers.",
+  },
+  detailer: {
+    modules: ["kinds", "radius"],
+    fields: ["kinds", "radiusMiles", "note"],
+    kicker: "The driveway",
+    heading: "What the van is booked for.",
+  },
   guide: {
     modules: ["party", "workflow"],
     fields: ["partyMax", "note"],
@@ -267,6 +279,8 @@ const DEFAULT_KINDS: Partial<Record<ShopNiche, string[]>> = {
   locksmith: ["Lockout", "Rekey", "Automotive"],
   landscaper: ["Mow", "Cleanup", "Planting"],
   foodtruck: ["Lunch stop", "Private event", "Catering tray"],
+  dogwalk: ["Solo walk", "Pack walk", "Midday"],
+  detailer: ["Exterior", "Full detail", "Interior"],
   pets: ["Bath", "Full groom", "Nails"],
   clean: ["Standard", "Deep clean", "Move-out"],
   beauty: ["Nails", "Lashes", "Makeup"],
