@@ -31,7 +31,7 @@ import { hashStopToken, newStopToken } from "./funnel-guard";
 import { nextSendInstant, parseSendTiming, planSmartChunks, timingProfileFor, type SendTiming } from "./outreach-queue";
 import { toE164 } from "./notify-target";
 import { HOME_REGION_COUNTIES, HOME_REGION_LABEL, homeRegionLeads } from "./regional-roster";
-import { classifyTrade, isTradeKey, nicheLabel } from "./directory";
+import { classifyFiling, classifyTrade, isTradeKey, nicheLabel } from "./directory";
 import { isShopNiche, type ShopNiche } from "./types";
 
 function stamp(value: unknown): string {
@@ -402,7 +402,7 @@ function cleanLead(input: {
   if (businessName.length < 2) throw new Error("Business name is required");
   if (city.length < 2) throw new Error("City is required");
   if (county.length < 2) throw new Error("County is required");
-  const classified = classifyTrade(trade);
+  const classified = classifyFiling(businessName, trade);
   const requested = (input.leadSlug ?? "").trim().toLowerCase();
   const leadSlug = requested ? requested : leadSlugFrom(businessName, city);
   if (!isLeadSlug(leadSlug)) throw new Error("Lead slug must be lowercase letters, numbers, and hyphens");

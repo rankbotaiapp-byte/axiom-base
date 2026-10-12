@@ -5,6 +5,7 @@ import { isShopNiche, SHOP_NICHES, type ShopNiche } from "./types.ts";
 const NICHE_LABELS: Record<ShopNiche, string> = {
   guide: "Guide services",
   fitness: "Fitness coaching / Personal training",
+  combat: "Combat sports",
   wellness: "Massage and bodywork",
   lessons: "Lessons and tutoring",
   salon: "Hair salon",
@@ -13,10 +14,16 @@ const NICHE_LABELS: Record<ShopNiche, string> = {
   photo: "Photography",
   pets: "Pet grooming",
   music: "Music artist / Rapper",
+  creator: "Content creator",
+  entertainer: "Entertainer",
   events: "Events",
+  landscaper: "Landscaper",
+  foodtruck: "Mobile food truck",
   contractor: "General contractor / Home services",
   clean: "Home cleaning",
   field: "Field service",
+  locksmith: "Mobile locksmith",
+  firewood: "Firewood cutting",
   security: "Private security",
   practice: "Practice",
   counsel: "Advisor",
@@ -37,6 +44,25 @@ const ALIASES: Record<string, ShopNiche> = {
   consulting: "counsel",
   "private security": "security",
   security: "security",
+  "mobile locksmith": "locksmith",
+  "mobile locksmiths": "locksmith",
+  "combat sports": "combat",
+  mma: "combat",
+  firewood: "firewood",
+  "firewood cutting": "firewood",
+  cordwood: "firewood",
+  landscaper: "landscaper",
+  landscaping: "landscaper",
+  "lawn care": "landscaper",
+  "food truck": "foodtruck",
+  foodtruck: "foodtruck",
+  "mobile food truck": "foodtruck",
+  "content creator": "creator",
+  "video editor": "creator",
+  "content creator / video editor": "creator",
+  entertainer: "entertainer",
+  performer: "entertainer",
+  "entertainer / performer": "entertainer",
   retail: "retail",
   merchandise: "retail",
   gear: "retail",
@@ -45,6 +71,59 @@ const ALIASES: Record<string, ShopNiche> = {
 };
 
 const TRADE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * Filing titles and registry phrases. First match wins, so a specific craft
+ * beats a trailing "Services". Exact niche labels and aliases are checked first.
+ */
+const KEYWORD_RULES: { test: RegExp; niche: ShopNiche }[] = [
+  { test: /\b(firewood|cordwood|fire wood)\b/i, niche: "firewood" },
+  { test: /\b(landscap\w*|lawn(?:\s*care)?)\b/i, niche: "landscaper" },
+  { test: /\b(food trucks?|foodtrucks?|mobile food|mobile kitchen)\b/i, niche: "foodtruck" },
+  { test: /\b(locksmiths?|rekey|lockouts?|locks?)\b/i, niche: "locksmith" },
+  {
+    test: /\b(hvac|furnace|heat pumps?|air condition\w*|plumb\w*|electric\w*|wiring|roof\w*|drywall|fram(?:e|er|ing)|concrete|flooring|paint(?:er|ing|s)?|solar|septic|irrigat\w*|gutters?|shingles?|construction|home services|remodel\w*|carpent(?:er|ry)|contractors?)\b/i,
+    niche: "contractor",
+  },
+  {
+    test: /\b(handymen|handyman|handy man|mobile mechanics?|mobile services?|appliance|garage doors?|towing|pressure wash\w*|window clean\w*|junk removal|tree service|pest control|pool service|chimney|hauling|movers?|moving company)\b/i,
+    niche: "field",
+  },
+  { test: /\b(pet groom\w*|dog walk\w*|pet sitt?\w*|dog train\w*)\b/i, niche: "pets" },
+  { test: /\b(cater(?:ing|er)|event planners?)\b/i, niche: "events" },
+  { test: /\b(massages?|bodywork)\b/i, niche: "wellness" },
+  { test: /\b(tutors?|tutoring)\b/i, niche: "lessons" },
+  { test: /\b(mma|martial arts|jiu-?jitsu|kickboxing|boxing)\b/i, niche: "combat" },
+  { test: /\b(photographers?|photography|photo booth)\b/i, niche: "photo" },
+  { test: /\btattoos?\b/i, niche: "tattoo" },
+  { test: /\b(rappers?|recording artists?|music artists?)\b/i, niche: "music" },
+  { test: /\b(content creators?|video editors?|videographers?|video editing)\b/i, niche: "creator" },
+  { test: /\b(entertainers?|performers?|magicians?|comedians?)\b/i, niche: "entertainer" },
+  { test: /\b(house clean\w*|housekeeping|maid service|home cleaning|cleaners?)\b/i, niche: "clean" },
+  { test: /\b(private security|security guards?|armed guards?)\b/i, niche: "security" },
+  { test: /\b(hunting|outfitters?|fishing guides?|guides?)\b/i, niche: "guide" },
+  { test: /\b(bookkeep\w*|notary|advisors?|consult\w*)\b/i, niche: "counsel" },
+  { test: /\b(lashes|lash tech|makeup|esthetician)\b/i, niche: "beauty" },
+  { test: /\b(personal train\w*|fitness)\b/i, niche: "fitness" },
+  { test: /\b(hair salons?|hairstylists?|hair stylists?)\b/i, niche: "salon" },
+  { test: /\b(barbers?|barbershop)\b/i, niche: "location" },
+  { test: /\b(boutiques?|merchandise)\b/i, niche: "retail" },
+  { test: /\bstudios?\b/i, niche: "studio" },
+  { test: /\b(self[-\s]?employed|sole prop\w*|proprietors?)\b/i, niche: "trade" },
+  { test: /\bservices?\b/i, niche: "field" },
+];
+
+function keywordNiche(label: string): ShopNiche | null {
+  for (const rule of KEYWORD_RULES) {
+    if (rule.test.test(label)) return rule.niche;
+  }
+  return null;
+}
+
+/** A legal status or a bare "services" line, so the business title can still name the craft. */
+function isGenericFiling(value: string): boolean {
+  return /^(services?|sole proprietors?|self[-\s]?employed|independent contractors?|general services|business services)$/i.test(value);
+}
 
 export type ClassifiedTrade = {
   tradeType: string;
@@ -72,9 +151,35 @@ export function classifyTrade(raw: string): ClassifiedTrade {
   const alias = ALIASES[key] ?? null;
   const niche = byId ?? byLabel ?? alias;
   if (niche) return { tradeType: niche, tradeLabel: NICHE_LABELS[niche], known: true };
+  const fromKeyword = keywordNiche(label);
+  if (fromKeyword) return { tradeType: fromKeyword, tradeLabel: label, known: true };
   const slug = slugify(label);
   if (!TRADE_KEY.test(slug) || slug === "shop") throw new Error("Trade is required");
   return { tradeType: slug, tradeLabel: label, known: false };
+}
+
+/**
+ * Classify a registry row. A specific filing phrase wins. A sole-proprietor or
+ * bare "services" line defers to the business title when that title names a craft.
+ */
+export function classifyFiling(name: string, trade: string): ClassifiedTrade {
+  const tradeText = trade.trim().replace(/\s+/g, " ").slice(0, 80);
+  const nameText = name.trim().replace(/\s+/g, " ").slice(0, 80);
+  if (tradeText && !isGenericFiling(tradeText)) {
+    const hit = classifyTrade(tradeText);
+    if (hit.known) return hit;
+  }
+  if (nameText && !isGenericFiling(nameText)) {
+    try {
+      const hit = classifyTrade(nameText);
+      if (hit.known) return hit;
+    } catch {
+      // The title was too short to be a trade. The filing line still counts.
+    }
+  }
+  if (tradeText) return classifyTrade(tradeText);
+  if (nameText) return classifyTrade(nameText);
+  throw new Error("Trade is required");
 }
 
 export function isTradeKey(value: string): boolean {

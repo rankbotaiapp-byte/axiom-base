@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { isClientAbort } from "@/lib/client-abort";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "sonner";
+import { AvatarHelpButton } from "@/components/avatar-help";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "New Era Apps";
@@ -75,6 +76,7 @@ function RootDocument() {
         <AuthProvider>
           <Outlet />
         </AuthProvider>
+        <AvatarHelpButton />
         <Toaster theme="dark" position="top-center" />
         <Scripts />
       </body>

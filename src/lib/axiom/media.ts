@@ -21,6 +21,7 @@ export type NicheFilm = {
 
 /** One source for niche stills and looping hero films. Templates and heroes both read this. */
 export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
+  combat: film("", "/media/heroes/gladiator.mp4", "Round loop · gladiator.mp4", "zoomin", 32, 46, 60),
   fitness: film(
     "/media/tiger-poster.svg",
     "/media/heroes/tiger-deer.mp4",
@@ -32,7 +33,31 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
     undefined,
     { loopUrl: "/media/tiger.mp4" },
   ),
-  music: film("/media/music-hero.jpg", "/media/music-hero.mp4", "Stage loop · music-hero.mp4", "panlr", 24, 62, 68, "stage"),
+  music: film("/media/music-hero.jpg", "/media/heroes/music-artist.mp4", "Stage loop · music-artist.mp4", "panlr", 24, 62, 68, "stage"),
+  creator: film("", "/media/heroes/contentcreator.mp4", "Edit loop · contentcreator.mp4", "panlr", 28, 44, 60),
+  landscaper: film(
+    "/media/heroes/landscaping.jpg",
+    "/media/heroes/landscaper.mp4",
+    "Yard loop · landscaper.mp4",
+    "pantd",
+    26,
+    40,
+    56,
+    "site",
+    { imageUrl: "/media/heroes/landscaping.jpg" },
+  ),
+  foodtruck: film(
+    "/media/heroes/food-truck.jpg",
+    "/media/heroes/mobile-foodtruck.mp4",
+    "Window loop · mobile-foodtruck.mp4",
+    "panlr",
+    28,
+    40,
+    58,
+    undefined,
+    { imageUrl: "/media/heroes/food-truck.jpg" },
+  ),
+  entertainer: film("", "/media/heroes/entertainer.mp4", "Stage loop · entertainer.mp4", "kenburns", 30, 48, 62, "stage"),
   contractor: film("/media/heroes/contractor.jpg", "/media/contractor-hero.mp4", "Site loop · contractor-hero.mp4", "zoomin", 30, 38, 56, "site"),
   location: film("/media/barber-hero.jpg", "/media/clipper.mp4", "Barber loop · clipper.mp4", "kenburns", 34, 46, 58),
   tattoo: film(
@@ -48,6 +73,18 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
   ),
   guide: film("/media/rafting-image.png", "/media/heroes/guide.mp4", "River loop · guide.mp4", "panlr", 28, 42, 62),
   field: film("/media/auto-hero.jpg", "/media/auto-hero.mp4", "Field loop · auto-hero.mp4", "panlr", 30, 44, 64, "site"),
+  locksmith: film("", "/media/heroes/mobile-locksmith.mp4", "Van loop · mobile-locksmith.mp4", "panlr", 28, 42, 58, "site"),
+  firewood: film(
+    "/media/heroes/firewood.jpg",
+    "/media/heroes/wood.mp4",
+    "Wood loop · wood.mp4",
+    "kenburns",
+    30,
+    40,
+    58,
+    "site",
+    { imageUrl: "/media/heroes/firewood.jpg" },
+  ),
   studio: film("/media/apps-hero.jpg", "/media/apps-hero.mp4", "Studio loop · apps-hero.mp4", "zoomin", 32, 40, 60),
   salon: film("/media/heroes/salon.jpg", "/media/heroes/salon.mp4", "Salon loop · salon.mp4", "panlr", 32, 40, 58),
   beauty: film(
@@ -110,8 +147,8 @@ const TRADE_SCENES: { test: RegExp; film: NicheFilm }[] = [
     test: /\b(atv|utv|sports?\s*rentals?)\b/i,
     film: film(
       "",
-      "/media/heroes/atv-sportsrentals.mp4",
-      "Rental loop · atv-sportsrentals.mp4",
+      "/media/heroes/atv-rental.mp4",
+      "Rental loop · atv-rental.mp4",
       "panlr",
       28,
       42,
@@ -132,11 +169,50 @@ const TRADE_SCENES: { test: RegExp; film: NicheFilm }[] = [
       { imageUrl: "/media/heroes/hunting-guide.jpg" },
     ),
   },
-  { test: /\b(firewood|cordwood|fire wood)\b/i, film: still("firewood", "Firewood still", "kenburns", 30, 40, 58, "site", "jpg") },
+  {
+    test: /\b(firewood|cordwood|fire wood)\b/i,
+    film: film(
+      "/media/heroes/firewood.jpg",
+      "/media/heroes/wood.mp4",
+      "Wood loop · wood.mp4",
+      "kenburns",
+      30,
+      40,
+      58,
+      "site",
+      { imageUrl: "/media/heroes/firewood.jpg" },
+    ),
+  },
   { test: /\b(hvac|furnace|heat pump|air condition\w*)\b/i, film: still("hvac", "HVAC still", "panlr", 30, 42, 58, "site", "jpg") },
   { test: /\b(electric\w*|wiring)\b/i, film: still("electrical", "Electrical still", "kenburns", 34, 46, 60, "site", "jpg") },
-  { test: /\b(food truck|foodtruck|mobile food|mobile kitchen)\b/i, film: still("food-truck", "Food truck still", "panlr", 28, 40, 58, undefined, "jpg") },
-  { test: /\b(landscap\w*|lawn|yard)\b/i, film: still("landscaping", "Landscaping still", "pantd", 26, 40, 56, "site", "jpg") },
+  {
+    test: /\b(food truck|foodtruck|mobile food|mobile kitchen)\b/i,
+    film: film(
+      "/media/heroes/food-truck.jpg",
+      "/media/heroes/mobile-foodtruck.mp4",
+      "Window loop · mobile-foodtruck.mp4",
+      "panlr",
+      28,
+      40,
+      58,
+      undefined,
+      { imageUrl: "/media/heroes/food-truck.jpg" },
+    ),
+  },
+  {
+    test: /\b(landscap\w*|lawn|yard)\b/i,
+    film: film(
+      "/media/heroes/landscaping.jpg",
+      "/media/heroes/landscaper.mp4",
+      "Yard loop · landscaper.mp4",
+      "pantd",
+      26,
+      40,
+      56,
+      "site",
+      { imageUrl: "/media/heroes/landscaping.jpg" },
+    ),
+  },
   { test: /\b(roof\w*|shingle|gutter)\b/i, film: still("roofing", "Roofing still", "zoomin", 28, 44, 54, "site", "jpg") },
   { test: /\b(plumb\w*|drain)\b/i, film: still("plumbing", "Plumbing still", "panlr", 30, 40, 58, "site", "jpg") },
 ];
@@ -198,6 +274,8 @@ export function leadHeroFor(tradeType: string, businessName: string, category = 
 /** Films that used to be the niche hero. A saved shop still pointing at one follows the new film. */
 const PREVIOUS_NICHE_VIDEOS: Partial<Record<ShopNiche, readonly string[]>> = {
   tattoo: ["/media/tattoo-gun.mp4"],
+  music: ["/media/music-hero.mp4"],
+  creator: ["/media/heroes/content-creator.mp4"],
 };
 
 export function resolveHeroMedia(shop: {

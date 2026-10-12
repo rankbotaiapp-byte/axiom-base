@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShopSlugRouteRouteImport } from './routes/$shopSlug/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardRouteImport } from './routes/onboard'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ShopSlugIndexRouteImport } from './routes/$shopSlug/index'
 import { Route as ShopSlugAdminRouteImport } from './routes/$shopSlug/admin'
 import { Route as ShopSlugBookRouteImport } from './routes/$shopSlug/book'
@@ -45,6 +46,11 @@ const LoginRoute = LoginRouteImport.update({
 const OnboardRoute = OnboardRouteImport.update({
   id: '/onboard',
   path: '/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopSlugIndexRoute = ShopSlugIndexRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/$shopSlug': typeof ShopSlugRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
+  '/welcome': typeof WelcomeRoute
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
+  '/welcome': typeof WelcomeRoute
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/$shopSlug': typeof ShopSlugRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
+  '/welcome': typeof WelcomeRoute
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/$shopSlug'
     | '/login'
     | '/onboard'
+    | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboard'
+    | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/$shopSlug'
     | '/login'
     | '/onboard'
+    | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
@@ -234,6 +246,7 @@ export interface RootRouteChildren {
   ShopSlugRouteRoute: typeof ShopSlugRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardRoute: typeof OnboardRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiGetAvatarTokenRoute: typeof ApiGetAvatarTokenRoute
   InviteTokenRoute: typeof InviteTokenRoute
   MasterAdminIndexRoute: typeof MasterAdminIndexRoute
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/onboard'
       fullPath: '/onboard'
       preLoaderRoute: typeof OnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$shopSlug/': {
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopSlugRouteRoute: ShopSlugRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardRoute: OnboardRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiGetAvatarTokenRoute: ApiGetAvatarTokenRoute,
   InviteTokenRoute: InviteTokenRoute,
   MasterAdminIndexRoute: MasterAdminIndexRoute,

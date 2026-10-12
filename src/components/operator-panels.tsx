@@ -9,6 +9,7 @@ import {
 import { FeedbackToggles } from "@/components/feedback-toggles";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { presetsForShop, type NichePreset } from "@/config/nichePresets";
 import { defaultPriceUnit, nicheCopy, PRICE_UNIT_LABEL, priceUnitsFor } from "@/lib/axiom/niches";
 import { insertRow, moveRow, moveSection, nextSectionName, renameSection, sectionsOf } from "@/lib/axiom/menu";
 import { formatMoney } from "@/lib/utils";
@@ -55,6 +56,18 @@ export function SettingsPanel({
     >
       <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Public page</p>
       <p className="mt-1 font-display text-3xl">Business</p>
+      <ReadyPages
+        niche={shop.niche}
+        disabled={readonly}
+        activeTitle={name}
+        onPick={(preset) => {
+          setName(preset.title);
+          setTagline(preset.tagline);
+        }}
+        onKeyword={(word) => {
+          setTagline((current) => (current.toLowerCase().includes(word.toLowerCase()) ? current : `${current} ${word}`.trim()));
+        }}
+      />
       <Field label="Name" id="biz-name" value={name} onChange={setName} disabled={readonly} />
       <Field label="Tagline" id="biz-tag" value={tagline} onChange={setTagline} disabled={readonly} />
       <div className="mt-3">
@@ -81,6 +94,73 @@ export function SettingsPanel({
         </div>
       </div>
     </form>
+  );
+}
+
+function ReadyPages({
+  niche,
+  disabled,
+  activeTitle,
+  onPick,
+  onKeyword,
+}: {
+  niche: string;
+  disabled: boolean;
+  activeTitle: string;
+  onPick: (preset: NichePreset) => void;
+  onKeyword: (word: string) => void;
+}) {
+  const presets = presetsForShop(niche);
+  const active = presets.find((preset) => preset.title === activeTitle) ?? presets[0];
+  if (!active) return null;
+  return (
+    <div className="mt-5">
+      <p className="text-sm text-muted">Start from a ready page. Tap one and the name and line fill in.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {presets.map((preset) => {
+          const selected = preset.id === active.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              disabled={disabled}
+              aria-pressed={selected}
+              onClick={() => onPick(preset)}
+              className="h-11 rounded-full px-4 text-sm disabled:opacity-50"
+              style={
+                selected
+                  ? { background: preset.accent, color: "var(--color-bg)" }
+                  : { background: "var(--color-bg)", color: "var(--color-fg)" }
+              }
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-4 text-sm text-muted">Search words. Tap one to add it to the line.</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {active.keywords.map((word) => (
+          <button
+            key={word}
+            type="button"
+            disabled={disabled}
+            onClick={() => onKeyword(word)}
+            className="h-11 rounded-full bg-bg px-4 text-sm disabled:opacity-50"
+          >
+            {word}
+          </button>
+        ))}
+      </div>
+      <ul className="mt-4 grid gap-2 text-sm text-muted">
+        {active.services.map((service) => (
+          <li key={service.name}>
+            {service.name} · {service.priceLabel}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-sm">Booking button: {active.bookingCta}</p>
+    </div>
   );
 }
 

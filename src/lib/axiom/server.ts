@@ -16,6 +16,7 @@ import {
   type LayoutBlock,
   type WeekKey,
 } from "./storefront";
+import { parseTradeProfile, type TradeProfile } from "./trade-layout";
 import {
   isShopNiche,
   type AccessMode,
@@ -64,6 +65,7 @@ type ShopRow = {
   neon_accent?: string;
   glow_enabled?: boolean | number | string | null;
   layout_json?: string;
+  trade_profile?: string;
   created_at: string;
 };
 
@@ -133,6 +135,7 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     neonAccent: parseNeonAccent(r.neon_accent),
     glowEnabled: parseGlowEnabled(r.glow_enabled),
     layout: parseLayout(r.layout_json),
+    tradeProfile: parseTradeProfile(niche, r.trade_profile),
     createdAt: String(r.created_at),
   };
 }
@@ -886,6 +889,26 @@ export const updateShopBrand = createServerFn({ method: "POST" })
       if (!/neon_accent|glow_enabled|layout_json/i.test(message)) throw err;
     }
     return { ok: true as const, onboarding: flags };
+  });
+
+export const saveTradeProfile = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; profile: TradeProfile }) => d)
+  .handler(async ({ data, context }) => {
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    await assertCanModifyShop(row, context.userId);
+    const niche = isShopNiche(row.niche) ? row.niche : "location";
+    const profile = parseTradeProfile(niche, data.profile);
+    const sql = await getSql();
+    try {
+      await sql`update shops set trade_profile = ${JSON.stringify(profile)} where id = ${row.id}`;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (/trade_profile/i.test(message)) throw new Error("Trade profile is not on this database yet");
+      throw err;
+    }
+    return { ok: true as const, profile };
   });
 
 const WEEK_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;

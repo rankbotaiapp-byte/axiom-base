@@ -58,9 +58,14 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
     if (niche === "trade") continue;
     assert.ok(niches.has(niche), niche);
   }
-  assert.ok(niches.has("hvac"));
-  assert.ok(niches.has("dog-walking"));
-  assert.ok(niches.has("mobile-food-truck"));
+  assert.equal(classifyTrade("HVAC").tradeType, "contractor");
+  assert.equal(classifyTrade("Plumbing").tradeType, "contractor");
+  assert.equal(classifyTrade("Electrical").tradeType, "contractor");
+  assert.equal(classifyTrade("Dog walking").tradeType, "pets");
+  assert.equal(classifyTrade("Mobile food truck").tradeType, "foodtruck");
+  assert.equal(classifyTrade("Landscaper").tradeType, "landscaper");
+  assert.ok(niches.has("house-sitting"));
+  assert.ok(niches.has("personal-chef"));
 
   function heroFor(category: string) {
     const lead = leads.find((row) => row.tradeType === category);
@@ -79,7 +84,9 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/deer-hunting-guide.mp4");
   assert.equal(heroFor("Private security").heroVideoUrl, "/media/heroes/private-security.mp4");
   assert.equal(heroFor("Mobile food truck").heroImageUrl, "/media/heroes/food-truck.jpg");
+  assert.equal(heroFor("Mobile food truck").heroVideoUrl, "/media/heroes/mobile-foodtruck.mp4");
+  assert.equal(heroFor("Landscaper").heroVideoUrl, "/media/heroes/landscaper.mp4");
   assert.equal(heroFor("Air conditioning").heroImageUrl, "/media/heroes/hvac.jpg");
-  assert.equal(heroFor("Dog walking").heroImageUrl, "/media/heroes/trade.jpg");
-  assert.equal(heroFor("Mobile mechanic").heroImageUrl, "/media/heroes/trade.jpg");
+  assert.equal(heroFor("Dog walking").heroImageUrl, "/media/heroes/pets.jpg");
+  assert.equal(heroFor("Mobile mechanic").heroImageUrl, "/media/auto-hero.jpg");
 });

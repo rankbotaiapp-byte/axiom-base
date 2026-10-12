@@ -7,6 +7,7 @@ import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
 import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
+import { presetForShopNiche, presetsForShop } from "@/config/nichePresets";
 import { LoopVideo } from "@/components/cinematic-hero";
 import { isShopNiche, type Shop, type ShopNiche } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
@@ -82,9 +83,8 @@ function Onboard() {
         },
       });
       await navigate({
-        to: "/$shopSlug",
-        params: { shopSlug: result.slug },
-        search: { tour: true },
+        to: "/welcome",
+        search: { shop: result.slug },
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create shop");
@@ -134,7 +134,13 @@ function Onboard() {
                 type="button"
                 onClick={() => {
                   setNiche(key);
-                  if (!name) setName(n.defaultName);
+                  const starter = presetsForShop(key)[0]?.title ?? n.defaultName;
+                  setName((current) => {
+                    if (!current) return starter;
+                    if (!niche) return current;
+                    const previous = presetsForShop(niche)[0]?.title ?? NICHES[niche].defaultName;
+                    return current === previous || current === NICHES[niche].defaultName ? starter : current;
+                  });
                 }}
                 className="w-72 shrink-0 snap-start overflow-hidden rounded-[24px] bg-surface text-left shadow-[0_0_0_1px_rgba(243,241,235,0.08)] transition-[box-shadow] duration-150"
                 style={
@@ -181,8 +187,13 @@ function Onboard() {
               id="shop-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={NICHES[niche].defaultName}
+              placeholder={presetsForShop(niche)[0]?.title ?? NICHES[niche].defaultName}
             />
+            {presetsForShop(niche)[0] ? (
+              <p className="mt-3 text-sm text-muted">
+                {presetForShopNiche(niche).tagline} The booking button reads “{presetForShopNiche(niche).bookingCta}”.
+              </p>
+            ) : null}
             {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
             <Button
               className="mt-4 w-full"

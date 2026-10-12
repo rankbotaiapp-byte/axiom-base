@@ -19,8 +19,11 @@ import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
 import { LAYOUT_BLOCKS, NEON_PRESETS, type LayoutBlock } from "@/lib/axiom/storefront";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { cityFromAddress } from "@/lib/axiom/avatar";
+import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
+import { setAvatarScreen } from "@/components/avatar-help";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
+import { TradeDesk } from "@/components/trade-desk";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -140,6 +143,12 @@ function AdminShell({
   onReload: () => void;
 }) {
   const [tab, setTab] = useState<"overview" | "settings" | "services" | "brand" | "team" | "alerts" | "billing">("overview");
+
+  useEffect(() => {
+    const screen = tab === "settings" || tab === "services" || tab === "brand" ? "storefront_editor" : "lead_dashboard";
+    setAvatarScreen(screen);
+    return () => setAvatarScreen(null);
+  }, [tab]);
   const copy = nicheCopy(data.shop.niche);
   const tabLabel: Record<typeof tab, string> = {
     overview: "Overview",
@@ -221,6 +230,7 @@ function AdminShell({
         {tab === "settings" ? (
           <div className="grid gap-6">
             <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
+            <TradeDesk shop={data.shop} readonly={readonly} onReload={onReload} />
             <ShopDashboardPanel
               shop={data.shop}
               employees={data.employees}
@@ -264,6 +274,11 @@ function AdminShell({
           />
         ) : null}
       </div>
+      <AdminWelcomeTour
+        shopSlug={data.shop.slug}
+        shopName={data.shop.name}
+        active={data.mode === "owner" && !data.platformDesk}
+      />
       <AskEricAvatar
         businessName={data.shop.name}
         trade={NICHES[data.shop.niche].label}

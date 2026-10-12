@@ -13,6 +13,13 @@ export const Route = createFileRoute("/login")({
   component: Login,
 });
 
+function signInMessage(message: string | undefined) {
+  if (!message || message === "Invalid email or password" || message === "User not found") {
+    return "That email and password don't match an account. Create an account, or use the password from the one you already made.";
+  }
+  return message;
+}
+
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const next = Route.useSearch().next ?? "/onboard";
@@ -43,10 +50,10 @@ function Login() {
           password,
           name: name || email.split("@")[0] || "Owner",
         });
-        if (err) throw new Error(err.message);
+        if (err) throw new Error(signInMessage(err.message));
       } else {
         const { error: err } = await authClient.signIn.email({ email, password });
-        if (err) throw new Error(err.message);
+        if (err) throw new Error(signInMessage(err.message));
       }
       window.location.href = next;
     } catch (err) {

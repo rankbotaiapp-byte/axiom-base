@@ -42,7 +42,8 @@ import { FeedbackToggles } from "@/components/feedback-toggles";
 import { Wordmark } from "@/components/shop-chrome";
 import { pulseHaptic, readFeedback } from "@/lib/axiom/feedback";
 import { listPlatformPulse, type PlatformPulse } from "@/lib/axiom/master";
-import { importBulkLeads, type BulkImportResult } from "@/lib/axiom/bulk-import";
+import { createLeadCsvReader, IMPORT_BATCH, importBulkLeads, importRegistrySweep, leadCsvChunks, type BulkImportResult } from "@/lib/axiom/bulk-import";
+import { SWEEP_PER_COUNTY } from "@/lib/axiom/registry-sweep";
 import { formatMoney } from "@/lib/utils";
 
 export const Route = createFileRoute("/master-admin/")({
@@ -831,12 +832,91 @@ function DraftPreview({ label, body }: { label: string; body: string }) {
   );
 }
 
+function emptyImport(): BulkImportResult {
+  return { leads: [], invalid: [], invalidCount: 0, merged: 0, inserted: 0, updated: 0, unchanged: 0 };
+}
+
+function foldImport(into: BulkImportResult, next: BulkImportResult) {
+  into.inserted += next.inserted;
+  into.updated += next.updated;
+  into.unchanged += next.unchanged;
+  into.merged += next.merged;
+  into.invalidCount += next.invalidCount ?? next.invalid.length;
+  for (const row of next.invalid) {
+    if (into.invalid.length < 40) into.invalid.push(row);
+  }
+}
+
+function snapshotImport(totals: BulkImportResult): BulkImportResult {
+  return { ...totals, leads: [], invalid: [...totals.invalid] };
+}
+
+async function sendImportBatch(
+  chunk: { name?: string; city?: string; county?: string; trade?: string; email?: string; phone?: string; website?: string; phoneLine?: string; line?: number }[],
+  totals: BulkImportResult,
+  batch: number,
+  setProgress: (value: string) => void,
+  setResult: (value: BulkImportResult) => void,
+) {
+  setProgress(`Staging batch ${batch.toLocaleString()} · ${IMPORT_BATCH.toLocaleString()} rows at a time`);
+  foldImport(totals, await importBulkLeads({ data: { leads: chunk } }));
+  setResult(snapshotImport(totals));
+}
+
+async function importText(
+  body: string,
+  totals: BulkImportResult,
+  setProgress: (value: string) => void,
+  setResult: (value: BulkImportResult) => void,
+) {
+  let batch = 0;
+  for (const chunk of leadCsvChunks(body)) {
+    batch += 1;
+    await sendImportBatch(chunk, totals, batch, setProgress, setResult);
+  }
+}
+
+async function importFile(
+  file: File,
+  totals: BulkImportResult,
+  setProgress: (value: string) => void,
+  setResult: (value: BulkImportResult) => void,
+) {
+  const reader = file.stream().getReader();
+  const decoder = new TextDecoder();
+  const parser = createLeadCsvReader();
+  let batch = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    const piece = decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    for (const chunk of parser.push(piece)) {
+      batch += 1;
+      await sendImportBatch(chunk, totals, batch, setProgress, setResult);
+    }
+    if (done) break;
+  }
+  const tail = parser.finish();
+  if (tail.length > 0) {
+    batch += 1;
+    await sendImportBatch(tail, totals, batch, setProgress, setResult);
+  }
+}
+
+function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function BulkIngest() {
   const [csv, setCsv] = useState("");
   const [fileName, setFileName] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [fileBytes, setFileBytes] = useState(0);
+  const [busy, setBusy] = useState<"import" | "sweep" | null>(null);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkImportResult | null>(null);
+  const fileRef = useRef<File | null>(null);
 
   async function loadFile(file: File | undefined) {
     if (!file) return;
@@ -846,40 +926,78 @@ function BulkIngest() {
       setError("Choose a .csv file");
       return;
     }
-    const text = await file.text();
-    setCsv(text);
-    setFileName(file.name);
     setError(null);
     setResult(null);
+    setFileName(file.name);
+    if (file.size > 400_000) {
+      fileRef.current = file;
+      setFileBytes(file.size);
+      setCsv("");
+      return;
+    }
+    fileRef.current = null;
+    setFileBytes(0);
+    setCsv(await file.text());
   }
 
   async function run() {
+    const file = fileRef.current;
     const body = csv.trim();
-    if (!body) {
+    if (!file && !body) {
       setError("Paste a CSV or choose a file");
       return;
     }
-    setBusy(true);
+    setBusy("import");
     setError(null);
+    setProgress("");
+    const totals = emptyImport();
     try {
-      const next = await importBulkLeads({ data: { csv: body } });
-      setResult(next);
+      if (file) await importFile(file, totals, setProgress, setResult);
+      else await importText(body, totals, setProgress, setResult);
+      if (totals.inserted + totals.updated + totals.unchanged + totals.invalidCount + totals.merged === 0) {
+        setError("That file had no rows");
+      }
     } catch (err: unknown) {
-      setResult(null);
       setError(err instanceof Error ? err.message : "Import failed");
     } finally {
-      setBusy(false);
+      setBusy(null);
+      setProgress("");
+    }
+  }
+
+  async function sweep() {
+    setBusy("sweep");
+    setError(null);
+    setProgress("");
+    const totals = emptyImport();
+    try {
+      let offset = 0;
+      for (;;) {
+        const next = await importRegistrySweep({ data: { offset } });
+        foldImport(totals, next);
+        setResult(snapshotImport(totals));
+        setProgress(`${next.county} · ${next.nextOffset.toLocaleString()} of ${next.total.toLocaleString()}`);
+        const previous = offset;
+        offset = next.nextOffset;
+        if (next.done || offset <= previous) break;
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Sweep failed");
+    } finally {
+      setBusy(null);
+      setProgress("");
     }
   }
 
   const invalid = result?.invalid ?? [];
+  const invalidCount = result?.invalidCount ?? invalid.length;
   const shown = invalid.slice(0, 40);
 
   return (
     <section className="mt-10">
       <h2 className="font-display text-2xl">Bulk lead ingestion</h2>
       <p className="mt-2 max-w-xl text-sm text-muted">
-        Upload a .csv or paste the sheet. Columns: Business, City, County, Niche, Email, Phone, Website. A claimed or live business stays as it is.
+        Upload a .csv or paste the sheet. Columns: Business, City, County, Niche, Email, Phone, Website. A county file is staged in batches of {IMPORT_BATCH.toLocaleString()}, then moved into the live list. Filing titles such as Electrical, Plumbing, Firewood, Lock, Handyman, and Sole proprietor land on the matching niche. Sweep Florida registry loads {SWEEP_PER_COUNTY.toLocaleString()} filings in Miami-Dade, Broward, Palm Beach, Hillsborough, Orange, and Duval. A claimed or live business stays as it is.
       </p>
       <div className="mt-4 grid gap-4">
         <Field label="CSV file">
@@ -893,13 +1011,21 @@ function BulkIngest() {
               event.target.value = "";
             }}
           />
-          {fileName ? <p className="text-sm text-muted">{fileName} is in the box below. Edit it, then run the import.</p> : null}
+          {fileName ? (
+            <p className="text-sm text-muted">
+              {fileBytes > 0
+                ? `${fileName} (${fileSize(fileBytes)}) imports in batches of ${IMPORT_BATCH.toLocaleString()} and stays out of the box below.`
+                : `${fileName} is in the box below. Edit it, then run the import.`}
+            </p>
+          ) : null}
         </Field>
         <Field label="Or paste CSV">
           <textarea
             value={csv}
             onChange={(event) => {
               setCsv(event.target.value);
+              fileRef.current = null;
+              setFileBytes(0);
               setResult(null);
             }}
             rows={10}
@@ -909,10 +1035,14 @@ function BulkIngest() {
             aria-label="CSV text"
           />
         </Field>
-        <div>
-          <Button type="button" disabled={busy || csv.trim().length === 0} onClick={() => void run()}>
-            {busy ? "Importing" : "Run Bulk Import"}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" disabled={busy !== null || (csv.trim().length === 0 && fileBytes === 0)} onClick={() => void run()}>
+            {busy === "import" ? "Importing" : "Run Bulk Import"}
           </Button>
+          <Button type="button" variant="secondary" disabled={busy !== null} onClick={() => void sweep()}>
+            {busy === "sweep" ? "Sweeping Florida" : "Sweep Florida registry"}
+          </Button>
+          {progress ? <p className="w-full text-sm text-muted">{progress}</p> : null}
         </div>
       </div>
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
@@ -922,7 +1052,7 @@ function BulkIngest() {
             <Kpi label="Inserted" value={result.inserted.toLocaleString()} />
             <Kpi label="Updated" value={result.updated.toLocaleString()} />
             <Kpi label="Unchanged" value={result.unchanged.toLocaleString()} />
-            <Kpi label="Invalid" value={invalid.length.toLocaleString()} />
+            <Kpi label="Invalid" value={invalidCount.toLocaleString()} />
           </div>
           {result.merged > 0 ? (
             <p className="mt-3 text-sm text-muted">
@@ -931,7 +1061,7 @@ function BulkIngest() {
           ) : null}
           <div className="mt-4 rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Invalid rows</p>
-            {shown.length === 0 ? (
+            {invalidCount === 0 ? (
               <p className="mt-3 text-sm text-muted">Every row was usable.</p>
             ) : (
               <ul className="mt-3 max-h-64 space-y-2 overflow-auto text-sm">
@@ -943,9 +1073,9 @@ function BulkIngest() {
                 ))}
               </ul>
             )}
-            {invalid.length > shown.length ? (
+            {invalidCount > shown.length ? (
               <p className="mt-3 text-sm text-muted">
-                {invalid.length - shown.length} more invalid {invalid.length - shown.length === 1 ? "row" : "rows"} were left out of this list.
+                {(invalidCount - shown.length).toLocaleString()} more invalid {invalidCount - shown.length === 1 ? "row" : "rows"} were left out of this list.
               </p>
             ) : null}
           </div>

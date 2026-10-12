@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseLeadCsv, prepareBulkImport } from "./bulk-import.ts";
+import { readFileSync } from "node:fs";
+import { createLeadCsvReader, leadCsvChunks, parseLeadCsv, prepareBulkImport } from "./bulk-import.ts";
 
 test("csv headers map onto lead fields and quotes survive", () => {
   const leads = parseLeadCsv(
@@ -45,5 +46,56 @@ test("a broken row is reported and the rest stay", () => {
   assert.equal(plan.leads.length, 1);
   assert.equal(plan.leads[0].hasWebsite, true);
   assert.equal(plan.leads[0].website, "oak.example");
-  assert.equal(plan.leads[0].tradeType, "landscaping");
+  assert.equal(plan.leads[0].tradeType, "landscaper");
+});
+
+test("a filing title is classified before it is staged", () => {
+  const plan = prepareBulkImport([
+    { name: "River Firewood", city: "Medford", county: "Jackson", trade: "Sole proprietor", line: 2 },
+    { name: "Peak Lock", city: "Ashland", county: "Jackson", trade: "Self-employed", line: 3 },
+    { name: "Ada Holt", city: "Medford", county: "Jackson", trade: "Drywall", line: 4 },
+    { name: "Lane Handyman", city: "Grants Pass", county: "Josephine", trade: "Services", line: 5 },
+  ]);
+  assert.equal(plan.invalid.length, 0);
+  assert.deepEqual(plan.leads.map((lead) => lead.tradeType), ["firewood", "locksmith", "contractor", "field"]);
+});
+
+test("a county sheet splits into batches of 1000 and keeps file line numbers", () => {
+  const lines = ["Business,City,County,Niche"];
+  for (let i = 0; i < 2500; i += 1) lines.push(`Shop ${i},Medford,Jackson,Tattoo shop`);
+  const chunks = [...leadCsvChunks(lines.join("\n"))];
+  assert.equal(chunks.length, 3);
+  assert.equal(chunks[0].length, 1000);
+  assert.equal(chunks[1].length, 1000);
+  assert.equal(chunks[2].length, 500);
+  assert.equal(chunks[0][0].line, 2);
+  assert.equal(chunks[2][499].line, 2501);
+  assert.equal(chunks[2][499].name, "Shop 2499");
+});
+
+test("a quoted field can span two file slices", () => {
+  const reader = createLeadCsvReader(10);
+  const first = reader.push('Business,City,County,Niche\n"North');
+  const second = reader.push(' Glass, LLC",Medford,Jackson,Tattoo shop\n');
+  const tail = reader.finish();
+  const rows = [...first.flat(), ...second.flat(), ...tail];
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, "North Glass, LLC");
+  assert.equal(rows[0].city, "Medford");
+  assert.equal(rows[0].line, 2);
+});
+
+test("an escaped quote at a slice boundary stays in the cell", () => {
+  const reader = createLeadCsvReader(10);
+  reader.push('Business,City,County,Niche\n"Say "');
+  const rows = [...reader.push('"hello""",Medford,Jackson,Tattoo shop').flat(), ...reader.finish()];
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'Say "hello"');
+});
+
+test("the staging migration is present", () => {
+  const sql = readFileSync(new URL("../../../migrations/0039_lead_staging.sql", import.meta.url), "utf8");
+  assert.match(sql, /create table if not exists preloaded_leads_staging/i);
+  assert.match(sql, /batch_id/);
+  assert.match(sql, /preloaded_leads_staging_batch_slug_idx/);
 });

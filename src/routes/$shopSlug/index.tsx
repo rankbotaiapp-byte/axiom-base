@@ -10,6 +10,9 @@ import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { formatPhone, initials } from "@/lib/utils";
+import { TradeStorefront } from "@/components/trade-storefront";
+import { StorefrontAuditWidget } from "@/components/StorefrontAuditWidget";
+import { presetsForShop } from "@/config/nichePresets";
 import { formatOffer, nicheCopy, serviceGroups, WEEKDAYS } from "@/lib/axiom/niches";
 import { NICHE_MEDIA, resolveHeroMedia } from "@/lib/axiom/media";
 import type { AccessMode } from "@/lib/axiom/types";
@@ -46,6 +49,7 @@ function CustomerHome() {
   const hours = data.shop.hours ?? {};
   const invited = employees[employees.length - 1];
   const copy = nicheCopy(data.shop.niche);
+  const bookLabel = presetsForShop(data.shop.niche)[0]?.bookingCta ?? copy.bookLabel;
   const contact = employees.find((e) => e.phone)?.phone;
   const hero = resolveHeroMedia(data.shop);
   const nicheFilm = NICHE_MEDIA[data.shop.niche];
@@ -117,7 +121,7 @@ function CustomerHome() {
         ) : (
           <SnapEstimate
             niche={data.shop.niche}
-            bookLabel={copy.bookLabel}
+            bookLabel={bookLabel}
             shopSlug={data.shop.slug}
             lines={services.map((service) => ({
               name: service.name,
@@ -216,11 +220,22 @@ function CustomerHome() {
             params={{ shopSlug: data.shop.slug }}
             className="glass-btn mt-8 inline-flex h-12 items-center gap-2 rounded-xl px-5 text-sm font-medium"
           >
-            {copy.bookLabel}
+            {bookLabel}
             <ArrowRight className="size-4" />
           </Link>
         </div>
       </CinematicHero>
+
+      <TradeStorefront shop={data.shop} services={services} phone={contact ? String(contact) : ""} />
+
+      <section className="px-5 pb-28 sm:px-10 sm:pb-16">
+        <StorefrontAuditWidget
+          tenantId={data.shop.id}
+          businessName={data.shop.name}
+          niche={data.shop.niche}
+          bookSlug={data.shop.slug}
+        />
+      </section>
 
       {data.shop.layout.map((block) => (
         <div key={block}>{blocks[block]}</div>
@@ -237,7 +252,7 @@ function CustomerHome() {
           params={{ shopSlug: data.shop.slug }}
           className="glass-btn flex h-12 items-center justify-center rounded-xl text-sm font-medium"
         >
-          {copy.bookLabel}
+          {bookLabel}
         </Link>
       </div>
 

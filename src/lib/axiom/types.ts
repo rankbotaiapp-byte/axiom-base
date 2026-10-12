@@ -1,10 +1,12 @@
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 import type { LayoutBlock, ThemeProfile } from "./storefront";
+import type { TradeProfile } from "./trade-layout";
 
 export const SHOP_NICHES = [
   "guide",
   "fitness",
+  "combat",
   "wellness",
   "lessons",
   "salon",
@@ -13,10 +15,16 @@ export const SHOP_NICHES = [
   "photo",
   "pets",
   "music",
+  "creator",
+  "entertainer",
   "events",
+  "landscaper",
+  "foodtruck",
   "contractor",
   "clean",
   "field",
+  "locksmith",
+  "firewood",
   "security",
   "practice",
   "counsel",
@@ -82,6 +90,7 @@ export type Shop = {
   neonAccent: string;
   glowEnabled: boolean;
   layout: LayoutBlock[];
+  tradeProfile: TradeProfile;
   createdAt: string;
 };
 

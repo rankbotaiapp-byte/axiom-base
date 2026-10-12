@@ -2,12 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "../auth/middleware.ts";
 import type { Sql } from "../db.ts";
 import { newId } from "../utils.ts";
-import { classifyTrade } from "./directory.ts";
+import { classifyFiling } from "./directory.ts";
 import { isLeadSlug, leadSlugFrom, parsePhoneLine, type PhoneLine } from "./funnel.ts";
 
-const BATCH = 200;
-const MAX_ROWS = 5000;
-const MAX_CSV_CHARS = 1_500_000;
+/**
+ * Rows staged and promoted in one transaction.
+ * 1,000 rows × 14 columns stays under Postgres' 65,535-parameter limit.
+ */
+export const IMPORT_BATCH = 1000;
+const INVALID_SAMPLE = 40;
 
 export type BulkLeadInput = {
   name?: string;
@@ -44,13 +47,20 @@ export type BulkImportPlan = {
   merged: number;
 };
 
-export type BulkImportResult = BulkImportPlan & {
+export type BulkImportResult = {
+  leads: PreparedLead[];
+  invalid: { line: number; reason: string }[];
+  invalidCount: number;
+  merged: number;
   inserted: number;
   updated: number;
   unchanged: number;
 };
 
-const HEADER_KEYS: Record<string, "name" | "city" | "county" | "trade" | "email" | "phone" | "website" | "phoneLine"> = {
+type HeaderField = "name" | "city" | "county" | "trade" | "email" | "phone" | "website" | "phoneLine";
+type WriteShape = "full" | "no-website" | "core";
+
+const HEADER_KEYS: Record<string, HeaderField> = {
   name: "name",
   business: "name",
   businessname: "name",
@@ -71,40 +81,67 @@ const HEADER_KEYS: Record<string, "name" | "city" | "county" | "trade" | "email"
   line: "phoneLine",
 };
 
-function headerKey(cell: string): (typeof HEADER_KEYS)[string] | null {
+function headerKey(cell: string): HeaderField | null {
   return HEADER_KEYS[cell.trim().toLowerCase().replace(/[\s_-]+/g, "")] ?? null;
 }
 
-/** Quoted CSV. A header row is used when two or more cells name known columns. */
+type CsvState = {
+  row: string[];
+  cell: string;
+  quoted: boolean;
+  /** A closing quote landed at the end of a slice; the next character decides if it was escaped. */
+  heldQuote: boolean;
+  header: (HeaderField | null)[] | null;
+  headed: boolean | null;
+  line: number;
+  pending: BulkLeadInput[];
+  stripBom: boolean;
+};
+
+function blankState(): CsvState {
+  return {
+    row: [],
+    cell: "",
+    quoted: false,
+    heldQuote: false,
+    header: null,
+    headed: null,
+    line: 1,
+    pending: [],
+    stripBom: true,
+  };
+}
+
+/**
+ * Incremental CSV reader. `push` accepts a slice of a file; a quoted field
+ * can span slices. Completed batches leave the reader so a county file is
+ * not kept as one array.
+ */
+export function createLeadCsvReader(size = IMPORT_BATCH) {
+  const state = blankState();
+  const batchSize = Number.isFinite(size) && size > 0 ? Math.floor(size) : size === Infinity ? Number.POSITIVE_INFINITY : IMPORT_BATCH;
+  return {
+    push(text: string) {
+      return consumeCsv(state, text, batchSize);
+    },
+    finish() {
+      return finishCsv(state, batchSize);
+    },
+  };
+}
+
+/** Quoted CSV, one batch at a time. A header row is used when two or more cells name known columns. */
+export function* leadCsvChunks(text: string, size = IMPORT_BATCH): Generator<BulkLeadInput[]> {
+  const reader = createLeadCsvReader(size);
+  for (const batch of reader.push(text.replace(/^\uFEFF/, "").trim())) yield batch;
+  const tail = reader.finish();
+  if (tail.length > 0) yield tail;
+}
+
 export function parseLeadCsv(text: string): BulkLeadInput[] {
-  const rows = parseCsv(text.replace(/^\uFEFF/, "").trim());
-  if (rows.length === 0) return [];
-  const header = rows[0].map(headerKey);
-  const known = header.filter(Boolean).length;
-  if (known >= 2) {
-    return rows.slice(1).flatMap((cells, index) => {
-      if (cells.every((cell) => cell.trim() === "")) return [];
-      const input: BulkLeadInput = { line: index + 2 };
-      cells.forEach((cell, column) => {
-        const key = header[column];
-        if (key) input[key] = cell.trim();
-      });
-      return [input];
-    });
-  }
-  return rows.flatMap((cells, index) => {
-    if (cells.every((cell) => cell.trim() === "")) return [];
-    return [{
-      line: index + 1,
-      name: cells[0]?.trim() ?? "",
-      city: cells[1]?.trim() ?? "",
-      county: cells[2]?.trim() ?? "",
-      trade: cells[3]?.trim() ?? "",
-      email: cells[4]?.trim() ?? "",
-      phone: cells[5]?.trim() ?? "",
-      website: cells[6]?.trim() ?? "",
-    }];
-  });
+  const rows: BulkLeadInput[] = [];
+  for (const chunk of leadCsvChunks(text, Number.POSITIVE_INFINITY)) rows.push(...chunk);
+  return rows;
 }
 
 export function prepareBulkImport(records: BulkLeadInput[]): BulkImportPlan {
@@ -129,8 +166,8 @@ export function prepareBulkImport(records: BulkLeadInput[]): BulkImportPlan {
   return { leads: [...bySlug.values()], invalid, merged };
 }
 
-/** Insert new slugs. Refresh unclaimed rows. Leave a claimed or live territory as it is. */
-export async function upsertPreloadedLeads(sql: Sql, leads: PreparedLead[]): Promise<{
+/** Stage a batch, promote it into preloaded_leads, then clear the batch. */
+export async function upsertPreloadedLeads(leads: PreparedLead[]): Promise<{
   inserted: number;
   updated: number;
   unchanged: number;
@@ -138,10 +175,10 @@ export async function upsertPreloadedLeads(sql: Sql, leads: PreparedLead[]): Pro
   let inserted = 0;
   let updated = 0;
   let unchanged = 0;
-  let shape: "full" | "no-website" | "core" = "full";
-  for (let offset = 0; offset < leads.length; offset += BATCH) {
-    const chunk = leads.slice(offset, offset + BATCH);
-    const outcome = await writeChunk(sql, chunk, shape);
+  let shape: WriteShape = "full";
+  for (let offset = 0; offset < leads.length; offset += IMPORT_BATCH) {
+    const chunk = leads.slice(offset, offset + IMPORT_BATCH);
+    const outcome = await stageChunk(chunk, shape);
     shape = outcome.shape;
     inserted += outcome.inserted;
     updated += outcome.updated;
@@ -156,21 +193,236 @@ export const importBulkLeads = createServerFn({ method: "POST" })
     const csv = typeof input?.csv === "string" ? input.csv : "";
     const leads = Array.isArray(input?.leads) ? input.leads : [];
     if (!csv.trim() && leads.length === 0) throw new Error("Add a CSV or a list of businesses");
-    if (csv.length > MAX_CSV_CHARS) throw new Error("CSV is too large");
-    if (leads.length > MAX_ROWS) throw new Error("Import up to 5000 businesses at a time");
     return { csv, leads };
   })
   .handler(async ({ data, context }): Promise<BulkImportResult> => {
     const { assertPlatformOwner } = await import("./platform-owner.server.ts");
     const { getSql } = await import("../db.ts");
     await assertPlatformOwner(context.userId);
-    const fromCsv = data.csv.trim() ? parseLeadCsv(data.csv) : [];
-    if (fromCsv.length + data.leads.length > MAX_ROWS) throw new Error("Import up to 5000 businesses at a time");
-    const plan = prepareBulkImport([...fromCsv, ...data.leads]);
     const sql = await getSql();
-    const written = await upsertPreloadedLeads(sql, plan.leads);
-    return { ...plan, ...written };
+    await sweepOldStaging(sql);
+    const totals = emptyResult();
+    if (data.csv.trim()) {
+      for (const chunk of leadCsvChunks(data.csv)) await takeChunk(chunk, totals);
+    }
+    for (let offset = 0; offset < data.leads.length; offset += IMPORT_BATCH) {
+      await takeChunk(data.leads.slice(offset, offset + IMPORT_BATCH), totals);
+    }
+    return totals;
   });
+
+export type RegistrySweepBatch = BulkImportResult & {
+  nextOffset: number;
+  total: number;
+  done: boolean;
+  county: string;
+};
+
+/** Stage one batch of the statewide filing sweep. The caller advances `offset`. */
+export const importRegistrySweep = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { offset?: number }) => {
+    const offset = Number(input?.offset ?? 0);
+    if (!Number.isFinite(offset) || offset < 0) throw new Error("Sweep offset is not usable");
+    return { offset: Math.floor(offset) };
+  })
+  .handler(async ({ data, context }): Promise<RegistrySweepBatch> => {
+    const { assertPlatformOwner } = await import("./platform-owner.server.ts");
+    await assertPlatformOwner(context.userId);
+    return runRegistrySweepBatch(data.offset);
+  });
+
+/** One staging batch of the statewide sweep. */
+export async function runRegistrySweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { getSql } = await import("../db.ts");
+  const { registryCountyAt, registrySweepSlice, registrySweepTotal } = await import("./registry-sweep.ts");
+  const sql = await getSql();
+  await sweepOldStaging(sql);
+  const total = registrySweepTotal();
+  const rows = registrySweepSlice(offset, IMPORT_BATCH);
+  const totals = emptyResult();
+  await takeChunk(rows, totals);
+  const nextOffset = offset + rows.length;
+  return {
+    ...totals,
+    nextOffset,
+    total,
+    done: nextOffset >= total,
+    county: registryCountyAt(offset),
+  };
+}
+
+function emptyResult(): BulkImportResult {
+  return { leads: [], invalid: [], invalidCount: 0, merged: 0, inserted: 0, updated: 0, unchanged: 0 };
+}
+
+async function takeChunk(records: BulkLeadInput[], totals: BulkImportResult) {
+  if (records.length === 0) return;
+  const plan = prepareBulkImport(records);
+  totals.merged += plan.merged;
+  totals.invalidCount += plan.invalid.length;
+  for (const row of plan.invalid) {
+    if (totals.invalid.length < INVALID_SAMPLE) totals.invalid.push(row);
+  }
+  if (plan.leads.length === 0) return;
+  const written = await upsertPreloadedLeads(plan.leads);
+  totals.inserted += written.inserted;
+  totals.updated += written.updated;
+  totals.unchanged += written.unchanged;
+}
+
+async function sweepOldStaging(sql: Sql) {
+  try {
+    await sql.query("delete from preloaded_leads_staging where created_at < now() - interval '1 day'");
+  } catch (err) {
+    if (!missingRelation(err, "preloaded_leads_staging")) throw err;
+  }
+}
+
+async function stageChunk(
+  chunk: PreparedLead[],
+  shape: WriteShape,
+): Promise<{ inserted: number; updated: number; unchanged: number; shape: WriteShape }> {
+  const { withTransaction } = await import("../db.ts");
+  const batchId = newId("batch");
+  const ids = chunk.map(() => newId("lead"));
+  try {
+    const counts = await withTransaction(async (tx) => {
+      await insertStaging(tx, batchId, chunk, ids);
+      const rows = await promoteStaging(tx, batchId, shape);
+      await tx.query("delete from preloaded_leads_staging where batch_id = $1", [batchId]);
+      return tally(ids, rows, chunk.length);
+    });
+    return { ...counts, shape };
+  } catch (err) {
+    if (missingRelation(err, "preloaded_leads_staging")) {
+      throw new Error("Lead staging is not ready. Apply the latest database migration, then import again.");
+    }
+    if (shape === "full" && missingColumn(err, "website")) return stageChunk(chunk, "no-website");
+    if (shape !== "core" && (missingColumn(err, "source") || missingColumn(err, "account_mode") || missingColumn(err, "trade_label"))) {
+      return stageChunk(chunk, "core");
+    }
+    throw err;
+  }
+}
+
+async function insertStaging(sql: Sql, batchId: string, chunk: PreparedLead[], ids: string[]) {
+  const columns = [
+    "id",
+    "batch_id",
+    "business_name",
+    "trade_type",
+    "trade_label",
+    "city",
+    "county",
+    "lead_slug",
+    "contact_email",
+    "contact_phone",
+    "website",
+    "has_website",
+    "phone_line",
+    "source",
+  ];
+  const width = columns.length;
+  const params: unknown[] = [];
+  const tuples = chunk.map((lead, index) => {
+    const values = [
+      ids[index],
+      batchId,
+      lead.businessName,
+      lead.tradeType,
+      lead.tradeLabel,
+      lead.city,
+      lead.county,
+      lead.leadSlug,
+      lead.contactEmail,
+      lead.contactPhone,
+      lead.website,
+      lead.hasWebsite,
+      lead.phoneLine,
+      "import",
+    ];
+    params.push(...values);
+    const marks = values.map((_, column) => `$${index * width + column + 1}`);
+    return `(${marks.join(", ")})`;
+  });
+  await sql.query(
+    `insert into preloaded_leads_staging (${columns.join(", ")})
+     values ${tuples.join(", ")}
+     on conflict (batch_id, lead_slug) do update set
+       business_name = excluded.business_name,
+       trade_type = excluded.trade_type,
+       trade_label = excluded.trade_label,
+       city = excluded.city,
+       county = excluded.county,
+       contact_email = excluded.contact_email,
+       contact_phone = excluded.contact_phone,
+       website = excluded.website,
+       has_website = excluded.has_website,
+       phone_line = excluded.phone_line,
+       source = excluded.source`,
+    params,
+  );
+}
+
+async function promoteStaging(sql: Sql, batchId: string, shape: WriteShape) {
+  const rich = shape !== "core";
+  const columns = [
+    "id",
+    "business_name",
+    "trade_type",
+    ...(rich ? ["trade_label"] : []),
+    "city",
+    "county",
+    "lead_slug",
+    "claimed",
+    "contact_email",
+    "contact_phone",
+    "has_website",
+    "phone_line",
+    ...(rich ? ["source"] : []),
+    ...(shape === "full" ? ["website"] : []),
+  ];
+  const select = columns.map((column) => (column === "claimed" ? "false" : column)).join(", ");
+  const assignments = [
+    "business_name = excluded.business_name",
+    "trade_type = excluded.trade_type",
+    ...(rich ? ["trade_label = excluded.trade_label"] : []),
+    "city = excluded.city",
+    "county = excluded.county",
+    "contact_email = case when excluded.contact_email <> '' then excluded.contact_email else preloaded_leads.contact_email end",
+    "contact_phone = case when excluded.contact_phone <> '' then excluded.contact_phone else preloaded_leads.contact_phone end",
+    "has_website = coalesce(excluded.has_website, preloaded_leads.has_website)",
+    "phone_line = case when excluded.phone_line <> '' then excluded.phone_line else preloaded_leads.phone_line end",
+    ...(shape === "full"
+      ? ["website = case when excluded.website <> '' then excluded.website else preloaded_leads.website end"]
+      : []),
+  ];
+  const guard = shape === "core"
+    ? "preloaded_leads.claimed = false"
+    : "preloaded_leads.claimed = false and preloaded_leads.account_mode is distinct from 'live'";
+  return sql.query<{ lead_slug: string; id: string }>(
+    `insert into preloaded_leads (${columns.join(", ")})
+     select ${select}
+     from preloaded_leads_staging
+     where batch_id = $1
+     on conflict (lead_slug) do update set ${assignments.join(", ")}
+     where ${guard}
+     returning lead_slug, id`,
+    [batchId],
+  );
+}
+
+function tally(ids: string[], rows: { id: string }[], total: number) {
+  const fresh = new Set(ids);
+  let inserted = 0;
+  let updated = 0;
+  for (const row of rows) {
+    if (fresh.has(row.id)) inserted += 1;
+    else updated += 1;
+  }
+  return { inserted, updated, unchanged: total - rows.length };
+}
 
 function prepareOne(record: BulkLeadInput, line: number): { ok: true; lead: PreparedLead } | { ok: false; reason: string } {
   const businessName = text(record.businessName || record.name, 80);
@@ -182,7 +434,7 @@ function prepareOne(record: BulkLeadInput, line: number): { ok: true; lead: Prep
   if (trade.length < 2) return { ok: false, reason: "Trade is required" };
   let classified: { tradeType: string; tradeLabel: string };
   try {
-    classified = classifyTrade(trade);
+    classified = classifyFiling(businessName, trade);
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : "Trade is required" };
   }
@@ -248,147 +500,116 @@ function text(value: string | undefined, max: number): string {
   return (value ?? "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
-async function writeChunk(
-  sql: Sql,
-  chunk: PreparedLead[],
-  shape: "full" | "no-website" | "core",
-): Promise<{ inserted: number; updated: number; unchanged: number; shape: "full" | "no-website" | "core" }> {
-  try {
-    return { ...(await insertChunk(sql, chunk, shape)), shape };
-  } catch (err) {
-    if (shape === "full" && missingColumn(err, "website")) return writeChunk(sql, chunk, "no-website");
-    if (shape !== "core" && (missingColumn(err, "source") || missingColumn(err, "account_mode") || missingColumn(err, "trade_label"))) {
-      return writeChunk(sql, chunk, "core");
-    }
-    throw err;
-  }
-}
-
-async function insertChunk(
-  sql: Sql,
-  chunk: PreparedLead[],
-  shape: "full" | "no-website" | "core",
-): Promise<{ inserted: number; updated: number; unchanged: number }> {
-  const ids = chunk.map(() => newId("lead"));
-  const rich = shape !== "core";
-  const columns = [
-    "id",
-    "business_name",
-    "trade_type",
-    ...(rich ? ["trade_label"] : []),
-    "city",
-    "county",
-    "lead_slug",
-    "claimed",
-    "contact_email",
-    "contact_phone",
-    "has_website",
-    "phone_line",
-    ...(rich ? ["source"] : []),
-    ...(shape === "full" ? ["website"] : []),
-  ];
-  const width = columns.length;
-  const params: unknown[] = [];
-  const tuples = chunk.map((lead, index) => {
-    const values = [
-      ids[index],
-      lead.businessName,
-      lead.tradeType,
-      ...(rich ? [lead.tradeLabel] : []),
-      lead.city,
-      lead.county,
-      lead.leadSlug,
-      false,
-      lead.contactEmail,
-      lead.contactPhone,
-      lead.hasWebsite,
-      lead.phoneLine,
-      ...(rich ? ["import"] : []),
-      ...(shape === "full" ? [lead.website] : []),
-    ];
-    params.push(...values);
-    const marks = values.map((_, column) => `$${index * width + column + 1}`);
-    return `(${marks.join(", ")})`;
-  });
-  const assignments = [
-    "business_name = excluded.business_name",
-    "trade_type = excluded.trade_type",
-    ...(rich ? ["trade_label = excluded.trade_label"] : []),
-    "city = excluded.city",
-    "county = excluded.county",
-    "contact_email = case when excluded.contact_email <> '' then excluded.contact_email else preloaded_leads.contact_email end",
-    "contact_phone = case when excluded.contact_phone <> '' then excluded.contact_phone else preloaded_leads.contact_phone end",
-    "has_website = coalesce(excluded.has_website, preloaded_leads.has_website)",
-    "phone_line = case when excluded.phone_line <> '' then excluded.phone_line else preloaded_leads.phone_line end",
-    ...(shape === "full"
-      ? ["website = case when excluded.website <> '' then excluded.website else preloaded_leads.website end"]
-      : []),
-  ];
-  const guard = shape === "core"
-    ? "preloaded_leads.claimed = false"
-    : "preloaded_leads.claimed = false and preloaded_leads.account_mode is distinct from 'live'";
-  const rows = await sql.query<{ lead_slug: string; id: string }>(
-    `insert into preloaded_leads (${columns.join(", ")})
-     values ${tuples.join(", ")}
-     on conflict (lead_slug) do update set ${assignments.join(", ")}
-     where ${guard}
-     returning lead_slug, id`,
-    params,
-  );
-  const fresh = new Set(ids);
-  let inserted = 0;
-  let updated = 0;
-  for (const row of rows) {
-    if (fresh.has(row.id)) inserted += 1;
-    else updated += 1;
-  }
-  return { inserted, updated, unchanged: chunk.length - rows.length };
-}
-
 function missingColumn(err: unknown, name: string): boolean {
   const message = err instanceof Error ? err.message : "";
   return message.toLowerCase().includes(name.toLowerCase()) && /does not exist|undefined_column|column/i.test(message);
 }
 
-function parseCsv(text: string): string[][] {
-  if (!text) return [];
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (quoted) {
+function missingRelation(err: unknown, name: string): boolean {
+  const message = err instanceof Error ? err.message : "";
+  return message.toLowerCase().includes(name.toLowerCase()) && /does not exist|undefined_table|relation/i.test(message);
+}
+
+function consumeCsv(state: CsvState, text: string, batchSize: number): BulkLeadInput[][] {
+  let source = text;
+  if (state.stripBom) {
+    source = source.replace(/^\uFEFF/, "");
+    state.stripBom = false;
+  }
+  const batches: BulkLeadInput[][] = [];
+  if (state.heldQuote) {
+    state.heldQuote = false;
+    if (source.startsWith('"')) {
+      state.cell += '"';
+      source = source.slice(1);
+    } else state.quoted = false;
+  }
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (state.quoted) {
       if (ch === '"') {
-        if (text[i + 1] === '"') {
-          cell += '"';
+        if (i + 1 >= source.length) {
+          state.heldQuote = true;
+          continue;
+        }
+        if (source[i + 1] === '"') {
+          state.cell += '"';
           i += 1;
-        } else quoted = false;
-      } else cell += ch;
+        } else state.quoted = false;
+      } else state.cell += ch;
       continue;
     }
     if (ch === '"') {
-      quoted = true;
+      state.quoted = true;
       continue;
     }
     if (ch === ",") {
-      row.push(cell);
-      cell = "";
+      state.row.push(state.cell);
+      state.cell = "";
       continue;
     }
     if (ch === "\n") {
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = "";
+      state.row.push(state.cell);
+      acceptRow(state, state.row, batches, batchSize);
+      state.row = [];
+      state.cell = "";
       continue;
     }
     if (ch === "\r") continue;
-    cell += ch;
+    state.cell += ch;
   }
-  if (cell.length > 0 || row.length > 0) {
-    row.push(cell);
-    rows.push(row);
+  return batches;
+}
+
+function finishCsv(state: CsvState, batchSize: number): BulkLeadInput[] {
+  if (state.heldQuote) {
+    state.heldQuote = false;
+    state.quoted = false;
   }
-  return rows;
+  const batches: BulkLeadInput[][] = [];
+  if (state.cell.length > 0 || state.row.length > 0) {
+    state.row.push(state.cell);
+    acceptRow(state, state.row, batches, batchSize);
+    state.row = [];
+    state.cell = "";
+  }
+  if (state.pending.length > 0) {
+    const tail = state.pending;
+    state.pending = [];
+    return batches.flat().concat(tail);
+  }
+  return batches.flat();
+}
+
+function acceptRow(state: CsvState, cells: string[], batches: BulkLeadInput[][], batchSize: number) {
+  if (state.headed === null) {
+    const header = cells.map(headerKey);
+    state.headed = header.filter(Boolean).length >= 2;
+    state.header = state.headed ? header : null;
+    state.line = state.headed ? 2 : 1;
+    if (state.headed) return;
+  }
+  const line = state.line;
+  state.line += 1;
+  if (cells.every((cell) => cell.trim() === "")) return;
+  const input: BulkLeadInput = { line };
+  if (state.headed && state.header) {
+    cells.forEach((cell, column) => {
+      const key = state.header?.[column];
+      if (key) input[key] = cell.trim();
+    });
+  } else {
+    input.name = cells[0]?.trim() ?? "";
+    input.city = cells[1]?.trim() ?? "";
+    input.county = cells[2]?.trim() ?? "";
+    input.trade = cells[3]?.trim() ?? "";
+    input.email = cells[4]?.trim() ?? "";
+    input.phone = cells[5]?.trim() ?? "";
+    input.website = cells[6]?.trim() ?? "";
+  }
+  state.pending.push(input);
+  if (state.pending.length >= batchSize) {
+    batches.push(state.pending);
+    state.pending = [];
+  }
 }

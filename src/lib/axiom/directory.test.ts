@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyTrade, isTradeKey, nicheForLead, nicheLabel, sortLeads } from "./directory.ts";
+import { classifyFiling, classifyTrade, isTradeKey, nicheForLead, nicheLabel, sortLeads } from "./directory.ts";
 import { leadHeroFor } from "./media.ts";
 
 test("known directory labels stay on the built-in niche", () => {
@@ -10,12 +10,12 @@ test("known directory labels stay on the built-in niche", () => {
 });
 
 test("a new local trade gets its own key and the universal hero", () => {
-  const dog = classifyTrade("Dog walking");
-  assert.equal(dog.tradeType, "dog-walking");
-  assert.equal(dog.tradeLabel, "Dog walking");
-  assert.equal(dog.known, false);
-  assert.equal(isTradeKey(dog.tradeType), true);
-  const hero = leadHeroFor(dog.tradeType, "Park Loop Walks", dog.tradeLabel);
+  const sitting = classifyTrade("House sitting");
+  assert.equal(sitting.tradeType, "house-sitting");
+  assert.equal(sitting.tradeLabel, "House sitting");
+  assert.equal(sitting.known, false);
+  assert.equal(isTradeKey(sitting.tradeType), true);
+  const hero = leadHeroFor(sitting.tradeType, "Park Loop Walks", sitting.tradeLabel);
   assert.equal(hero.heroImageUrl, "/media/heroes/trade.jpg");
   assert.equal(hero.introPreset, "zoomin");
   assert.equal(hero.heroBlendPercent, 58);
@@ -23,17 +23,20 @@ test("a new local trade gets its own key and the universal hero", () => {
 
 test("a named trade still uses its own still", () => {
   const hvac = classifyTrade("Rooftop HVAC");
-  assert.equal(hvac.known, false);
+  assert.equal(hvac.known, true);
+  assert.equal(hvac.tradeType, "contractor");
+  assert.equal(hvac.tradeLabel, "Rooftop HVAC");
   assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "/media/heroes/hvac.jpg");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/deer-hunting-guide.mp4");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
+  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/wood.mp4");
 });
 
 test("a paid lead uses its niche template", () => {
   assert.equal(nicheForLead("tattoo", "Tattoo shop"), "tattoo");
   assert.equal(nicheForLead("barber", "Barber"), "location");
-  assert.equal(nicheForLead("dog-walking", "Dog walking"), "trade");
+  assert.equal(nicheForLead("dog-walking", "Dog walking"), "pets");
   assert.equal(nicheForLead("atv-sports-rentals", "ATV sports rentals"), "trade");
 });
 
@@ -48,4 +51,30 @@ test("leads sort by trade without losing rows", () => {
   assert.deepEqual(rows.map((row) => row.tradeLabel), ["Dog walking", "Roofing"]);
   assert.equal(nicheLabel("location"), "Barber");
   assert.equal(nicheLabel("dog-walking"), "dog walking");
+});
+
+test("registry titles map onto platform niches", () => {
+  assert.equal(classifyTrade("Electrical").tradeType, "contractor");
+  assert.equal(classifyTrade("Plumbing").tradeType, "contractor");
+  assert.equal(classifyTrade("Drywall").tradeType, "contractor");
+  assert.equal(classifyTrade("Framing").tradeType, "contractor");
+  assert.equal(classifyTrade("Construction").tradeType, "contractor");
+  assert.equal(classifyTrade("Firewood").tradeType, "firewood");
+  assert.equal(classifyTrade("Lock Services").tradeType, "locksmith");
+  assert.equal(classifyTrade("Handyman").tradeType, "field");
+  assert.equal(classifyTrade("Mobile services").tradeType, "field");
+  assert.equal(classifyTrade("Services").tradeType, "field");
+  assert.equal(classifyTrade("Sole proprietor").tradeType, "trade");
+  assert.equal(classifyTrade("Self-employed").tradeType, "trade");
+  assert.equal(classifyTrade("Dog walking").tradeType, "pets");
+  assert.equal(classifyTrade("Clock Repair").tradeType, "clock-repair");
+  assert.equal(classifyTrade("Block Concrete").tradeType, "contractor");
+});
+
+test("a sole proprietor title uses the business name when it names a craft", () => {
+  assert.equal(classifyFiling("River Firewood", "Sole proprietor").tradeType, "firewood");
+  assert.equal(classifyFiling("Peak Lock", "Self-employed").tradeType, "locksmith");
+  assert.equal(classifyFiling("Ada Holt", "Services").tradeType, "field");
+  assert.equal(classifyFiling("Ada Holt", "Sole proprietor").tradeType, "trade");
+  assert.equal(classifyFiling("Holt Electric Services", "Business services").tradeType, "contractor");
 });

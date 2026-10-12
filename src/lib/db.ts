@@ -46,6 +46,7 @@ export interface Sql {
  */
 const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
+  __pgPool__?: import("pg").Pool;
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
   __pgMigratePromise__?: Promise<void>;
@@ -153,7 +154,15 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const pool = new Pool({ connectionString: databaseUrl });
+    // One pool per process. Bulk import holds a single client for each
+    // stage-and-promote transaction so the batch is not split across connections.
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 15_000,
+    });
+    globalRef.__pgPool__ = pool;
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -255,6 +264,51 @@ async function createSql(): Promise<Sql> {
     return createNeonSql();
   }
   return createPgliteSql();
+}
+
+/**
+ * Run `fn` on one connection inside a transaction.
+ *
+ * Postgres checks a client out of the pool, raises the statement timeout for
+ * that transaction only, then commits or rolls back before the client goes
+ * back. PGLite uses its own transaction. Bulk lead import uses this so a
+ * 1,000-row stage, promote, and cleanup succeed or fail together.
+ */
+export async function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  if (dbSource === "neon") {
+    await getSql();
+    const pool = globalRef.__pgPool__;
+    if (!pool) throw new Error("Postgres pool is not ready");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL statement_timeout = '120s'");
+      const sql = toSql(async <TRow>(text: string, params: unknown[]) => {
+        const res = await client.query(text, params);
+        return res.rows as TRow[];
+      });
+      const result = await fn(sql);
+      await client.query("COMMIT");
+      return result;
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // Keep the original error if the connection already died.
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+  const pg = await getPglite();
+  return pg.transaction(async (tx) => {
+    const sql = toSql(async <TRow>(text: string, params: unknown[]) => {
+      const result = await tx.query<TRow>(text, params);
+      return result.rows;
+    });
+    return fn(sql);
+  });
 }
 
 /**
