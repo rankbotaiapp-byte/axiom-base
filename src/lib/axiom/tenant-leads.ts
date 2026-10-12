@@ -114,6 +114,11 @@ export const scanTenantProspects = createServerFn({ method: "POST" })
   .handler(async ({ data: slug, context }) => {
     const shop = await shopForScan(slug, context.userId);
     const added = await withTransaction(async (sql) => {
+      const allowance = await sql<{ allowed: number }>`
+        select scan_lead_allowance(${shop.id}, ${DAILY_BATCH})::int as allowed
+      `;
+      const allowed = Number(allowance[0]?.allowed ?? 0);
+      if (allowed < 1) return 0;
       const rows = await sql<{ id: string }>`
         insert into tenant_leads (
           tenant_slug, business_name, category, phone, email, status,
@@ -140,9 +145,21 @@ export const scanTenantProspects = createServerFn({ method: "POST" })
             where t.tenant_slug = ${slug} and t.prospect_id = p.id
           )
         order by p.created_at
-        limit ${DAILY_BATCH}
+        limit ${allowed}
         returning id::text as id
       `;
+      if (rows.length > 0) {
+        await sql`
+          update tenants
+          set leads_used_this_month = case
+                when usage_month = date_trunc('month', current_date)::date
+                  then leads_used_this_month + ${rows.length}
+                else ${rows.length}
+              end,
+              usage_month = date_trunc('month', current_date)::date
+          where shop_id = ${shop.id}
+        `;
+      }
       return rows.length;
     });
     return {

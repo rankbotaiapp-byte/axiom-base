@@ -44,7 +44,7 @@ const pool = new pg.Pool({
 
 try {
   const shop = await pool.query(
-    `select slug, niche, address from shops where slug = $1 limit 1`,
+    `select id, slug, niche, address from shops where slug = $1 limit 1`,
     [SLUG],
   );
   const row = shop.rows[0];
@@ -91,11 +91,55 @@ try {
         where t.tenant_slug = $1 and t.prospect_id = p.id
       )
     order by p.created_at
-    limit 25
+    limit $4
     returning id
   `;
   const niches = TRADE_NICHES.map((niche) => niche.toLowerCase());
-  const first = await pool.query(scanSql, [SLUG, niches, city]);
+
+  async function scanBatch() {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const allowance = await client.query(
+        `select scan_lead_allowance($1, 25)::int as allowed`,
+        [row.id],
+      );
+      const allowed = allowance.rows[0].allowed;
+      const inserted = await client.query(scanSql, [SLUG, niches, city, allowed]);
+      if (inserted.rowCount > 0) {
+        await client.query(
+          `update tenants
+           set leads_used_this_month = case
+                 when usage_month = date_trunc('month', current_date)::date
+                   then leads_used_this_month + $2
+                 else $2
+               end,
+               usage_month = date_trunc('month', current_date)::date
+           where shop_id = $1`,
+          [row.id, inserted.rowCount],
+        );
+      }
+      await client.query("commit");
+      return inserted.rowCount;
+    } catch (err) {
+      try {
+        await client.query("rollback");
+      } catch {
+        // Keep the original scan error if the connection already died.
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  let first;
+  try {
+    first = { rowCount: await scanBatch() };
+  } catch (err) {
+    fail(2, err instanceof Error ? err.message : "scan blocked");
+    process.exit(1);
+  }
   if (first.rowCount < 1) {
     fail(2, `no fresh ${TRADE} prospects for ${city} today`);
     process.exit(1);
@@ -110,7 +154,7 @@ try {
   }
   console.log(`2 scan   added ${first.rowCount} for ${TRADE} in ${city}`);
 
-  const second = await pool.query(scanSql, [SLUG, niches, city]);
+  const second = { rowCount: await scanBatch() };
   const afterDedupe = await pool.query(
     `select count(*)::int as n, count(distinct prospect_id)::int as prospects
      from tenant_leads where tenant_slug = $1`,
