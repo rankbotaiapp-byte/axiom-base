@@ -42,6 +42,9 @@ const NICHE_LABELS: Record<ShopNiche, string> = {
 /** Directory phrases that mean one of the built-in niches. */
 const ALIASES: Record<string, ShopNiche> = {
   clinic: "practice",
+  practice: "practice",
+  "field service": "field",
+  events: "events",
   "app studio": "studio",
   barber: "location",
   barbershop: "location",
@@ -143,6 +146,9 @@ const KEYWORD_RULES: { test: RegExp; niche: ShopNiche }[] = [
   { test: /\b(barbers?|barbershop)\b/i, niche: "location" },
   { test: /\b(boutiques?|merchandise|retail)\b/i, niche: "retail" },
   { test: /\bstudios?\b/i, niche: "studio" },
+  { test: /\b(clinics?|medical practices?)\b/i, niche: "practice" },
+  { test: /\bfield services?\b/i, niche: "field" },
+  { test: /\bevents?\b/i, niche: "events" },
   { test: /\b(self[-\s]?employed|sole prop\w*|proprietors?)\b/i, niche: "trade" },
   { test: /\bservices?\b/i, niche: "field" },
 ];

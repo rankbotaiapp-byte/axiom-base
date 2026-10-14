@@ -305,6 +305,83 @@ export function illinoisSweepSlice(offset: number, limit: number): BulkLeadInput
   return sweepSlice("IL", ILLINOIS_HUB_COUNTIES, offset, limit, true);
 }
 
+/**
+ * Niches filed after the first Oregon, Texas hub, and Florida hub pass.
+ * Kept separate so the original 2,000-row county windows keep their slugs.
+ */
+const LATE_FILING_PHRASES = [
+  "Content creator",
+  "AI prompt engineering and creation",
+  "Entertainer",
+  "Landscaper",
+  "Mobile food truck",
+  "Dog walking",
+  "Mobile detailer",
+  "Private hunting guide",
+  "Physical therapy",
+  "Custom bow technician",
+] as const;
+
+const LATE_FILINGS = LATE_FILING_PHRASES.map((phrase) => {
+  const filing = SWEEP_FILINGS.find((row) => row.phrase === phrase);
+  if (!filing) throw new Error(`Missing late filing phrase: ${phrase}`);
+  return filing;
+});
+
+/** Same density as one craft in the 2,000-row county window. */
+const SUPPLEMENT_COPIES = Math.floor(SWEEP_PER_COUNTY / SWEEP_FILINGS.length);
+
+type SupplementPlace = SweepCounty & { state: string };
+
+const SUPPLEMENT_PLACES: readonly SupplementPlace[] = [
+  ...OREGON_COUNTIES.map((row) => ({ county: row.county, cities: row.cities, areaCode: "541", state: "OR" })),
+  ...TEXAS_HUB_COUNTIES.map((row) => ({ ...row, state: "TX" })),
+  ...FLORIDA_HUB_COUNTIES.map((row) => ({ ...row, state: "FL" })),
+];
+
+const SUPPLEMENT_PER_COUNTY = LATE_FILINGS.length * SUPPLEMENT_COPIES;
+
+export function supplementSweepTotal(): number {
+  return SUPPLEMENT_PLACES.length * SUPPLEMENT_PER_COUNTY;
+}
+
+export function supplementCountyAt(offset: number): string {
+  const total = supplementSweepTotal();
+  if (total === 0) return "";
+  const index = Math.min(Math.max(0, Math.floor(offset)), total - 1);
+  return SUPPLEMENT_PLACES[Math.floor(index / SUPPLEMENT_PER_COUNTY)]?.county ?? "";
+}
+
+/** Late niches for the counties filed before those crafts existed. */
+export function supplementSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  const total = supplementSweepTotal();
+  const start = Math.max(0, Math.floor(offset));
+  const end = Math.min(total, start + Math.max(0, Math.floor(limit)));
+  const rows: BulkLeadInput[] = [];
+  for (let index = start; index < end; index += 1) rows.push(supplementAt(index));
+  return rows;
+}
+
+function supplementAt(index: number): BulkLeadInput {
+  const place = SUPPLEMENT_PLACES[Math.floor(index / SUPPLEMENT_PER_COUNTY)];
+  const within = index % SUPPLEMENT_PER_COUNTY;
+  const filing = LATE_FILINGS[within % LATE_FILINGS.length];
+  const copy = Math.floor(within / LATE_FILINGS.length) + 1;
+  const first = FIRST[index % FIRST.length];
+  const last = LAST[index % LAST.length];
+  return {
+    line: index + 2,
+    name: `${first} ${last} ${filing.craft} ${place.state} niche ${copy}`,
+    city: place.cities[within % place.cities.length],
+    county: place.county,
+    trade: filing.phrase,
+    email: `sup${index}@sweep.example`,
+    phone: `${place.areaCode}-555-${String(20000 + within).padStart(5, "0")}`,
+    website: index % 3 === 0 ? "sweep.example" : "",
+    phoneLine: index % 2 === 0 ? "mobile" : "landline",
+  };
+}
+
 function sweepTotal(counties: readonly SweepCounty[]): number {
   return counties.length * SWEEP_PER_COUNTY;
 }

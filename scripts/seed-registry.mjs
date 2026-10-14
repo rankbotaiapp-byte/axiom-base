@@ -9,6 +9,7 @@ import { runCaliforniaSweepBatch } from "../src/lib/axiom/bulk-import.ts";
 import { runFloridaSweepBatch } from "../src/lib/axiom/bulk-import.ts";
 import { runNewYorkSweepBatch } from "../src/lib/axiom/bulk-import.ts";
 import { runPennsylvaniaSweepBatch } from "../src/lib/axiom/bulk-import.ts";
+import { runSupplementSweepBatch } from "../src/lib/axiom/bulk-import.ts";
 import { runTexasSweepBatch } from "../src/lib/axiom/bulk-import.ts";
 
 const runners = {
@@ -17,6 +18,7 @@ const runners = {
   newyork: runNewYorkSweepBatch,
   pennsylvania: runPennsylvaniaSweepBatch,
   texas: runTexasSweepBatch,
+  supplement: runSupplementSweepBatch,
 };
 
 const state = process.argv[2];

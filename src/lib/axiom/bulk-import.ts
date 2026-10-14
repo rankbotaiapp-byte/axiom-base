@@ -274,6 +274,12 @@ export async function runIllinoisSweepBatch(offset: number): Promise<RegistrySwe
   return writeSweepBatch(offset, illinoisSweepTotal, illinoisSweepSlice, illinoisCountyAt);
 }
 
+/** Late niches for the Oregon list and the Texas and Florida hubs. */
+export async function runSupplementSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { supplementCountyAt, supplementSweepSlice, supplementSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, supplementSweepTotal, supplementSweepSlice, supplementCountyAt);
+}
+
 async function writeSweepBatch(
   offset: number,
   totalFor: () => number,

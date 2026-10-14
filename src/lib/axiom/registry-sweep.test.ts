@@ -23,6 +23,8 @@ import {
   newYorkSweepTotal,
   illinoisSweepSlice,
   illinoisSweepTotal,
+  supplementSweepSlice,
+  supplementSweepTotal,
   texasSweepSlice,
   texasSweepTotal,
   floridaSweepSlice,
@@ -144,4 +146,14 @@ test("a statewide sweep is addressed by county and does not build the whole stat
   const illinoisNiches = new Set(illinois.map((row) => classifyFiling(row.name ?? "", row.trade ?? "").tradeType));
   for (const niche of SHOP_NICHES) assert.ok(illinoisNiches.has(niche), niche);
   assert.equal(illinoisSweepSlice(illinoisSweepTotal(), 10).length, 0);
+
+  const supplement = supplementSweepSlice(0, 10);
+  assert.equal(supplementSweepTotal(), 48 * 10 * Math.floor(SWEEP_PER_COUNTY / 46));
+  assert.equal(supplement[0]?.county, "Baker County");
+  assert.match(supplement[0]?.name ?? "", /\bOR niche\b/);
+  assert.equal(supplementSweepSlice(supplementSweepTotal(), 5).length, 0);
+  const supplementNiches = new Set(supplementSweepSlice(0, 10).map((row) => classifyFiling(row.name ?? "", row.trade ?? "").tradeType));
+  for (const niche of ["creator", "prompt", "entertainer", "landscaper", "foodtruck", "dogwalk", "detailer", "hunting", "therapy", "bowtech"]) {
+    assert.ok(supplementNiches.has(niche), niche);
+  }
 });
