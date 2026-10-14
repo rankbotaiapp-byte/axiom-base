@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-label="Service van at the curb">
+  <rect width="1600" height="1200" fill="#141311"/>
+  <rect x="0" y="860" width="1600" height="340" fill="#1c1b18"/>
+  <path d="M180 860h1240" stroke="#2ee6d6" stroke-width="3" opacity="0.45"/>
+  <g fill="#2a2926" stroke="#f3f1eb" stroke-opacity="0.18">
+    <path d="M260 760h620c40 0 70-24 92-58l70-120c16-28 46-46 80-46h210c36 0 64 28 64 64v160h80c28 0 48 22 48 50v50H180v-50c0-28 22-50 50-50h30z"/>
+    <rect x="980" y="600" width="150" height="90" rx="8" fill="#10100e"/>
+    <rect x="340" y="620" width="220" height="70" rx="6" fill="#10100e"/>
+  </g>
+  <circle cx="430" cy="860" r="62" fill="#10100e" stroke="#f3f1eb" stroke-opacity="0.35" stroke-width="10"/>
+  <circle cx="1180" cy="860" r="62" fill="#10100e" stroke="#f3f1eb" stroke-opacity="0.35" stroke-width="10"/>
+  <circle cx="430" cy="860" r="18" fill="#2ee6d6"/>
+  <circle cx="1180" cy="860" r="18" fill="#2ee6d6"/>
+</svg>

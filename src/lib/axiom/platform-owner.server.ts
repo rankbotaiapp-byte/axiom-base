@@ -1,5 +1,6 @@
 import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
+import { MASTER_OWNER_ID } from "./master-owner";
 
 /** Comma-separated sign-in emails. Server-only. Never sent to the browser. */
 export function masterEmails(): string[] {
@@ -10,6 +11,7 @@ export function masterEmails(): string[] {
 }
 
 export async function isPlatformOwner(userId: string): Promise<boolean> {
+  if (userId === MASTER_OWNER_ID) return true;
   const allow = masterEmails();
   if (!allow.length || !userId) return false;
   const sql = await getSql();
@@ -21,6 +23,7 @@ export async function isPlatformOwner(userId: string): Promise<boolean> {
 }
 
 export async function assertPlatformOwner(userId: string): Promise<void> {
+  if (userId === MASTER_OWNER_ID) return;
   if (masterEmails().length === 0) throw new Error("Master admin is not configured");
   if (!(await isPlatformOwner(userId))) throw new Error("Forbidden");
 }

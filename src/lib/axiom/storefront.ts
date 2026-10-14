@@ -129,7 +129,7 @@ export function quoteProfile(niche: ShopNiche): QuoteProfile {
       lanes: CHAIR_LANES,
     };
   }
-  if (niche === "contractor" || niche === "field" || niche === "locksmith" || niche === "firewood" || niche === "landscaper" || niche === "foodtruck" || niche === "dogwalk" || niche === "detailer" || niche === "trade") {
+  if (niche === "contractor" || niche === "field" || niche === "locksmith" || niche === "firewood" || niche === "landscaper" || niche === "foodtruck" || niche === "dogwalk" || niche === "detailer" || niche === "hunting" || niche === "trade") {
     return {
       model: "service",
       kicker: "Snap-to-Fix",
@@ -269,7 +269,7 @@ const WEEK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export type WeekKey = (typeof WEEK)[number];
 
 export function themeForNiche(niche: ShopNiche): ThemeProfile {
-  if (niche === "field" || niche === "contractor" || niche === "locksmith" || niche === "firewood" || niche === "landscaper" || niche === "foodtruck" || niche === "dogwalk" || niche === "detailer" || niche === "trade" || niche === "clean" || niche === "security") {
+  if (niche === "field" || niche === "contractor" || niche === "locksmith" || niche === "firewood" || niche === "landscaper" || niche === "foodtruck" || niche === "dogwalk" || niche === "detailer" || niche === "hunting" || niche === "trade" || niche === "clean" || niche === "security") {
     return "site";
   }
   if (niche === "salon" || niche === "beauty" || niche === "location" || niche === "tattoo") return "chair";

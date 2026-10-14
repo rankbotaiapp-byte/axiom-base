@@ -45,7 +45,16 @@ export function SignedOut({ children }: { children: ReactNode }) {
  * Guard routes by waiting out `isPending` first (see `use-current-user`), then
  * render this.
  */
-export function RedirectToSignIn({ to = SIGN_IN_PATH }: { to?: string }) {
+export function RedirectToSignIn({
+  to = SIGN_IN_PATH,
+  next,
+}: {
+  to?: string;
+  next?: string;
+}) {
+  const back =
+    next && next.startsWith("/") && !next.startsWith("//") && !next.includes("://") ? next : undefined;
+  if (to === SIGN_IN_PATH) return <Navigate to="/login" search={back ? { next: back } : {}} />;
   return <Navigate to={to} />;
 }
 

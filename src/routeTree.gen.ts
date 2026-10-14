@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShopSlugRouteRouteImport } from './routes/$shopSlug/route'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MasterRouteImport } from './routes/master'
 import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ShopSlugIndexRouteImport } from './routes/$shopSlug/index'
@@ -19,14 +21,17 @@ import { Route as ShopSlugAdminRouteImport } from './routes/$shopSlug/admin'
 import { Route as ShopSlugBookRouteImport } from './routes/$shopSlug/book'
 import { Route as ShopSlugEmployeeRouteImport } from './routes/$shopSlug/employee'
 import { Route as ApiGetAvatarTokenRouteImport } from './routes/api/get-avatar-token'
+import { Route as DemoNicheRouteImport } from './routes/demo/$niche'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/index'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiGearGuardianCheckoutRouteImport } from './routes/api/gear-guardian.checkout'
 import { Route as ApiHeroVideoShopIdRouteImport } from './routes/api/hero-video.$shopId'
+import { Route as ApiMasterAutopilotRouteImport } from './routes/api/master.autopilot'
 import { Route as ApiOutreachCronRouteImport } from './routes/api/outreach.cron'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe.webhook'
+import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,9 +43,19 @@ const ShopSlugRouteRoute = ShopSlugRouteRouteImport.update({
   path: '/$shopSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterRoute = MasterRouteImport.update({
+  id: '/master',
+  path: '/master',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardRoute = OnboardRouteImport.update({
@@ -78,6 +93,11 @@ const ApiGetAvatarTokenRoute = ApiGetAvatarTokenRouteImport.update({
   path: '/api/get-avatar-token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemoNicheRoute = DemoNicheRouteImport.update({
+  id: '/demo/$niche',
+  path: '/demo/$niche',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
@@ -108,6 +128,11 @@ const ApiHeroVideoShopIdRoute = ApiHeroVideoShopIdRouteImport.update({
   path: '/api/hero-video/$shopId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMasterAutopilotRoute = ApiMasterAutopilotRouteImport.update({
+  id: '/api/master/autopilot',
+  path: '/api/master/autopilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOutreachCronRoute = ApiOutreachCronRouteImport.update({
   id: '/api/outreach/cron',
   path: '/api/outreach/cron',
@@ -118,17 +143,25 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   path: '/api/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
+  id: '/api/webhooks/stripe',
+  path: '/api/webhooks/stripe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$shopSlug': typeof ShopSlugRouteRouteWithChildren
+  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/master': typeof MasterRoute
   '/onboard': typeof OnboardRoute
   '/welcome': typeof WelcomeRoute
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
+  '/demo/$niche': typeof DemoNicheRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
@@ -136,18 +169,23 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/master': typeof MasterRoute
   '/onboard': typeof OnboardRoute
   '/welcome': typeof WelcomeRoute
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
+  '/demo/$niche': typeof DemoNicheRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug': typeof ShopSlugIndexRoute
   '/master-admin': typeof MasterAdminIndexRoute
@@ -155,20 +193,25 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$shopSlug': typeof ShopSlugRouteRouteWithChildren
+  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/master': typeof MasterRoute
   '/onboard': typeof OnboardRoute
   '/welcome': typeof WelcomeRoute
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
+  '/demo/$niche': typeof DemoNicheRoute
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
@@ -176,21 +219,26 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/$shopSlug'
+    | '/admin'
     | '/login'
+    | '/master'
     | '/onboard'
     | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
     | '/api/get-avatar-token'
+    | '/demo/$niche'
     | '/invite/$token'
     | '/$shopSlug/'
     | '/master-admin/'
@@ -198,18 +246,23 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/stripe/webhook'
+    | '/api/webhooks/stripe'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/login'
+    | '/master'
     | '/onboard'
     | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
     | '/api/get-avatar-token'
+    | '/demo/$niche'
     | '/invite/$token'
     | '/$shopSlug'
     | '/master-admin'
@@ -217,19 +270,24 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/stripe/webhook'
+    | '/api/webhooks/stripe'
   id:
     | '__root__'
     | '/'
     | '/$shopSlug'
+    | '/admin'
     | '/login'
+    | '/master'
     | '/onboard'
     | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
     | '/api/get-avatar-token'
+    | '/demo/$niche'
     | '/invite/$token'
     | '/$shopSlug/'
     | '/master-admin/'
@@ -237,24 +295,31 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/stripe/webhook'
+    | '/api/webhooks/stripe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShopSlugRouteRoute: typeof ShopSlugRouteRouteWithChildren
+  AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
+  MasterRoute: typeof MasterRoute
   OnboardRoute: typeof OnboardRoute
   WelcomeRoute: typeof WelcomeRoute
   ApiGetAvatarTokenRoute: typeof ApiGetAvatarTokenRoute
+  DemoNicheRoute: typeof DemoNicheRoute
   InviteTokenRoute: typeof InviteTokenRoute
   MasterAdminIndexRoute: typeof MasterAdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGearGuardianCheckoutRoute: typeof ApiGearGuardianCheckoutRoute
   ApiHeroVideoShopIdRoute: typeof ApiHeroVideoShopIdRoute
+  ApiMasterAutopilotRoute: typeof ApiMasterAutopilotRoute
   ApiOutreachCronRoute: typeof ApiOutreachCronRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -273,11 +338,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopSlugRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master': {
+      id: '/master'
+      path: '/master'
+      fullPath: '/master'
+      preLoaderRoute: typeof MasterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboard': {
@@ -329,6 +408,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGetAvatarTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demo/$niche': {
+      id: '/demo/$niche'
+      path: '/demo/$niche'
+      fullPath: '/demo/$niche'
+      preLoaderRoute: typeof DemoNicheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
@@ -371,6 +457,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHeroVideoShopIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/master/autopilot': {
+      id: '/api/master/autopilot'
+      path: '/api/master/autopilot'
+      fullPath: '/api/master/autopilot'
+      preLoaderRoute: typeof ApiMasterAutopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/outreach/cron': {
       id: '/api/outreach/cron'
       path: '/api/outreach/cron'
@@ -383,6 +476,13 @@ declare module '@tanstack/react-router' {
       path: '/api/stripe/webhook'
       fullPath: '/api/stripe/webhook'
       preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/stripe': {
+      id: '/api/webhooks/stripe'
+      path: '/api/webhooks/stripe'
+      fullPath: '/api/webhooks/stripe'
+      preLoaderRoute: typeof ApiWebhooksStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -411,17 +511,22 @@ const ShopSlugRouteRouteWithChildren = ShopSlugRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShopSlugRouteRoute: ShopSlugRouteRouteWithChildren,
+  AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
+  MasterRoute: MasterRoute,
   OnboardRoute: OnboardRoute,
   WelcomeRoute: WelcomeRoute,
   ApiGetAvatarTokenRoute: ApiGetAvatarTokenRoute,
+  DemoNicheRoute: DemoNicheRoute,
   InviteTokenRoute: InviteTokenRoute,
   MasterAdminIndexRoute: MasterAdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGearGuardianCheckoutRoute: ApiGearGuardianCheckoutRoute,
   ApiHeroVideoShopIdRoute: ApiHeroVideoShopIdRoute,
+  ApiMasterAutopilotRoute: ApiMasterAutopilotRoute,
   ApiOutreachCronRoute: ApiOutreachCronRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -16,14 +16,16 @@ export const SHOP_NICHES = [
   "pets",
   "music",
   "creator",
+  "prompt",
   "entertainer",
   "events",
   "landscaper",
   "foodtruck",
   "dogwalk",
   "detailer",
-  "dogwalk",
-  "detailer",
+  "hunting",
+  "therapy",
+  "bowtech",
   "contractor",
   "clean",
   "field",
@@ -64,6 +66,8 @@ export type Shop = {
   slug: string;
   name: string;
   niche: ShopNiche;
+  /** Title typed at signup when the trade is not one of the built-in niches. */
+  customNiche: string;
   tagline: string;
   description: string;
   ringColor: string;

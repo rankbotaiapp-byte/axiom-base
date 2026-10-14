@@ -6,6 +6,11 @@ import type { Register } from "@tanstack/react-router";
 import type { RequestHandler } from "@tanstack/react-start/server";
 import { isClientAbort } from "@/lib/client-abort";
 
+// Register master desk server functions before the first RPC. A browser that
+// already has the page open can call getMasterDesk before that module is
+// transformed, and the dev server answers 500 "Invalid server function ID".
+import "@/lib/axiom/master";
+
 const logError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
   if (isClientAbort(args[0])) return;

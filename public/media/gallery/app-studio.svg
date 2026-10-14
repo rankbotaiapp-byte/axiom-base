@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-label="A booking desk on a screen">
+  <rect width="1600" height="1200" fill="#141311"/>
+  <rect x="280" y="180" width="1040" height="680" rx="28" fill="#1c1b18" stroke="#f3f1eb" stroke-opacity="0.16"/>
+  <rect x="340" y="250" width="420" height="28" rx="8" fill="#2ee6d6" opacity="0.85"/>
+  <rect x="340" y="320" width="640" height="16" rx="6" fill="#f3f1eb" opacity="0.28"/>
+  <rect x="340" y="360" width="520" height="16" rx="6" fill="#f3f1eb" opacity="0.16"/>
+  <rect x="340" y="460" width="280" height="160" rx="16" fill="#10100e" stroke="#2ee6d6" stroke-opacity="0.5"/>
+  <rect x="660" y="460" width="280" height="160" rx="16" fill="#10100e" stroke="#f3f1eb" stroke-opacity="0.12"/>
+  <rect x="980" y="460" width="240" height="160" rx="16" fill="#10100e" stroke="#f3f1eb" stroke-opacity="0.12"/>
+  <rect x="620" y="900" width="360" height="28" rx="8" fill="#2a2926"/>
+</svg>

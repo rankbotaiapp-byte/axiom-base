@@ -36,7 +36,7 @@ function InvitePage() {
       </main>
     );
   }
-  if (!user) return <RedirectToSignIn to="/login" />;
+  if (!user) return <RedirectToSignIn to="/login" next={`/invite/${token}`} />;
   if (!preview) {
     return (
       <main className="grid min-h-dvh place-items-center px-6 text-center">

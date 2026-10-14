@@ -14,6 +14,15 @@ export function heroVideoPath(shopId: string, version: number): string {
   return `/api/hero-video/${shopId}?v=${version}`;
 }
 
+/** A shop upload is served from that shop's route. It never points at a shared film. */
+export function shopHeroVideoPath(shopId: string, version: number): string {
+  const path = heroVideoPath(shopId, version);
+  if (!path.startsWith(`/api/hero-video/${shopId}`) || path.includes("/media/")) {
+    throw new Error("Shop films stay on this shop");
+  }
+  return path;
+}
+
 export function shopIdFromHeroPath(pathname: string): string | null {
   const id = pathname.split("/").filter(Boolean).pop() ?? "";
   return /^shop_[a-zA-Z0-9]+$/.test(id) ? id : null;

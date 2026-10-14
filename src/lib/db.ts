@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 
 /** Which database backend is active. Music and contractor niches live in 0008. */
@@ -88,11 +91,24 @@ function toSql(run: Run): Sql {
 }
 
 function migrationSources(): Record<string, string> {
-  return import.meta.glob("/migrations/*.sql", {
-    query: "?raw",
-    import: "default",
-    eager: true,
-  }) as Record<string, string>;
+  try {
+    return import.meta.glob("/migrations/*.sql", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>;
+  } catch (err) {
+    // Vite replaces the glob call. A plain Node script, such as the California
+    // seed, reads the same files from disk.
+    if (!(err instanceof TypeError)) throw err;
+    const dir = join(dirname(fileURLToPath(import.meta.url)), "../../migrations");
+    const sources: Record<string, string> = {};
+    for (const name of readdirSync(dir)) {
+      if (!name.endsWith(".sql")) continue;
+      sources[`/migrations/${name}`] = readFileSync(join(dir, name), "utf8");
+    }
+    return sources;
+  }
 }
 
 /**
@@ -161,6 +177,16 @@ function createNeonSql(): Promise<Sql> {
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 15_000,
+    });
+    // A reset from the pooler emits `error` on an idle client. Without a
+    // listener Node treats that as fatal and exits the dev server.
+    pool.on("error", (err) => {
+      console.error("[db] connection dropped", err instanceof Error ? err.message : err);
+    });
+    pool.on("connect", (client) => {
+      client.on("error", (err) => {
+        console.error("[db] connection dropped", err instanceof Error ? err.message : err);
+      });
     });
     globalRef.__pgPool__ = pool;
     return toSql(async <T>(text: string, params: unknown[]) => {

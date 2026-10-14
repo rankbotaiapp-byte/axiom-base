@@ -7,6 +7,7 @@ import { WEEKDAYS } from "@/lib/axiom/niches";
 import { addPortfolioItem, acceptBooking, getOperatorData, getPortfolio, setEmployeeAvailability } from "@/lib/axiom/server";
 import type { AccessMode, Appointment, Employee, PortfolioItem, Shop, ShopNotice } from "@/lib/axiom/types";
 import { EmployeeDashboardEditor } from "@/components/dashboard-controls";
+import { EmployeeWelcomeFilm } from "@/components/welcome-film";
 import { Wordmark } from "@/components/shop-chrome";
 import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ function EmployeePage() {
       </main>
     );
   }
-  if (!user) return <RedirectToSignIn to="/login" />;
+  if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/employee`} />;
   if (error || !shop) {
     return (
       <main className="grid min-h-dvh place-items-center px-6 text-center">
@@ -230,6 +231,7 @@ function EmployeePage() {
       ) : null}
 
       {layout?.sections.includes("hours") ? <ShopHours hours={stationShop.hours} /> : null}
+      <EmployeeWelcomeFilm shopSlug={shop.slug} personId={user.id} shopName={shop.name} />
     </main>
   );
 }

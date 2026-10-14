@@ -25,6 +25,7 @@ import { offerModel, shelfFor } from "@/lib/axiom/storefront";
 import { OnboardingVideoModal } from "@/components/OnboardingVideoModal";
 import { SnapSimulation } from "@/components/snap-simulation";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
+import { OutreachWelcomeFilm } from "@/components/welcome-film";
 
 type Preview = Awaited<ReturnType<typeof getLeadPreview>>;
 
@@ -378,6 +379,7 @@ export function LeadTerritory({
     <main className="min-h-dvh bg-bg" style={{ ["--neon" as string]: niche.ringColor }}>
       <NeonField active />
       {film}
+      <OutreachWelcomeFilm active />
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:px-10">
         <section>
           <p className="mt-4 max-w-xl text-base text-muted sm:text-lg">

@@ -10,11 +10,12 @@ import { PoweredBy, ShopNav } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { formatPhone, initials } from "@/lib/utils";
+import { ShopProofGallery } from "@/components/proof-gallery";
 import { TradeStorefront } from "@/components/trade-storefront";
 import { StorefrontAuditWidget } from "@/components/StorefrontAuditWidget";
 import { presetsForShop } from "@/config/nichePresets";
 import { formatOffer, nicheCopy, serviceGroups, WEEKDAYS } from "@/lib/axiom/niches";
-import { NICHE_MEDIA, resolveHeroMedia } from "@/lib/axiom/media";
+import { heroForCustomNiche, NICHE_MEDIA, resolveHeroMedia } from "@/lib/axiom/media";
 import type { AccessMode } from "@/lib/axiom/types";
 import { getShopAccess, submitInquiry } from "@/lib/axiom/server";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -52,7 +53,8 @@ function CustomerHome() {
   const bookLabel = presetsForShop(data.shop.niche)[0]?.bookingCta ?? copy.bookLabel;
   const contact = employees.find((e) => e.phone)?.phone;
   const hero = resolveHeroMedia(data.shop);
-  const nicheFilm = NICHE_MEDIA[data.shop.niche];
+  const nicheFilm = data.shop.customNiche ? heroForCustomNiche(data.shop.customNiche) : NICHE_MEDIA[data.shop.niche];
+  const stockFilm = NICHE_MEDIA.trade;
 
   const neon = data.shop.neonAccent || data.shop.ringColor;
   const staffBlock = (
@@ -202,15 +204,20 @@ function CustomerHome() {
         introSpeed={data.shop.introSpeed}
         introIntensity={data.shop.introIntensity}
         tone={hero.tone}
-        fallbackImageUrl={nicheFilm.heroImageUrl}
-        fallbackVideoUrl={nicheFilm.heroVideoUrl}
+        fallbackImageUrl={data.shop.customNiche ? stockFilm.heroImageUrl : nicheFilm.heroImageUrl}
+        fallbackVideoUrl={data.shop.customNiche ? stockFilm.heroVideoUrl : nicheFilm.heroVideoUrl}
       >
         <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
         <div className="relative z-10">
           <ShopNav shop={data.shop} mode={mode} highlightAdmin={search.tour} />
         </div>
         <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{data.shop.address}</p>
+          {data.shop.customNiche ? (
+            <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{data.shop.customNiche}</p>
+          ) : null}
+          <p className={`text-[11px] uppercase tracking-[0.22em] text-muted${data.shop.customNiche ? " mt-2" : ""}`}>
+            {data.shop.address}
+          </p>
           <h1 className="mt-3 max-w-3xl break-words font-display text-[clamp(3rem,10vw,6.5rem)] leading-[0.92]">
             {data.shop.name}
           </h1>
@@ -227,6 +234,8 @@ function CustomerHome() {
       </CinematicHero>
 
       <TradeStorefront shop={data.shop} services={services} phone={contact ? String(contact) : ""} />
+
+      <ShopProofGallery slug={data.shop.slug} niche={data.shop.niche} heading={copy.gallery} />
 
       <section className="px-5 pb-28 sm:px-10 sm:pb-16">
         <StorefrontAuditWidget

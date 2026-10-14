@@ -114,6 +114,24 @@ const LAYOUTS: Record<ShopNiche, NicheLayout> = {
     kicker: "The driveway",
     heading: "What the van is booked for.",
   },
+  hunting: {
+    modules: ["party", "workflow"],
+    fields: ["partyMax", "note"],
+    kicker: "The hunt",
+    heading: "How the day goes out.",
+  },
+  therapy: {
+    modules: ["session"],
+    fields: ["note"],
+    kicker: "The plan of care",
+    heading: "How a therapy visit is booked.",
+  },
+  bowtech: {
+    modules: ["kinds"],
+    fields: ["kinds", "note"],
+    kicker: "The bench",
+    heading: "What the bow needs.",
+  },
   guide: {
     modules: ["party", "workflow"],
     fields: ["partyMax", "note"],
@@ -180,6 +198,12 @@ const LAYOUTS: Record<ShopNiche, NicheLayout> = {
     kicker: "The edit",
     heading: "Shoot, cut, or both.",
   },
+  prompt: {
+    modules: ["session", "workflow"],
+    fields: ["note"],
+    kicker: "The prompt",
+    heading: "Write it, build it, or both.",
+  },
   entertainer: {
     modules: ["session", "coverage"],
     fields: ["note"],
@@ -225,8 +249,8 @@ const LAYOUTS: Record<ShopNiche, NicheLayout> = {
   practice: {
     modules: ["session"],
     fields: ["note"],
-    kicker: "The visit",
-    heading: "How a visit is booked.",
+    kicker: "The chart",
+    heading: "How a new patient is booked.",
   },
   counsel: {
     modules: ["session"],
@@ -281,6 +305,9 @@ const DEFAULT_KINDS: Partial<Record<ShopNiche, string[]>> = {
   foodtruck: ["Lunch stop", "Private event", "Catering tray"],
   dogwalk: ["Solo walk", "Pack walk", "Midday"],
   detailer: ["Exterior", "Full detail", "Interior"],
+  hunting: ["Half day", "Full day", "Scout"],
+  therapy: ["Evaluation", "Follow-up", "Return"],
+  bowtech: ["Tune", "Setup", "Repair"],
   pets: ["Bath", "Full groom", "Nails"],
   clean: ["Standard", "Deep clean", "Move-out"],
   beauty: ["Nails", "Lashes", "Makeup"],

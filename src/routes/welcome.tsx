@@ -34,7 +34,7 @@ function Welcome() {
       </main>
     );
   }
-  if (!user) return <RedirectToSignIn to="/login" />;
+  if (!user) return <RedirectToSignIn to="/login" next="/welcome" />;
 
   return (
     <main className="min-h-dvh bg-bg px-5 py-6 sm:px-10">

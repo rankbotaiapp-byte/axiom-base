@@ -5,6 +5,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Wordmark } from "@/components/shop-chrome";
+import { isShopNiche, type ShopNiche } from "@/lib/axiom/types";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>): { next?: string } => ({
@@ -12,6 +13,21 @@ export const Route = createFileRoute("/login")({
   }),
   component: Login,
 });
+
+/** Stay on this site. A protocol-relative or off-site next value goes to onboarding. */
+function safeNext(value: string | undefined): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || value.includes("://")) {
+    return "/onboard";
+  }
+  return value;
+}
+
+function onboardNiche(next: string): ShopNiche | undefined {
+  const query = next.split("?")[1] ?? "";
+  const niche = new URLSearchParams(query).get("niche") ?? "";
+  if (!isShopNiche(niche) || niche === "trade") return undefined;
+  return niche;
+}
 
 function signInMessage(message: string | undefined) {
   if (!message || message === "Invalid email or password" || message === "User not found") {
@@ -22,7 +38,7 @@ function signInMessage(message: string | undefined) {
 
 function Login() {
   const { user, isPending } = useCurrentUserState();
-  const next = Route.useSearch().next ?? "/onboard";
+  const next = safeNext(Route.useSearch().next);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -37,7 +53,12 @@ function Login() {
       </main>
     );
   }
-  if (user) return <Navigate to={next.startsWith("/") ? next : "/onboard"} />;
+  if (user) {
+    const path = next.split("?")[0] || "/onboard";
+    const niche = onboardNiche(next);
+    if (path === "/onboard") return <Navigate to="/onboard" search={niche ? { niche } : {}} />;
+    return <Navigate to={path.startsWith("/") ? path : "/onboard"} />;
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();

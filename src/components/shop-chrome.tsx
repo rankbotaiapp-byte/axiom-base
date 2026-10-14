@@ -25,7 +25,7 @@ export function ShopNav({
         className="min-w-0"
       >
         <p className="truncate text-[11px] uppercase tracking-[0.22em] text-muted">
-          New Era Apps · Powered by Axiom
+          Automated by Axiom
         </p>
         <p className="truncate font-display text-xl leading-tight text-fg">{shop.name}</p>
       </Link>
@@ -82,7 +82,7 @@ export function Wordmark({ className }: { className?: string }) {
       <span className="grid size-7 place-items-center rounded-full shadow-[0_0_0_1px_rgba(243,241,235,0.16)]">
         <span className="size-2 rounded-full bg-accent" />
       </span>
-      <span className="font-display text-lg tracking-tight">Axiom</span>
+      <span className="font-display text-base tracking-tight sm:text-lg">Automated by Axiom</span>
     </Link>
   );
 }
@@ -95,7 +95,7 @@ export function PoweredBy({ className }: { className?: string }) {
         className,
       )}
     >
-      New Era Apps · Powered by Axiom
+      Automated by Axiom
     </p>
   );
 }

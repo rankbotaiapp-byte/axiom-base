@@ -1,3 +1,4 @@
+import { classifyTrade } from "./directory.ts";
 import type { IntroPreset } from "./intro.ts";
 import { isCustomHeroVideo } from "./hero-video.ts";
 import { isShopNiche, type ShopNiche } from "./types.ts";
@@ -35,6 +36,7 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
   ),
   music: film("/media/music-hero.jpg", "/media/heroes/music-artist.mp4", "Stage loop · music-artist.mp4", "panlr", 24, 62, 68, "stage"),
   creator: film("", "/media/heroes/contentcreator.mp4", "Edit loop · contentcreator.mp4", "panlr", 28, 44, 60),
+  prompt: film("", "/media/heroes/ai-prompt.mp4", "Prompt loop · ai-prompt.mp4", "kenburns", 26, 36, 58),
   landscaper: film(
     "/media/heroes/landscaping.jpg",
     "/media/heroes/landscaper.mp4",
@@ -78,6 +80,29 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
     58,
     "site",
   ),
+  hunting: film(
+    "/media/heroes/hunting-guide.jpg",
+    "/media/heroes/private-hunting-guide.mp4",
+    "Hunt loop · private-hunting-guide.mp4",
+    "panlr",
+    28,
+    42,
+    62,
+    undefined,
+    { imageUrl: "/media/heroes/hunting-guide.jpg" },
+  ),
+  therapy: film(
+    "/media/heroes/practice.jpg",
+    "/media/heroes/physicaltherapist.mp4",
+    "Session loop · physicaltherapist.mp4",
+    "kenburns",
+    30,
+    40,
+    66,
+    undefined,
+    { imageUrl: "/media/heroes/practice.jpg" },
+  ),
+  bowtech: film("", "/media/heroes/custom-bow-tech.mp4", "Bench loop · custom-bow-tech.mp4", "kenburns", 28, 42, 60),
   entertainer: film("", "/media/heroes/entertainer.mp4", "Stage loop · entertainer.mp4", "kenburns", 30, 48, 62, "stage"),
   contractor: film("/media/heroes/contractor.jpg", "/media/contractor-hero.mp4", "Site loop · contractor-hero.mp4", "zoomin", 30, 38, 56, "site"),
   location: film("/media/barber-hero.jpg", "/media/clipper.mp4", "Barber loop · clipper.mp4", "kenburns", 34, 46, 58),
@@ -147,7 +172,7 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
   practice: still("practice", "Practice still", "kenburns", 30, 40, 66, undefined, "jpg"),
   counsel: film("/media/heroes/counsel.jpg", "/media/heroes/counsel.mp4", "Counsel loop · counsel.mp4", "fade", 22, 32, 72),
   events: film("/media/heroes/events.jpg", "/media/heroes/events.mp4", "Events loop · events.mp4", "panlr", 28, 44, 60, "stage"),
-  retail: still("retail", "Retail still", "fade", 22, 32, 64, undefined, "svg"),
+  retail: film("", "/media/heroes/retail.mp4", "Retail loop · retail.mp4", "fade", 22, 32, 64),
   trade: film(
     "/media/heroes/trade.jpg",
     "/media/heroes/welding-trade.mp4",
@@ -177,11 +202,33 @@ const TRADE_SCENES: { test: RegExp; film: NicheFilm }[] = [
     ),
   },
   {
+    test: /\b(physical therap\w*|physiotherap\w*|physio)\b/i,
+    film: film(
+      "/media/heroes/practice.jpg",
+      "/media/heroes/physicaltherapist.mp4",
+      "Session loop · physicaltherapist.mp4",
+      "kenburns",
+      30,
+      40,
+      66,
+      undefined,
+      { imageUrl: "/media/heroes/practice.jpg" },
+    ),
+  },
+  {
+    test: /\b(prompt engineers?|prompt engineering|ai prompts?)\b/i,
+    film: film("", "/media/heroes/ai-prompt.mp4", "Prompt loop · ai-prompt.mp4", "kenburns", 26, 36, 58),
+  },
+  {
+    test: /\b(custom bows?|bow techs?|bow technicians?|bowtech)\b/i,
+    film: film("", "/media/heroes/custom-bow-tech.mp4", "Bench loop · custom-bow-tech.mp4", "kenburns", 28, 42, 60),
+  },
+  {
     test: /\bhunting\b/i,
     film: film(
       "/media/heroes/hunting-guide.jpg",
-      "/media/heroes/deer-hunting-guide.mp4",
-      "Hunt loop · deer-hunting-guide.mp4",
+      "/media/heroes/private-hunting-guide.mp4",
+      "Hunt loop · private-hunting-guide.mp4",
       "panlr",
       28,
       42,
@@ -315,20 +362,52 @@ const PREVIOUS_NICHE_VIDEOS: Partial<Record<ShopNiche, readonly string[]>> = {
   tattoo: ["/media/tattoo-gun.mp4"],
   music: ["/media/music-hero.mp4"],
   creator: ["/media/heroes/content-creator.mp4"],
+  hunting: ["/media/heroes/deer-hunting-guide.mp4"],
 };
+
+export function cleanCustomNiche(value: string): string {
+  return value
+    .replace(/[\u0000-\u001f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+}
+
+/** A typed niche uses a matching shared film when one exists, otherwise the stock trade film. */
+export function heroForCustomNiche(title: string): NicheFilm {
+  const label = cleanCustomNiche(title);
+  if (label.length < 2) return NICHE_MEDIA.trade;
+  const scene = matchTradeScene(label);
+  if (scene && (scene.heroVideoUrl || scene.heroImageUrl)) return scene;
+  try {
+    const classified = classifyTrade(label);
+    if (classified.known && isShopNiche(classified.tradeType) && classified.tradeType !== "trade") {
+      return NICHE_MEDIA[classified.tradeType];
+    }
+  } catch {
+    // A short or unnamed title keeps the stock film.
+  }
+  return NICHE_MEDIA.trade;
+}
 
 export function resolveHeroMedia(shop: {
   niche: ShopNiche;
   heroImageUrl: string;
   heroVideoUrl: string | null;
+  customNiche?: string;
 }) {
-  const media = NICHE_MEDIA[shop.niche] ?? NICHE_MEDIA.location;
+  const customTitle = cleanCustomNiche(shop.customNiche ?? "");
+  const media = customTitle ? heroForCustomNiche(customTitle) : (NICHE_MEDIA[shop.niche] ?? NICHE_MEDIA.location);
   const stillUrl = shop.heroImageUrl ?? "";
   const customStill = stillUrl.startsWith("data:");
   const customVideo = isCustomHeroVideo(shop.heroVideoUrl);
   const stored = shop.heroVideoUrl ?? "";
   const replaced = (PREVIOUS_NICHE_VIDEOS[shop.niche] ?? []).includes(stored);
-  const nicheVideo = replaced ? media.heroVideoUrl : stored || media.heroVideoUrl;
+  const nicheVideo = customTitle
+    ? media.heroVideoUrl
+    : replaced
+      ? media.heroVideoUrl
+      : stored || media.heroVideoUrl;
   return {
     imageUrl: stillUrl || media.heroImageUrl,
     videoUrl: customVideo ? shop.heroVideoUrl : customStill ? null : nicheVideo,

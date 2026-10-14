@@ -28,7 +28,7 @@ test("a named trade still uses its own still", () => {
   assert.equal(hvac.tradeLabel, "Rooftop HVAC");
   assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "/media/heroes/hvac.jpg");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
-  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/deer-hunting-guide.mp4");
+  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/private-hunting-guide.mp4");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/wood.mp4");
 });
@@ -70,6 +70,9 @@ test("registry titles map onto platform niches", () => {
   assert.equal(classifyTrade("Dog walking").tradeType, "dogwalk");
   assert.equal(classifyTrade("Auto detailing").tradeType, "detailer");
   assert.equal(classifyTrade("Mobile detailer").tradeType, "detailer");
+  assert.equal(classifyTrade("Private hunting guide").tradeType, "hunting");
+  assert.equal(classifyTrade("Physical therapy").tradeType, "therapy");
+  assert.equal(classifyTrade("Custom bow technician").tradeType, "bowtech");
   assert.equal(classifyTrade("Clock Repair").tradeType, "clock-repair");
   assert.equal(classifyTrade("Block Concrete").tradeType, "contractor");
 });

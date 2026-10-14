@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { masterAccessMiddleware } from "./master-access";
 import { dbSource, getSql } from "@/lib/db";
 import { newId } from "@/lib/utils";
 import {
@@ -220,14 +220,38 @@ async function loadActivationList() {
 }
 
 export const masterGate = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .handler(async ({ context }) => {
     const { isPlatformOwner } = await import("./platform-owner.server");
     return { open: await isPlatformOwner(context.userId) };
   });
 
+/** Cookie session for the owner key. Does not require a user login. */
+export const masterEntry = createServerFn({ method: "GET" }).handler(async () => {
+  const bypass = await import("./master-bypass.server");
+  return bypass.readMasterEntry();
+});
+
+/** Exchange the owner key for a year-long httpOnly session, then forget the key. */
+export const claimMasterBypass = createServerFn({ method: "POST" })
+  .validator((input: { key?: string }) => {
+    const key = typeof input?.key === "string" ? input.key.trim() : "";
+    if (key.length < 16 || key.length > 200) throw new Error("That key does not open the desk.");
+    return { key };
+  })
+  .handler(async ({ data }) => {
+    const bypass = await import("./master-bypass.server");
+    if (!bypass.bypassConfigured()) throw new Error("Master bypass is not configured");
+    if (!bypass.acceptMasterKey(data.key)) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      throw new Error("That key does not open the desk.");
+    }
+    bypass.refreshMasterCookie();
+    return { ok: true as const };
+  });
+
 export const getMasterDesk = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .handler(async ({ context }) => {
     await assertPlatformOwner(context.userId);
     const sql = await getSql();
@@ -424,7 +448,7 @@ function cleanLead(input: {
 }
 
 export const addPreloadedLeads = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((input: { leads: Array<{
     businessName?: string;
     tradeType?: string;
@@ -478,7 +502,7 @@ export type OutreachFunnelRow = {
 };
 
 export const createOutreachFunnel = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator(
     (input: { businessName?: string; niche?: string; contact?: string; city?: string; county?: string }) => {
       const businessName = String(input?.businessName ?? "").trim();
@@ -539,7 +563,7 @@ export const createOutreachFunnel = createServerFn({ method: "POST" })
   });
 
 export const listOutreachFunnels = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .handler(async ({ context }): Promise<OutreachFunnelRow[]> => {
     await assertPlatformOwner(context.userId);
     const sql = await getSql();
@@ -712,7 +736,7 @@ async function writePreloadedLeadLegacy(
 }
 
 export const preloadRegionalRoster = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .handler(async ({ context }) => {
     await assertPlatformOwner(context.userId);
     const sql = await getSql();
@@ -753,7 +777,7 @@ export const preloadRegionalRoster = createServerFn({ method: "POST" })
   });
 
 export const generateRegionalFunnel = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((input: { county?: string; tradeType?: string }) => {
     const county = (input.county ?? "").trim().slice(0, 80);
     const trade = (input.tradeType ?? "").trim();
@@ -1212,7 +1236,7 @@ async function enrollFollowUps(
 }
 
 export const previewOutreach = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((input: { county?: string; tradeType?: string }) => readRegion(input, true))
   .handler(async ({ data, context }) => {
     await assertPlatformOwner(context.userId);
@@ -1256,7 +1280,7 @@ function outboundFor(
 }
 
 export const launchOutreachBatch = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((input: {
     county?: string;
     tradeType?: string;
@@ -1478,7 +1502,7 @@ export const recordFunnelHit = createServerFn({ method: "POST" })
   });
 
 export const recordMasterDeskOpen = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((slug: string) => slug.trim())
   .handler(async ({ data: slug, context }) => {
     await assertPlatformOwner(context.userId);
@@ -1595,7 +1619,7 @@ export type PlatformPulse = {
 };
 
 export const listPlatformPulse = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .handler(async ({ context }): Promise<PlatformPulse[]> => {
     await assertPlatformOwner(context.userId);
     const sql = await getSql();

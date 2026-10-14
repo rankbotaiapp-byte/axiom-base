@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { nicheIcon } from "@/components/niche-icon";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -7,12 +7,14 @@ import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
 import { ensureFunnelSession, masterGate, recordFunnelHit } from "@/lib/axiom/master";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
-import type { Shop } from "@/lib/axiom/types";
+import { isShopNiche, type Shop, type ShopNiche } from "@/lib/axiom/types";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
-import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
+import { NICHES, PUBLIC_NICHE_ORDER } from "@/lib/axiom/niches";
 import { LoopVideo } from "@/components/cinematic-hero";
+import { LandingBookingLoop } from "@/components/landing-loop";
 import { Wordmark } from "@/components/shop-chrome";
 import { LeadTerritory } from "@/components/territory-offer";
+import { OutreachWelcomeFilm } from "@/components/welcome-film";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => parseFunnelSearch(search),
@@ -99,6 +101,7 @@ function Home() {
 
   return (
     <main className="min-h-dvh bg-bg">
+      <LandingBookingLoop />
       <header className="flex items-center justify-between px-5 py-5 sm:px-10">
         <Wordmark />
         <div className="flex items-center gap-3">
@@ -125,9 +128,10 @@ function Home() {
       </header>
 
       <section className="relative mx-auto max-w-6xl px-5 pb-16 pt-6 sm:px-10 sm:pt-16">
+        <OutreachWelcomeFilm active={Boolean(leadSlug || search.utm_source)} />
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted">Vertical SaaS · local services</p>
         <h1 className="mt-4 max-w-3xl font-display text-[clamp(2.6rem,8vw,5.6rem)] leading-[0.95] tracking-[-0.03em]">
-          Your shop, live before the second cup of coffee.
+          The 24/7 Booking & Outreach Machine.
         </h1>
         {leadName ? (
           <p className="mt-6 text-sm text-copper">This link is saved for {leadName}.</p>
@@ -161,12 +165,13 @@ function Home() {
         </div>
 
         <div className="mt-14 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
-          {NICHE_ORDER.map((key) => {
+          {PUBLIC_NICHE_ORDER.map((key) => {
             const n = NICHES[key];
             const Icon = nicheIcon(key);
             return (
               <NicheCard
                 key={key}
+                niche={key}
                 icon={<Icon className="size-4" />}
                 title={n.label}
                 copy={n.blurb}
@@ -177,6 +182,8 @@ function Home() {
           })}
         </div>
       </section>
+
+      <IndustryGallery />
 
       {leadSlug ? (
         <LeadTerritory
@@ -193,7 +200,7 @@ function Home() {
 
       <section id="live" className="border-t border-line px-5 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants · New Era Apps</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants · Automated by Axiom</p>
           <h2 className="mt-2 font-display text-3xl sm:text-4xl">Already on the books.</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {showcases.map((s) => (
@@ -213,7 +220,7 @@ function Home() {
                 </div>
                 <div className="flex items-end justify-between gap-3 p-5">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-faint">Powered by Axiom</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-faint">Automated by Axiom</p>
                     <p className="mt-1 font-display text-2xl">{s.name}</p>
                     <p className="mt-1 text-sm text-muted">{s.tagline}</p>
                   </div>
@@ -228,13 +235,74 @@ function Home() {
   );
 }
 
+function IndustryGallery() {
+  const navigate = useNavigate();
+  return (
+    <section id="industries" className="border-t border-line px-5 py-16 sm:px-10">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Explore All Industries</p>
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl">Sample the book for your trade.</h2>
+          </div>
+          <label className="text-sm text-muted">
+            Jump to a trade
+            <select
+              className="mt-2 h-12 w-full rounded-xl bg-surface px-3 text-fg sm:w-72"
+              defaultValue=""
+              onChange={(event) => {
+                const niche = event.target.value;
+                if (!isShopNiche(niche) || niche === "trade") return;
+                void navigate({ to: "/demo/$niche", params: { niche } });
+              }}
+            >
+              <option value="" disabled>
+                Choose an industry
+              </option>
+              {PUBLIC_NICHE_ORDER.map((key) => (
+                <option key={key} value={key}>
+                  {NICHES[key].label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {PUBLIC_NICHE_ORDER.map((key) => {
+            const n = NICHES[key];
+            const Icon = nicheIcon(key);
+            return (
+              <Link
+                key={key}
+                to="/demo/$niche"
+                params={{ niche: key }}
+                className="flex min-h-24 items-start gap-3 rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] hover:text-fg"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-surface-2">
+                  <Icon className="size-4" />
+                </span>
+                <span>
+                  <span className="block text-sm font-medium">{n.label}</span>
+                  <span className="mt-1 block text-sm text-muted">{n.blurb}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function NicheCard({
+  niche,
   icon,
   title,
   copy,
   videoUrl,
   imageUrl,
 }: {
+  niche: ShopNiche;
   icon: ReactNode;
   title: string;
   copy: string;
@@ -242,7 +310,11 @@ function NicheCard({
   imageUrl: string;
 }) {
   return (
-    <div className="w-64 shrink-0 snap-start overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <Link
+      to="/demo/$niche"
+      params={{ niche }}
+      className="block w-64 shrink-0 snap-start overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+    >
       <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
         {videoUrl ? (
           <LoopVideo src={videoUrl} className="absolute inset-0" />
@@ -257,6 +329,6 @@ function NicheCard({
         <p className="mt-4 text-sm font-medium">{title}</p>
         <p className="mt-1 text-sm text-muted">{copy}</p>
       </div>
-    </div>
+    </Link>
   );
 }

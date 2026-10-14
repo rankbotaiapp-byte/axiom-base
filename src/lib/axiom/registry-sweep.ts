@@ -1,4 +1,12 @@
 import type { BulkLeadInput } from "./bulk-import.ts";
+import {
+  CALIFORNIA_MORE,
+  FLORIDA_MORE,
+  NEW_YORK_MORE,
+  PENNSYLVANIA_MORE,
+  TEXAS_MORE,
+  type RegistryCounty,
+} from "./state-counties.ts";
 
 /** Invented filings per county. The desk stages them in batches of 1,000. */
 export const SWEEP_PER_COUNTY = 2000;
@@ -17,6 +25,46 @@ export const TEXAS_HUB_COUNTIES: readonly SweepCounty[] = [
   { county: "Bexar County", cities: ["San Antonio", "Leon Valley"], areaCode: "210" },
   { county: "Tarrant County", cities: ["Fort Worth", "Arlington"], areaCode: "817" },
   { county: "Collin County", cities: ["Plano", "McKinney", "Frisco"], areaCode: "972" },
+];
+
+/** Illinois economic hubs. Lake County is labeled for Illinois because Oregon already uses Lake County. */
+export const ILLINOIS_HUB_COUNTIES: readonly SweepCounty[] = [
+  { county: "Cook County", cities: ["Chicago"], areaCode: "312" },
+  { county: "DuPage County", cities: ["Wheaton"], areaCode: "630" },
+  { county: "Lake County, IL", cities: ["Waukegan"], areaCode: "847" },
+  { county: "Will County", cities: ["Joliet"], areaCode: "815" },
+  { county: "Kane County", cities: ["Aurora", "Elgin"], areaCode: "630" },
+  { county: "Winnebago County", cities: ["Rockford"], areaCode: "815" },
+];
+
+/** New York economic hubs. Borough counties keep their own names and cities. */
+export const NEW_YORK_HUB_COUNTIES: readonly SweepCounty[] = [
+  { county: "Kings County", cities: ["Brooklyn"], areaCode: "718" },
+  { county: "Queens County", cities: ["Queens"], areaCode: "718" },
+  { county: "New York County", cities: ["Manhattan"], areaCode: "212" },
+  { county: "Suffolk County", cities: ["Huntington", "Islip", "Riverhead"], areaCode: "631" },
+  { county: "Nassau County", cities: ["Mineola", "Hempstead", "Garden City"], areaCode: "516" },
+  { county: "Westchester County", cities: ["White Plains"], areaCode: "914" },
+];
+
+/** Pennsylvania economic hubs. Seeded on their own so the other states stay put. */
+export const PENNSYLVANIA_HUB_COUNTIES: readonly SweepCounty[] = [
+  { county: "Philadelphia County", cities: ["Philadelphia"], areaCode: "215" },
+  { county: "Allegheny County", cities: ["Pittsburgh"], areaCode: "412" },
+  { county: "Montgomery County", cities: ["Norristown", "King of Prussia"], areaCode: "610" },
+  { county: "Bucks County", cities: ["Doylestown"], areaCode: "215" },
+  { county: "Delaware County", cities: ["Media"], areaCode: "610" },
+  { county: "Lancaster County", cities: ["Lancaster"], areaCode: "717" },
+];
+
+/** California economic hubs. Seeded on their own so the Florida sweep stays put. */
+export const CALIFORNIA_HUB_COUNTIES: readonly SweepCounty[] = [
+  { county: "Los Angeles County", cities: ["Los Angeles", "Long Beach", "Glendale"], areaCode: "213" },
+  { county: "San Diego County", cities: ["San Diego", "Chula Vista", "Oceanside"], areaCode: "619" },
+  { county: "Orange County, CA", cities: ["Anaheim", "Santa Ana", "Irvine"], areaCode: "714" },
+  { county: "Santa Clara County", cities: ["San Jose", "Sunnyvale", "Mountain View"], areaCode: "408" },
+  { county: "Alameda County", cities: ["Oakland", "Fremont", "Berkeley"], areaCode: "510" },
+  { county: "Sacramento County", cities: ["Sacramento", "Elk Grove", "Citrus Heights"], areaCode: "916" },
 ];
 
 /** Florida economic hubs. The active sweep writes 2,000 filings in each. */
@@ -71,6 +119,52 @@ export const OREGON_COUNTIES: readonly { county: string; cities: readonly string
   { county: "Yamhill County", cities: ["McMinnville", "Newberg"] },
 ];
 
+const TAKEN_COUNTIES = new Set<string>();
+
+function legalCounty(label: string): string {
+  return label.replace(/, [A-Z]{2}$/, "");
+}
+
+function reserveCounties(labels: readonly string[]) {
+  for (const label of labels) {
+    TAKEN_COUNTIES.add(label);
+    TAKEN_COUNTIES.add(legalCounty(label));
+  }
+}
+
+/** Hubs stay in their saved order and names. Later counties pick up a state tag when the name is already stored. */
+function appendCounties(state: string, hubs: readonly SweepCounty[], rest: readonly RegistryCounty[]): SweepCounty[] {
+  const seen = new Set(hubs.map((hub) => legalCounty(hub.county)));
+  const out: SweepCounty[] = hubs.map((hub) => ({
+    county: hub.county,
+    cities: [...hub.cities],
+    areaCode: hub.areaCode,
+  }));
+  for (const row of rest) {
+    if (seen.has(row.county)) continue;
+    seen.add(row.county);
+    const county = TAKEN_COUNTIES.has(row.county) ? `${row.county}, ${state}` : row.county;
+    TAKEN_COUNTIES.add(row.county);
+    TAKEN_COUNTIES.add(county);
+    out.push({ county, cities: [...row.cities], areaCode: row.areaCode });
+  }
+  return out;
+}
+
+reserveCounties(OREGON_COUNTIES.map((row) => row.county));
+reserveCounties(ILLINOIS_HUB_COUNTIES.map((row) => row.county));
+reserveCounties(TEXAS_HUB_COUNTIES.map((row) => row.county));
+reserveCounties(FLORIDA_HUB_COUNTIES.map((row) => row.county));
+reserveCounties(CALIFORNIA_HUB_COUNTIES.map((row) => row.county));
+reserveCounties(PENNSYLVANIA_HUB_COUNTIES.map((row) => row.county));
+reserveCounties(NEW_YORK_HUB_COUNTIES.map((row) => row.county));
+
+export const TEXAS_COUNTIES = appendCounties("TX", TEXAS_HUB_COUNTIES, TEXAS_MORE);
+export const FLORIDA_COUNTIES = appendCounties("FL", FLORIDA_HUB_COUNTIES, FLORIDA_MORE);
+export const CALIFORNIA_COUNTIES = appendCounties("CA", CALIFORNIA_HUB_COUNTIES, CALIFORNIA_MORE);
+export const PENNSYLVANIA_COUNTIES = appendCounties("PA", PENNSYLVANIA_HUB_COUNTIES, PENNSYLVANIA_MORE);
+export const NEW_YORK_COUNTIES = appendCounties("NY", NEW_YORK_HUB_COUNTIES, NEW_YORK_MORE);
+
 /** Craft word used in the business title, and the filing phrase stored as the trade. */
 const SWEEP_FILINGS: readonly { craft: string; phrase: string }[] = [
   { craft: "Guide", phrase: "Guide services" },
@@ -85,10 +179,14 @@ const SWEEP_FILINGS: readonly { craft: string; phrase: string }[] = [
   { craft: "Grooming", phrase: "Pet grooming" },
   { craft: "Sessions", phrase: "Music artist / Rapper" },
   { craft: "Creator", phrase: "Content creator" },
+  { craft: "Prompt", phrase: "AI prompt engineering and creation" },
   { craft: "Landscaper", phrase: "Landscaper" },
   { craft: "Foodtruck", phrase: "Mobile food truck" },
   { craft: "Dogwalk", phrase: "Dog walking" },
   { craft: "Detailer", phrase: "Mobile detailer" },
+  { craft: "Hunting", phrase: "Private hunting guide" },
+  { craft: "Physio", phrase: "Physical therapy" },
+  { craft: "Bowtech", phrase: "Custom bow technician" },
   { craft: "Performer", phrase: "Entertainer" },
   { craft: "Events", phrase: "Events" },
   { craft: "Build", phrase: "General contractor / Home services" },
@@ -121,30 +219,122 @@ const FIRST = ["Maren", "Cole", "Dana", "Jonah", "Elena", "Priya", "Noah", "Leah
 const LAST = ["Holt", "Brennan", "Okonkwo", "Hale", "Voss", "Shah", "Feldman", "Ortiz", "Brooks", "Navarro", "Nguyen", "Greene"];
 
 export function registrySweepTotal(): number {
-  return ACTIVE_COUNTIES.length * SWEEP_PER_COUNTY;
+  return sweepTotal(ACTIVE_COUNTIES);
+}
+
+export function californiaSweepTotal(): number {
+  return sweepTotal(CALIFORNIA_COUNTIES);
+}
+
+export function pennsylvaniaSweepTotal(): number {
+  return sweepTotal(PENNSYLVANIA_COUNTIES);
+}
+
+export function newYorkSweepTotal(): number {
+  return sweepTotal(NEW_YORK_COUNTIES);
+}
+
+export function texasSweepTotal(): number {
+  return sweepTotal(TEXAS_COUNTIES);
+}
+
+export function floridaSweepTotal(): number {
+  return sweepTotal(FLORIDA_COUNTIES);
+}
+
+export function illinoisSweepTotal(): number {
+  return sweepTotal(ILLINOIS_HUB_COUNTIES);
 }
 
 export function registryCountyAt(offset: number): string {
-  const total = registrySweepTotal();
-  if (total === 0) return "";
-  const index = Math.min(Math.max(0, Math.floor(offset)), total - 1);
-  return ACTIVE_COUNTIES[Math.floor(index / SWEEP_PER_COUNTY)]?.county ?? "";
+  return countyAt(ACTIVE_COUNTIES, offset);
+}
+
+export function californiaCountyAt(offset: number): string {
+  return countyAt(CALIFORNIA_COUNTIES, offset);
+}
+
+export function pennsylvaniaCountyAt(offset: number): string {
+  return countyAt(PENNSYLVANIA_COUNTIES, offset);
+}
+
+export function newYorkCountyAt(offset: number): string {
+  return countyAt(NEW_YORK_COUNTIES, offset);
+}
+
+export function texasCountyAt(offset: number): string {
+  return countyAt(TEXAS_COUNTIES, offset);
+}
+
+export function floridaCountyAt(offset: number): string {
+  return countyAt(FLORIDA_COUNTIES, offset);
+}
+
+export function illinoisCountyAt(offset: number): string {
+  return countyAt(ILLINOIS_HUB_COUNTIES, offset);
 }
 
 /** One slice of the statewide filing list. Earlier rows are not built. */
 export function registrySweepSlice(offset: number, limit: number): BulkLeadInput[] {
-  const total = registrySweepTotal();
+  return sweepSlice(ACTIVE_STATE, ACTIVE_COUNTIES, offset, limit);
+}
+
+/** One window of a full state registry. Only this slice is built. */
+export function californiaSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  return sweepSlice("CA", CALIFORNIA_COUNTIES, offset, limit, true);
+}
+
+export function pennsylvaniaSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  return sweepSlice("PA", PENNSYLVANIA_COUNTIES, offset, limit, true);
+}
+
+export function newYorkSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  return sweepSlice("NY", NEW_YORK_COUNTIES, offset, limit, true);
+}
+
+export function texasSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  return sweepSlice("TX", TEXAS_COUNTIES, offset, limit, true);
+}
+
+export function floridaSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  return sweepSlice("FL", FLORIDA_COUNTIES, offset, limit, true);
+}
+
+/** One slice of the Illinois hub filings. The other state sweeps are unchanged. */
+export function illinoisSweepSlice(offset: number, limit: number): BulkLeadInput[] {
+  return sweepSlice("IL", ILLINOIS_HUB_COUNTIES, offset, limit, true);
+}
+
+function sweepTotal(counties: readonly SweepCounty[]): number {
+  return counties.length * SWEEP_PER_COUNTY;
+}
+
+function countyAt(counties: readonly SweepCounty[], offset: number): string {
+  const total = sweepTotal(counties);
+  if (total === 0) return "";
+  const index = Math.min(Math.max(0, Math.floor(offset)), total - 1);
+  return counties[Math.floor(index / SWEEP_PER_COUNTY)]?.county ?? "";
+}
+
+function sweepSlice(
+  state: string,
+  counties: readonly SweepCounty[],
+  offset: number,
+  limit: number,
+  fillEmail = false,
+): BulkLeadInput[] {
+  const total = sweepTotal(counties);
   const start = Math.max(0, Math.floor(offset));
   const end = Math.min(total, start + Math.max(0, Math.floor(limit)));
   const rows: BulkLeadInput[] = [];
-  for (let index = start; index < end; index += 1) rows.push(recordAt(index));
+  for (let index = start; index < end; index += 1) rows.push(recordAt(state, counties, index, fillEmail));
   return rows;
 }
 
-function recordAt(index: number): BulkLeadInput {
+function recordAt(state: string, counties: readonly SweepCounty[], index: number, fillEmail = false): BulkLeadInput {
   const countyIndex = Math.floor(index / SWEEP_PER_COUNTY);
   const within = index % SWEEP_PER_COUNTY;
-  const place = ACTIVE_COUNTIES[countyIndex];
+  const place = counties[countyIndex];
   const filing = SWEEP_FILINGS[within % SWEEP_FILINGS.length];
   const copy = Math.floor(within / SWEEP_FILINGS.length) + 1;
   const first = FIRST[index % FIRST.length];
@@ -152,11 +342,11 @@ function recordAt(index: number): BulkLeadInput {
   const sole = within % 7 === 0;
   return {
     line: index + 2,
-    name: `${first} ${last} ${filing.craft} ${ACTIVE_STATE} ${copy}`,
+    name: `${first} ${last} ${filing.craft} ${state} ${copy}`,
     city: place.cities[within % place.cities.length],
     county: place.county,
     trade: sole ? "Sole proprietor" : filing.phrase,
-    email: index % 2 === 0 ? `${ACTIVE_STATE.toLowerCase()}${index}@sweep.example` : "",
+    email: fillEmail || index % 2 === 0 ? `${state.toLowerCase()}${index}@sweep.example` : "",
     phone: `${place.areaCode}-555-${String(within).padStart(5, "0")}`,
     website: index % 3 === 0 ? "sweep.example" : "",
     phoneLine: index % 2 === 0 ? "mobile" : "landline",

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "../auth/middleware.ts";
+import { masterAccessMiddleware } from "./master-access.ts";
 import type { Sql } from "../db.ts";
 import { newId } from "../utils.ts";
 import { classifyFiling } from "./directory.ts";
@@ -188,7 +188,7 @@ export async function upsertPreloadedLeads(leads: PreparedLead[]): Promise<{
 }
 
 export const importBulkLeads = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((input: { csv?: string; leads?: BulkLeadInput[] }) => {
     const csv = typeof input?.csv === "string" ? input.csv : "";
     const leads = Array.isArray(input?.leads) ? input.leads : [];
@@ -220,7 +220,7 @@ export type RegistrySweepBatch = BulkImportResult & {
 
 /** Stage one batch of the statewide filing sweep. The caller advances `offset`. */
 export const importRegistrySweep = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([masterAccessMiddleware])
   .validator((input: { offset?: number }) => {
     const offset = Number(input?.offset ?? 0);
     if (!Number.isFinite(offset) || offset < 0) throw new Error("Sweep offset is not usable");
@@ -234,12 +234,57 @@ export const importRegistrySweep = createServerFn({ method: "POST" })
 
 /** One staging batch of the statewide sweep. */
 export async function runRegistrySweepBatch(offset: number): Promise<RegistrySweepBatch> {
-  const { getSql } = await import("../db.ts");
   const { registryCountyAt, registrySweepSlice, registrySweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, registrySweepTotal, registrySweepSlice, registryCountyAt);
+}
+
+/** One staging batch of the California hub filings. */
+export async function runCaliforniaSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { californiaCountyAt, californiaSweepSlice, californiaSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, californiaSweepTotal, californiaSweepSlice, californiaCountyAt);
+}
+
+/** One staging batch of the Pennsylvania hub filings. */
+export async function runPennsylvaniaSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { pennsylvaniaCountyAt, pennsylvaniaSweepSlice, pennsylvaniaSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, pennsylvaniaSweepTotal, pennsylvaniaSweepSlice, pennsylvaniaCountyAt);
+}
+
+/** One staging batch of the New York registry. */
+export async function runNewYorkSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { newYorkCountyAt, newYorkSweepSlice, newYorkSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, newYorkSweepTotal, newYorkSweepSlice, newYorkCountyAt);
+}
+
+/** One staging batch of the Texas registry. */
+export async function runTexasSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { texasCountyAt, texasSweepSlice, texasSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, texasSweepTotal, texasSweepSlice, texasCountyAt);
+}
+
+/** One staging batch of the Florida registry. */
+export async function runFloridaSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { floridaCountyAt, floridaSweepSlice, floridaSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, floridaSweepTotal, floridaSweepSlice, floridaCountyAt);
+}
+
+/** One staging batch of the Illinois hub filings. */
+export async function runIllinoisSweepBatch(offset: number): Promise<RegistrySweepBatch> {
+  const { illinoisCountyAt, illinoisSweepSlice, illinoisSweepTotal } = await import("./registry-sweep.ts");
+  return writeSweepBatch(offset, illinoisSweepTotal, illinoisSweepSlice, illinoisCountyAt);
+}
+
+async function writeSweepBatch(
+  offset: number,
+  totalFor: () => number,
+  sliceFor: (offset: number, limit: number) => BulkLeadInput[],
+  countyFor: (offset: number) => string,
+): Promise<RegistrySweepBatch> {
+  const { getSql } = await import("../db.ts");
   const sql = await getSql();
   await sweepOldStaging(sql);
-  const total = registrySweepTotal();
-  const rows = registrySweepSlice(offset, IMPORT_BATCH);
+  const total = totalFor();
+  const rows = sliceFor(offset, IMPORT_BATCH);
   const totals = emptyResult();
   await takeChunk(rows, totals);
   const nextOffset = offset + rows.length;
@@ -248,7 +293,7 @@ export async function runRegistrySweepBatch(offset: number): Promise<RegistrySwe
     nextOffset,
     total,
     done: nextOffset >= total,
-    county: registryCountyAt(offset),
+    county: countyFor(offset),
   };
 }
 

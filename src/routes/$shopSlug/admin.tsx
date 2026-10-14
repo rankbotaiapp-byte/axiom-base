@@ -11,7 +11,7 @@ import {
   updateShopBrand,
   setShopIntro,
 } from "@/lib/axiom/server";
-import { NICHES, RING_PRESETS, nicheCopy } from "@/lib/axiom/niches";
+import { RING_PRESETS, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
 import { resolveHeroMedia } from "@/lib/axiom/media";
 import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { getBearerToken } from "@/lib/auth/client";
@@ -32,6 +32,7 @@ import { Wordmark } from "@/components/shop-chrome";
 import { formatMoney } from "@/lib/utils";
 import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service, Shop, ShopNotice } from "@/lib/axiom/types";
 import { CinematicHero } from "@/components/cinematic-hero";
+import { ProofGalleryManager } from "@/components/proof-gallery";
 
 export const Route = createFileRoute("/$shopSlug/admin")({
   validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master" } => {
@@ -111,7 +112,7 @@ function AdminPage() {
       </main>
     );
   }
-  if (!user) return <RedirectToSignIn to="/login" />;
+  if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/admin`} />;
   if (error || !data) {
     return (
       <main className="grid min-h-dvh place-items-center px-6 text-center">
@@ -143,10 +144,10 @@ function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "settings" | "services" | "brand" | "team" | "alerts" | "billing">("overview");
+  const [tab, setTab] = useState<"overview" | "settings" | "services" | "brand" | "work" | "team" | "alerts" | "billing">("overview");
 
   useEffect(() => {
-    const screen = tab === "settings" || tab === "services" || tab === "brand" ? "storefront_editor" : "lead_dashboard";
+    const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "work" ? "storefront_editor" : "lead_dashboard";
     setAvatarScreen(screen);
     return () => setAvatarScreen(null);
   }, [tab]);
@@ -156,6 +157,7 @@ function AdminShell({
     settings: "Settings",
     services: copy.menuHeading,
     brand: "Look",
+    work: "Work",
     team: copy.staffStep,
     alerts: "Alerts",
     billing: "Billing",
@@ -207,7 +209,7 @@ function AdminShell({
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "settings", "services", "brand", "team", "alerts", "billing"] as const).map((t) => (
+        {(["overview", "settings", "services", "brand", "work", "team", "alerts", "billing"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -251,6 +253,14 @@ function AdminShell({
             onReload={onReload}
           />
         ) : null}
+        {tab === "work" ? (
+          <ProofGalleryManager
+            slug={data.shop.slug}
+            niche={data.shop.niche}
+            heading={copy.gallery}
+            readonly={readonly}
+          />
+        ) : null}
         {tab === "team" ? (
           <TeamPanel shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
         ) : null}
@@ -282,7 +292,7 @@ function AdminShell({
       />
       <AskEricAvatar
         businessName={data.shop.name}
-        trade={NICHES[data.shop.niche].label}
+        trade={shopTradeLabel(data.shop)}
         city={cityFromAddress(data.shop.address)}
         welcome={data.mode === "owner" && !data.platformDesk ? data.shop.slug : undefined}
       />

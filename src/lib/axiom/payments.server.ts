@@ -318,24 +318,25 @@ export async function handleStripeWebhook(request: Request) {
   }
   let event: {
     type?: string;
-    data?: { object?: { id?: string; payment_status?: string; metadata?: { kind?: string } } };
+    data?: { object?: { id?: string; payment_status?: string; metadata?: Record<string, string> } };
   };
   try {
     event = JSON.parse(payload) as {
       type?: string;
-      data?: { object?: { id?: string; payment_status?: string; metadata?: { kind?: string } } };
+      data?: { object?: { id?: string; payment_status?: string; metadata?: Record<string, string> } };
     };
   } catch {
     return Response.json({ error: "Invalid payload" }, { status: 400 });
   }
   const object = event.data?.object;
   if (event.type === "checkout.session.completed" && object?.id) {
-    const territory = object.metadata?.kind === "territory";
+    const meta = object.metadata ?? {};
+    const territory = meta.kind === "territory";
     const status = object.payment_status;
     if (territory && (status === "paid" || status === "no_payment_required")) {
       // Re-fetches the session from Stripe, marks the territory live, then opens the shop.
       await settleTerritorySession(object.id);
-    } else if (!territory && status === "paid") {
+    } else if (!territory && status === "paid" && meta.appointment_id && meta.shop_id) {
       await settlePaidSession(object.id);
     }
   }

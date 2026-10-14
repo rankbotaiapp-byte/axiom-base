@@ -2,7 +2,7 @@ import { auth, authConfigured } from "@/lib/auth/server";
 import { gateIdentityEnabled } from "@/lib/auth/gate-identity.server";
 import { DEV_USER_ID, UnauthorizedError } from "@/lib/auth/verify.server";
 import { getSql } from "@/lib/db";
-import { HERO_VIDEO_MAX_BYTES, heroVideoPath, isMp4 } from "./hero-video";
+import { HERO_VIDEO_MAX_BYTES, isMp4, shopHeroVideoPath } from "./hero-video";
 
 function isOn(value: unknown) {
   return value === true || value === 1 || value === "t" || value === "true";
@@ -102,7 +102,7 @@ export async function storeHeroVideo(userId: string, shopId: string, bytes: Uint
     [shopId, Buffer.from(bytes)],
   );
   const version = Date.now();
-  const path = heroVideoPath(shopId, version);
+  const path = shopHeroVideoPath(shopId, version);
   await sql`
     update shops
     set hero_video_url = ${path},

@@ -471,3 +471,30 @@
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+.autopilot-card {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 70%, transparent),
+    0 0 28px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  animation: autopilot-glow 3.2s ease-in-out infinite;
+}
+
+@keyframes autopilot-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 70%, transparent),
+      0 0 28px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-emerald) 75%, transparent),
+      0 0 36px color-mix(in srgb, var(--color-emerald) 40%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .autopilot-card {
+    animation: none;
+  }
+}

@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { nicheForLead } from "./directory";
+import { cleanCustomNiche, heroForCustomNiche } from "./media";
 import { DEFAULT_HOURS, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
 import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
@@ -40,6 +41,7 @@ type ShopRow = {
   slug: string;
   name: string;
   niche: string;
+  custom_niche?: string | null;
   tagline: string;
   description: string;
   ring_color: string;
@@ -111,6 +113,7 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     slug: r.slug,
     name: r.name,
     niche,
+    customNiche: typeof r.custom_niche === "string" ? r.custom_niche.trim() : "",
     tagline: r.tagline,
     description: r.description,
     ringColor: r.ring_color || "#2EE6D6",
@@ -660,6 +663,7 @@ export async function provisionShopFromNiche(input: {
   solo?: boolean;
   ownerName?: string;
   leadSlug?: string;
+  customNiche?: string;
 }): Promise<{ slug: string; shopId: string; created: boolean }> {
   const template = NICHES[input.niche];
   if (!template) throw new Error("Unknown niche");
@@ -677,7 +681,9 @@ export async function provisionShopFromNiche(input: {
     return { slug: existing[0].slug, shopId: existing[0].id, created: false };
   }
 
-  const name = input.name.trim() || template.defaultName;
+  const customNiche = input.niche === "trade" ? cleanCustomNiche(input.customNiche ?? "") : "";
+  const customFilm = customNiche ? heroForCustomNiche(customNiche) : null;
+  const name = input.name.trim() || customNiche || template.defaultName;
     let slug = slugify(name);
     const taken = await sql<{ slug: string }>`select slug from shops where slug = ${slug}`;
     if (taken[0]) slug = `${slug}-${crypto.randomUUID().slice(0, 4)}`;
@@ -708,16 +714,18 @@ export async function provisionShopFromNiche(input: {
     }));
 
     const primary = services[template.primaryServiceIndex ?? 0] ?? services[0];
+    const heroImageUrl = customFilm?.heroImageUrl || template.heroImageUrl;
+    const heroVideoUrl = customFilm?.heroVideoUrl || template.heroVideoUrl;
     await sql`
       insert into shops (
-        id, slug, name, niche, tagline, description, ring_color,
+        id, slug, name, niche, custom_niche, tagline, description, ring_color,
         hero_image_url, hero_video_url, hero_blend_percent, primary_service_id,
         intro_preset, intro_speed, intro_intensity,
         owner_user_id, is_showcase, onboarding_step, onboarding_json, hours_json, address, works_alone
       ) values (
-        ${shopId}, ${slug}, ${name}, ${template.niche}, ${template.tagline},
-        ${template.description}, ${template.ringColor}, ${template.heroImageUrl},
-        ${template.heroVideoUrl}, ${template.heroBlendPercent}, ${primary?.id ?? null},
+        ${shopId}, ${slug}, ${name}, ${template.niche}, ${customNiche}, ${template.tagline},
+        ${template.description}, ${template.ringColor}, ${heroImageUrl},
+        ${heroVideoUrl}, ${template.heroBlendPercent}, ${primary?.id ?? null},
         ${template.introPreset ?? "kenburns"}, ${template.introSpeed ?? 40}, ${template.introIntensity ?? 45},
         ${input.userId}, false, 'tour', ${JSON.stringify({
           hero: false,
@@ -768,12 +776,24 @@ export async function provisionShopFromNiche(input: {
       `;
     }
     await claimPreloadedLead(sql, leadSlug, shopId);
+    if (customNiche) {
+      await sql`
+        update tenants
+        set custom_niche = ${customNiche}
+        where shop_id = ${shopId} or user_id::text = ${input.userId}
+      `;
+    }
     return { slug, shopId, created: true };
 }
 
 export const createShopFromNiche = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((d: { niche: ShopNiche; name: string; solo?: boolean; ownerName?: string; leadSlug?: string }) => d)
+  .validator((d: { niche: ShopNiche; name: string; solo?: boolean; ownerName?: string; leadSlug?: string; customNiche?: string }) => {
+    const customNiche = cleanCustomNiche(typeof d.customNiche === "string" ? d.customNiche : "");
+    if (customNiche && d.niche !== "trade") throw new Error("A custom niche uses the open trade");
+    if ((d.customNiche ?? "").trim() && customNiche.length < 2) throw new Error("Name the niche");
+    return { ...d, customNiche };
+  })
   .handler(async ({ data, context }) => {
     return provisionShopFromNiche({
       userId: context.userId,
@@ -782,6 +802,7 @@ export const createShopFromNiche = createServerFn({ method: "POST" })
       solo: data.solo,
       ownerName: data.ownerName,
       leadSlug: data.leadSlug,
+      customNiche: data.customNiche,
     });
   });
 
@@ -1554,6 +1575,7 @@ export const addPortfolioItem = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const row = await loadShopRow(data.slug);
     if (!row) throw new Error("Shop not found");
+    if (row.is_showcase) throw new Error("Showcase shops are read-only");
     const mem = await membership(row.id, context.userId);
     const employeeId =
       mem?.employee_id ??
@@ -1574,13 +1596,60 @@ export const addPortfolioItem = createServerFn({ method: "POST" })
     if (!data.imageUrl.startsWith("data:image/") && !data.imageUrl.startsWith("/")) {
       throw new Error("Invalid image");
     }
+    if (data.imageUrl.startsWith("data:") && data.imageUrl.length > 1_200_000) {
+      throw new Error("Image is too large");
+    }
     const sql = await getSql();
+    if (data.imageUrl.startsWith("data:")) {
+      const counted = await sql<{ n: number }>`
+        select count(*)::int as n from portfolio_items
+        where shop_id = ${row.id} and image_url like 'data:%'
+      `;
+      if (Number(counted[0]?.n ?? 0) >= 12) throw new Error("Gallery is full");
+    }
     const id = newId("pf");
     await sql`
       insert into portfolio_items (id, shop_id, employee_id, image_url, caption)
       values (${id}, ${row.id}, ${empId}, ${data.imageUrl}, ${data.caption.trim().slice(0, 80)})
     `;
     return { id };
+  });
+
+export const listShopPortfolio = createServerFn({ method: "GET" })
+  .validator((slug: string) => slug)
+  .handler(async ({ data: slug }) => {
+    const row = await loadShopRow(slug);
+    if (!row) return [];
+    const sql = await getSql();
+    const rows = await sql<{ id: string; image_url: string; caption: string }>`
+      select id, image_url, caption
+      from portfolio_items
+      where shop_id = ${row.id}
+      order by created_at desc
+      limit 24
+    `;
+    return rows.map((item) => ({
+      id: item.id,
+      imageUrl: item.image_url,
+      caption: item.caption,
+    }));
+  });
+
+export const removePortfolioItem = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const row = await loadShopRow(data.slug);
+    if (!row) throw new Error("Shop not found");
+    if (row.is_showcase) throw new Error("Showcase shops are read-only");
+    const mem = await membership(row.id, context.userId);
+    if (!mem && row.owner_user_id !== context.userId) throw new Error("Forbidden");
+    const sql = await getSql();
+    await sql`
+      delete from portfolio_items
+      where id = ${data.id} and shop_id = ${row.id}
+    `;
+    return { ok: true as const };
   });
 
 export const updateShopProfile = createServerFn({ method: "POST" })
