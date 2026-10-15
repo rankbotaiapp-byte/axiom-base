@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Magnetic } from "@/components/magnetic";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -10,8 +11,8 @@ const buttonVariants = cva(
         primary:
           "bg-fg text-bg shadow-[0_0_0_1px_rgba(243,241,235,0.08)] hover:bg-fg/90",
         secondary:
-          "bg-surface-2 text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)] hover:bg-surface",
-        ghost: "bg-transparent text-fg hover:bg-fg/6",
+          "glass-panel text-fg hover:text-fg",
+        ghost: "glass-panel text-fg hover:text-fg",
         accent: "bg-accent text-bg hover:bg-accent/90",
       },
       size: {
@@ -32,10 +33,12 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>) {
   return (
-    <button
-      type={type}
-      className={cn(buttonVariants({ variant, size }), className)}
-      {...props}
-    />
+    <Magnetic className={cn("inline-flex max-w-full", className?.includes("w-full") && "w-full")}>
+      <button
+        type={type}
+        className={cn(buttonVariants({ variant, size }), className)}
+        {...props}
+      />
+    </Magnetic>
   );
 }

@@ -5,6 +5,8 @@ import { isClientAbort } from "@/lib/client-abort";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "sonner";
 import { AvatarHelpButton } from "@/components/avatar-help";
+import { FluidField } from "@/components/fluid-field";
+import { InterfaceAudio } from "@/components/interface-audio";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "New Era Apps";
@@ -71,13 +73,17 @@ function RootDocument() {
       <head>
         <HeadContent />
       </head>
-      <body className="bg-bg font-sans text-fg">
-        <PreviewHostBridge />
-        <AuthProvider>
-          <Outlet />
-        </AuthProvider>
-        <AvatarHelpButton />
-        <Toaster theme="dark" position="top-center" />
+      <body className="bg-transparent font-sans text-fg">
+        <FluidField />
+        <div className="relative z-10">
+          <PreviewHostBridge />
+          <AuthProvider>
+            <Outlet />
+          </AuthProvider>
+          <AvatarHelpButton />
+          <InterfaceAudio />
+          <Toaster theme="dark" position="top-center" />
+        </div>
         <Scripts />
       </body>
     </html>

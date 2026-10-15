@@ -16,7 +16,7 @@ import {
   startCardCheckout,
 } from "@/lib/axiom/server";
 import { CardElements } from "@/components/card-elements";
-import { listMerchantPricing } from "@/lib/axiom/merchant-pricing.server";
+import { listMerchantPricing } from "@/lib/axiom/merchant-pricing-api";
 import { dueNowCents, listPriceCents, priceForService, pricingLabel, type MerchantPrice } from "@/lib/axiom/merchant-pricing";
 import { ProductShelf } from "@/components/product-shelf";
 import { formatOffer, nicheCopy, serviceGroups } from "@/lib/axiom/niches";

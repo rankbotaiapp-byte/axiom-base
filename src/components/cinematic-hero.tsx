@@ -12,6 +12,7 @@ import {
   type IntroPreset,
 } from "@/lib/axiom/intro";
 import type { HeroTone } from "@/lib/axiom/media";
+import { TelemetryLog } from "@/components/telemetry-log";
 
 export function CinematicHero({
   imageUrl,
@@ -59,7 +60,9 @@ export function CinematicHero({
     target: sectionRef,
     offset: ["start 0vh", "end 0vh"],
   });
+  const plateY = useMotionValue(0);
   const backgroundY = useMotionValue(0);
+  const particleY = useMotionValue(0);
   const washY = useMotionValue(0);
   const lightY = useMotionValue(0);
   const foregroundY = useMotionValue(0);
@@ -117,7 +120,9 @@ export function CinematicHero({
     // film slowest, wash and light farther, title in the opposite direction.
     const apply = (progress: number) => {
       const travel = parallaxTravel(depthOn ? intensity : 0, speed);
+      plateY.set(progress * travel.plate);
       backgroundY.set(progress * travel.background);
+      particleY.set(progress * travel.particles);
       washY.set(progress * travel.wash);
       lightY.set(progress * travel.light);
       foregroundY.set(progress * travel.foreground);
@@ -130,25 +135,41 @@ export function CinematicHero({
     const stop = scrollYProgress.on("change", apply);
     return () => {
       stop();
+      plateY.set(0);
       backgroundY.set(0);
+      particleY.set(0);
       washY.set(0);
       lightY.set(0);
       foregroundY.set(0);
       if (videoRef.current) videoRef.current.playbackRate = 1;
     };
-  }, [scrollYProgress, depthOn, intensity, speed, backgroundY, washY, lightY, foregroundY]);
+  }, [scrollYProgress, depthOn, intensity, speed, plateY, backgroundY, particleY, washY, lightY, foregroundY]);
 
   return (
     <section
       ref={sectionRef}
-      className={cn("relative isolate flex min-h-[100dvh] flex-col overflow-hidden bg-bg", className)}
+      className={cn("relative isolate flex min-h-[100dvh] flex-col overflow-hidden bg-transparent", className)}
       style={{ ["--hero-blend" as string]: `${blend}%` }}
     >
       <div className="hero-blend absolute inset-0 overflow-hidden">
-        {/* Slowest layer. Overscan keeps the crop covered while it lags the scroll. */}
+        {imageSrc ? (
+          <motion.div
+            className={cn("absolute -inset-[8%] origin-center", depthOn && "will-change-transform")}
+            style={{ y: plateY }}
+            initial={animate ? { scale: 1.16 } : { scale: 1.06 }}
+            animate={{ scale: 1.06 }}
+            transition={animate ? { duration: 2.4, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
+          >
+            <img src={imageSrc} alt="" className="hero-plate absolute inset-0 h-full w-full" />
+          </motion.div>
+        ) : null}
+        {/* Sharp film opens inside the plate, then rests at full frame so the picture is not cropped. */}
         <motion.div
           className={cn("absolute inset-0 origin-center", depthOn && "will-change-transform")}
-          style={{ y: backgroundY, scale: depthOn ? 1.12 : 1 }}
+          style={{ y: backgroundY }}
+          initial={animate ? { scale: 0.82 } : { scale: 1 }}
+          animate={{ scale: 1 }}
+          transition={animate ? { duration: 1.8, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
         >
           <motion.div
             key={`${imageSrc}-${videoSrc}-${preset}-${replayKey ?? "0"}`}
@@ -165,10 +186,7 @@ export function CinematicHero({
               <img
                 src={imageSrc}
                 alt=""
-                className={cn(
-                  "absolute inset-0 h-full w-full object-cover outline-none",
-                  !videoSrc && "media-drift",
-                )}
+                className="hero-frame absolute inset-0 h-full w-full outline-none"
                 onError={() => {
                   if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
                     setImageSrc(fallbackImageUrl);
@@ -181,7 +199,7 @@ export function CinematicHero({
             {videoSrc && videoOk ? (
               <video
                 ref={videoRef}
-                className="absolute inset-0 z-[1] h-full w-full object-cover"
+                className="hero-frame absolute inset-0 z-[1] h-full w-full"
                 src={videoSrc}
                 autoPlay
                 loop
@@ -200,6 +218,15 @@ export function CinematicHero({
             ) : null}
           </motion.div>
         </motion.div>
+        {reduced ? null : (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-[2]"
+            style={{ y: particleY }}
+          >
+            <HeroMotes />
+          </motion.div>
+        )}
         {tone ? (
           <motion.div
             aria-hidden
@@ -212,24 +239,28 @@ export function CinematicHero({
             style={{ y: washY }}
           />
         ) : null}
-        {depthOn ? (
-          <motion.div
-            aria-hidden
-            className="hero-atmosphere pointer-events-none absolute inset-0 z-[3] will-change-transform"
-            style={{ y: lightY }}
-          />
-        ) : null}
+        <motion.div
+          aria-hidden
+          className={cn(
+            "hero-atmosphere pointer-events-none absolute inset-0 z-[3]",
+            depthOn && "will-change-transform",
+          )}
+          style={{ y: lightY }}
+        />
         {animate ? (
           <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-0 z-[4] bg-bg"
-            initial={{ opacity: 0.94 }}
+            initial={{ opacity: 0.55 }}
             animate={{ opacity: 0 }}
-            transition={{ duration: 1.45, ease: [0.22, 0.08, 0.2, 1] }}
+            transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
           />
         ) : null}
       </div>
       <div className="hero-dissolve pointer-events-none absolute inset-x-0 -bottom-px z-10 h-[68%]" />
+      <div aria-hidden className="hud-corners pointer-events-none absolute inset-3 z-30 sm:inset-5" />
+      <div aria-hidden className="hud-cross pointer-events-none absolute left-1/2 top-24 z-30 -translate-x-1/2" />
+      <TelemetryLog />
       <motion.div
         className={cn(
           "relative z-20 flex min-h-0 flex-1 flex-col",
@@ -240,6 +271,38 @@ export function CinematicHero({
         {children}
       </motion.div>
     </section>
+  );
+}
+
+const MOTES = Array.from({ length: 26 }, (_, i) => ({
+  id: i,
+  left: (i * 37 + 11) % 100,
+  top: (i * 53 + 7) % 100,
+  size: 1.5 + (i % 3) * 0.9,
+  delay: `${(i % 8) * 0.65}s`,
+  duration: `${9 + (i % 5) * 1.7}s`,
+  drift: 10 + (i % 4) * 7,
+}));
+
+function HeroMotes() {
+  return (
+    <>
+      {MOTES.map((mote) => (
+        <span
+          key={mote.id}
+          className="hero-mote"
+          style={{
+            left: `${mote.left}%`,
+            top: `${mote.top}%`,
+            width: mote.size,
+            height: mote.size,
+            ["--mote-delay" as string]: mote.delay,
+            ["--mote-duration" as string]: mote.duration,
+            ["--mote-drift" as string]: String(mote.drift),
+          }}
+        />
+      ))}
+    </>
   );
 }
 

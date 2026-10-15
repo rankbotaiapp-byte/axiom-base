@@ -265,7 +265,7 @@ export async function settleTerritorySession(sessionId: string) {
   });
   const ownerId = await territoryOwnerId(session);
   if (!ownerId) return { ...activation, shop: null };
-  const { provisionTerritoryForPayer } = await import("./server");
+  const { provisionTerritoryForPayer } = await import("./shop-server.server");
   const shop = await provisionTerritoryForPayer({ leadSlug, userId: ownerId });
   return { ...activation, shop };
 }

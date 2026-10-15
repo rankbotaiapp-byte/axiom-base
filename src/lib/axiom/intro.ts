@@ -44,18 +44,22 @@ export function introDurationSec(speed: number) {
 
 /**
  * Pixel travel at the end of a hero scroll.
- * The film lags (slowest), the tone wash and light move farther the same way,
- * and the title travels the opposite way so it leaves faster.
+ * The blurred plate is slowest, the sharp film a little faster, motes and light
+ * farther still, and the title travels the opposite way.
  * Intensity 0 keeps every layer still. Speed, already stored per shop, only leans on that distance.
  */
 export function parallaxTravel(intensity: number, speed = 40) {
   const depth = Math.min(100, Math.max(0, intensity)) / 100;
-  if (depth === 0) return { background: 0, wash: 0, light: 0, foreground: 0 };
+  if (depth === 0) {
+    return { plate: 0, background: 0, particles: 0, wash: 0, light: 0, foreground: 0 };
+  }
   const pace = 0.85 + 0.3 * (Math.min(100, Math.max(1, speed)) / 100);
   return {
-    background: Math.round((16 + 48 * depth) * pace),
-    wash: Math.round((32 + 80 * depth) * pace),
-    light: Math.round((48 + 100 * depth) * pace),
+    plate: Math.round((8 + 20 * depth) * pace),
+    background: Math.round((16 + 36 * depth) * pace),
+    particles: Math.round((28 + 62 * depth) * pace),
+    wash: Math.round((36 + 78 * depth) * pace),
+    light: Math.round((48 + 96 * depth) * pace),
     foreground: -Math.round((24 + 70 * depth) * pace),
   };
 }
@@ -73,38 +77,40 @@ export function heroPlaybackRate(progress: number, intensity: number) {
 
 export function cameraMotion(preset: IntroPreset, intensity: number) {
   const i = Math.min(100, Math.max(0, intensity)) / 100;
-  const zoom = 1 + 0.18 * i;
-  const pan = 5.5 * i;
+  // Motion stays inside the frame. Scale never passes 1, so object-contain
+  // keeps the whole film visible on a phone and on a desktop.
+  const fit = 1 - 0.12 * i;
+  const pan = 3.5 * i;
 
   switch (preset) {
     case "kenburns":
       return {
-        initial: { scale: 1.02, x: `${-pan}%`, y: `${-pan * 0.35}%`, opacity: 1 },
-        animate: { scale: zoom, x: `${pan * 0.7}%`, y: `${pan * 0.25}%`, opacity: 1 },
+        initial: { scale: fit, x: `${-pan * 0.4}%`, y: `${-pan * 0.2}%`, opacity: 1 },
+        animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
       };
     case "zoomin":
       return {
-        initial: { scale: 1, x: "0%", y: "0%", opacity: 1 },
-        animate: { scale: zoom, x: "0%", y: "0%", opacity: 1 },
+        initial: { scale: fit, x: "0%", y: "0%", opacity: 1 },
+        animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
       };
     case "zoomout":
       return {
-        initial: { scale: zoom, x: "0%", y: "0%", opacity: 1 },
-        animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
+        initial: { scale: 1, x: "0%", y: "0%", opacity: 1 },
+        animate: { scale: fit, x: "0%", y: "0%", opacity: 1 },
       };
     case "panlr":
       return {
-        initial: { scale: 1 + 0.1 * i, x: `${-pan}%`, y: "0%", opacity: 1 },
-        animate: { scale: 1 + 0.1 * i, x: `${pan}%`, y: "0%", opacity: 1 },
+        initial: { scale: fit, x: `${-pan}%`, y: "0%", opacity: 1 },
+        animate: { scale: fit, x: `${pan}%`, y: "0%", opacity: 1 },
       };
     case "pantd":
       return {
-        initial: { scale: 1 + 0.1 * i, x: "0%", y: `${-pan}%`, opacity: 1 },
-        animate: { scale: 1 + 0.1 * i, x: "0%", y: `${pan}%`, opacity: 1 },
+        initial: { scale: fit, x: "0%", y: `${-pan}%`, opacity: 1 },
+        animate: { scale: fit, x: "0%", y: `${pan}%`, opacity: 1 },
       };
     case "fade":
       return {
-        initial: { scale: 1 + 0.08 * i, x: "0%", y: "0%", opacity: 0 },
+        initial: { scale: fit, x: "0%", y: "0%", opacity: 0 },
         animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
       };
     default:

@@ -10,7 +10,8 @@
  * returns one of the niches in the config map.
  */
 import { HUBS, MORE, NICHE_FILINGS, STATE } from "./new-york.config.mjs";
-import { IMPORT_BATCH, prepareBulkImport, upsertPreloadedLeads } from "../../src/lib/axiom/bulk-import.ts";
+import { IMPORT_BATCH, prepareBulkImport } from "../../src/lib/axiom/bulk-import.ts";
+import { upsertPreloadedLeads } from "../../src/lib/axiom/bulk-import.server.ts";
 import { classifyFiling } from "../../src/lib/axiom/directory.ts";
 import {
   NEW_YORK_COUNTIES,

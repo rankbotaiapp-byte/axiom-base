@@ -98,7 +98,7 @@ function StepRail({ steps, noun }: { steps: Service[]; noun: string }) {
       {steps.map((step, index) => (
         <li
           key={step.id}
-          className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+          className="glass-panel lift-card rounded-[24px] p-5"
         >
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
             {noun} {index + 1}
@@ -117,7 +117,7 @@ function CordPicker({ services, cords }: { services: Service[]; cords: CordSize[
   const picked = cords.includes(size) ? size : cords[0] ?? "full";
   const quote = cordQuote(cordBaseCents(services), picked);
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">How much wood</p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {cords.map((cord) => {
@@ -146,7 +146,7 @@ function SpeciesCuts({ species, cuts }: { species: string[]; cuts: string[] }) {
   const [wood, setWood] = useState(species[0] ?? "");
   const [cut, setCut] = useState(cuts[0] ?? "");
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Species and cut</p>
       <ChipRow label="Wood" options={species} value={wood} onChange={setWood} />
       <ChipRow label="Length" options={cuts} value={cut} onChange={setCut} />
@@ -199,7 +199,7 @@ function DropZone({ zones, note, radiusMiles }: { zones: string[]; note: string;
   const [query, setQuery] = useState("");
   const status = checkDropZone(query, zones);
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
         <MapPin className="size-3.5" />
         Drop zone
@@ -232,7 +232,7 @@ function DropZone({ zones, note, radiusMiles }: { zones: string[]; note: string;
 
 function DispatchStatus({ on, minutes }: { on: boolean; minutes: number }) {
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Dispatch</p>
       <p className="mt-2 font-display text-4xl">{on ? "Rolling" : "At the desk"}</p>
       <p className="mt-2 text-sm text-muted">
@@ -244,7 +244,7 @@ function DispatchStatus({ on, minutes }: { on: boolean; minutes: number }) {
 
 function RapidCallout({ cents, minutes, phone }: { cents: number; minutes: number; phone: string }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="flex flex-wrap items-end justify-between gap-4 glass-panel lift-card rounded-[24px] p-5">
       <div>
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Rapid response</p>
         <p className="mt-2 font-display text-4xl tabular">{cents > 0 ? formatMoney(cents) : "Ask"}</p>
@@ -273,7 +273,7 @@ function KindPicker({
   const match = matchOffering(kind, services);
   if (kinds.length === 0) return null;
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Service</p>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {kinds.map((item) => {
@@ -317,7 +317,7 @@ function KindPicker({
 
 function Radius({ miles, note }: { miles: number; note: string }) {
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Service radius</p>
       <p className="mt-2 font-display text-4xl tabular">{miles} miles</p>
       {note ? <p className="mt-2 max-w-lg text-sm text-muted">{note}</p> : null}
@@ -327,7 +327,7 @@ function Radius({ miles, note }: { miles: number; note: string }) {
 
 function Party({ max }: { max: number }) {
   return (
-    <div className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="glass-panel lift-card rounded-[24px] p-5">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Group size</p>
       <p className="mt-2 font-display text-4xl tabular">Up to {max}</p>
     </div>
@@ -339,7 +339,7 @@ function OfferingCards({ shopSlug, services }: { shopSlug: string; services: Ser
   return (
     <ul className="grid gap-3 sm:grid-cols-3">
       {services.map((service) => (
-        <li key={service.id} className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <li key={service.id} className="glass-panel lift-card rounded-[24px] p-5">
           <p className="font-display text-2xl leading-tight">{service.name}</p>
           <p className="mt-2 text-sm text-muted">{service.description}</p>
           <p className="mt-4 text-sm tabular">{formatOffer(service)}</p>

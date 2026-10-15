@@ -18,7 +18,7 @@ export function ShopNav({
   const { user } = useCurrentUserState();
   const copy = nicheCopy(shop.niche);
   return (
-    <header className="flex items-center justify-between gap-3 px-4 py-4 sm:px-8">
+    <header className="glass-panel mx-3 mt-3 flex items-center justify-between gap-3 rounded-2xl px-4 py-3 sm:mx-6 sm:px-5">
       <Link
         to="/$shopSlug"
         params={{ shopSlug: shop.slug }}

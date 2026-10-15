@@ -5,12 +5,12 @@
  * of the hub businesses. California, Pennsylvania, and New York match the
  * current filing list and start at 0.
  */
-import { runCaliforniaSweepBatch } from "../src/lib/axiom/bulk-import.ts";
-import { runFloridaSweepBatch } from "../src/lib/axiom/bulk-import.ts";
-import { runNewYorkSweepBatch } from "../src/lib/axiom/bulk-import.ts";
-import { runPennsylvaniaSweepBatch } from "../src/lib/axiom/bulk-import.ts";
-import { runSupplementSweepBatch } from "../src/lib/axiom/bulk-import.ts";
-import { runTexasSweepBatch } from "../src/lib/axiom/bulk-import.ts";
+import { runCaliforniaSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
+import { runFloridaSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
+import { runNewYorkSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
+import { runPennsylvaniaSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
+import { runSupplementSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
+import { runTexasSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
 
 const runners = {
   california: runCaliforniaSweepBatch,

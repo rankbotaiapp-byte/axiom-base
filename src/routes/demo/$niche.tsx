@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { CinematicHero } from "@/components/cinematic-hero";
+import { Magnetic } from "@/components/magnetic";
+import { Reveal } from "@/components/reveal";
 import { ProofGallery } from "@/components/proof-gallery";
 import { Wordmark } from "@/components/shop-chrome";
 import { defaultProof } from "@/lib/axiom/gallery";
@@ -47,7 +49,7 @@ function NicheDemo() {
   const navigate = useNavigate();
 
   return (
-    <main className="min-h-dvh bg-bg pb-28">
+    <main className="min-h-dvh bg-transparent pb-28">
       <CinematicHero
         imageUrl={imageUrl}
         videoUrl={videoUrl || null}
@@ -64,7 +66,7 @@ function NicheDemo() {
           <label className="min-w-0">
             <span className="sr-only">Explore all industries</span>
             <select
-              className="h-11 max-w-48 rounded-xl bg-surface/80 px-3 text-sm text-fg"
+              className="glass-panel h-11 max-w-48 rounded-xl px-3 text-sm text-fg"
               value={niche}
               onChange={(event) => {
                 const next = event.target.value;
@@ -86,12 +88,15 @@ function NicheDemo() {
             {template.defaultName}
           </h1>
           <p className="mt-4 max-w-lg text-base text-fg/80 sm:text-lg">{template.tagline}</p>
-          <a href="#book" className="glass-btn mt-8 inline-flex h-12 items-center rounded-xl px-5 text-sm font-medium">
-            {bookLabel}
-          </a>
+          <Magnetic className="mt-8 inline-flex">
+            <a href="#book" className="glass-btn inline-flex h-12 items-center rounded-xl px-5 text-sm font-medium">
+              {bookLabel}
+            </a>
+          </Magnetic>
         </div>
       </CinematicHero>
 
+      <Reveal>
       <ProofGallery
         heading={copy.gallery}
         frames={defaultProof(niche)}
@@ -111,7 +116,7 @@ function NicheDemo() {
                 {showGroup ? (
                   <p className="mb-3 mt-6 text-[11px] uppercase tracking-[0.18em] text-muted">{service.group}</p>
                 ) : null}
-                <div className="rounded-[24px] bg-surface px-5 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <div className="glass-panel lift-card rounded-[24px] px-5 py-4">
                   <div className="flex items-baseline justify-between gap-4">
                     <p className="font-medium">{service.name}</p>
                     <p className="shrink-0 text-sm text-muted">{formatOffer(service)}</p>
@@ -184,7 +189,7 @@ function NicheDemo() {
             {template.employees.map((person) => (
               <div
                 key={person.displayName}
-                className="flex gap-4 rounded-[24px] bg-surface p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+                className="glass-panel lift-card flex gap-4 rounded-[24px] p-3"
               >
                 {person.avatarUrl ? (
                   <img src={person.avatarUrl} alt="" className="size-24 shrink-0 rounded-2xl object-cover" />
@@ -208,7 +213,7 @@ function NicheDemo() {
         <h2 className="font-display text-3xl">Hours</h2>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {WEEKDAYS.map(([key, label]) => (
-            <li key={key} className="flex justify-between rounded-xl bg-surface px-4 py-3 text-sm">
+            <li key={key} className="glass-panel flex justify-between rounded-xl px-4 py-3 text-sm">
               <span>{label}</span>
               <span className="text-muted">{hours[key] || "closed"}</span>
             </li>
@@ -216,8 +221,9 @@ function NicheDemo() {
         </ul>
         <p className="mt-4 text-sm text-muted">{template.address}</p>
       </section>
+      </Reveal>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 bg-bg/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-1px_0_rgba(243,241,235,0.08)] sm:pl-36">
+      <div className="glass-panel fixed inset-x-0 bottom-0 z-30 rounded-none px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pl-36">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">
             {template.label} preview. The film, services, and book are this trade’s.

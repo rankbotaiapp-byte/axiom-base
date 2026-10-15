@@ -1,5 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import {
   isCollectionMode,
@@ -51,100 +49,62 @@ async function ownedShop(slug: string, userId: string) {
   throw new Error("Forbidden");
 }
 
-export const listMerchantPricing = createServerFn({ method: "GET" })
-  .validator((slug: string) => {
-    const value = String(slug ?? "").trim();
-    if (!/^[a-z0-9-]{1,80}$/i.test(value)) throw new Error("Shop not found");
-    return value;
-  })
-  .handler(async ({ data: slug }) => {
-    const sql = await getSql();
-    let rows: DbRow[] = [];
-    try {
-      rows = await sql<DbRow>`
-        select id, shop_slug, service_name, pricing_type, price_amount, active_deals_banner, collection_mode, updated_at
-        from merchant_pricing_settings
-        where shop_slug = ${slug}
-        order by service_name
-      `;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (!/merchant_pricing_settings|collection_mode|does not exist/i.test(message)) throw err;
-    }
-    const { stripePublishableKey } = await import("./payments.server");
-    return { rows: rows.map(mapRow), elementsReady: Boolean(stripePublishableKey()) };
-  });
+export type SavedMerchantPrice = {
+  slug: string;
+  serviceName: string;
+  pricingType: MerchantPricingType;
+  collectionMode: CollectionMode;
+  priceAmount: number;
+  activeDealsBanner: string;
+};
 
-export const saveMerchantPricing = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: {
-    slug?: string;
-    serviceName?: string;
-    pricingType?: string;
-    priceAmount?: number;
-    activeDealsBanner?: string;
-    collectionMode?: string;
-  }) => {
-    const slug = String(input?.slug ?? "").trim();
-    const serviceName = String(input?.serviceName ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
-    const pricingType = String(input?.pricingType ?? "");
-    const collectionMode = String(input?.collectionMode ?? "online");
-    const priceAmount = Number(input?.priceAmount);
-    const activeDealsBanner = String(input?.activeDealsBanner ?? "").trim().slice(0, 140);
-    if (!/^[a-z0-9-]{1,80}$/i.test(slug)) throw new Error("Shop not found");
-    if (serviceName.length < 2) throw new Error("Service name is required");
-    if (!isPricingType(pricingType)) throw new Error("Choose a flat rate, deposit, or package");
-    if (!isCollectionMode(collectionMode)) throw new Error("Choose online or in-person collection");
-    if (!Number.isFinite(priceAmount) || priceAmount < 0 || priceAmount > 100000) {
-      throw new Error("Enter a price from 0 to 100000");
-    }
-    return {
-      slug,
-      serviceName,
-      pricingType: pricingType as MerchantPricingType,
-      collectionMode: collectionMode as CollectionMode,
-      priceAmount: Math.round(priceAmount * 100) / 100,
-      activeDealsBanner,
-    };
-  })
-  .handler(async ({ data, context }) => {
-    const shop = await ownedShop(data.slug, context.userId);
-    const sql = await getSql();
-    const rows = await sql<DbRow>`
-      insert into merchant_pricing_settings (
-        shop_slug, service_name, pricing_type, price_amount, active_deals_banner, collection_mode
-      ) values (
-        ${shop.slug}, ${data.serviceName}, ${data.pricingType}, ${data.priceAmount.toFixed(2)},
-        ${data.activeDealsBanner}, ${data.collectionMode}
-      )
-      on conflict (shop_slug, service_name) do update set
-        pricing_type = excluded.pricing_type,
-        price_amount = excluded.price_amount,
-        active_deals_banner = excluded.active_deals_banner,
-        collection_mode = excluded.collection_mode,
-        updated_at = now()
-      returning id, shop_slug, service_name, pricing_type, price_amount, active_deals_banner, collection_mode, updated_at
+export async function listMerchantPricingForShop(slug: string) {
+  const sql = await getSql();
+  let rows: DbRow[] = [];
+  try {
+    rows = await sql<DbRow>`
+      select id, shop_slug, service_name, pricing_type, price_amount, active_deals_banner, collection_mode, updated_at
+      from merchant_pricing_settings
+      where shop_slug = ${slug}
+      order by service_name
     `;
-    const saved = rows[0];
-    if (!saved) throw new Error("Price could not be saved");
-    return mapRow(saved);
-  });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/merchant_pricing_settings|collection_mode|does not exist/i.test(message)) throw err;
+  }
+  const { stripePublishableKey } = await import("./payments.server");
+  return { rows: rows.map(mapRow), elementsReady: Boolean(stripePublishableKey()) };
+}
 
-export const deleteMerchantPricing = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: { slug?: string; id?: string }) => {
-    const slug = String(input?.slug ?? "").trim();
-    const id = String(input?.id ?? "").trim();
-    if (!/^[a-z0-9-]{1,80}$/i.test(slug)) throw new Error("Shop not found");
-    if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Price not found");
-    return { slug, id };
-  })
-  .handler(async ({ data, context }) => {
-    const shop = await ownedShop(data.slug, context.userId);
-    const sql = await getSql();
-    await sql`
-      delete from merchant_pricing_settings
-      where id = ${data.id}::uuid and shop_slug = ${shop.slug}
-    `;
-    return { ok: true as const };
-  });
+export async function saveMerchantPricingForShop(userId: string, data: SavedMerchantPrice) {
+  const shop = await ownedShop(data.slug, userId);
+  const sql = await getSql();
+  const rows = await sql<DbRow>`
+    insert into merchant_pricing_settings (
+      shop_slug, service_name, pricing_type, price_amount, active_deals_banner, collection_mode
+    ) values (
+      ${shop.slug}, ${data.serviceName}, ${data.pricingType}, ${data.priceAmount.toFixed(2)},
+      ${data.activeDealsBanner}, ${data.collectionMode}
+    )
+    on conflict (shop_slug, service_name) do update set
+      pricing_type = excluded.pricing_type,
+      price_amount = excluded.price_amount,
+      active_deals_banner = excluded.active_deals_banner,
+      collection_mode = excluded.collection_mode,
+      updated_at = now()
+    returning id, shop_slug, service_name, pricing_type, price_amount, active_deals_banner, collection_mode, updated_at
+  `;
+  const saved = rows[0];
+  if (!saved) throw new Error("Price could not be saved");
+  return mapRow(saved);
+}
+
+export async function deleteMerchantPricingForShop(userId: string, data: { slug: string; id: string }) {
+  const shop = await ownedShop(data.slug, userId);
+  const sql = await getSql();
+  await sql`
+    delete from merchant_pricing_settings
+    where id = ${data.id}::uuid and shop_slug = ${shop.slug}
+  `;
+  return { ok: true as const };
+}

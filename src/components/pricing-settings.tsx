@@ -5,7 +5,7 @@ import {
   deleteMerchantPricing,
   listMerchantPricing,
   saveMerchantPricing,
-} from "@/lib/axiom/merchant-pricing.server";
+} from "@/lib/axiom/merchant-pricing-api";
 import { pricingLabel, type CollectionMode, type MerchantPrice, type MerchantPricingType } from "@/lib/axiom/merchant-pricing";
 import { formatMoney } from "@/lib/utils";
 

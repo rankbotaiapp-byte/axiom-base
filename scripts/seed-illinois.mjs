@@ -2,7 +2,7 @@
  * Load the Illinois hub filings into preloaded_leads.
  * Batches of 1,000 match the desk import. Oregon, Texas, Florida, California, Pennsylvania, and New York rows are left alone.
  */
-import { runIllinoisSweepBatch } from "../src/lib/axiom/bulk-import.ts";
+import { runIllinoisSweepBatch } from "../src/lib/axiom/bulk-import.server.ts";
 
 const started = Date.now();
 let offset = 0;

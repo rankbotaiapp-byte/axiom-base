@@ -38,8 +38,12 @@
 
   body {
     min-height: 100dvh;
-    background: var(--color-bg);
+    background: transparent;
     color: var(--color-fg);
+  }
+
+  html.fluid-off body {
+    background: var(--color-bg);
   }
 
   h1, h2, h3 {
@@ -89,6 +93,19 @@
   outline: none;
 }
 
+.hero-plate {
+  object-fit: cover;
+  object-position: center;
+  filter: blur(28px) saturate(1.2);
+  opacity: 0.55;
+  outline: none;
+}
+
+.hero-frame {
+  object-fit: contain;
+  object-position: center;
+}
+
 /* Darkens the top bar so the shop name stays readable on a bright still or loop. */
 .hero-scrim {
   background: linear-gradient(
@@ -136,35 +153,320 @@
   }
 }
 
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal.is-in {
+  animation: rise-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal.is-in {
+    animation: none;
+  }
+}
+
 /* Light between the film and the type. It only mounts while scroll depth is on. */
-.glass-btn {
-  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+.glass-panel,
+.glass-btn,
+.lift-card {
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 42%, transparent),
-    0 0 28px color-mix(in srgb, var(--neon, var(--color-accent)) calc(var(--glow, 0.45) * 28%), transparent);
+    0 0 28px color-mix(in srgb, var(--neon, var(--color-accent)) calc(var(--glow, 0.35) * 22%), transparent);
+}
+
+.glass-panel,
+.glass-btn,
+.lift-card {
+  position: relative;
+}
+
+.sticky.glass-panel {
+  position: sticky;
+}
+
+.fixed.glass-panel {
+  position: fixed;
+}
+
+.glass-panel::after,
+.glass-btn::after,
+.lift-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    color-mix(in srgb, var(--neon, var(--color-accent)) 75%, transparent) 28%,
+    transparent 48%,
+    color-mix(in srgb, var(--color-copper) 45%, transparent) 72%,
+    transparent 100%
+  );
+  background-size: 220% 220%;
+  animation: rim-shift 8s ease-in-out infinite;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+@keyframes rim-shift {
+  0%,
+  100% {
+    background-position: 0% 40%;
+    opacity: 0.55;
+  }
+  50% {
+    background-position: 100% 60%;
+    opacity: 1;
+  }
+}
+
+.glass-btn {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.glass-btn:hover,
+.glass-btn:focus-visible {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 70%, transparent),
+    0 0 32px color-mix(in srgb, var(--neon, var(--color-accent)) 36%, transparent);
 }
 
 .lift-card {
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
-.lift-card:hover,
-.lift-card:active {
+/* Corner brackets and a small crosshair. Painted inside the box so cards keep their size. */
+.lift-card::before,
+.hud-corners {
+  pointer-events: none;
+  color: var(--neon, var(--color-accent));
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor);
+  background-size:
+    12px 1px, 1px 12px,
+    12px 1px, 1px 12px,
+    12px 1px, 1px 12px,
+    12px 1px, 1px 12px,
+    7px 1px, 1px 7px;
+  background-position:
+    8px 8px, 8px 8px,
+    right 8px top 8px, right 8px top 8px,
+    left 8px bottom 8px, left 8px bottom 8px,
+    right 8px bottom 8px, right 8px bottom 8px,
+    right 18px top 18px, right 21px top 15px;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 75%, transparent));
+  opacity: 0.85;
+}
+
+.lift-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+}
+
+.hud-corners {
+  background-size:
+    22px 1px, 1px 22px,
+    22px 1px, 1px 22px,
+    22px 1px, 1px 22px,
+    22px 1px, 1px 22px,
+    9px 1px, 1px 9px;
+  background-position:
+    14px 14px, 14px 14px,
+    right 14px top 14px, right 14px top 14px,
+    left 14px bottom 14px, left 14px bottom 14px,
+    right 14px bottom 14px, right 14px bottom 14px,
+    right 28px top 28px, right 32px top 24px;
+}
+
+.hud-cross {
+  width: 22px;
+  height: 22px;
+  color: var(--neon, var(--color-accent));
+  background:
+    linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 80%, transparent));
+  opacity: 0.55;
+}
+
+.telemetry-panel {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: min(15rem, calc(100% - 1.5rem));
+  padding: 0.35rem 0.6rem 0.35rem 0.5rem;
+  border-radius: 10px;
+  color: var(--color-fg);
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 42%, transparent),
+    0 0 18px color-mix(in srgb, var(--neon, var(--color-accent)) 16%, transparent);
+}
+
+.telemetry-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--neon, var(--color-accent));
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor);
+  background-size:
+    8px 1px, 1px 8px,
+    8px 1px, 1px 8px,
+    8px 1px, 1px 8px,
+    8px 1px, 1px 8px;
+  background-position:
+    4px 4px, 4px 4px,
+    right 4px top 4px, right 4px top 4px,
+    left 4px bottom 4px, left 4px bottom 4px,
+    right 4px bottom 4px, right 4px bottom 4px;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 70%, transparent));
+}
+
+.telemetry-live {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--color-emerald);
+  box-shadow: 0 0 8px var(--color-emerald);
+  animation: telemetry-blink 1.4s ease-in-out infinite;
+}
+
+.telemetry-caret {
+  display: inline-block;
+  width: 1px;
+  height: 0.8em;
+  margin-left: 1px;
+  background: var(--color-emerald);
+  box-shadow: 0 0 6px var(--color-emerald);
+  animation: telemetry-blink 0.9s steps(1) infinite;
+  vertical-align: -1px;
+}
+
+@keyframes telemetry-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .telemetry-live,
+  .telemetry-caret {
+    animation: none;
+  }
+}
+
+.lift-card:hover {
   transform: translateY(-2px);
   box-shadow:
     0 14px 32px color-mix(in srgb, var(--neon, var(--color-accent)) 14%, transparent),
     0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 36%, transparent);
 }
 
+.lift-card:active,
+.glass-btn:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.ui-press {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 75%, transparent),
+    0 0 18px color-mix(in srgb, var(--neon, var(--color-accent)) 40%, transparent);
+}
+
+.audio-toggle {
+  position: fixed;
+  z-index: 40;
+  left: 7.75rem;
+  bottom: 9rem;
+  display: inline-flex;
+  height: 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0 0.9rem;
+  color: var(--color-fg);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon, var(--color-accent)) 42%, transparent),
+    0 0 16px color-mix(in srgb, var(--neon, var(--color-accent)) 18%, transparent);
+}
+
+@media (min-width: 640px) {
+  .audio-toggle {
+    bottom: 1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .lift-card {
+  .lift-card,
+  .glass-btn {
     transition: none;
   }
   .lift-card:hover,
-  .lift-card:active {
+  .lift-card:active,
+  .glass-btn:active {
     transform: none;
+  }
+  .glass-panel::after,
+  .glass-btn::after,
+  .lift-card::after {
+    animation: none;
   }
 }
 
@@ -237,11 +539,55 @@
 }
 
 .hero-atmosphere {
-  background: radial-gradient(
-    90% 55% at 50% 18%,
-    color-mix(in srgb, var(--color-fg) 12%, transparent),
-    transparent 70%
-  );
+  background-image:
+    radial-gradient(ellipse at 50% 46%, transparent 0%, transparent 34%, color-mix(in srgb, var(--color-bg) 82%, transparent) 100%),
+    radial-gradient(120% 80% at 16% 8%, color-mix(in srgb, var(--neon, var(--color-accent)) 28%, transparent), transparent 54%),
+    radial-gradient(90% 80% at 86% 78%, color-mix(in srgb, var(--color-copper) 22%, transparent), transparent 58%);
+  background-size: 140% 140%, 170% 170%, 160% 160%;
+  background-repeat: no-repeat;
+  animation: vignette-shift 18s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+.hero-mote {
+  position: absolute;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--neon, var(--color-accent)) 70%, white);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--neon, var(--color-accent)) 55%, transparent);
+  opacity: 0.28;
+  animation: mote-float var(--mote-duration, 12s) ease-in-out infinite;
+  animation-delay: var(--mote-delay, 0s);
+}
+
+@keyframes vignette-shift {
+  0%,
+  100% {
+    background-position: 18% 8%, 0% 0%, 100% 80%;
+    opacity: 0.72;
+  }
+  50% {
+    background-position: 62% 36%, 28% 18%, 68% 100%;
+    opacity: 1;
+  }
+}
+
+@keyframes mote-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.16;
+  }
+  50% {
+    transform: translate3d(0, calc(var(--mote-drift, 16) * -1px), 0);
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-atmosphere,
+  .hero-mote {
+    animation: none;
+  }
 }
 
 .hero-stage::after,

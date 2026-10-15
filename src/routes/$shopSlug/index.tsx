@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { CinematicHero, InsetFilm, IntroFxToggle } from "@/components/cinematic-hero";
+import { Magnetic } from "@/components/magnetic";
+import { Reveal } from "@/components/reveal";
 import { ProductShelf } from "@/components/product-shelf";
 import { NeonField, SnapEstimate } from "@/components/snap-estimate";
 import { offerModel, shelfFor } from "@/lib/axiom/storefront";
@@ -194,7 +196,7 @@ function CustomerHome() {
   const blocks = { staff: staffBlock, estimate: estimateBlock, menu: menuBlock };
 
   return (
-    <div className="bg-bg" data-neon={data.shop.glowEnabled ? "on" : "off"} style={{ ["--neon" as string]: neon }}>
+    <div className="bg-transparent" data-neon={data.shop.glowEnabled ? "on" : "off"} style={{ ["--neon" as string]: neon }}>
       <NeonField active={data.shop.glowEnabled} />
       <CinematicHero
         imageUrl={hero.imageUrl}
@@ -222,21 +224,28 @@ function CustomerHome() {
             {data.shop.name}
           </h1>
           <p className="mt-4 max-w-lg text-base text-fg/80 sm:text-lg">{data.shop.tagline}</p>
-          <Link
-            to="/$shopSlug/book"
-            params={{ shopSlug: data.shop.slug }}
-            className="glass-btn mt-8 inline-flex h-12 items-center gap-2 rounded-xl px-5 text-sm font-medium"
-          >
-            {bookLabel}
-            <ArrowRight className="size-4" />
-          </Link>
+          <Magnetic className="mt-8 inline-flex">
+            <Link
+              to="/$shopSlug/book"
+              params={{ shopSlug: data.shop.slug }}
+              className="glass-btn inline-flex h-12 items-center gap-2 rounded-xl px-5 text-sm font-medium"
+            >
+              {bookLabel}
+              <ArrowRight className="size-4" />
+            </Link>
+          </Magnetic>
         </div>
       </CinematicHero>
 
-      <TradeStorefront shop={data.shop} services={services} phone={contact ? String(contact) : ""} />
+      <Reveal>
+        <TradeStorefront shop={data.shop} services={services} phone={contact ? String(contact) : ""} />
+      </Reveal>
 
-      <ShopProofGallery slug={data.shop.slug} niche={data.shop.niche} heading={copy.gallery} />
+      <Reveal delay={0.08}>
+        <ShopProofGallery slug={data.shop.slug} niche={data.shop.niche} heading={copy.gallery} />
+      </Reveal>
 
+      <Reveal delay={0.12}>
       <section className="px-5 pb-28 sm:px-10 sm:pb-16">
         <StorefrontAuditWidget
           tenantId={data.shop.id}
@@ -245,14 +254,17 @@ function CustomerHome() {
           bookSlug={data.shop.slug}
         />
       </section>
+      </Reveal>
 
-      {data.shop.layout.map((block) => (
-        <div key={block}>{blocks[block]}</div>
+      {data.shop.layout.map((block, index) => (
+        <Reveal key={block} delay={index * 0.06}>
+          {blocks[block]}
+        </Reveal>
       ))}
 
       <PoweredBy />
 
-      <div className="sticky bottom-0 z-30 border-t border-line bg-bg/90 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
+      <div className="glass-panel sticky bottom-0 z-30 rounded-none border-t border-line px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
         <div className="mb-2 flex justify-center">
           <IntroFxToggle />
         </div>
