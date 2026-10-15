@@ -603,7 +603,9 @@ export function PaymentsPanel({
         <p className="mt-2 text-sm text-muted">
           {readonly
             ? "Demo shops keep the mock checkout so the tour can run. Your own shop connects a Stripe account and guests pay that account."
-            : "Guests pay on Stripe Checkout. Funds settle to the connected account, with the platform fee taken on each charge."}
+            : payments.connectStatus === "pending"
+              ? "Stripe has the account. Charges stay off until verification finishes. Lead dispatch and booking stay locked until then."
+              : "Guests pay on this shop's booking page. Funds settle to the connected account, with the platform fee taken on each charge."}
         </p>
         {!payments.processorReady && !readonly ? (
           <p className="mt-3 text-sm text-muted">Card payments are not configured for this workspace yet. Guests can still request a time.</p>

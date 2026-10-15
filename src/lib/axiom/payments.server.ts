@@ -6,13 +6,16 @@ import { newId } from "@/lib/utils";
 import { notifyBookingParties } from "./notify.server";
 
 type StripeObject = Record<string, unknown> & {
-  error?: { message?: string };
+  error?: { message?: string; code?: string };
   id?: string;
   url?: string | null;
   payment_status?: string;
   status?: string;
   amount_total?: number;
   charges_enabled?: boolean;
+  details_submitted?: boolean;
+  client_secret?: string;
+  amount?: number;
   customer_email?: string | null;
   customer_details?: { email?: string | null } | null;
   metadata?: Record<string, string> | null;
@@ -20,6 +23,10 @@ type StripeObject = Record<string, unknown> & {
 
 export function stripeConfigured() {
   return Boolean(env("STRIPE_SECRET_KEY"));
+}
+
+export function stripePublishableKey() {
+  return env("STRIPE_PUBLISHABLE_KEY");
 }
 
 export function requestOrigin() {
@@ -41,7 +48,15 @@ async function stripeFetch(path: string, body?: URLSearchParams) {
     body,
   });
   const json = (await res.json()) as StripeObject;
-  if (!res.ok) throw new Error(json.error?.message || "Stripe request failed");
+  if (!res.ok) {
+    const raw = json.error?.message || "Stripe request failed";
+    const missing =
+      json.error?.code === "resource_missing" ||
+      /no such |does not have access to account/i.test(raw);
+    const err = new Error(missing ? "Stripe object was not found" : "Stripe request failed");
+    if (missing) (err as Error & { stripeMissing?: boolean }).stripeMissing = true;
+    throw err;
+  }
   return json;
 }
 
@@ -65,11 +80,26 @@ export async function beginConnect(opts: {
     if (!account.id) throw new Error("Stripe did not return an account");
     accountId = account.id;
     const sql = await getSql();
-    await sql`
-      update shop_billing
-      set stripe_account_id = ${accountId}, updated_at = now()
-      where shop_id = ${opts.shopId}
-    `;
+    try {
+      await sql`
+        update shop_billing
+        set stripe_account_id = ${accountId},
+            stripe_connect_status = case
+              when stripe_charges_enabled then stripe_connect_status
+              else 'pending'
+            end,
+            updated_at = now()
+        where shop_id = ${opts.shopId}
+      `;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (!/stripe_connect_status|does not exist/i.test(message)) throw err;
+      await sql`
+        update shop_billing
+        set stripe_account_id = ${accountId}, updated_at = now()
+        where shop_id = ${opts.shopId}
+      `;
+    }
   }
   const link = await stripeFetch(
     "account_links",
@@ -86,7 +116,56 @@ export async function beginConnect(opts: {
 
 export async function syncConnectAccount(accountId: string) {
   const account = await stripeFetch(`accounts/${encodeURIComponent(accountId)}`);
-  return { chargesEnabled: Boolean(account.charges_enabled) };
+  const chargesEnabled = Boolean(account.charges_enabled);
+  await recordConnectStanding(accountId, chargesEnabled);
+  return { chargesEnabled };
+}
+
+/** Writes active or pending from a Connect account. Missing accounts stay unchanged. */
+export async function recordConnectStanding(accountId: string, chargesEnabled: boolean) {
+  const standing = chargesEnabled ? "active" : "pending";
+  const sql = await getSql();
+  try {
+    await sql`
+      update shop_billing
+      set stripe_charges_enabled = ${chargesEnabled},
+          stripe_connect_status = ${standing},
+          updated_at = now()
+      where stripe_account_id = ${accountId}
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/stripe_connect_status|does not exist/i.test(message)) throw err;
+    await sql`
+      update shop_billing
+      set stripe_charges_enabled = ${chargesEnabled}, updated_at = now()
+      where stripe_account_id = ${accountId}
+    `;
+  }
+  return { chargesEnabled, standing };
+}
+
+export async function createConnectPaymentIntent(opts: {
+  destination: string;
+  amountCents: number;
+  feeCents: number;
+  shopId: string;
+  appointmentId: string;
+}) {
+  const params = new URLSearchParams({
+    amount: String(opts.amountCents),
+    currency: "usd",
+    "automatic_payment_methods[enabled]": "true",
+    "transfer_data[destination]": opts.destination,
+    "metadata[shop_id]": opts.shopId,
+    "metadata[appointment_id]": opts.appointmentId,
+  });
+  if (opts.feeCents > 0 && opts.feeCents < opts.amountCents) {
+    params.set("application_fee_amount", String(opts.feeCents));
+  }
+  const intent = await stripeFetch("payment_intents", params);
+  if (!intent.id || !intent.client_secret) throw new Error("Stripe did not return a payment");
+  return { id: intent.id, clientSecret: intent.client_secret };
 }
 
 export async function createConnectCheckout(opts: {
@@ -290,6 +369,73 @@ export async function settlePaidSession(sessionId: string) {
   return { appointmentId: row.id, shopId, already: false };
 }
 
+export async function settlePaidIntent(paymentIntentId: string) {
+  if (!paymentIntentId.startsWith("pi_")) throw new Error("Invalid payment");
+  const intent = await stripeFetch(`payment_intents/${encodeURIComponent(paymentIntentId)}`);
+  if (intent.status !== "succeeded") throw new Error("Payment is not complete");
+  const appointmentId = intent.metadata?.appointment_id;
+  const shopId = intent.metadata?.shop_id;
+  if (!appointmentId || !shopId) throw new Error("Payment is missing booking details");
+  const paid = Number(intent.amount);
+  if (!Number.isFinite(paid) || paid <= 0) throw new Error("Payment amount is invalid");
+
+  const sql = await getSql();
+  const rows = await sql<{
+    id: string;
+    shop_id: string;
+    employee_id: string;
+    payment_cents: number;
+    payment_status: string;
+    customer_name: string;
+    customer_phone: string;
+    customer_email: string;
+    starts_at: string;
+    shop_name: string;
+    service_name: string;
+    employee_name: string;
+  }>`
+    select a.id, a.shop_id, a.employee_id, a.payment_cents, a.payment_status,
+      a.customer_name, a.customer_phone, a.customer_email, a.starts_at,
+      sh.name as shop_name, s.name as service_name, e.display_name as employee_name
+    from appointments a
+    join shops sh on sh.id = a.shop_id
+    join services s on s.id = a.service_id
+    join employees e on e.id = a.employee_id
+    where a.id = ${appointmentId} and a.payment_ref = ${paymentIntentId}
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row || row.shop_id !== shopId) throw new Error("Booking not found for this payment");
+  if (paid !== Number(row.payment_cents)) throw new Error("Paid amount does not match the service price");
+  if (row.payment_status === "paid") return { appointmentId: row.id, shopId, already: true };
+
+  const updated = await sql<{ id: string }>`
+    update appointments
+    set payment_status = 'paid'
+    where id = ${row.id} and shop_id = ${shopId} and payment_status = 'processing'
+    returning id
+  `;
+  if (!updated[0]) return { appointmentId: row.id, shopId, already: true };
+
+  await sql`
+    insert into shop_events (id, shop_id, type, appointment_id, payload)
+    values (${newId("evt")}, ${shopId}, 'payment_received', ${row.id}, ${`Paid · ${row.service_name}`})
+  `;
+  await notifyBookingParties({
+    shopId,
+    shopName: row.shop_name,
+    employeeId: row.employee_id,
+    guestName: row.customer_name,
+    guestPhone: row.customer_phone ?? "",
+    guestEmail: row.customer_email ?? "",
+    serviceName: row.service_name,
+    employeeName: row.employee_name,
+    startsAt: String(row.starts_at),
+    phase: "paid",
+  });
+  return { appointmentId: row.id, shopId, already: false };
+}
+
 function verifyStripeSignature(payload: string, header: string, secret: string) {
   const parts = header.split(",").map((part) => {
     const idx = part.indexOf("=");
@@ -318,27 +464,52 @@ export async function handleStripeWebhook(request: Request) {
   }
   let event: {
     type?: string;
-    data?: { object?: { id?: string; payment_status?: string; metadata?: Record<string, string> } };
+    data?: {
+      object?: {
+        id?: string;
+        payment_status?: string;
+        charges_enabled?: boolean;
+        metadata?: Record<string, string>;
+      };
+    };
   };
   try {
-    event = JSON.parse(payload) as {
-      type?: string;
-      data?: { object?: { id?: string; payment_status?: string; metadata?: Record<string, string> } };
-    };
+    event = JSON.parse(payload) as typeof event;
   } catch {
     return Response.json({ error: "Invalid payload" }, { status: 400 });
   }
   const object = event.data?.object;
-  if (event.type === "checkout.session.completed" && object?.id) {
-    const meta = object.metadata ?? {};
-    const territory = meta.kind === "territory";
-    const status = object.payment_status;
-    if (territory && (status === "paid" || status === "no_payment_required")) {
-      // Re-fetches the session from Stripe, marks the territory live, then opens the shop.
-      await settleTerritorySession(object.id);
-    } else if (!territory && status === "paid" && meta.appointment_id && meta.shop_id) {
-      await settlePaidSession(object.id);
+  try {
+    if (event.type === "account.updated" && object?.id?.startsWith("acct_")) {
+      const sql = await getSql();
+      const known = await sql<{ shop_id: string }>`
+        select shop_id from shop_billing where stripe_account_id = ${object.id} limit 1
+      `;
+      if (known[0]) await syncConnectAccount(object.id);
     }
+    if (event.type === "payment_intent.succeeded" && object?.id?.startsWith("pi_")) {
+      await settlePaidIntent(object.id);
+    }
+    if (event.type === "checkout.session.completed" && object?.id) {
+      const meta = object.metadata ?? {};
+      const territory = meta.kind === "territory";
+      const status = object.payment_status;
+      if (territory && (status === "paid" || status === "no_payment_required")) {
+        // Re-fetches the session from Stripe, marks the territory live, then opens the shop.
+        await settleTerritorySession(object.id);
+      } else if (!territory && status === "paid" && meta.appointment_id && meta.shop_id) {
+        await settlePaidSession(object.id);
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    const missing = Boolean((err as { stripeMissing?: boolean }).stripeMissing);
+    const unmatched =
+      missing ||
+      message === "Stripe object was not found" ||
+      message === "Payment is missing booking details" ||
+      message === "Booking not found for this payment";
+    if (!unmatched) throw err;
   }
   return Response.json({ received: true });
 }

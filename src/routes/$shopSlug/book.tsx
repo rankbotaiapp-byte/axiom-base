@@ -6,19 +6,24 @@ import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import {
+  beginCardElements,
   confirmCardCheckout,
+  confirmCardPayment,
   createBooking,
   getShopAccess,
   listBookedStarts,
   releaseCardCheckout,
   startCardCheckout,
 } from "@/lib/axiom/server";
+import { CardElements } from "@/components/card-elements";
+import { listMerchantPricing } from "@/lib/axiom/merchant-pricing.server";
+import { dueNowCents, listPriceCents, priceForService, pricingLabel, type MerchantPrice } from "@/lib/axiom/merchant-pricing";
 import { ProductShelf } from "@/components/product-shelf";
-import { formatOffer, formatPrice, nicheCopy, serviceGroups } from "@/lib/axiom/niches";
+import { formatOffer, nicheCopy, serviceGroups } from "@/lib/axiom/niches";
 import { offerModel, shelfFor } from "@/lib/axiom/storefront";
 import { buildSlots } from "@/lib/axiom/slots";
 import type { AccessMode, Employee } from "@/lib/axiom/types";
-import { initials } from "@/lib/utils";
+import { initials, formatMoney } from "@/lib/utils";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useShopPageData } from "./route";
 
@@ -55,6 +60,9 @@ function BookPage() {
   const [pay, setPay] = useState(false);
   const [booked, setBooked] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [prices, setPrices] = useState<MerchantPrice[]>([]);
+  const [elementsReady, setElementsReady] = useState(false);
+  const [intent, setIntent] = useState<{ clientSecret: string; publishableKey: string; appointmentId: string } | null>(null);
 
   const service = data.services.find((s) => s.id === serviceId) ?? data.services[0];
   const eligible = data.employees.filter(
@@ -114,6 +122,18 @@ function BookPage() {
   }, [announce, data.shop.slug, navigate, search.session, setPendingId]);
 
   useEffect(() => {
+    void listMerchantPricing({ data: data.shop.slug })
+      .then((result) => {
+        setPrices(result.rows);
+        setElementsReady(result.elementsReady);
+      })
+      .catch(() => {
+        setPrices([]);
+        setElementsReady(false);
+      });
+  }, [data.shop.slug]);
+
+  useEffect(() => {
     if (!search.cancelled) return;
     void releaseCardCheckout({
       data: { slug: data.shop.slug, appointmentId: search.cancelled },
@@ -129,8 +149,12 @@ function BookPage() {
     });
   }, [booked, data.shop.hours, service]);
 
-  const cardReady = data.shop.acceptsCard && (service?.priceCents ?? 0) > 0;
-  const payMode = cardReady ? "stripe" : data.shop.isShowcase ? "demo" : "request";
+  const merchant = service ? priceForService(prices, service.name) : null;
+  const listCents = listPriceCents(merchant, service?.priceCents ?? 0);
+  const dueCents = dueNowCents(merchant, service?.priceCents ?? 0);
+  const inPerson = merchant?.collectionMode === "in_person";
+  const cardReady = data.shop.acceptsCard && dueCents > 0 && !inPerson;
+  const payMode = inPerson ? "request" : cardReady ? (elementsReady ? "elements" : "stripe") : data.shop.isShowcase ? "demo" : "request";
 
   async function finishBooking(paymentRef?: string) {
     if (!service || !employee || !slot) return;
@@ -201,6 +225,9 @@ function BookPage() {
         <div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bookLabel}</p>
           <h1 className="mt-2 font-display text-4xl">{data.shop.name}</h1>
+          {merchant?.activeDealsBanner ? (
+            <p className="mt-3 text-sm text-copper">{merchant.activeDealsBanner}</p>
+          ) : null}
 
           <Section title={copy.offerStep}>
             <div className="grid gap-2">
@@ -217,9 +244,14 @@ function BookPage() {
                         setServiceId(s.id);
                         setSlot(null);
                         setPay(false);
+                        setIntent(null);
                       }}
                       title={s.name}
-                      meta={formatOffer(s)}
+                      meta={
+                        priceForService(prices, s.name)
+                          ? formatMoney(listPriceCents(priceForService(prices, s.name), s.priceCents))
+                          : formatOffer(s)
+                      }
                     />
                   ))}
                 </div>
@@ -285,8 +317,14 @@ function BookPage() {
               {service?.name} with {employee?.displayName}
             </p>
             <p className="mt-1 font-display text-3xl">
-              {service ? formatPrice(service) : "—"}
+              {service ? formatMoney(inPerson ? listCents : dueCents) : "—"}
             </p>
+            {merchant ? (
+              <p className="mt-1 text-sm text-muted">
+                {pricingLabel(merchant.pricingType)}
+                {inPerson ? " · pay at the visit" : merchant.pricingType === "deposit" ? " due now" : ""}
+              </p>
+            ) : null}
             {slot ? (
               <p className="mt-2 text-sm text-muted">
                 {new Date(slot).toLocaleString("en-US", {
@@ -301,7 +339,42 @@ function BookPage() {
               <p className="mt-2 text-sm text-faint">{copy.timeHint}</p>
             )}
 
-            {!pay ? (
+            {intent ? (
+              <CardElements
+                publishableKey={intent.publishableKey}
+                clientSecret={intent.clientSecret}
+                onPaid={(paymentIntentId) => {
+                  setBusy(true);
+                  setError(null);
+                  void confirmCardPayment({ data: { slug: data.shop.slug, paymentIntentId } })
+                    .then(async (result) => {
+                      setPendingId(result.appointmentId);
+                      announce(
+                        {
+                          id: `local-${result.appointmentId}`,
+                          type: "payment_received",
+                          appointmentId: result.appointmentId,
+                          payload: "Paid",
+                          createdAt: new Date().toISOString(),
+                        },
+                        true,
+                      );
+                      await navigate({ to: "/$shopSlug", params: { shopSlug: data.shop.slug } });
+                    })
+                    .catch((err: unknown) => {
+                      setError(err instanceof Error ? err.message : "Payment could not be confirmed");
+                      setBusy(false);
+                    });
+                }}
+                onCancel={() => {
+                  void releaseCardCheckout({
+                    data: { slug: data.shop.slug, appointmentId: intent.appointmentId },
+                  });
+                  setIntent(null);
+                  setBusy(false);
+                }}
+              />
+            ) : !pay ? (
               <form
                 className="mt-5 grid gap-3"
                 onSubmit={(e) => {
@@ -316,6 +389,28 @@ function BookPage() {
                     return;
                   }
                   setBusy(true);
+                  if (payMode === "elements") {
+                    void beginCardElements({
+                      data: {
+                        slug: data.shop.slug,
+                        employeeId: employee.id,
+                        serviceId: service.id,
+                        customerName: name,
+                        customerPhone: phone,
+                        customerEmail: email,
+                        startsAt: slot,
+                      },
+                    })
+                      .then((result) => {
+                        setIntent(result);
+                        setBusy(false);
+                      })
+                      .catch((err: unknown) => {
+                        setError(err instanceof Error ? err.message : "Could not open card payment");
+                        setBusy(false);
+                      });
+                    return;
+                  }
                   const run =
                     payMode === "stripe"
                       ? startCardCheckout({
@@ -363,21 +458,27 @@ function BookPage() {
                   />
                 </div>
                 <p className="text-xs text-muted">
-                  {payMode === "stripe"
-                    ? "No account. Stripe opens next and pays this shop directly."
-                    : payMode === "demo"
-                      ? "Demo checkout. Nothing is charged."
-                      : "No account. Request the time and the shop confirms it."}
+                  {payMode === "elements"
+                    ? "Card details open on this page. The charge goes to this shop."
+                    : payMode === "stripe"
+                      ? "No account. Stripe opens next and pays this shop directly."
+                      : inPerson
+                        ? "Nothing is charged now. Pay at the visit."
+                        : payMode === "demo"
+                          ? "Demo checkout. Nothing is charged."
+                          : "No account. Request the time and the shop confirms it."}
                 </p>
                 {error ? <p className="text-sm text-danger">{error}</p> : null}
                 <Button type="submit" size="lg" disabled={!slot || busy}>
                   {busy
                     ? "Working"
-                    : payMode === "stripe"
-                      ? `Pay ${service ? formatPrice(service) : ""}`
-                      : payMode === "demo"
-                        ? "Continue to Gear Guardian"
-                        : copy.requestLabel}
+                    : payMode === "elements" || payMode === "stripe"
+                      ? `Pay ${service ? formatMoney(dueCents) : ""}`
+                      : inPerson
+                        ? "Request and pay in person"
+                        : payMode === "demo"
+                          ? "Continue to Gear Guardian"
+                          : copy.requestLabel}
                 </Button>
               </form>
             ) : service ? (

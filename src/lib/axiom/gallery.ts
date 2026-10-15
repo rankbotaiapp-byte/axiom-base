@@ -19,7 +19,7 @@ const film = (src: string, caption: string): ProofFrame => ({ src, caption, kind
 const ALBUM: Record<ShopNiche, ProofFrame[]> = {
   guide: [photo("/media/rafting-image.png", "The line")],
   fitness: [photo("/media/tiger-poster.svg", "The floor"), film("/media/heroes/tiger-deer.mp4", "A session")],
-  combat: [film("/media/heroes/gladiator.mp4", "A round")],
+  combat: [film("/media/heroes/tiger-deer.mp4", "A round")],
   wellness: [photo("/media/heroes/wellness.jpg", "The table")],
   lessons: [photo("/media/heroes/lessons.jpg", "The hour")],
   salon: [photo("/media/heroes/salon.jpg", "A finished style")],
@@ -32,7 +32,7 @@ const ALBUM: Record<ShopNiche, ProofFrame[]> = {
     photo("/media/music-work-2.jpg", "The session"),
     photo("/media/music-hero.jpg", "The room"),
   ],
-  creator: [film("/media/heroes/contentcreator.mp4", "The cut")],
+  creator: [film("/media/heroes/social-media-content-creator.mp4", "The cut")],
   prompt: [film("/media/heroes/ai-prompt.mp4", "The prompt")],
   entertainer: [film("/media/heroes/entertainer.mp4", "A set")],
   events: [photo("/media/heroes/events.jpg", "The room")],
@@ -40,7 +40,7 @@ const ALBUM: Record<ShopNiche, ProofFrame[]> = {
   foodtruck: [photo("/media/heroes/food-truck.jpg", "The window")],
   dogwalk: [photo("/media/heroes/pets.jpg", "A walk")],
   detailer: [film("/media/heroes/mobile-detailer.mp4", "The driveway")],
-  hunting: [photo("/media/heroes/hunting-guide.jpg", "The ground")],
+  hunting: [photo("/media/heroes/hunting-guide.jpg", "The ground"), film("/media/heroes/hunting-guide.mp4.mp4", "The ground")],
   therapy: [photo("/media/heroes/practice.jpg", "The room")],
   bowtech: [film("/media/heroes/custom-bow-tech.mp4", "The bench")],
   contractor: [

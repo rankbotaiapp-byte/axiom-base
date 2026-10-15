@@ -18,6 +18,7 @@ import {
   type WeekKey,
 } from "./storefront";
 import { parseTradeProfile, type TradeProfile } from "./trade-layout";
+import { dueNowCents, isCollectionMode, isPricingType, listPriceCents, type MerchantPrice } from "./merchant-pricing";
 import {
   isShopNiche,
   type AccessMode,
@@ -511,6 +512,55 @@ function isSlotTaken(err: unknown): boolean {
   return false;
 }
 
+async function merchantQuote(shopSlug: string, serviceName: string, serviceCents: number) {
+  const sql = await getSql();
+  let rows: {
+    id: string;
+    pricing_type: string;
+    price_amount: string | number;
+    active_deals_banner: string;
+    collection_mode: string;
+    updated_at: string | Date;
+  }[] = [];
+  try {
+    rows = await sql<{
+      id: string;
+      pricing_type: string;
+      price_amount: string | number;
+      active_deals_banner: string;
+      collection_mode: string;
+      updated_at: string | Date;
+    }>`
+      select id, pricing_type, price_amount, active_deals_banner, collection_mode, updated_at
+      from merchant_pricing_settings
+      where shop_slug = ${shopSlug} and lower(service_name) = lower(${serviceName})
+      limit 1
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/merchant_pricing_settings|collection_mode|does not exist/i.test(message)) throw err;
+  }
+  const found = rows[0];
+  if (!found || !isPricingType(found.pricing_type)) {
+    return { dueNowCents: Math.max(0, serviceCents), listCents: Math.max(0, serviceCents), collection: "online" as const };
+  }
+  const price: MerchantPrice = {
+    id: found.id,
+    shopSlug,
+    serviceName,
+    pricingType: found.pricing_type,
+    priceAmount: Number(found.price_amount),
+    activeDealsBanner: found.active_deals_banner ?? "",
+    collectionMode: isCollectionMode(found.collection_mode) ? found.collection_mode : "online",
+    updatedAt: new Date(found.updated_at).toISOString(),
+  };
+  return {
+    dueNowCents: dueNowCents(price, serviceCents),
+    listCents: listPriceCents(price, serviceCents),
+    collection: price.collectionMode,
+  };
+}
+
 export const createBooking = createServerFn({ method: "POST" })
   .validator(
     (d: {
@@ -528,6 +578,7 @@ export const createBooking = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const booked = await assertBookable(data);
     const demo = data.paymentMode === "demo";
+    const quote = await merchantQuote(booked.shop.slug, booked.serviceName, booked.priceCents);
     if (demo) {
       if (!booked.shop.is_showcase) throw new Error("This shop does not use demo checkout");
       if (!data.paymentRef?.startsWith("gg_")) throw new Error("Demo payment was not completed");
@@ -542,7 +593,7 @@ export const createBooking = createServerFn({ method: "POST" })
         ) values (
           ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
           ${booked.phone}, ${booked.email}, ${data.startsAt}, 'pending', ${demo ? "paid" : "unpaid"},
-          ${demo ? data.paymentRef ?? null : null}, ${booked.priceCents}
+          ${demo ? data.paymentRef ?? null : null}, ${quote.listCents}
         )
       `;
     } catch (err) {
@@ -1376,26 +1427,52 @@ export const getOperatorData = createServerFn({ method: "GET" })
     let billing: Billing | null = null;
     if (mode === "owner" || mode === "preview") {
       const sql = await getSql();
-      const b = await sql<{
+      const applyBilling = (row: {
         plan: string;
         status: string;
         price_cents: number;
         gear_guardian_bps: number;
         stripe_account_id: string | null;
         stripe_charges_enabled: boolean;
-      }>`
-        select plan, status, price_cents, gear_guardian_bps, stripe_account_id, stripe_charges_enabled
-        from shop_billing where shop_id = ${shop.id}
-      `;
-      if (b[0]) {
+      }) => {
         billing = {
-          plan: b[0].plan,
-          status: b[0].status,
-          priceCents: Number(b[0].price_cents),
-          gearGuardianBps: Number(b[0].gear_guardian_bps),
+          plan: row.plan,
+          status: row.status,
+          priceCents: Number(row.price_cents),
+          gearGuardianBps: Number(row.gear_guardian_bps),
         };
-        stripeAccountId = b[0].stripe_account_id;
-        chargesEnabled = isOn(b[0].stripe_charges_enabled) && Boolean(b[0].stripe_account_id);
+        stripeAccountId = row.stripe_account_id;
+        chargesEnabled = isOn(row.stripe_charges_enabled) && Boolean(row.stripe_account_id);
+      };
+      try {
+        const b = await sql<{
+          plan: string;
+          status: string;
+          price_cents: number;
+          gear_guardian_bps: number;
+          stripe_account_id: string | null;
+          stripe_charges_enabled: boolean;
+          stripe_connect_status: string | null;
+        }>`
+          select plan, status, price_cents, gear_guardian_bps, stripe_account_id, stripe_charges_enabled, stripe_connect_status
+          from shop_billing where shop_id = ${shop.id}
+        `;
+        if (b[0]) applyBilling(b[0]);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (!/stripe_connect_status|does not exist/i.test(message)) throw err;
+        const b = await sql<{
+          plan: string;
+          status: string;
+          price_cents: number;
+          gear_guardian_bps: number;
+          stripe_account_id: string | null;
+          stripe_charges_enabled: boolean;
+        }>`
+          select plan, status, price_cents, gear_guardian_bps, stripe_account_id, stripe_charges_enabled
+          from shop_billing where shop_id = ${shop.id}
+        `;
+        if (b[0]) applyBilling(b[0]);
       }
     }
     shop.acceptsCard = chargesEnabled;
@@ -1406,10 +1483,12 @@ export const getOperatorData = createServerFn({ method: "GET" })
     ]);
 
     const { stripeConfigured } = await import("./payments.server");
+    const { connectStanding } = await import("./merchant-pricing");
     const payments: PaymentSetup = {
       processorReady: stripeConfigured(),
       connected: Boolean(stripeAccountId),
       chargesEnabled,
+      connectStatus: connectStanding({ accountId: stripeAccountId, chargesEnabled }),
     };
     if (mode === "owner") await deliverPendingAudits(shop.id);
     const notices =
@@ -1916,7 +1995,9 @@ export const startCardCheckout = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const booked = await assertBookable(data);
-    if (booked.priceCents <= 0) throw new Error("This service has no card price");
+    const quote = await merchantQuote(booked.shop.slug, booked.serviceName, booked.priceCents);
+    if (quote.collection === "in_person") throw new Error("This visit is paid in person");
+    if (quote.dueNowCents <= 0) throw new Error("This service has no card price");
     const sql = await getSql();
     const billing = await sql<{
       stripe_account_id: string | null;
@@ -1938,7 +2019,7 @@ export const startCardCheckout = createServerFn({ method: "POST" })
           starts_at, status, payment_status, payment_cents
         ) values (
           ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
-          ${booked.phone}, ${booked.email}, ${data.startsAt}, 'pending', 'processing', ${booked.priceCents}
+          ${booked.phone}, ${booked.email}, ${data.startsAt}, 'pending', 'processing', ${quote.dueNowCents}
         )
       `;
     } catch (err) {
@@ -1947,12 +2028,12 @@ export const startCardCheckout = createServerFn({ method: "POST" })
     }
     const { createConnectCheckout, requestOrigin } = await import("./payments.server");
     const origin = requestOrigin();
-    let fee = Math.round((booked.priceCents * Number(billing[0].gear_guardian_bps)) / 10000);
-    if (fee >= booked.priceCents) fee = Math.max(0, booked.priceCents - 50);
+    let fee = Math.round((quote.dueNowCents * Number(billing[0].gear_guardian_bps)) / 10000);
+    if (fee >= quote.dueNowCents) fee = Math.max(0, quote.dueNowCents - 50);
     try {
       const session = await createConnectCheckout({
         destination: account,
-        amountCents: booked.priceCents,
+        amountCents: quote.dueNowCents,
         feeCents: fee,
         serviceName: booked.serviceName,
         shopId: booked.shop.id,
@@ -1968,6 +2049,72 @@ export const startCardCheckout = createServerFn({ method: "POST" })
     }
   });
 
+export const beginCardElements = createServerFn({ method: "POST" })
+  .validator(
+    (d: {
+      slug: string;
+      employeeId: string;
+      serviceId: string;
+      customerName: string;
+      customerPhone: string;
+      customerEmail?: string;
+      startsAt: string;
+    }) => d,
+  )
+  .handler(async ({ data }) => {
+    const booked = await assertBookable(data);
+    const quote = await merchantQuote(booked.shop.slug, booked.serviceName, booked.priceCents);
+    if (quote.collection === "in_person") throw new Error("This visit is paid in person");
+    if (quote.dueNowCents <= 0) throw new Error("This service has no card price");
+    const sql = await getSql();
+    const billing = await sql<{
+      stripe_account_id: string | null;
+      stripe_charges_enabled: boolean;
+      gear_guardian_bps: number;
+    }>`
+      select stripe_account_id, stripe_charges_enabled, gear_guardian_bps
+      from shop_billing where shop_id = ${booked.shop.id}
+    `;
+    const account = billing[0]?.stripe_account_id;
+    if (!account || !isOn(billing[0]?.stripe_charges_enabled)) {
+      throw new Error("This shop is not accepting cards yet");
+    }
+    const { createConnectPaymentIntent, stripePublishableKey } = await import("./payments.server");
+    const publishableKey = stripePublishableKey();
+    if (!publishableKey) throw new Error("Card fields are not configured");
+    const id = newId("apt");
+    try {
+      await sql`
+        insert into appointments (
+          id, shop_id, employee_id, service_id, customer_name, customer_phone, customer_email,
+          starts_at, status, payment_status, payment_cents
+        ) values (
+          ${id}, ${booked.shop.id}, ${data.employeeId}, ${data.serviceId}, ${booked.name},
+          ${booked.phone}, ${booked.email}, ${data.startsAt}, 'pending', 'processing', ${quote.dueNowCents}
+        )
+      `;
+    } catch (err) {
+      if (isSlotTaken(err)) throw new Error("That time was just taken. Please choose another slot.");
+      throw err;
+    }
+    let fee = Math.round((quote.dueNowCents * Number(billing[0].gear_guardian_bps)) / 10000);
+    if (fee >= quote.dueNowCents) fee = Math.max(0, quote.dueNowCents - 50);
+    try {
+      const intent = await createConnectPaymentIntent({
+        destination: account,
+        amountCents: quote.dueNowCents,
+        feeCents: fee,
+        shopId: booked.shop.id,
+        appointmentId: id,
+      });
+      await sql`update appointments set payment_ref = ${intent.id} where id = ${id}`;
+      return { clientSecret: intent.clientSecret, publishableKey, appointmentId: id };
+    } catch (err) {
+      await sql`delete from appointments where id = ${id} and payment_status = 'processing'`;
+      throw err instanceof Error ? err : new Error("Checkout failed");
+    }
+  });
+
 export const confirmCardCheckout = createServerFn({ method: "POST" })
   .validator((d: { slug: string; sessionId: string }) => d)
   .handler(async ({ data }) => {
@@ -1976,6 +2123,18 @@ export const confirmCardCheckout = createServerFn({ method: "POST" })
     if (!shop) throw new Error("Shop not found");
     const { settlePaidSession } = await import("./payments.server");
     const result = await settlePaidSession(data.sessionId);
+    if (result.shopId !== shop.id) throw new Error("Payment does not match this shop");
+    return { appointmentId: result.appointmentId };
+  });
+
+export const confirmCardPayment = createServerFn({ method: "POST" })
+  .validator((d: { slug: string; paymentIntentId: string }) => d)
+  .handler(async ({ data }) => {
+    if (!data.paymentIntentId.startsWith("pi_")) throw new Error("Invalid payment");
+    const shop = await loadShopRow(data.slug);
+    if (!shop) throw new Error("Shop not found");
+    const { settlePaidIntent } = await import("./payments.server");
+    const result = await settlePaidIntent(data.paymentIntentId);
     if (result.shopId !== shop.id) throw new Error("Payment does not match this shop");
     return { appointmentId: result.appointmentId };
   });
@@ -2029,11 +2188,5 @@ export const refreshStripeConnect = createServerFn({ method: "POST" })
     const accountId = billing[0]?.stripe_account_id;
     if (!accountId) return { chargesEnabled: false };
     const { syncConnectAccount } = await import("./payments.server");
-    const synced = await syncConnectAccount(accountId);
-    await sql`
-      update shop_billing
-      set stripe_charges_enabled = ${synced.chargesEnabled}, updated_at = now()
-      where shop_id = ${row.id}
-    `;
-    return synced;
+    return syncConnectAccount(accountId);
   });

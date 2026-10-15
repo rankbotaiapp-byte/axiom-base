@@ -22,7 +22,7 @@ export type NicheFilm = {
 
 /** One source for niche stills and looping hero films. Templates and heroes both read this. */
 export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
-  combat: film("", "/media/heroes/gladiator.mp4", "Round loop · gladiator.mp4", "zoomin", 32, 46, 60),
+  combat: film("", "/media/heroes/tiger-deer.mp4", "Round loop · tiger-deer.mp4", "zoomin", 32, 46, 60),
   fitness: film(
     "/media/tiger-poster.svg",
     "/media/heroes/tiger-deer.mp4",
@@ -35,7 +35,7 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
     { loopUrl: "/media/tiger.mp4" },
   ),
   music: film("/media/music-hero.jpg", "/media/heroes/music-artist.mp4", "Stage loop · music-artist.mp4", "panlr", 24, 62, 68, "stage"),
-  creator: film("", "/media/heroes/contentcreator.mp4", "Edit loop · contentcreator.mp4", "panlr", 28, 44, 60),
+  creator: film("", "/media/heroes/social-media-content-creator.mp4", "Edit loop · social-media-content-creator.mp4", "panlr", 28, 44, 60),
   prompt: film("", "/media/heroes/ai-prompt.mp4", "Prompt loop · ai-prompt.mp4", "kenburns", 26, 36, 58),
   landscaper: film(
     "/media/heroes/landscaping.jpg",
@@ -82,8 +82,8 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
   ),
   hunting: film(
     "/media/heroes/hunting-guide.jpg",
-    "/media/heroes/private-hunting-guide.mp4",
-    "Hunt loop · private-hunting-guide.mp4",
+    "/media/heroes/hunting-guide.mp4.mp4",
+    "Hunt loop · hunting-guide.mp4.mp4",
     "panlr",
     28,
     42,
@@ -227,8 +227,8 @@ const TRADE_SCENES: { test: RegExp; film: NicheFilm }[] = [
     test: /\bhunting\b/i,
     film: film(
       "/media/heroes/hunting-guide.jpg",
-      "/media/heroes/private-hunting-guide.mp4",
-      "Hunt loop · private-hunting-guide.mp4",
+      "/media/heroes/hunting-guide.mp4.mp4",
+      "Hunt loop · hunting-guide.mp4.mp4",
       "panlr",
       28,
       42,
@@ -300,7 +300,40 @@ const TRADE_SCENES: { test: RegExp; film: NicheFilm }[] = [
     ),
   },
   { test: /\b(roof\w*|shingle|gutter)\b/i, film: still("roofing", "Roofing still", "zoomin", 28, 44, 54, "site", "jpg") },
-  { test: /\b(plumb\w*|drain)\b/i, film: still("plumbing", "Plumbing still", "panlr", 30, 40, 58, "site", "jpg") },
+  {
+    test: /\b(plumb\w*|drain)\b/i,
+    film: film(
+      "/media/heroes/plumbing.jpg",
+      "/media/heroes/plumber.mp4.mp4",
+      "Pipe loop · plumber.mp4.mp4",
+      "panlr",
+      30,
+      40,
+      58,
+      "site",
+      { imageUrl: "/media/heroes/plumbing.jpg" },
+    ),
+  },
+  {
+    test: /\bgunsmiths?\b/i,
+    film: film("", "/media/heroes/gunsmith.mp4.mp4", "Bench loop · gunsmith.mp4.mp4", "kenburns", 28, 42, 60),
+  },
+  {
+    test: /\bwildlife photographers?\b/i,
+    film: film("", "/media/heroes/wildlife-photographer.mp4", "Field loop · wildlife-photographer.mp4", "zoomin", 34, 48, 64),
+  },
+  {
+    test: /\bai creation\b/i,
+    film: film(
+      "",
+      "/media/heroes/ai-creation-content-creator.mp4.mp4",
+      "Prompt loop · ai-creation-content-creator.mp4.mp4",
+      "kenburns",
+      26,
+      36,
+      58,
+    ),
+  },
 ];
 
 function film(
@@ -361,8 +394,9 @@ export function leadHeroFor(tradeType: string, businessName: string, category = 
 const PREVIOUS_NICHE_VIDEOS: Partial<Record<ShopNiche, readonly string[]>> = {
   tattoo: ["/media/tattoo-gun.mp4"],
   music: ["/media/music-hero.mp4"],
-  creator: ["/media/heroes/content-creator.mp4"],
-  hunting: ["/media/heroes/deer-hunting-guide.mp4"],
+  combat: ["/media/heroes/gladiator.mp4"],
+  creator: ["/media/heroes/content-creator.mp4", "/media/heroes/contentcreator.mp4"],
+  hunting: ["/media/heroes/deer-hunting-guide.mp4", "/media/heroes/private-hunting-guide.mp4"],
 };
 
 export function cleanCustomNiche(value: string): string {

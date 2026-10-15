@@ -74,7 +74,8 @@ export const Route = createFileRoute("/$shopSlug")({
       if (isNotFound(error)) throw error;
       if (abortController.signal.aborted || isClientAbort(error)) throw notFound();
       console.error(`[shop] failed to load /${params.shopSlug}`, error);
-      throw error;
+      const message = error instanceof Error && error.message ? error.message : "Shop data is temporarily unavailable";
+      throw new Error(message);
     }
   },
   component: ShopLayout,

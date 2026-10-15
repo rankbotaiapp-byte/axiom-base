@@ -72,6 +72,38 @@ const OID_DATE = 1082;
 const OID_INTERVAL = 1186;
 const identity = (v: string) => v;
 
+function transientDbError(err: unknown) {
+  const message = err instanceof Error ? err.message : "";
+  const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "";
+  if (code === "57014" || /statement timeout/i.test(message)) return false;
+  return (
+    code === "ENOTFOUND" ||
+    code === "EAI_AGAIN" ||
+    code === "ECONNRESET" ||
+    code === "ECONNREFUSED" ||
+    code === "ETIMEDOUT" ||
+    code === "08000" ||
+    code === "08003" ||
+    code === "08006" ||
+    code === "57P01" ||
+    /connection terminated|connection timeout|timeout expired|ENOTFOUND|ECONNRESET|EAI_AGAIN/i.test(message)
+  );
+}
+
+async function withDbRetry<T>(run: () => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      last = err;
+      if (!transientDbError(err) || attempt === 2) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw last;
+}
+
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
 
 /** Wrap a query runner in the tagged-template + `.query()` `Sql` surface. */
@@ -120,8 +152,14 @@ function migrationSources(): Record<string, string> {
  */
 async function migratePostgres(): Promise<void> {
   if (!databaseUrl) return;
+  await withDbRetry(() => migratePostgresConnected());
+}
+
+async function migratePostgresConnected(): Promise<void> {
+  if (!databaseUrl) return;
   const { Pool } = await import("pg");
   const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  try {
   const client = await pool.connect();
   try {
     await client.query(
@@ -150,6 +188,8 @@ async function migratePostgres(): Promise<void> {
     }
   } finally {
     client.release();
+  }
+  } finally {
     await pool.end();
   }
 }
@@ -189,10 +229,12 @@ function createNeonSql(): Promise<Sql> {
       });
     });
     globalRef.__pgPool__ = pool;
-    return toSql(async <T>(text: string, params: unknown[]) => {
-      const res = await pool.query(text, params);
-      return res.rows as T[];
-    });
+    return toSql(async <T>(text: string, params: unknown[]) =>
+      withDbRetry(async () => {
+        const res = await pool.query(text, params);
+        return res.rows as T[];
+      }),
+    );
   })().catch((err) => {
     globalRef.__pgSqlPromise__ = undefined;
     throw err;
@@ -305,7 +347,7 @@ export async function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<
     await getSql();
     const pool = globalRef.__pgPool__;
     if (!pool) throw new Error("Postgres pool is not ready");
-    const client = await pool.connect();
+    const client = await withDbRetry(() => pool.connect());
     try {
       await client.query("BEGIN");
       await client.query("SET LOCAL statement_timeout = '120s'");

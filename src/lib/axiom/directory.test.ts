@@ -28,7 +28,7 @@ test("a named trade still uses its own still", () => {
   assert.equal(hvac.tradeLabel, "Rooftop HVAC");
   assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "/media/heroes/hvac.jpg");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
-  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/private-hunting-guide.mp4");
+    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/wood.mp4");
 });

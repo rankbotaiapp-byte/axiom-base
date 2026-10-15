@@ -5,6 +5,7 @@ import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   acceptBooking,
+  beginStripeConnect,
   getOperatorData,
   inviteEmployee,
   refreshStripeConnect,
@@ -33,6 +34,8 @@ import { formatMoney } from "@/lib/utils";
 import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service, Shop, ShopNotice } from "@/lib/axiom/types";
 import { CinematicHero } from "@/components/cinematic-hero";
 import { ProofGalleryManager } from "@/components/proof-gallery";
+import { PaymentGate } from "@/components/payment-gate";
+import { PricingSettings } from "@/components/pricing-settings";
 
 export const Route = createFileRoute("/$shopSlug/admin")({
   validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master" } => {
@@ -144,7 +147,11 @@ function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "settings" | "services" | "brand" | "work" | "team" | "alerts" | "billing">("overview");
+  const [tab, setTab] = useState<"overview" | "settings" | "services" | "pricing" | "brand" | "work" | "team" | "alerts" | "billing">("overview");
+  const [linking, setLinking] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
+  const paymentsLocked =
+    !readonly && !data.platformDesk && data.payments.processorReady && !data.payments.chargesEnabled;
 
   useEffect(() => {
     const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "work" ? "storefront_editor" : "lead_dashboard";
@@ -156,6 +163,7 @@ function AdminShell({
     overview: "Overview",
     settings: "Settings",
     services: copy.menuHeading,
+    pricing: "Pricing",
     brand: "Look",
     work: "Work",
     team: copy.staffStep,
@@ -209,7 +217,7 @@ function AdminShell({
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "settings", "services", "brand", "work", "team", "alerts", "billing"] as const).map((t) => (
+        {(["overview", "settings", "services", "pricing", "brand", "work", "team", "alerts", "billing"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -226,9 +234,9 @@ function AdminShell({
         ))}
       </nav>
 
-      <div className="px-5 py-8 sm:px-8">
+      <div className="relative px-5 py-8 sm:px-8">
         {tab === "overview" ? (
-          <Overview data={data} readonly={readonly} onReload={onReload} />
+          <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
         ) : null}
         {tab === "settings" ? (
           <div className="grid gap-6">
@@ -245,6 +253,7 @@ function AdminShell({
         {tab === "services" ? (
           <ServicesPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
         ) : null}
+        {tab === "pricing" ? <PricingSettings slug={data.shop.slug} readonly={readonly} /> : null}
         {tab === "brand" ? (
           <BrandPanel
             shop={data.shop}
@@ -282,6 +291,25 @@ function AdminShell({
             appointments={data.appointments}
             readonly={readonly}
             onReload={onReload}
+          />
+        ) : null}
+        {paymentsLocked && tab === "overview" ? (
+          <PaymentGate
+            pending={data.payments.connectStatus === "pending"}
+            busy={linking}
+            error={gateError}
+            onLink={() => {
+              setLinking(true);
+              setGateError(null);
+              void beginStripeConnect({ data: data.shop.slug })
+                .then((result) => {
+                  window.location.href = result.url;
+                })
+                .catch((err: unknown) => {
+                  setGateError(err instanceof Error ? err.message : "Could not open Stripe");
+                  setLinking(false);
+                });
+            }}
           />
         ) : null}
       </div>
@@ -350,10 +378,12 @@ function Overview({
   data,
   readonly,
   onReload,
+  paymentsLocked,
 }: {
   data: OpData;
   readonly: boolean;
   onReload: () => void;
+  paymentsLocked: boolean;
 }) {
   const ring = useAxiomRing();
   const pending = data.appointments.filter((a) => a.status === "pending");
@@ -449,7 +479,7 @@ function Overview({
           <ProspectScan
             slug={data.shop.slug}
             city={placeFromCityLine(cityFromAddress(data.shop.address))}
-            disabled={readonly && !data.shop.isShowcase}
+            disabled={paymentsLocked || (readonly && !data.shop.isShowcase)}
           />
         </div>
         <h3 className="mt-8 text-sm font-medium text-muted">Incoming</h3>
@@ -467,6 +497,7 @@ function Overview({
                   <Button
                     className="mt-3"
                     size="sm"
+                    disabled={paymentsLocked}
                     onClick={() => {
                       void (async () => {
                         const result = await acceptBooking({

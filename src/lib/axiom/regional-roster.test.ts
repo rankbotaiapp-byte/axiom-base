@@ -82,7 +82,7 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("HVAC").heroImageUrl, "/media/heroes/hvac.jpg");
   assert.equal(heroFor("Plumbing").heroImageUrl, "/media/heroes/plumbing.jpg");
   assert.equal(heroFor("Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
-  assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/private-hunting-guide.mp4");
+  assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
   assert.equal(heroFor("Physical therapy").heroVideoUrl, "/media/heroes/physicaltherapist.mp4");
   assert.equal(classifyTrade("Physical therapy").tradeType, "therapy");
   assert.equal(classifyTrade("Hunting guide").tradeType, "hunting");

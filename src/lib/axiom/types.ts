@@ -192,6 +192,7 @@ export type PaymentSetup = {
   processorReady: boolean;
   connected: boolean;
   chargesEnabled: boolean;
+  connectStatus: "none" | "pending" | "active";
 };
 
 export type ShopPublic = {

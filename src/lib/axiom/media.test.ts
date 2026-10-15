@@ -10,7 +10,7 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.fitness.heroVideoUrl, "/media/heroes/tiger-deer.mp4");
     assert.equal(NICHE_MEDIA.fitness.insetLoopUrl, "/media/tiger.mp4");
     assert.equal(NICHE_MEDIA.music.heroVideoUrl, "/media/heroes/music-artist.mp4");
-    assert.equal(NICHE_MEDIA.combat.heroVideoUrl, "/media/heroes/gladiator.mp4");
+    assert.equal(NICHE_MEDIA.combat.heroVideoUrl, "/media/heroes/tiger-deer.mp4");
     assert.equal(NICHE_MEDIA.locksmith.heroVideoUrl, "/media/heroes/mobile-locksmith.mp4");
     assert.equal(NICHE_MEDIA.music.tone, "stage");
     assert.equal(NICHE_MEDIA.contractor.heroVideoUrl, "/media/contractor-hero.mp4");
@@ -80,7 +80,7 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.pets.heroVideoUrl, "/media/heroes/petgroom.mp4");
     assert.equal(NICHE_MEDIA.pets.insetImageUrl, "/media/heroes/pets.jpg");
     assert.equal(leadHeroFor("atv-sports-rentals", "Ridge ATV", "ATV sports rentals").heroVideoUrl, "/media/heroes/atv-rental.mp4");
-    assert.equal(NICHE_MEDIA.creator.heroVideoUrl, "/media/heroes/contentcreator.mp4");
+    assert.equal(NICHE_MEDIA.creator.heroVideoUrl, "/media/heroes/social-media-content-creator.mp4");
     assert.equal(NICHE_MEDIA.prompt.heroVideoUrl, "/media/heroes/ai-prompt.mp4");
     assert.equal(NICHE_MEDIA.retail.heroVideoUrl, "/media/heroes/retail.mp4");
     assert.equal(NICHE_MEDIA.landscaper.heroVideoUrl, "/media/heroes/landscaper.mp4");
@@ -116,8 +116,8 @@ describe("niche media", () => {
     assert.equal(leadHeroFor("contractor", "Summit Roofing").heroImageUrl, "/media/heroes/roofing.jpg");
     assert.equal(leadHeroFor("contractor", "Valley Electric").heroImageUrl, "/media/heroes/electrical.jpg");
     assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
-    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/private-hunting-guide.mp4");
-    assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/private-hunting-guide.mp4");
+    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
+    assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
     assert.equal(NICHE_MEDIA.therapy.heroVideoUrl, "/media/heroes/physicaltherapist.mp4");
     assert.equal(NICHE_MEDIA.bowtech.heroVideoUrl, "/media/heroes/custom-bow-tech.mp4");
     const stock = NICHE_MEDIA.trade.heroVideoUrl;
