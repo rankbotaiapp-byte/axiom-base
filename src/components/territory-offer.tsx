@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
-import { CinematicHero, InsetFilm } from "@/components/cinematic-hero";
+import { NicheStorefront, type StorefrontStaff } from "@/components/niche-storefront";
 import { GearGuardianCheckout } from "@/components/gear-guardian-checkout";
 import { Wordmark } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,9 @@ import {
   finishTerritoryCheckout,
   getLeadPreview,
 } from "@/lib/axiom/master";
-import { leadHeroFor } from "@/lib/axiom/media";
-import { nicheCopy, NICHES } from "@/lib/axiom/niches";
+import { leadHeroFor, NICHE_MEDIA, SHARED_STAFF } from "@/lib/axiom/media";
+import { DEFAULT_HOURS, formatOffer, nicheCopy, NICHES } from "@/lib/axiom/niches";
+import { resolveProspectBrand } from "@/lib/axiom/prospect-brand";
 import { TERRITORY_PLANS, type TerritoryPlanId } from "@/lib/axiom/pricing";
 import { isShopNiche } from "@/lib/axiom/types";
 import { formatMoney } from "@/lib/utils";
@@ -38,6 +39,10 @@ export function LeadTerritory({
   trade = "",
   city = "",
   simulate = false,
+  logoUrl = "",
+  accent = "",
+  phone = "",
+  email = "",
 }: {
   leadSlug: string;
   layout: "pitch" | "page";
@@ -47,6 +52,10 @@ export function LeadTerritory({
   trade?: string;
   city?: string;
   simulate?: boolean;
+  logoUrl?: string;
+  accent?: string;
+  phone?: string;
+  email?: string;
 }) {
   const [lead, setLead] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,12 +158,69 @@ export function LeadTerritory({
     />
   );
 
+  const nicheKey = lead && isShopNiche(lead.tradeType) ? lead.tradeType : "trade";
+  const niche = NICHES[nicheKey];
+  const hero = lead ? leadHeroFor(lead.tradeType, lead.businessName, lead.tradeLabel) : NICHE_MEDIA.trade;
+  const brand = resolveProspectBrand({
+    fallbackName: niche.defaultName,
+    fallbackAccent: accent || niche.ringColor,
+    businessName: lead?.businessName || businessName,
+    logoUrl,
+    accent,
+    contactName: lead?.contactName,
+    contactPhone: lead?.contactPhone || phone,
+    contactEmail: lead?.contactEmail || email,
+  });
+  const staff = [0, 1].map((index) => {
+    const person = niche.employees[index];
+    return {
+      key: person?.displayName ?? `staff-${index}`,
+      displayName: person?.displayName ?? (index === 0 ? "Alex Morgan" : "Willa Grant"),
+      title: person?.title ?? "",
+      bio: person?.bio ?? "",
+      avatarUrl: SHARED_STAFF[index],
+    } satisfies StorefrontStaff;
+  }) as [StorefrontStaff, StorefrontStaff];
+  const preview = (
+    <NicheStorefront
+      businessName={brand.businessName}
+      kicker={lead ? [lead.city, niche.label, lead.county].filter(Boolean).join(" · ") : "Territory preview"}
+      tagline={niche.tagline}
+      description={niche.description}
+      address={lead ? [lead.city, lead.county].filter(Boolean).join(" · ") : city}
+      accent={brand.accent}
+      logoUrl={brand.logoUrl}
+      contactName={brand.contactName}
+      contactPhone={brand.contactPhone}
+      contactEmail={brand.contactEmail}
+      services={niche.services.map((service, index) => ({
+        key: `${service.name}-${index}`,
+        name: service.name,
+        description: service.description,
+        price: formatOffer(service),
+        group: service.group,
+      }))}
+      hours={niche.hours ?? DEFAULT_HOURS}
+      staff={staff}
+      heroImageUrl={hero.heroImageUrl}
+      heroVideoUrl={hero.heroVideoUrl || null}
+      blendPercent={hero.heroBlendPercent}
+      introPreset={hero.introPreset}
+      introSpeed={hero.introSpeed}
+      introIntensity={hero.introIntensity}
+      tone={hero.tone ?? null}
+      fallbackImageUrl={NICHE_MEDIA.trade.heroImageUrl}
+      fallbackVideoUrl={NICHE_MEDIA.trade.heroVideoUrl}
+      bookLabel={nicheCopy(niche.niche).bookLabel}
+      bookHref="#territory"
+      header={layout === "pitch" ? <Wordmark /> : undefined}
+    />
+  );
+
   if (!lead && !error) {
     return (
       <>
-        <div className="grid min-h-[40vh] place-items-center">
-          <div className="h-10 w-40 animate-pulse rounded-full bg-fg/10" />
-        </div>
+        {preview}
         {avatar}
       </>
     );
@@ -168,9 +234,7 @@ export function LeadTerritory({
     );
   }
 
-  const hero = leadHeroFor(lead.tradeType, lead.businessName, lead.tradeLabel);
   const known = isShopNiche(lead.tradeType);
-  const niche = isShopNiche(lead.tradeType) ? NICHES[lead.tradeType] : NICHES.trade;
   const tradeName = known ? niche.label : lead.tradeLabel || lead.tradeType.replace(/-/g, " ");
   const services = niche.services.slice(0, 3);
   const copy = nicheCopy(niche.niche);
@@ -329,42 +393,12 @@ export function LeadTerritory({
       </div>
     );
 
-  const film = (
-    <CinematicHero
-      imageUrl={hero.heroImageUrl}
-      videoUrl={hero.heroVideoUrl || null}
-      blendPercent={hero.heroBlendPercent}
-      introPreset={hero.introPreset}
-      introSpeed={hero.introSpeed}
-      introIntensity={hero.introIntensity}
-      tone={hero.tone ?? null}
-    >
-      {layout === "pitch" ? (
-        <header className="flex items-center justify-between px-5 py-5 sm:px-10">
-          <Wordmark />
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Customer view</p>
-        </header>
-      ) : null}
-      <div className="mt-auto px-5 pb-28 pt-24 sm:px-10">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted">
-          {[lead.city, tradeName, lead.county].filter(Boolean).join(" · ")}
-        </p>
-        <h1 className="mt-3 max-w-3xl font-display text-[clamp(3rem,8vw,5.5rem)] leading-[0.92]">{lead.businessName}</h1>
-      </div>
-    </CinematicHero>
-  );
-
   if (layout === "page") {
     return (
       <>
-        {film}
+        {preview}
         <section id="territory" className="px-5 py-16 sm:px-10">
           <div className="mx-auto max-w-xl">
-            {hero.insetImageUrl || hero.insetLoopUrl ? (
-              <div className="mb-8">
-                <InsetFilm imageUrl={hero.insetImageUrl} videoUrl={hero.insetLoopUrl} />
-              </div>
-            ) : null}
             <AuditEcho />
             {customer}
             <div className="mt-10">{offer}</div>
@@ -376,22 +410,17 @@ export function LeadTerritory({
   }
 
   return (
-    <main className="min-h-dvh bg-bg" style={{ ["--neon" as string]: niche.ringColor }}>
+    <main className="min-h-dvh bg-bg">
       <NeonField active />
-      {film}
+      {preview}
       <OutreachWelcomeFilm active />
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:px-10">
-        <section>
-          <p className="mt-4 max-w-xl text-base text-muted sm:text-lg">
+        <section id="territory">
+          <p className="max-w-xl text-base text-muted sm:text-lg">
             {lead.contactName ? `Built for ${lead.contactName}. ` : ""}
-            {known ? niche.tagline : `${tradeName} ${offerModel(niche.niche) === "product" ? "orders" : "bookings"}, on one page.`}
+            {known ? niche.tagline : `${tradeName} bookings, on one page.`}
             {lead.reviewScore != null ? ` ${lead.reviewScore} from ${lead.reviewCount ?? 0} reviews.` : ""}
           </p>
-          {hero.insetImageUrl || hero.insetLoopUrl ? (
-            <div className="mt-8 max-w-xl">
-              <InsetFilm imageUrl={hero.insetImageUrl} videoUrl={hero.insetLoopUrl} />
-            </div>
-          ) : null}
           <p className="mt-6 text-[11px] uppercase tracking-[0.22em] text-muted">
             {live ? "Live production" : "Simulation"}
           </p>

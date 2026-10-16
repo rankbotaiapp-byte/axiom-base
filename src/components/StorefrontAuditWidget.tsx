@@ -1,5 +1,7 @@
 import { useState, type FC, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
+import { HoloCard } from "@/components/holo-card";
+import { StatusRow } from "@/components/status-pill";
 import { presetForShopNiche } from "@/config/nichePresets";
 import { submitClientAudit } from "@/lib/axiom/client-audit";
 
@@ -59,11 +61,13 @@ export const StorefrontAuditWidget: FC<StorefrontAuditWidgetProps> = ({
   };
 
   return (
-    <div className="mx-auto max-w-lg rounded-[24px] bg-surface p-6 text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+    <div className="mx-auto w-full min-w-0 max-w-lg">
+    <HoloCard tilt={false} className="rounded-[24px] bg-surface p-6 text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
       <div className="mb-6">
         <span className="text-[11px] uppercase tracking-[0.2em] text-muted">{preset.label}</span>
         <h3 className="mt-2 font-display text-3xl">{preset.auditTitle}</h3>
         <p className="mt-1 text-sm text-muted">{preset.auditNote}</p>
+        <StatusRow />
       </div>
 
       {step === "form" && (
@@ -164,6 +168,7 @@ export const StorefrontAuditWidget: FC<StorefrontAuditWidgetProps> = ({
           )}
         </div>
       )}
+    </HoloCard>
     </div>
   );
 };

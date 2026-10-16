@@ -104,26 +104,52 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
 ];
-const baseURL = explicitBaseURL ?? {
+// Vite's default port. Host allowlisting is exact (`localhost` does not match
+// `localhost:5173`), so a 5173 request used to fall back to :8080 and the broker
+// rejected the OAuth redirect_uri. Better Auth compares trusted origins, which
+// covers callback paths such as `/api/auth/oauth2/callback/grok-google` and
+// `/api/auth/oauth2/callback/grok-x` without listing each path.
+// Development only — production keeps the fixed BETTER_AUTH_URL.
+const VITE_DEV_ORIGINS: string[] = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://[::1]:5173",
+];
+const isProduction = process.env.NODE_ENV === "production";
+const viteDevHosts: string[] = isProduction
+  ? []
+  : ["localhost:5173", "127.0.0.1:5173", "[::1]:5173"];
+const localTrustedOrigins: string[] = isProduction
+  ? LOCAL_DEV_ORIGINS
+  : [...LOCAL_DEV_ORIGINS, ...VITE_DEV_ORIGINS];
+
+const dynamicBaseURL = {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
-  // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+  // (not only the preview wildcard). Port-qualified 5173 entries are required;
+  // bare hostnames do not match a Host header that includes a port.
+  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]", ...viteDevHosts],
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
-  fallback: "http://localhost:8080",
+  fallback: explicitBaseURL ?? "http://localhost:8080",
 };
+// Production with an explicit public origin stays pinned to that origin.
+// Development resolves the request host against the closed allowlist above so
+// localhost:5173 and 127.0.0.1:5173 mint their own redirect_uri.
+const baseURL = explicitBaseURL && isProduction ? explicitBaseURL : dynamicBaseURL;
 
-// Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
-// Missing entries here surface as FORBIDDEN "Invalid origin".
-const trustedOrigins: string[] = explicitBaseURL
+// Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.)
+// and on callback / redirect URLs. Missing entries surface as FORBIDDEN
+// "Invalid origin" or "Invalid callbackURL".
+const trustedOrigins: string[] = explicitBaseURL && isProduction
   ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
   : [
       // Host wildcards (matched against Origin's host)
       ...previewAllowedHosts,
       // Full-origin wildcards (matched against Origin)
       ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
-      ...LOCAL_DEV_ORIGINS,
+      ...localTrustedOrigins,
+      ...(explicitBaseURL ? [explicitBaseURL] : []),
     ];
 
 const databaseUrl = env("DATABASE_URL");

@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import { HoloCard } from "@/components/holo-card";
+import { Magnetic } from "@/components/magnetic";
+import { Reveal } from "@/components/reveal";
+import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
 import { formatMoney } from "@/lib/utils";
 import type { ShelfItem } from "@/lib/axiom/storefront";
 
@@ -50,52 +54,60 @@ export function ProductShelf({ items }: { items: ShelfItem[] }) {
 
   return (
     <section className="grid min-w-0 gap-6">
-      <div className="lift-card min-w-0 overflow-hidden rounded-[28px] bg-surface/80 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-        <img src={focus.imageUrl} alt="" className="aspect-[4/3] w-full object-cover sm:aspect-[16/9]" />
-        <div className="p-5 sm:p-6">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{focus.attribute}</p>
-          <h2 className="mt-2 break-words font-display text-3xl">{focus.name}</h2>
-          <p className="mt-2 max-w-lg text-sm text-muted">{focus.description}</p>
-        </div>
-      </div>
-      <ul className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-        {items.map((item) => {
+      <Reveal>
+        <HoloCard className="lift-card min-w-0 overflow-hidden rounded-[28px] bg-surface/80 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <img src={focus.imageUrl} alt="" className="aspect-[4/3] w-full object-cover sm:aspect-[16/9]" />
+          <div className="p-5 sm:p-6">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{focus.attribute}</p>
+            <h2 className="mt-2 break-words font-display text-3xl">{focus.name}</h2>
+            <p className="mt-2 max-w-lg text-sm text-muted">{focus.description}</p>
+            <StatusRow />
+          </div>
+        </HoloCard>
+      </Reveal>
+      <Reveal stagger className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+        {items.map((item, index) => {
           const left = stock[item.id] ?? 0;
           const inCart = cart.find((line) => line.id === item.id)?.qty ?? 0;
           const claim = left - inCart === 1;
           return (
-            <li key={item.id} className="lift-card min-w-0 rounded-[24px] bg-surface/80 p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-              <button type="button" onClick={() => setActive(item.id)} className="block w-full text-left">
-                <img src={item.imageUrl} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
-                <p className="mt-3 break-words font-medium">{item.name}</p>
-                <p className="text-sm text-muted">{item.attribute}</p>
-                <p className="mt-1 text-sm text-muted">{left === 0 ? "Sold out" : `${left} in stock`}</p>
-                <p className="mt-2 tabular text-sm">{formatMoney(item.priceCents)}</p>
-              </button>
-              <button
-                type="button"
-                disabled={left - inCart <= 0}
-                onClick={() => add(item, 1)}
-                className="glass-btn mt-3 h-11 w-full rounded-xl px-4 text-sm font-medium disabled:opacity-40"
-              >
-                {left - inCart <= 0 ? "Sold out" : claim ? "Claim item" : "Add to cart"}
-              </button>
-            </li>
+            <div key={item.id} className="min-w-0">
+              <HoloCard className="lift-card h-full min-w-0 rounded-[24px] bg-surface/80 p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <button type="button" onClick={() => setActive(item.id)} className="block w-full text-left">
+                  <img src={item.imageUrl} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
+                  <p className="mt-3 break-words font-medium">{item.name}</p>
+                  <p className="text-sm text-muted">{item.attribute}</p>
+                  <p className="mt-1 text-sm text-muted">{left === 0 ? "Sold out" : `${left} in stock`}</p>
+                  <p className="mt-2 tabular text-sm">{formatMoney(item.priceCents)}</p>
+                </button>
+                <StatusPill tone={toneAt(index)} className="mt-3" />
+                <button
+                  type="button"
+                  disabled={left - inCart <= 0}
+                  onClick={() => add(item, 1)}
+                  className="glass-btn mt-3 h-11 w-full rounded-xl px-4 text-sm font-medium disabled:opacity-40"
+                >
+                  {left - inCart <= 0 ? "Sold out" : claim ? "Claim item" : "Add to cart"}
+                </button>
+              </HoloCard>
+            </div>
           );
         })}
-      </ul>
+      </Reveal>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
           {count === 0 ? "Cart is empty." : `${count} in the cart · ${formatMoney(total)}`}
         </p>
-        <button
-          type="button"
-          disabled={count === 0}
-          onClick={buyNow}
-          className="glass-btn h-12 rounded-xl px-5 text-sm font-medium disabled:opacity-40"
-        >
-          Buy now
-        </button>
+        <Magnetic className="inline-flex">
+          <button
+            type="button"
+            disabled={count === 0}
+            onClick={buyNow}
+            className="glass-btn h-12 rounded-xl px-5 text-sm font-medium disabled:opacity-40"
+          >
+            Buy now
+          </button>
+        </Magnetic>
       </div>
       {order ? <p className="text-sm text-muted">{order}</p> : null}
     </section>

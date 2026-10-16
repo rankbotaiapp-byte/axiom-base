@@ -2,7 +2,7 @@ import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { nicheForLead } from "./directory";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
-import { DEFAULT_HOURS, NICHES, priceUnitsFor } from "./niches";
+import { DEFAULT_HOURS, isPublicNiche, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
 import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
@@ -1040,6 +1040,54 @@ export const setShopIntroHandler = async ({
     introSpeed: speed,
     introIntensity: intensity
   };
+};
+export const setShopNicheHandler = async ({
+  data,
+  context
+}: any) => {
+  const row = await requireOwnerShop(data.slug, context.userId);
+  if (!isPublicNiche(data.niche)) throw new Error("Pick a listed trade");
+  const sql = await getSql();
+  await sql`update shops set niche = ${data.niche} where id = ${row.id}`;
+  return { ok: true as const, niche: data.niche as ShopNiche };
+};
+export const updateEmployeeHandler = async ({
+  data,
+  context
+}: any) => {
+  const row = await requireOwnerShop(data.slug, context.userId);
+  const name = String(data.displayName ?? "").trim();
+  if (name.length < 2 || name.length > 80) throw new Error("Name is required");
+  const title = String(data.title ?? "").trim().slice(0, 80) || "Specialist";
+  const bio = String(data.bio ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 400);
+  const phone = String(data.phone ?? "").trim().slice(0, 40);
+  const sql = await getSql();
+  const updated = await sql<{ id: string }>`
+      update employees
+      set display_name = ${name}, title = ${title}, bio = ${bio}, phone = ${phone}
+      where id = ${data.employeeId} and shop_id = ${row.id}
+      returning id
+    `;
+  if (!updated[0]) throw new Error("Staff not found");
+  return { ok: true as const };
+};
+export const removeEmployeeHandler = async ({
+  data,
+  context
+}: any) => {
+  const row = await requireOwnerShop(data.slug, context.userId);
+  const sql = await getSql();
+  const booked = await sql<{ n: number }>`
+      select count(*)::int as n from appointments
+      where employee_id = ${data.employeeId} and shop_id = ${row.id}
+    `;
+  if ((booked[0]?.n ?? 0) > 0) throw new Error("This person still has appointments");
+  await sql`delete from employee_services where employee_id = ${data.employeeId}`;
+  const removed = await sql<{ id: string }>`
+      delete from employees where id = ${data.employeeId} and shop_id = ${row.id} returning id
+    `;
+  if (!removed[0]) throw new Error("Staff not found");
+  return { ok: true as const };
 };
 export const inviteEmployeeHandler = async ({
   data,

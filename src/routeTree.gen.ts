@@ -26,6 +26,9 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/index'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiBusinessBrandRouteImport } from './routes/api/business.brand'
+import { Route as ApiBusinessBrandsRouteImport } from './routes/api/business.brands'
+import { Route as ApiBusinessPreviewLinksRouteImport } from './routes/api/business.preview-links'
 import { Route as ApiGearGuardianCheckoutRouteImport } from './routes/api/gear-guardian.checkout'
 import { Route as ApiHeroVideoShopIdRouteImport } from './routes/api/hero-video.$shopId'
 import { Route as ApiMasterAutopilotRouteImport } from './routes/api/master.autopilot'
@@ -118,6 +121,21 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBusinessBrandRoute = ApiBusinessBrandRouteImport.update({
+  id: '/api/business/brand',
+  path: '/api/business/brand',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBusinessBrandsRoute = ApiBusinessBrandsRouteImport.update({
+  id: '/api/business/brands',
+  path: '/api/business/brands',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBusinessPreviewLinksRoute = ApiBusinessPreviewLinksRouteImport.update({
+  id: '/api/business/preview-links',
+  path: '/api/business/preview-links',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGearGuardianCheckoutRoute = ApiGearGuardianCheckoutRouteImport.update({
   id: '/api/gear-guardian/checkout',
   path: '/api/gear-guardian/checkout',
@@ -167,6 +185,9 @@ export interface FileRoutesByFullPath {
   '/master-admin/': typeof MasterAdminIndexRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/business/brand': typeof ApiBusinessBrandRoute
+  '/api/business/brands': typeof ApiBusinessBrandsRoute
+  '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
@@ -191,6 +212,9 @@ export interface FileRoutesByTo {
   '/master-admin': typeof MasterAdminIndexRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/business/brand': typeof ApiBusinessBrandRoute
+  '/api/business/brands': typeof ApiBusinessBrandsRoute
+  '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
@@ -217,6 +241,9 @@ export interface FileRoutesById {
   '/master-admin/': typeof MasterAdminIndexRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/business/brand': typeof ApiBusinessBrandRoute
+  '/api/business/brands': typeof ApiBusinessBrandsRoute
+  '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
@@ -244,6 +271,9 @@ export interface FileRouteTypes {
     | '/master-admin/'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
+    | '/api/business/brand'
+    | '/api/business/brands'
+    | '/api/business/preview-links'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
     | '/api/master/autopilot'
@@ -268,6 +298,9 @@ export interface FileRouteTypes {
     | '/master-admin'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
+    | '/api/business/brand'
+    | '/api/business/brands'
+    | '/api/business/preview-links'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
     | '/api/master/autopilot'
@@ -293,6 +326,9 @@ export interface FileRouteTypes {
     | '/master-admin/'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
+    | '/api/business/brand'
+    | '/api/business/brands'
+    | '/api/business/preview-links'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
     | '/api/master/autopilot'
@@ -314,6 +350,9 @@ export interface RootRouteChildren {
   InviteTokenRoute: typeof InviteTokenRoute
   MasterAdminIndexRoute: typeof MasterAdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBusinessBrandRoute: typeof ApiBusinessBrandRoute
+  ApiBusinessBrandsRoute: typeof ApiBusinessBrandsRoute
+  ApiBusinessPreviewLinksRoute: typeof ApiBusinessPreviewLinksRoute
   ApiGearGuardianCheckoutRoute: typeof ApiGearGuardianCheckoutRoute
   ApiHeroVideoShopIdRoute: typeof ApiHeroVideoShopIdRoute
   ApiMasterAutopilotRoute: typeof ApiMasterAutopilotRoute
@@ -443,6 +482,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/business/brand': {
+      id: '/api/business/brand'
+      path: '/api/business/brand'
+      fullPath: '/api/business/brand'
+      preLoaderRoute: typeof ApiBusinessBrandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/business/brands': {
+      id: '/api/business/brands'
+      path: '/api/business/brands'
+      fullPath: '/api/business/brands'
+      preLoaderRoute: typeof ApiBusinessBrandsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/business/preview-links': {
+      id: '/api/business/preview-links'
+      path: '/api/business/preview-links'
+      fullPath: '/api/business/preview-links'
+      preLoaderRoute: typeof ApiBusinessPreviewLinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/gear-guardian/checkout': {
       id: '/api/gear-guardian/checkout'
       path: '/api/gear-guardian/checkout'
@@ -521,6 +581,9 @@ const rootRouteChildren: RootRouteChildren = {
   InviteTokenRoute: InviteTokenRoute,
   MasterAdminIndexRoute: MasterAdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBusinessBrandRoute: ApiBusinessBrandRoute,
+  ApiBusinessBrandsRoute: ApiBusinessBrandsRoute,
+  ApiBusinessPreviewLinksRoute: ApiBusinessPreviewLinksRoute,
   ApiGearGuardianCheckoutRoute: ApiGearGuardianCheckoutRoute,
   ApiHeroVideoShopIdRoute: ApiHeroVideoShopIdRoute,
   ApiMasterAutopilotRoute: ApiMasterAutopilotRoute,

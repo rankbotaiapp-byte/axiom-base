@@ -17,6 +17,7 @@ uniform vec3 uCopper;
 uniform vec3 uBg;
 uniform vec2 uTrail[8];
 uniform float uAge[8];
+uniform float uVel;
 out vec4 outColor;
 
 float hash(vec2 p) {
@@ -61,6 +62,7 @@ void main() {
   color += uCopper * (n2 - 0.5) * 0.06;
   color += uAccent * field * 0.22;
   color += mix(uAccent, uCopper, 0.35) * glow * 0.18;
+  color += uAccent * uVel * 0.22;
   float vig = smoothstep(0.15, 0.95, length(uv - 0.5));
   color = mix(color, uBg, vig * 0.55);
   outColor = vec4(color, 1.0);
@@ -69,7 +71,7 @@ void main() {
 
 const ACCENT: [number, number, number] = [0.18, 0.902, 0.839];
 const COPPER: [number, number, number] = [0.906, 0.706, 0.541];
-const BG: [number, number, number] = [0.031, 0.031, 0.039];
+const BG: [number, number, number] = [0.0196, 0.0196, 0.0275];
 const TRAIL = 8;
 
 function compile(gl: WebGL2RenderingContext, type: number, source: string) {
@@ -154,6 +156,7 @@ export function FluidField() {
     const uBg = gl.getUniformLocation(program, "uBg");
     const uTrail = gl.getUniformLocation(program, "uTrail[0]");
     const uAge = gl.getUniformLocation(program, "uAge[0]");
+    const uVel = gl.getUniformLocation(program, "uVel");
 
     const trail = new Float32Array(TRAIL * 2);
     const age = new Float32Array(TRAIL);
@@ -173,6 +176,8 @@ export function FluidField() {
     let raf = 0;
     let frameCount = 0;
     let dead = false;
+    let vel = 0;
+    let lastScroll = window.scrollY;
 
     const bind = () => {
       gl.useProgram(program);
@@ -207,6 +212,7 @@ export function FluidField() {
       }
       frameCount += 1;
       if (frameCount % 120 === 0) accent = readAccent();
+      vel *= 0.9;
       gl.uniform2f(uRes, canvas.width, canvas.height);
       gl.uniform1f(uTime, now * 0.001);
       gl.uniform2f(uPointer, pointerX, pointerY);
@@ -215,6 +221,7 @@ export function FluidField() {
       gl.uniform3f(uBg, BG[0], BG[1], BG[2]);
       gl.uniform2fv(uTrail, trail);
       gl.uniform1fv(uAge, age);
+      if (uVel) gl.uniform1f(uVel, vel);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
 
@@ -224,6 +231,12 @@ export function FluidField() {
       if (document.hidden) return;
       draw(now);
       raf = requestAnimationFrame(frame);
+    };
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      vel = Math.min(1, Math.abs(y - lastScroll) / 48);
+      lastScroll = y;
     };
 
     const onPointer = (event: PointerEvent) => {
@@ -268,6 +281,7 @@ export function FluidField() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onPointer);
       window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
       observer.disconnect();
     };
@@ -275,6 +289,7 @@ export function FluidField() {
     if (!reduced.matches) {
       window.addEventListener("pointermove", onPointer, { passive: true });
       window.addEventListener("pointerdown", onPointer, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true });
       document.addEventListener("visibilitychange", onVisibility);
       raf = requestAnimationFrame(frame);
     }

@@ -23,6 +23,8 @@ type LeadRow = {
   trade_type: string;
   trade_label: string;
   contact_name: string;
+  contact_phone: string;
+  contact_email: string;
   review_score: unknown;
   review_count: unknown;
   account_mode: string;
@@ -52,7 +54,7 @@ export async function readLeadPreview(leadSlug: string) {
     activated_at: unknown;
   }>`
     select l.business_name, l.city, l.county, l.trade_type, l.trade_label, l.contact_name,
-      l.review_score, l.review_count, l.account_mode,
+      l.contact_phone, l.contact_email, l.review_score, l.review_count, l.account_mode,
       a.plan_id, a.plan_name, a.amount_cents, a.renewal_cents, a.renews_at,
       a.payment_ref, a.created_at as activated_at
     from preloaded_leads l
@@ -70,6 +72,8 @@ export async function readLeadPreview(leadSlug: string) {
     tradeType: row.trade_type,
     tradeLabel: row.trade_label ?? "",
     contactName: row.contact_name ?? "",
+    contactPhone: row.contact_phone ?? "",
+    contactEmail: row.contact_email ?? "",
     reviewScore: num(row.review_score),
     reviewCount: num(row.review_count),
     mode,

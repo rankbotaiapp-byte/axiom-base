@@ -58,7 +58,12 @@ function tone(duration: number, peak: number) {
   return { gain, now };
 }
 
+function motionQuiet() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function playUiClick() {
+  if (motionQuiet()) return;
   const bus = tone(0.07, 0.04);
   if (!bus || !ctx) return;
   const osc = ctx.createOscillator();
@@ -71,6 +76,7 @@ export function playUiClick() {
 }
 
 export function playUiHover() {
+  if (motionQuiet()) return;
   const bus = tone(0.045, 0.018);
   if (!bus || !ctx) return;
   const osc = ctx.createOscillator();

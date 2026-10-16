@@ -81,8 +81,12 @@ function EmployeePage() {
     stationEmployee && personalConfig
       ? effectiveDashboard(stationShop.dashboardOverride, stationShop.dashboardConfig, personalConfig)
       : null;
+  const mine = employee ? appointments.filter((item) => item.employeeId === employee.id) : appointments;
   const stationNotices = notices.filter(
-    (notice) => notice.channel === "inbox" && employee && notice.employeeId === employee.id,
+    (notice) =>
+      notice.channel === "inbox" &&
+      employee &&
+      (notice.employeeId === employee.id || notice.employeeId == null),
   );
   const editorEmployee =
     stationEmployee && personalConfig
@@ -135,7 +139,7 @@ function EmployeePage() {
         <StationProfile
           shopSlug={shop.slug}
           employee={employee}
-          appointments={appointments.filter((item) => item.employeeId === employee.id)}
+          appointments={mine}
           locked={mode === "preview"}
           onAvailability={(availability) => setEmployee({ ...employee, availability })}
         />
@@ -143,10 +147,12 @@ function EmployeePage() {
 
       <section className="mt-10">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Station</p>
-        <h2 className="mt-2 font-display text-3xl">Client notes</h2>
+        <h2 className="mt-2 font-display text-3xl">Customer interactions</h2>
         <ul className="mt-4 grid gap-2">
           {stationNotices.length === 0 ? (
-            <li className="text-sm text-faint">No notices for this station yet.</li>
+            <li className="rounded-2xl bg-surface p-4 text-sm text-faint">
+              No inquiries or booking notes for this station yet. New requests show up here when a customer writes in.
+            </li>
           ) : (
             stationNotices.map((notice) => (
               <li key={notice.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
@@ -159,15 +165,17 @@ function EmployeePage() {
         </ul>
       </section>
 
+      <Pipeline book={mine} />
+
       {layout?.sections.includes("schedule") ? (
       <section className="mt-10">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted">My book</p>
         <h1 className="mt-2 font-display text-4xl">Schedule</h1>
         <ul className="mt-6 divide-y divide-line">
-          {appointments.length === 0 ? (
-            <li className="py-6 text-sm text-faint">No appointments yet.</li>
+          {mine.length === 0 ? (
+            <li className="py-6 text-sm text-faint">No appointments on this station yet.</li>
           ) : (
-            appointments.map((a) => (
+            mine.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-3">
                 <div>
                   <p className="text-sm">{a.serviceName}</p>
@@ -233,6 +241,43 @@ function EmployeePage() {
       {layout?.sections.includes("hours") ? <ShopHours hours={stationShop.hours} /> : null}
       <EmployeeWelcomeFilm shopSlug={shop.slug} personId={user.id} shopName={shop.name} />
     </main>
+  );
+}
+
+function Pipeline({ book }: { book: Appointment[] }) {
+  const columns: { status: Appointment["status"]; label: string; empty: string }[] = [
+    { status: "pending", label: "Incoming", empty: "No requests waiting." },
+    { status: "confirmed", label: "Appointments", empty: "Nothing confirmed." },
+    { status: "completed", label: "Finished", empty: "Nothing finished yet." },
+    { status: "cancelled", label: "Cancelled", empty: "No cancellations." },
+  ];
+  return (
+    <section className="mt-10">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Pipeline</p>
+      <h2 className="mt-2 font-display text-3xl">This station's book</h2>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {columns.map((column) => {
+          const rows = book.filter((item) => item.status === column.status);
+          return (
+            <div key={column.status} className="rounded-2xl bg-surface p-4">
+              <p className="text-xs uppercase tracking-wider text-faint">{column.label}</p>
+              {rows.length === 0 ? (
+                <p className="mt-3 text-sm text-faint">{column.empty}</p>
+              ) : (
+                <ul className="mt-3 grid gap-2">
+                  {rows.map((item) => (
+                    <li key={item.id}>
+                      <p className="text-sm">{item.customerName}</p>
+                      <p className="text-xs text-muted">{item.serviceName}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

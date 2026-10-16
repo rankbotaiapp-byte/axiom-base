@@ -5,6 +5,7 @@ import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
 import { parseGlowEnabled, parseLayout, parseNeonAccent, parseThemeProfile, parseWeek, type LayoutBlock, type WeekKey } from "./storefront";
 import { parseTradeProfile, type TradeProfile } from "./trade-layout";
+import { isPublicNiche } from "./niches";
 import { isShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {
   id: string;
@@ -199,6 +200,40 @@ export const setShopIntro = createServerFn({
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.setShopIntroHandler(ctx);
+});
+export const setShopNiche = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+  niche: string;
+}) => {
+  if (!isPublicNiche(d.niche)) throw new Error("Pick a listed trade");
+  return { slug: String(d.slug ?? ""), niche: d.niche };
+}).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.setShopNicheHandler(ctx);
+});
+export const updateEmployee = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+  employeeId: string;
+  displayName: string;
+  title?: string;
+  bio?: string;
+  phone?: string;
+}) => d).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.updateEmployeeHandler(ctx);
+});
+export const removeEmployee = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+  employeeId: string;
+}) => d).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.removeEmployeeHandler(ctx);
 });
 export const inviteEmployee = createServerFn({
   method: "POST"

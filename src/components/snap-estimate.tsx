@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
+import { HoloCard } from "@/components/holo-card";
+import { Magnetic } from "@/components/magnetic";
+import { Reveal } from "@/components/reveal";
+import { StatusRow } from "@/components/status-pill";
 import { Input, Label } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
 import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
@@ -109,8 +113,10 @@ export function SnapEstimate({
   }, [fileName]);
 
   return (
-    <section className="lift-card rounded-[28px] bg-surface/80 p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] backdrop-blur-md sm:p-6">
+    <Reveal>
+    <HoloCard tilt={false} className="lift-card rounded-[28px] bg-surface/80 p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] backdrop-blur-md sm:p-6">
       <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{profile.kicker}</p>
+      <StatusRow />
       <h2 className="mt-2 font-display text-3xl">{profile.heading}</h2>
       <p className="mt-2 max-w-lg text-sm text-muted">{profile.helper}</p>
       {profile.lanes.length > 0 ? (
@@ -249,9 +255,11 @@ export function SnapEstimate({
                 required
               />
             </div>
-            <button type="submit" disabled={sending} className="glass-btn h-12 rounded-xl px-5 text-sm font-medium">
-              {sending ? "Saving" : channel === "text" ? "Text me this audit report" : "Email me this audit report"}
-            </button>
+            <Magnetic className="inline-flex max-w-full">
+              <button type="submit" disabled={sending} className="glass-btn h-12 rounded-xl px-5 text-sm font-medium">
+                {sending ? "Saving" : channel === "text" ? "Text me this audit report" : "Email me this audit report"}
+              </button>
+            </Magnetic>
             {sendError ? <p className="text-sm text-danger">{sendError}</p> : null}
             {sent ? <p className="text-sm text-muted">{sent}</p> : null}
           </form>
@@ -264,10 +272,13 @@ export function SnapEstimate({
         <p className="mt-3 text-sm text-muted">This menu has no priced lines yet.</p>
       ) : null}
       {bookTo ? (
-        <a href={bookTo} className="glass-btn mt-4 inline-flex h-12 items-center rounded-xl px-5 text-sm font-medium">
-          {bookLabel}
-        </a>
+        <Magnetic className="mt-4 inline-flex">
+          <a href={bookTo} className="glass-btn inline-flex h-12 items-center rounded-xl px-5 text-sm font-medium">
+            {bookLabel}
+          </a>
+        </Magnetic>
       ) : null}
-    </section>
+    </HoloCard>
+    </Reveal>
   );
 }

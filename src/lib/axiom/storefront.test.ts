@@ -51,7 +51,7 @@ test("each niche quotes the way that trade actually sells", () => {
   assert.equal(offerModel("retail"), "product");
   const shelf = shelfFor("retail");
   assert.equal(shelf.length, 3);
-  assert.ok(shelf.every((item) => item.stock > 0 && item.imageUrl.endsWith(".svg")));
+  assert.ok(shelf.every((item) => item.stock > 0 && item.imageUrl === "/media/heroes/retail.svg"));
   assert.equal(shelfFor("salon").length, 0);
 });
 

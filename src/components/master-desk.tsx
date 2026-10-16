@@ -27,7 +27,7 @@ import {
   recordMasterDeskOpen,
 } from "@/lib/axiom/master";
 import { nicheLabel, sortLeads, type LeadSort } from "@/lib/axiom/directory";
-import { NICHE_ORDER, NICHES } from "@/lib/axiom/niches";
+import { NICHE_ORDER, NICHES, PUBLIC_NICHE_ORDER } from "@/lib/axiom/niches";
 import { pitchHref } from "@/lib/axiom/pricing";
 import {
   formatSendSlot,
@@ -1249,7 +1249,7 @@ function BulkIngest() {
 
 function StrategicFunnel() {
   const [businessName, setBusinessName] = useState("");
-  const [niche, setNiche] = useState<string>(NICHE_ORDER[0] ?? "trade");
+  const [niche, setNiche] = useState<string>(PUBLIC_NICHE_ORDER[0] ?? "contractor");
   const [contact, setContact] = useState("");
   const [city, setCity] = useState("");
   const [path, setPath] = useState("");
@@ -1311,7 +1311,7 @@ function StrategicFunnel() {
             className="h-10 rounded-xl bg-surface px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
             aria-label="Niche"
           >
-            {NICHE_ORDER.map((id) => (
+            {PUBLIC_NICHE_ORDER.map((id) => (
               <option key={id} value={id}>
                 {NICHES[id].label}
               </option>
@@ -1481,7 +1481,7 @@ function FunnelTool() {
             aria-label="Category"
           />
           <datalist id="trade-categories">
-            {NICHE_ORDER.map((niche) => (
+            {PUBLIC_NICHE_ORDER.map((niche) => (
               <option key={niche} value={NICHES[niche].label} />
             ))}
           </datalist>

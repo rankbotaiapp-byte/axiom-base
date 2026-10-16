@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { HoloCard } from "@/components/holo-card";
+import { Reveal } from "@/components/reveal";
+import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
 import { defaultProof, GALLERY_LIMIT, isCustomProof, type ProofFrame } from "@/lib/axiom/gallery";
 import { addPortfolioItem, listShopPortfolio, removePortfolioItem } from "@/lib/axiom/server";
 import type { ShopNiche } from "@/lib/axiom/types";
@@ -12,6 +15,7 @@ export function ProofGallery({
   onRemove,
   busy,
   embedded,
+  signal = false,
 }: {
   heading: string;
   frames: ProofFrame[];
@@ -20,52 +24,104 @@ export function ProofGallery({
   onRemove?: (id: string) => void;
   busy?: boolean;
   embedded?: boolean;
+  /** Live pills and tilt for the public gallery. Admin embeds leave this off. */
+  signal?: boolean;
 }) {
   if (frames.length === 0) return null;
-  return (
-    <section className={embedded ? "py-2" : "mx-auto max-w-5xl px-5 py-16 sm:px-10"}>
+  const header = (
+    <>
       <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Proof of work</p>
       <h2 className="mt-2 font-display text-3xl sm:text-4xl">{heading}</h2>
+      {signal ? <StatusRow /> : null}
       {note ? <p className="mt-3 max-w-xl text-sm text-muted">{note}</p> : null}
-      <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {frames.map((frame, index) => {
-          const removeId = removeIds?.[index];
-          return (
-            <li key={removeId ?? `${frame.kind}:${frame.src}:${frame.caption}`}>
-              <figure className="overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-                {frame.kind === "video" ? (
-                  <video
-                    src={frame.src}
-                    className="aspect-[4/3] w-full object-cover"
-                    muted
-                    loop
-                    playsInline
-                    autoPlay
-                    preload="metadata"
-                  />
-                ) : (
-                  <img src={frame.src} alt={frame.caption} className="aspect-[4/3] w-full object-cover" />
-                )}
-                <figcaption className="flex items-center justify-between gap-3 px-4 py-3">
-                  <span className="min-w-0 truncate text-sm text-muted">{frame.caption || "Untitled"}</span>
-                  {removeId && onRemove ? (
-                    <button
-                      type="button"
-                      className="h-11 shrink-0 rounded-xl px-3 text-sm text-muted hover:text-fg"
-                      disabled={busy}
-                      onClick={() => onRemove(removeId)}
-                    >
-                      Remove
-                    </button>
-                  ) : null}
+    </>
+  );
+  const grid = (
+    <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {frames.map((frame, index) => {
+        const removeId = removeIds?.[index];
+        const figure = (
+          <figure>
+            <FrameMedia frame={frame} />
+            <figcaption className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="min-w-0">
+                <span className="block truncate text-sm text-muted">{frame.caption || "Untitled"}</span>
+                {signal ? <StatusPill tone={toneAt(index)} className="mt-2" /> : null}
+              </span>
+              {removeId && onRemove ? (
+                <button
+                  type="button"
+                  className="h-11 shrink-0 rounded-xl px-3 text-sm text-muted hover:text-fg"
+                  disabled={busy}
+                  onClick={() => onRemove(removeId)}
+                >
+                  Remove
+                </button>
+              ) : null}
+            </figcaption>
+          </figure>
+        );
+        return (
+          <li key={removeId ?? `${frame.kind}:${frame.src}:${frame.caption}`} className="min-w-0">
+            {signal ? (
+              <HoloCard className="h-full overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                {figure}
+              </HoloCard>
+            ) : (
+              <div className="overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">{figure}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (!signal || embedded) {
+    return (
+      <section className={embedded ? "py-2" : "mx-auto max-w-5xl px-5 py-16 sm:px-10"}>
+        {header}
+        {grid}
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-auto max-w-5xl px-5 py-16 sm:px-10">
+      <Reveal>{header}</Reveal>
+      <Reveal stagger className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {frames.map((frame, index) => (
+          <div key={`${frame.kind}:${frame.src}:${frame.caption}`} className="min-w-0">
+            <HoloCard className="h-full overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+              <figure>
+                <FrameMedia frame={frame} />
+                <figcaption className="px-4 py-3">
+                  <span className="block truncate text-sm text-muted">{frame.caption || "Untitled"}</span>
+                  <StatusPill tone={toneAt(index)} className="mt-2" />
                 </figcaption>
               </figure>
-            </li>
-          );
-        })}
-      </ul>
+            </HoloCard>
+          </div>
+        ))}
+      </Reveal>
     </section>
   );
+}
+
+function FrameMedia({ frame }: { frame: ProofFrame }) {
+  if (frame.kind === "video") {
+    return (
+      <video
+        src={frame.src}
+        className="aspect-[4/3] w-full object-cover"
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="metadata"
+      />
+    );
+  }
+  return <img src={frame.src} alt={frame.caption} className="aspect-[4/3] w-full object-cover" />;
 }
 
 export function ShopProofGallery({
@@ -108,7 +164,7 @@ export function ShopProofGallery({
     };
   }, [slug, niche]);
 
-  return <ProofGallery heading={heading} frames={frames} />;
+  return <ProofGallery heading={heading} frames={frames} signal />;
 }
 
 export function ProofGalleryManager({

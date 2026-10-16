@@ -10,6 +10,13 @@ type WireEvent = {
   slug: string;
   createdAt: string;
 };
+/** Read-only outreach settings. Does not drain the queue or send. */
+export const readOutreachDesk = createServerFn({
+  method: "GET"
+}).middleware([masterAccessMiddleware]).handler(async () => {
+  const queue = await import("./outreach-queue.server");
+  return queue.readOutreachConfig();
+});
 export const masterGate = createServerFn({
   method: "GET"
 }).middleware([masterAccessMiddleware]).handler(async (ctx: any) => {

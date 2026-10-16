@@ -1,3 +1,5 @@
+import { sanitizeAccent, sanitizeContactLine, sanitizeLogoUrl } from "./prospect-brand.ts";
+
 /** Saved on the visitor's browser until onboarding claims the business. */
 export const LEAD_STORAGE_KEY = "axiom.lead";
 
@@ -22,6 +24,10 @@ export type FunnelSearch = {
   biz?: string;
   trade?: string;
   city?: string;
+  logo?: string;
+  accent?: string;
+  phone?: string;
+  email?: string;
 };
 
 function clip(value: unknown, max: number): string {
@@ -70,6 +76,10 @@ export function parseFunnelSearch(source: Record<string, unknown>): FunnelSearch
     ...(clip(source.biz, 80) ? { biz: clip(source.biz, 80) } : {}),
     ...(clip(source.trade, 80) ? { trade: clip(source.trade, 80) } : {}),
     ...(clip(source.city, 80) ? { city: clip(source.city, 80) } : {}),
+    ...(sanitizeLogoUrl(source.logo) ? { logo: sanitizeLogoUrl(source.logo) } : {}),
+    ...(sanitizeAccent(source.accent) ? { accent: sanitizeAccent(source.accent) } : {}),
+    ...(sanitizeContactLine(source.phone, 40) ? { phone: sanitizeContactLine(source.phone, 40) } : {}),
+    ...(sanitizeContactLine(source.email, 120) ? { email: sanitizeContactLine(source.email, 120) } : {}),
     ...(/^cs_[A-Za-z0-9_]+$/.test(clip(source.session_id, 80))
       ? { session_id: clip(source.session_id, 80) }
       : {}),
