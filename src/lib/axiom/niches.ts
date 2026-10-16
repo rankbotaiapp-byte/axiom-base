@@ -1,6 +1,6 @@
 import type { IntroPreset } from "./intro";
 import { defaultUnit, unitsForTemplate } from "./menu";
-import { NICHE_MEDIA } from "./media";
+import { NICHE_MEDIA, SHARED_STAFF } from "./media";
 import { SHOP_NICHES, type PriceUnit, type Service, type ShopNiche } from "./types";
 import { formatMoney } from "@/lib/utils";
 
@@ -57,8 +57,41 @@ export const RING_PRESETS = [
 /** Every built-in key, including the open `trade` template custom titles are stored on. */
 export const NICHE_ORDER: ShopNiche[] = [...SHOP_NICHES];
 
-/** The public picker. Custom niche already covers an unlisted trade, so `trade` is not a second card. */
-export const PUBLIC_NICHE_ORDER: ShopNiche[] = NICHE_ORDER.filter((niche) => niche !== "trade");
+/**
+ * Public catalog: local businesses that book appointments, capture clients, or dispatch a visit.
+ * Legacy keys stay on `SHOP_NICHES` so existing shops still load. They render the trade film.
+ */
+export const PUBLIC_NICHE_ORDER: ShopNiche[] = [
+  "fitness",
+  "wellness",
+  "lessons",
+  "salon",
+  "beauty",
+  "tattoo",
+  "photo",
+  "pets",
+  "landscaper",
+  "dogwalk",
+  "detailer",
+  "therapy",
+  "contractor",
+  "clean",
+  "field",
+  "locksmith",
+  "firewood",
+  "security",
+  "practice",
+  "counsel",
+  "location",
+  "hunting",
+  "creator",
+];
+
+export type PublicNiche = (typeof PUBLIC_NICHE_ORDER)[number];
+
+export function isPublicNiche(value: string): value is PublicNiche {
+  return (PUBLIC_NICHE_ORDER as readonly string[]).includes(value);
+}
 
 export const NICHES: Record<ShopNiche, NicheTemplate> = {
   guide: {
@@ -139,7 +172,7 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         serviceIndexes: [0, 2],
       },
     ],
-    portfolio: [{ employeeIndex: 0, imageUrl: "/media/rafting-image.png", caption: "The line" }],
+    portfolio: [],
   },
   fitness: {
     niche: "fitness",
@@ -277,22 +310,18 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         displayName: "Mara Quinn",
         title: "Artist",
         bio: "Writes in the booth and holds the room when the lights drop.",
-        avatarUrl: "/media/music-mara.jpg",
+        avatarUrl: "",
         serviceIndexes: [0, 2, 3, 4],
       },
       {
         displayName: "Ellis Ward",
         title: "Engineer",
         bio: "Runs the desk. The mix comes back before you leave the block.",
-        avatarUrl: "/media/music-ellis.jpg",
+        avatarUrl: "",
         serviceIndexes: [1, 2],
       },
     ],
-    portfolio: [
-      { employeeIndex: 0, imageUrl: "/media/music-work-2.jpg", caption: "The room" },
-      { employeeIndex: 0, imageUrl: "/media/music-hero.jpg", caption: "Night set" },
-      { employeeIndex: 1, imageUrl: "/media/music-work-1.jpg", caption: "Booth" },
-    ],
+    portfolio: [],
   },
   contractor: {
     niche: "contractor",
@@ -356,22 +385,18 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         displayName: "Lena Cho",
         title: "General contractor",
         bio: "Scopes the job in plain language, then stays on it until the punch list is short.",
-        avatarUrl: "/media/contractor-lead.jpg",
+        avatarUrl: "",
         serviceIndexes: [0, 1, 3],
       },
       {
         displayName: "Owen Briggs",
         title: "Lead carpenter",
         bio: "Cabinets, stairs, and the repairs that should have been done last year.",
-        avatarUrl: "/media/contractor-crew.jpg",
+        avatarUrl: "",
         serviceIndexes: [2, 3],
       },
     ],
-    portfolio: [
-      { employeeIndex: 0, imageUrl: "/media/contractor-work-1.jpg", caption: "Kitchen" },
-      { employeeIndex: 0, imageUrl: "/media/contractor-hero.jpg", caption: "Start day" },
-      { employeeIndex: 1, imageUrl: "/media/contractor-work-2.jpg", caption: "Front stair" },
-    ],
+    portfolio: [],
   },
   tattoo: {
     niche: "tattoo",
@@ -475,22 +500,18 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         displayName: "Jordan Hale",
         title: "Lead barber",
         bio: "Fades and classic tapers. Calm chair, sharp lines.",
-        avatarUrl: "/media/sal.jpg",
+        avatarUrl: "",
         serviceIndexes: [0, 1, 2],
       },
       {
         displayName: "Reese Quinn",
         title: "Barber",
         bio: "Texture and finishes. The haircut you forget you have — in a good way.",
-        avatarUrl: "/media/marco.jpg",
+        avatarUrl: "",
         serviceIndexes: [0, 1],
       },
     ],
-    portfolio: [
-      { employeeIndex: 0, imageUrl: "/media/barber-work-1.jpg", caption: "House fade" },
-      { employeeIndex: 0, imageUrl: "/media/barber-work-2.jpg", caption: "Shave" },
-      { employeeIndex: 1, imageUrl: "/media/barber-work-1.jpg", caption: "Crop" },
-    ],
+    portfolio: [],
   },
   field: {
     niche: "field",
@@ -537,22 +558,18 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         displayName: "Chris Dalton",
         title: "Lead technician",
         bio: "Drivability and brakes. Listens to the engine — and to you.",
-        avatarUrl: "/media/dana.jpg",
+        avatarUrl: "",
         serviceIndexes: [0, 2],
       },
       {
         displayName: "Avery Knox",
         title: "Mobile tech",
         bio: "The van is a rolling bay. Fast on the jobs that should not need a tow.",
-        avatarUrl: "/media/gabe.jpg",
+        avatarUrl: "",
         serviceIndexes: [0, 1],
       },
     ],
-    portfolio: [
-      { employeeIndex: 0, imageUrl: "/media/auto-work-1.jpg", caption: "Brake job" },
-      { employeeIndex: 0, imageUrl: "/media/auto-work-2.jpg", caption: "Bay work" },
-      { employeeIndex: 1, imageUrl: "/media/auto-work-1.jpg", caption: "Curb-side" },
-    ],
+    portfolio: [],
   },
   studio: {
     niche: "studio",
@@ -606,16 +623,12 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
         displayName: "Eric",
         title: "Founder",
         bio: "Builds the shop you can book. New Era Apps, powered by Axiom.",
-        avatarUrl: "/media/eric.jpg",
+        avatarUrl: "",
         phone: "5418908126",
         serviceIndexes: [0, 1, 2, 3],
       },
     ],
-    portfolio: [
-      { employeeIndex: 0, imageUrl: "/media/apps-work-1.jpg", caption: "The ring" },
-      { employeeIndex: 0, imageUrl: "/media/apps-work-2.jpg", caption: "Operator console" },
-      { employeeIndex: 0, imageUrl: "/media/apps-hero.jpg", caption: "Studio" },
-    ],
+    portfolio: [],
   },
   salon: bookable({
     niche: "salon",
@@ -975,7 +988,7 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
   }),
   hunting: bookable({
     niche: "hunting",
-    label: "Private hunting guide",
+    label: "Rugged Backcountry Services",
     kicker: "They book the hunt",
     blurb: "A private day, a half day, or a scouting walk. The gate opens when you book it.",
     defaultName: "Ridge Line",
@@ -1080,7 +1093,7 @@ export const NICHES: Record<ShopNiche, NicheTemplate> = {
   }),
   creator: bookable({
     niche: "creator",
-    label: "Content creator",
+    label: "Cinematic Video and Content Creator",
     kicker: "They book the edit",
     blurb: "A shoot, a cut, or a video that is ready to post.",
     defaultName: "Frame Desk",
@@ -1185,8 +1198,32 @@ function bookable(input: {
     introPreset: NICHE_MEDIA[input.niche].introPreset,
     introSpeed: NICHE_MEDIA[input.niche].introSpeed,
     introIntensity: NICHE_MEDIA[input.niche].introIntensity,
+    employees: withSharedStaff(input.employees),
     portfolio: [],
   };
+}
+
+function withSharedStaff(employees: NicheTemplate["employees"]): NicheTemplate["employees"] {
+  const next = employees.slice(0, 2).map((person, index) => ({
+    ...person,
+    avatarUrl: SHARED_STAFF[index] ?? SHARED_STAFF[0],
+  }));
+  while (next.length < 2) {
+    const index = next.length;
+    next.push({
+      displayName: index === 0 ? "Alex Morgan" : "Willa Grant",
+      title: index === 0 ? "Lead" : "Crew",
+      bio: "On the book for this shop.",
+      avatarUrl: SHARED_STAFF[index] ?? SHARED_STAFF[0],
+      serviceIndexes: employees[0]?.serviceIndexes ?? [0],
+    });
+  }
+  return next;
+}
+
+for (const key of NICHE_ORDER) {
+  NICHES[key].employees = withSharedStaff(NICHES[key].employees);
+  NICHES[key].portfolio = [];
 }
 
 export const DEFAULT_HOURS: Record<string, string> = {

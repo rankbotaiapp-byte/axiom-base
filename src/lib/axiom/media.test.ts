@@ -6,20 +6,20 @@ import { SHOP_NICHES } from "./types.ts";
 import { isNotifyEmail, toE164 } from "./notify-target.ts";
 
 describe("niche media", () => {
-  it("maps each niche to its own loop", () => {
+  it("maps curated niches to one film and legacy niches to the trade film", () => {
     assert.equal(NICHE_MEDIA.fitness.heroVideoUrl, "/media/heroes/tiger-deer.mp4");
-    assert.equal(NICHE_MEDIA.fitness.insetLoopUrl, "/media/tiger.mp4");
-    assert.equal(NICHE_MEDIA.music.heroVideoUrl, "/media/heroes/music-artist.mp4");
-    assert.equal(NICHE_MEDIA.combat.heroVideoUrl, "/media/heroes/tiger-deer.mp4");
+    assert.equal(NICHE_MEDIA.fitness.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.locksmith.heroVideoUrl, "/media/heroes/mobile-locksmith.mp4");
-    assert.equal(NICHE_MEDIA.music.tone, "stage");
     assert.equal(NICHE_MEDIA.contractor.heroVideoUrl, "/media/contractor-hero.mp4");
     assert.equal(NICHE_MEDIA.contractor.tone, "site");
-    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/clipper.mp4");
+    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/barber-hero.mp4");
     assert.equal(NICHE_MEDIA.tattoo.heroVideoUrl, "/media/heroes/tattooshop.mp4");
-    assert.equal(NICHE_MEDIA.tattoo.insetLoopUrl, "/media/tattoo-gun.mp4");
+    assert.equal(NICHE_MEDIA.tattoo.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.field.heroVideoUrl, "/media/auto-hero.mp4");
-    assert.equal(NICHE_MEDIA.studio.heroVideoUrl, "/media/apps-hero.mp4");
+    assert.equal(NICHE_MEDIA.music.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.studio.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.retail.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.deepEqual(NICHE_MEDIA.fitness.staff, ["/media/alex-morgan.jpg", "/media/willa-grant.jpg"]);
   });
 
   it("hides the niche loop when the owner uploads a still", () => {
@@ -49,13 +49,13 @@ describe("niche media", () => {
       heroVideoUrl: "/api/hero-video/shop_abc?v=2",
     });
     assert.equal(media.videoUrl, "/api/hero-video/shop_abc?v=2");
-    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/clipper.mp4");
+    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/barber-hero.mp4");
   });
 
   it("uses the tiger-deer film when a fitness shop has no custom film", () => {
     const media = resolveHeroMedia({
       niche: "fitness",
-      heroImageUrl: "/media/tiger-poster.svg",
+      heroImageUrl: "",
       heroVideoUrl: null,
     });
     assert.equal(media.videoUrl, "/media/heroes/tiger-deer.mp4");
@@ -67,27 +67,26 @@ describe("niche media", () => {
       const media = NICHE_MEDIA[niche];
       assert.ok(media.heroImageUrl || media.heroVideoUrl, niche);
     }
-    assert.equal(leadHeroFor("wellness", "Bear Creek Bodywork").heroImageUrl, "/media/heroes/wellness.jpg");
+    assert.equal(leadHeroFor("wellness", "Bear Creek Bodywork").heroImageUrl, "");
     assert.equal(leadHeroFor("wellness", "Bear Creek Bodywork").heroVideoUrl, "/media/heroes/wellness.mp4");
     assert.equal(leadHeroFor("wellness", "Bear Creek Bodywork").introPreset, "fade");
-    assert.equal(NICHE_MEDIA.beauty.heroImageUrl, "/media/heroes/beauty.jpg");
+    assert.equal(NICHE_MEDIA.beauty.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.beauty.heroVideoUrl, "/media/heroes/nails-lashes.mp4");
-    assert.equal(NICHE_MEDIA.beauty.insetImageUrl, "/media/heroes/beauty.jpg");
-    assert.equal(NICHE_MEDIA.lessons.heroImageUrl, "/media/heroes/lessons.jpg");
+    assert.equal(NICHE_MEDIA.lessons.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.lessons.heroVideoUrl, "/media/heroes/lessons.mp4");
-    assert.equal(NICHE_MEDIA.lessons.insetImageUrl, "/media/heroes/lessons.jpg");
-    assert.equal(NICHE_MEDIA.pets.heroImageUrl, "/media/heroes/pets.jpg");
+    assert.equal(NICHE_MEDIA.pets.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.pets.heroVideoUrl, "/media/heroes/petgroom.mp4");
-    assert.equal(NICHE_MEDIA.pets.insetImageUrl, "/media/heroes/pets.jpg");
-    assert.equal(leadHeroFor("atv-sports-rentals", "Ridge ATV", "ATV sports rentals").heroVideoUrl, "/media/heroes/atv-rental.mp4");
-    assert.equal(NICHE_MEDIA.creator.heroVideoUrl, "/media/heroes/social-media-content-creator.mp4");
-    assert.equal(NICHE_MEDIA.prompt.heroVideoUrl, "/media/heroes/ai-prompt.mp4");
-    assert.equal(NICHE_MEDIA.retail.heroVideoUrl, "/media/heroes/retail.mp4");
+    assert.equal(leadHeroFor("atv-sports-rentals", "Ridge ATV", "ATV sports rentals").heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.creator.heroVideoUrl, "/media/heroes/leopard.mp4");
+    assert.equal(NICHE_MEDIA.creator.tone, "cinema");
+    assert.equal(NICHE_MEDIA.prompt.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.prompt.heroImageUrl, "");
+    assert.equal(NICHE_MEDIA.retail.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     assert.equal(NICHE_MEDIA.landscaper.heroVideoUrl, "/media/heroes/landscaper.mp4");
-    assert.equal(NICHE_MEDIA.foodtruck.heroVideoUrl, "/media/heroes/mobile-foodtruck.mp4");
+    assert.equal(NICHE_MEDIA.foodtruck.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     assert.equal(NICHE_MEDIA.dogwalk.heroVideoUrl, "/media/heroes/dogwalking.mp4");
     assert.equal(NICHE_MEDIA.detailer.heroVideoUrl, "/media/heroes/mobile-detailer.mp4");
-    assert.equal(NICHE_MEDIA.entertainer.heroVideoUrl, "/media/heroes/entertainer.mp4");
+    assert.equal(NICHE_MEDIA.entertainer.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     const tattoo = resolveHeroMedia({
       niche: "tattoo",
       heroImageUrl: "",
@@ -99,27 +98,28 @@ describe("niche media", () => {
       heroImageUrl: "/media/music-hero.jpg",
       heroVideoUrl: "/media/music-hero.mp4",
     });
-    assert.equal(music.videoUrl, "/media/heroes/music-artist.mp4");
-    assert.equal(NICHE_MEDIA.clean.heroImageUrl, "/media/heroes/clean.jpg");
+    assert.equal(music.videoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.clean.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.clean.heroVideoUrl, "/media/heroes/clean.mp4");
-    assert.equal(NICHE_MEDIA.counsel.heroImageUrl, "/media/heroes/counsel.jpg");
+    assert.equal(NICHE_MEDIA.counsel.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.counsel.heroVideoUrl, "/media/heroes/counsel.mp4");
-    assert.equal(NICHE_MEDIA.salon.heroImageUrl, "/media/heroes/salon.jpg");
+    assert.equal(NICHE_MEDIA.salon.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.salon.heroVideoUrl, "/media/heroes/salon.mp4");
-    assert.equal(NICHE_MEDIA.events.heroImageUrl, "/media/heroes/events.jpg");
-    assert.equal(NICHE_MEDIA.events.heroVideoUrl, "/media/heroes/events.mp4");
-    assert.equal(NICHE_MEDIA.events.tone, "stage");
-    assert.equal(NICHE_MEDIA.guide.heroVideoUrl, "/media/heroes/guide.mp4");
+    assert.equal(NICHE_MEDIA.events.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.guide.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     assert.equal(NICHE_MEDIA.photo.heroVideoUrl, "/media/heroes/photo.mp4");
-    assert.equal(leadHeroFor("field", "Rogue HVAC").heroImageUrl, "/media/heroes/hvac.jpg");
+    assert.equal(leadHeroFor("field", "Rogue HVAC").heroVideoUrl, "/media/contractor-hero.mp4");
+    assert.equal(leadHeroFor("field", "Rogue HVAC").heroImageUrl, "");
     assert.equal(NICHE_MEDIA.practice.heroImageUrl, "/media/heroes/practice.jpg");
-    assert.equal(leadHeroFor("contractor", "Summit Roofing").heroImageUrl, "/media/heroes/roofing.jpg");
-    assert.equal(leadHeroFor("contractor", "Valley Electric").heroImageUrl, "/media/heroes/electrical.jpg");
-    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
-    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
-    assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
+    assert.equal(NICHE_MEDIA.practice.heroVideoUrl, "");
+    assert.equal(leadHeroFor("contractor", "Summit Roofing").heroVideoUrl, "/media/contractor-hero.mp4");
+    assert.equal(leadHeroFor("contractor", "Valley Electric").heroVideoUrl, "/media/contractor-hero.mp4");
+    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "");
+    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/charging-bear.mp4");
+    assert.equal(NICHE_MEDIA.hunting.tone, "backcountry");
     assert.equal(NICHE_MEDIA.therapy.heroVideoUrl, "/media/heroes/physicaltherapist.mp4");
-    assert.equal(NICHE_MEDIA.bowtech.heroVideoUrl, "/media/heroes/custom-bow-tech.mp4");
+    assert.equal(NICHE_MEDIA.bowtech.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     const stock = NICHE_MEDIA.trade.heroVideoUrl;
     assert.equal(heroForCustomNiche("Watchmaker").heroVideoUrl, stock);
     assert.equal(heroForCustomNiche("Landscaper").heroVideoUrl, "/media/heroes/landscaper.mp4");
@@ -141,19 +141,17 @@ describe("niche media", () => {
     assert.equal(uploaded.loopLabel, "Custom loop · this shop");
     assert.equal(NICHE_MEDIA.trade.heroVideoUrl, stock);
     assert.equal(heroVideoPath("shop_abc", 3).includes("/media/"), false);
-    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").insetImageUrl, "/media/heroes/hunting-guide.jpg");
     assert.equal(NICHE_MEDIA.trade.heroVideoUrl, "/media/heroes/welding-trade.mp4");
-    assert.equal(NICHE_MEDIA.trade.insetImageUrl, "/media/heroes/trade.jpg");
+    assert.equal(NICHE_MEDIA.trade.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.security.heroVideoUrl, "/media/heroes/private-security.mp4");
-    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
+    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "");
     assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/wood.mp4");
     assert.equal(NICHE_MEDIA.firewood.heroVideoUrl, "/media/heroes/wood.mp4");
-    assert.equal(NICHE_MEDIA.contractor.heroImageUrl, "/media/heroes/contractor.jpg");
-    assert.equal(leadHeroFor("field", "Oak Lawn Care").heroImageUrl, "/media/heroes/landscaping.jpg");
+    assert.equal(NICHE_MEDIA.contractor.heroImageUrl, "");
+    assert.equal(leadHeroFor("field", "Oak Lawn Care").heroImageUrl, "");
     assert.equal(leadHeroFor("field", "Oak Lawn Care").heroVideoUrl, "/media/heroes/landscaper.mp4");
-    assert.equal(leadHeroFor("food-truck", "Urban Eats", "Mobile food truck").heroImageUrl, "/media/heroes/food-truck.jpg");
-    assert.equal(leadHeroFor("food-truck", "Urban Eats", "Mobile food truck").heroVideoUrl, "/media/heroes/mobile-foodtruck.mp4");
-    assert.equal(leadHeroFor("trade", "Main Street Plumbing").heroImageUrl, "/media/heroes/plumbing.jpg");
+    assert.equal(leadHeroFor("food-truck", "Urban Eats", "Mobile food truck").heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
+    assert.equal(leadHeroFor("trade", "Main Street Plumbing").heroVideoUrl, "/media/contractor-hero.mp4");
     assert.equal(leadHeroFor("field", "Curb Call Rogue").heroVideoUrl, "/media/auto-hero.mp4");
   });
 
@@ -163,7 +161,7 @@ describe("niche media", () => {
       heroImageUrl: "/media/apps-hero.jpg",
       heroVideoUrl: null,
     });
-    assert.equal(media.videoUrl, "/media/apps-hero.mp4");
+    assert.equal(media.videoUrl, NICHE_MEDIA.trade.heroVideoUrl);
   });
 });
 

@@ -34,13 +34,13 @@ test("connect standing and card quotes fall back when a merchant price is absent
   assert.equal(dueNowCents(null, 12900), 12900);
 
   const payments = readFileSync(new URL("./payments.server.ts", import.meta.url), "utf8");
-  const server = readFileSync(new URL("./server.ts", import.meta.url), "utf8");
+  const shopServer = readFileSync(new URL("./shop-server.server.ts", import.meta.url), "utf8");
   const pricing = readFileSync(new URL("./merchant-pricing.server.ts", import.meta.url), "utf8");
   assert.match(payments, /stripe_connect_status/);
   assert.match(payments, /set stripe_account_id = \$\{accountId\}, updated_at = now\(\)/);
   assert.match(payments, /set stripe_charges_enabled = \$\{chargesEnabled\}, updated_at = now\(\)/);
-  assert.match(server, /from merchant_pricing_settings/);
-  assert.match(server, /merchant_pricing_settings\|collection_mode\|does not exist/);
+  assert.match(shopServer, /from merchant_pricing_settings/);
+  assert.match(shopServer, /merchant_pricing_settings\|collection_mode\|does not exist/);
   assert.match(pricing, /merchant_pricing_settings\|collection_mode\|does not exist/);
 });
 

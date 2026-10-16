@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { motion, useMotionValue, useScroll } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -50,6 +50,7 @@ export function CinematicHero({
   const [videoSrc, setVideoSrc] = useState(videoUrl ?? "");
   const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
+  const featherId = useId().replace(/:/g, "");
   /**
    * Progress is 0 while the hero's top is at the top of the viewport and 1
    * when its bottom reaches that edge. Touch scrolling updates the same value.
@@ -160,12 +161,12 @@ export function CinematicHero({
             animate={{ scale: 1.06 }}
             transition={animate ? { duration: 2.4, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
           >
-            <img src={imageSrc} alt="" className="hero-plate absolute inset-0 h-full w-full" />
+            <img src={imageSrc} alt="" className="hero-plate pointer-events-none absolute inset-0 h-full w-full" />
           </motion.div>
         ) : null}
         {/* Sharp film opens inside the plate, then rests at full frame so the picture is not cropped. */}
         <motion.div
-          className={cn("absolute inset-0 origin-center", depthOn && "will-change-transform")}
+          className={cn("hero-sharp absolute inset-0 origin-center", depthOn && "will-change-transform")}
           style={{ y: backgroundY }}
           initial={animate ? { scale: 0.82 } : { scale: 1 }}
           animate={{ scale: 1 }}
@@ -173,7 +174,7 @@ export function CinematicHero({
         >
           <motion.div
             key={`${imageSrc}-${videoSrc}-${preset}-${replayKey ?? "0"}`}
-            className="absolute inset-0 origin-center"
+            className="hero-sharp absolute inset-0 origin-center"
             initial={animate ? motionProps.initial : { scale: 1, x: "0%", y: "0%", opacity: 1 }}
             animate={motionProps.animate}
             transition={
@@ -182,11 +183,12 @@ export function CinematicHero({
                 : { duration: 0 }
             }
           >
+            <div className="hero-subject absolute inset-0">
             {imageSrc ? (
               <img
                 src={imageSrc}
                 alt=""
-                className="hero-frame absolute inset-0 h-full w-full outline-none"
+                className="hero-frame pointer-events-none absolute inset-0 h-full w-full outline-none"
                 onError={() => {
                   if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
                     setImageSrc(fallbackImageUrl);
@@ -199,7 +201,7 @@ export function CinematicHero({
             {videoSrc && videoOk ? (
               <video
                 ref={videoRef}
-                className="hero-frame absolute inset-0 z-[1] h-full w-full"
+                className="hero-frame pointer-events-none absolute inset-0 z-[1] h-full w-full"
                 src={videoSrc}
                 autoPlay
                 loop
@@ -216,6 +218,7 @@ export function CinematicHero({
                 }}
               />
             ) : null}
+            </div>
           </motion.div>
         </motion.div>
         {reduced ? null : (
@@ -235,6 +238,8 @@ export function CinematicHero({
               depthOn && "will-change-transform",
               tone === "stage" && "hero-stage",
               tone === "site" && "hero-site",
+              tone === "backcountry" && "hero-grade-backcountry",
+              tone === "cinema" && "hero-grade-cinema",
             )}
             style={{ y: washY }}
           />
@@ -247,19 +252,31 @@ export function CinematicHero({
           )}
           style={{ y: lightY }}
         />
+        <div aria-hidden className="hero-scan pointer-events-none absolute inset-0 z-[4]" />
+        <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full" aria-hidden>
+          <defs>
+            <radialGradient id={featherId} cx="50%" cy="42%" r="72%">
+              <stop offset="0%" stopColor="#050507" stopOpacity="0" />
+              <stop offset="40%" stopColor="#050507" stopOpacity="0" />
+              <stop offset="62%" stopColor="#050507" stopOpacity="0.1" />
+              <stop offset="78%" stopColor="#050507" stopOpacity="0.42" />
+              <stop offset="90%" stopColor="#050507" stopOpacity="0.78" />
+              <stop offset="100%" stopColor="#050507" stopOpacity="1" />
+            </radialGradient>
+          </defs>
+          <rect width="100%" height="100%" fill={`url(#${featherId})`} />
+        </svg>
         {animate ? (
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-[4] bg-bg"
+            className="pointer-events-none absolute inset-0 z-[4] bg-[#050507]"
             initial={{ opacity: 0.55 }}
             animate={{ opacity: 0 }}
             transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
           />
         ) : null}
       </div>
-      <div className="hero-dissolve pointer-events-none absolute inset-x-0 -bottom-px z-10 h-[68%]" />
-      <div aria-hidden className="hud-corners pointer-events-none absolute inset-3 z-30 sm:inset-5" />
-      <div aria-hidden className="hud-cross pointer-events-none absolute left-1/2 top-24 z-30 -translate-x-1/2" />
+      <div className="hero-dissolve pointer-events-none absolute inset-0 z-10" />
       <TelemetryLog />
       <motion.div
         className={cn(

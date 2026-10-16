@@ -3,7 +3,10 @@ import type { IntroPreset } from "./intro.ts";
 import { isCustomHeroVideo } from "./hero-video.ts";
 import { isShopNiche, type ShopNiche } from "./types.ts";
 
-export type HeroTone = "stage" | "site";
+export type HeroTone = "stage" | "site" | "backcountry" | "cinema";
+
+/** The same two people on every demo. Portraits are not per niche. */
+export const SHARED_STAFF = ["/media/alex-morgan.jpg", "/media/willa-grant.jpg"] as const;
 
 export type NicheFilm = {
   heroImageUrl: string;
@@ -14,389 +17,114 @@ export type NicheFilm = {
   introSpeed: number;
   introIntensity: number;
   heroBlendPercent: number;
-  /** Still shown on the page body once the hero is a film. */
-  insetImageUrl?: string;
-  /** Older loop kept on the page body after a newer hero film replaces it. */
-  insetLoopUrl?: string;
+  /** Universal staff portraits, in lead then crew order. */
+  staff: readonly [string, string];
 };
 
-/** One source for niche stills and looping hero films. Templates and heroes both read this. */
-export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
-  combat: film("", "/media/heroes/tiger-deer.mp4", "Round loop · tiger-deer.mp4", "zoomin", 32, 46, 60),
-  fitness: film(
-    "/media/tiger-poster.svg",
-    "/media/heroes/tiger-deer.mp4",
-    "Training loop · tiger-deer.mp4",
-    "zoomin",
-    36,
-    48,
-    60,
-    undefined,
-    { loopUrl: "/media/tiger.mp4" },
-  ),
-  music: film("/media/music-hero.jpg", "/media/heroes/music-artist.mp4", "Stage loop · music-artist.mp4", "panlr", 24, 62, 68, "stage"),
-  creator: film("", "/media/heroes/social-media-content-creator.mp4", "Edit loop · social-media-content-creator.mp4", "panlr", 28, 44, 60),
-  prompt: film("", "/media/heroes/ai-prompt.mp4", "Prompt loop · ai-prompt.mp4", "kenburns", 26, 36, 58),
-  landscaper: film(
-    "/media/heroes/landscaping.jpg",
-    "/media/heroes/landscaper.mp4",
-    "Yard loop · landscaper.mp4",
-    "pantd",
-    26,
-    40,
-    56,
-    "site",
-    { imageUrl: "/media/heroes/landscaping.jpg" },
-  ),
-  foodtruck: film(
-    "/media/heroes/food-truck.jpg",
-    "/media/heroes/mobile-foodtruck.mp4",
-    "Window loop · mobile-foodtruck.mp4",
-    "panlr",
-    28,
-    40,
-    58,
-    undefined,
-    { imageUrl: "/media/heroes/food-truck.jpg" },
-  ),
-  dogwalk: film(
-    "/media/heroes/pets.jpg",
-    "/media/heroes/dogwalking.mp4",
-    "Walk loop · dogwalking.mp4",
-    "panlr",
-    28,
-    40,
-    58,
-    "site",
-    { imageUrl: "/media/heroes/pets.jpg" },
-  ),
-  detailer: film(
-    "",
-    "/media/heroes/mobile-detailer.mp4",
-    "Detail loop · mobile-detailer.mp4",
-    "panlr",
-    28,
-    42,
-    58,
-    "site",
-  ),
-  hunting: film(
-    "/media/heroes/hunting-guide.jpg",
-    "/media/heroes/hunting-guide.mp4.mp4",
-    "Hunt loop · hunting-guide.mp4.mp4",
-    "panlr",
-    28,
-    42,
-    62,
-    undefined,
-    { imageUrl: "/media/heroes/hunting-guide.jpg" },
-  ),
-  therapy: film(
-    "/media/heroes/practice.jpg",
-    "/media/heroes/physicaltherapist.mp4",
-    "Session loop · physicaltherapist.mp4",
-    "kenburns",
-    30,
-    40,
-    66,
-    undefined,
-    { imageUrl: "/media/heroes/practice.jpg" },
-  ),
-  bowtech: film("", "/media/heroes/custom-bow-tech.mp4", "Bench loop · custom-bow-tech.mp4", "kenburns", 28, 42, 60),
-  entertainer: film("", "/media/heroes/entertainer.mp4", "Stage loop · entertainer.mp4", "kenburns", 30, 48, 62, "stage"),
-  contractor: film("/media/heroes/contractor.jpg", "/media/contractor-hero.mp4", "Site loop · contractor-hero.mp4", "zoomin", 30, 38, 56, "site"),
-  location: film("/media/barber-hero.jpg", "/media/clipper.mp4", "Barber loop · clipper.mp4", "kenburns", 34, 46, 58),
-  tattoo: film(
-    "",
-    "/media/heroes/tattooshop.mp4",
-    "Tattoo loop · tattooshop.mp4",
-    "panlr",
-    28,
-    50,
-    58,
-    undefined,
-    { loopUrl: "/media/tattoo-gun.mp4" },
-  ),
-  guide: film("/media/rafting-image.png", "/media/heroes/guide.mp4", "River loop · guide.mp4", "panlr", 28, 42, 62),
-  field: film("/media/auto-hero.jpg", "/media/auto-hero.mp4", "Field loop · auto-hero.mp4", "panlr", 30, 44, 64, "site"),
-  locksmith: film("", "/media/heroes/mobile-locksmith.mp4", "Van loop · mobile-locksmith.mp4", "panlr", 28, 42, 58, "site"),
-  firewood: film(
-    "/media/heroes/firewood.jpg",
-    "/media/heroes/wood.mp4",
-    "Wood loop · wood.mp4",
-    "kenburns",
-    30,
-    40,
-    58,
-    "site",
-    { imageUrl: "/media/heroes/firewood.jpg" },
-  ),
-  studio: film("/media/apps-hero.jpg", "/media/apps-hero.mp4", "Studio loop · apps-hero.mp4", "zoomin", 32, 40, 60),
-  salon: film("/media/heroes/salon.jpg", "/media/heroes/salon.mp4", "Salon loop · salon.mp4", "panlr", 32, 40, 58),
-  beauty: film(
-    "/media/heroes/beauty.jpg",
-    "/media/heroes/nails-lashes.mp4",
-    "Beauty loop · nails-lashes.mp4",
-    "kenburns",
-    36,
-    42,
-    62,
-    undefined,
-    { imageUrl: "/media/heroes/beauty.jpg" },
-  ),
-  wellness: film("/media/heroes/wellness.jpg", "/media/heroes/wellness.mp4", "Wellness loop · wellness.mp4", "fade", 24, 36, 70),
-  lessons: film(
-    "/media/heroes/lessons.jpg",
-    "/media/heroes/lessons.mp4",
-    "Lessons loop · lessons.mp4",
-    "pantd",
-    28,
-    34,
-    60,
-    undefined,
-    { imageUrl: "/media/heroes/lessons.jpg" },
-  ),
-  photo: film("", "/media/heroes/photo.mp4", "Photo loop · photo.mp4", "zoomin", 34, 48, 64),
-  pets: film(
-    "/media/heroes/pets.jpg",
-    "/media/heroes/petgroom.mp4",
-    "Groom loop · petgroom.mp4",
-    "panlr",
-    30,
-    38,
-    58,
-    undefined,
-    { imageUrl: "/media/heroes/pets.jpg" },
-  ),
-  clean: film("/media/heroes/clean.jpg", "/media/heroes/clean.mp4", "Clean loop · clean.mp4", "zoomout", 26, 36, 56),
-  practice: still("practice", "Practice still", "kenburns", 30, 40, 66, undefined, "jpg"),
-  counsel: film("/media/heroes/counsel.jpg", "/media/heroes/counsel.mp4", "Counsel loop · counsel.mp4", "fade", 22, 32, 72),
-  events: film("/media/heroes/events.jpg", "/media/heroes/events.mp4", "Events loop · events.mp4", "panlr", 28, 44, 60, "stage"),
-  retail: film("", "/media/heroes/retail.mp4", "Retail loop · retail.mp4", "fade", 22, 32, 64),
-  trade: film(
-    "/media/heroes/trade.jpg",
-    "/media/heroes/welding-trade.mp4",
-    "Trade loop · welding-trade.mp4",
-    "zoomin",
-    32,
-    40,
-    58,
-    "site",
-    { imageUrl: "/media/heroes/trade.jpg" },
-  ),
-  security: film("", "/media/heroes/private-security.mp4", "Post loop · private-security.mp4", "kenburns", 30, 42, 60),
+type HeroSpec = {
+  image?: string;
+  video?: string;
+  label: string;
+  preset: IntroPreset;
+  speed: number;
+  intensity: number;
+  blend: number;
+  tone?: HeroTone;
 };
 
-/** Named trades that share a niche id but need their own still. */
-const TRADE_SCENES: { test: RegExp; film: NicheFilm }[] = [
-  {
-    test: /\b(atv|utv|sports?\s*rentals?)\b/i,
-    film: film(
-      "",
-      "/media/heroes/atv-rental.mp4",
-      "Rental loop · atv-rental.mp4",
-      "panlr",
-      28,
-      42,
-      60,
-    ),
-  },
-  {
-    test: /\b(physical therap\w*|physiotherap\w*|physio)\b/i,
-    film: film(
-      "/media/heroes/practice.jpg",
-      "/media/heroes/physicaltherapist.mp4",
-      "Session loop · physicaltherapist.mp4",
-      "kenburns",
-      30,
-      40,
-      66,
-      undefined,
-      { imageUrl: "/media/heroes/practice.jpg" },
-    ),
-  },
-  {
-    test: /\b(prompt engineers?|prompt engineering|ai prompts?)\b/i,
-    film: film("", "/media/heroes/ai-prompt.mp4", "Prompt loop · ai-prompt.mp4", "kenburns", 26, 36, 58),
-  },
-  {
-    test: /\b(custom bows?|bow techs?|bow technicians?|bowtech)\b/i,
-    film: film("", "/media/heroes/custom-bow-tech.mp4", "Bench loop · custom-bow-tech.mp4", "kenburns", 28, 42, 60),
-  },
-  {
-    test: /\bhunting\b/i,
-    film: film(
-      "/media/heroes/hunting-guide.jpg",
-      "/media/heroes/hunting-guide.mp4.mp4",
-      "Hunt loop · hunting-guide.mp4.mp4",
-      "panlr",
-      28,
-      42,
-      62,
-      undefined,
-      { imageUrl: "/media/heroes/hunting-guide.jpg" },
-    ),
-  },
-  {
-    test: /\b(firewood|cordwood|fire wood)\b/i,
-    film: film(
-      "/media/heroes/firewood.jpg",
-      "/media/heroes/wood.mp4",
-      "Wood loop · wood.mp4",
-      "kenburns",
-      30,
-      40,
-      58,
-      "site",
-      { imageUrl: "/media/heroes/firewood.jpg" },
-    ),
-  },
-  { test: /\b(hvac|furnace|heat pump|air condition\w*)\b/i, film: still("hvac", "HVAC still", "panlr", 30, 42, 58, "site", "jpg") },
-  { test: /\b(electric\w*|wiring)\b/i, film: still("electrical", "Electrical still", "kenburns", 34, 46, 60, "site", "jpg") },
-  {
-    test: /\b(food truck|foodtruck|mobile food|mobile kitchen)\b/i,
-    film: film(
-      "/media/heroes/food-truck.jpg",
-      "/media/heroes/mobile-foodtruck.mp4",
-      "Window loop · mobile-foodtruck.mp4",
-      "panlr",
-      28,
-      40,
-      58,
-      undefined,
-      { imageUrl: "/media/heroes/food-truck.jpg" },
-    ),
-  },
-  {
-    test: /\b(dog walk\w*|dogwalk\w*)\b/i,
-    film: film(
-      "/media/heroes/pets.jpg",
-      "/media/heroes/dogwalking.mp4",
-      "Walk loop · dogwalking.mp4",
-      "panlr",
-      28,
-      40,
-      58,
-      "site",
-      { imageUrl: "/media/heroes/pets.jpg" },
-    ),
-  },
-  {
-    test: /\b((?:auto|mobile|car|vehicle)\s+detail\w*|detailers?)\b/i,
-    film: film("", "/media/heroes/mobile-detailer.mp4", "Detail loop · mobile-detailer.mp4", "panlr", 28, 42, 58, "site"),
-  },
-  {
-    test: /\b(landscap\w*|lawn|yard)\b/i,
-    film: film(
-      "/media/heroes/landscaping.jpg",
-      "/media/heroes/landscaper.mp4",
-      "Yard loop · landscaper.mp4",
-      "pantd",
-      26,
-      40,
-      56,
-      "site",
-      { imageUrl: "/media/heroes/landscaping.jpg" },
-    ),
-  },
-  { test: /\b(roof\w*|shingle|gutter)\b/i, film: still("roofing", "Roofing still", "zoomin", 28, 44, 54, "site", "jpg") },
-  {
-    test: /\b(plumb\w*|drain)\b/i,
-    film: film(
-      "/media/heroes/plumbing.jpg",
-      "/media/heroes/plumber.mp4.mp4",
-      "Pipe loop · plumber.mp4.mp4",
-      "panlr",
-      30,
-      40,
-      58,
-      "site",
-      { imageUrl: "/media/heroes/plumbing.jpg" },
-    ),
-  },
-  {
-    test: /\bgunsmiths?\b/i,
-    film: film("", "/media/heroes/gunsmith.mp4.mp4", "Bench loop · gunsmith.mp4.mp4", "kenburns", 28, 42, 60),
-  },
-  {
-    test: /\bwildlife photographers?\b/i,
-    film: film("", "/media/heroes/wildlife-photographer.mp4", "Field loop · wildlife-photographer.mp4", "zoomin", 34, 48, 64),
-  },
-  {
-    test: /\bai creation\b/i,
-    film: film(
-      "",
-      "/media/heroes/ai-creation-content-creator.mp4.mp4",
-      "Prompt loop · ai-creation-content-creator.mp4.mp4",
-      "kenburns",
-      26,
-      36,
-      58,
-    ),
-  },
-];
+/** One asset per curated niche. Video when a film is the strongest file on disk. */
+const CURATED_HERO: Partial<Record<ShopNiche, HeroSpec>> = {
+  fitness: { video: "/media/heroes/tiger-deer.mp4", label: "Training loop · tiger-deer.mp4", preset: "zoomin", speed: 36, intensity: 48, blend: 60 },
+  wellness: { video: "/media/heroes/wellness.mp4", label: "Wellness loop · wellness.mp4", preset: "fade", speed: 24, intensity: 36, blend: 70 },
+  lessons: { video: "/media/heroes/lessons.mp4", label: "Lessons loop · lessons.mp4", preset: "pantd", speed: 28, intensity: 34, blend: 60 },
+  salon: { video: "/media/heroes/salon.mp4", label: "Salon loop · salon.mp4", preset: "panlr", speed: 32, intensity: 40, blend: 58 },
+  beauty: { video: "/media/heroes/nails-lashes.mp4", label: "Beauty loop · nails-lashes.mp4", preset: "kenburns", speed: 36, intensity: 42, blend: 62 },
+  tattoo: { video: "/media/heroes/tattooshop.mp4", label: "Tattoo loop · tattooshop.mp4", preset: "panlr", speed: 28, intensity: 50, blend: 58 },
+  photo: { video: "/media/heroes/photo.mp4", label: "Photo loop · photo.mp4", preset: "zoomin", speed: 34, intensity: 48, blend: 64 },
+  pets: { video: "/media/heroes/petgroom.mp4", label: "Groom loop · petgroom.mp4", preset: "panlr", speed: 30, intensity: 38, blend: 58 },
+  landscaper: { video: "/media/heroes/landscaper.mp4", label: "Yard loop · landscaper.mp4", preset: "pantd", speed: 26, intensity: 40, blend: 56, tone: "site" },
+  dogwalk: { video: "/media/heroes/dogwalking.mp4", label: "Walk loop · dogwalking.mp4", preset: "panlr", speed: 28, intensity: 40, blend: 58, tone: "site" },
+  detailer: { video: "/media/heroes/mobile-detailer.mp4", label: "Detail loop · mobile-detailer.mp4", preset: "panlr", speed: 28, intensity: 42, blend: 58, tone: "site" },
+  therapy: { video: "/media/heroes/physicaltherapist.mp4", label: "Session loop · physicaltherapist.mp4", preset: "kenburns", speed: 30, intensity: 40, blend: 66 },
+  contractor: { video: "/media/contractor-hero.mp4", label: "Site loop · contractor-hero.mp4", preset: "zoomin", speed: 30, intensity: 38, blend: 56, tone: "site" },
+  clean: { video: "/media/heroes/clean.mp4", label: "Clean loop · clean.mp4", preset: "zoomout", speed: 26, intensity: 36, blend: 56 },
+  field: { video: "/media/auto-hero.mp4", label: "Field loop · auto-hero.mp4", preset: "panlr", speed: 30, intensity: 44, blend: 64, tone: "site" },
+  locksmith: { video: "/media/heroes/mobile-locksmith.mp4", label: "Van loop · mobile-locksmith.mp4", preset: "panlr", speed: 28, intensity: 42, blend: 58, tone: "site" },
+  firewood: { video: "/media/heroes/wood.mp4", label: "Wood loop · wood.mp4", preset: "kenburns", speed: 30, intensity: 40, blend: 58, tone: "site" },
+  security: { video: "/media/heroes/private-security.mp4", label: "Post loop · private-security.mp4", preset: "kenburns", speed: 30, intensity: 42, blend: 60 },
+  practice: { image: "/media/heroes/practice.jpg", label: "Practice still", preset: "kenburns", speed: 30, intensity: 40, blend: 66 },
+  counsel: { video: "/media/heroes/counsel.mp4", label: "Counsel loop · counsel.mp4", preset: "fade", speed: 22, intensity: 32, blend: 72 },
+  location: { video: "/media/barber-hero.mp4", label: "Barber loop · barber-hero.mp4", preset: "kenburns", speed: 34, intensity: 46, blend: 58 },
+  hunting: { video: "/media/heroes/charging-bear.mp4", label: "Backcountry loop · charging-bear.mp4", preset: "zoomin", speed: 28, intensity: 42, blend: 64, tone: "backcountry" },
+  creator: { video: "/media/heroes/leopard.mp4", label: "Cinema loop · leopard.mp4", preset: "kenburns", speed: 34, intensity: 46, blend: 62, tone: "cinema" },
+};
 
-function film(
-  heroImageUrl: string,
-  heroVideoUrl: string,
-  loopLabel: string,
-  introPreset: IntroPreset,
-  introSpeed: number,
-  introIntensity: number,
-  heroBlendPercent: number,
-  tone?: HeroTone,
-  inset?: { imageUrl?: string; loopUrl?: string },
-): NicheFilm {
+const TRADE_HERO: HeroSpec = {
+  video: "/media/heroes/welding-trade.mp4",
+  label: "Trade loop · welding-trade.mp4",
+  preset: "zoomin",
+  speed: 32,
+  intensity: 40,
+  blend: 58,
+  tone: "site",
+};
+
+function filmFrom(spec: HeroSpec): NicheFilm {
   return {
-    heroImageUrl,
-    heroVideoUrl,
-    loopLabel,
-    introPreset,
-    introSpeed,
-    introIntensity,
-    heroBlendPercent,
-    tone,
-    insetImageUrl: inset?.imageUrl,
-    insetLoopUrl: inset?.loopUrl,
+    heroImageUrl: spec.image ?? "",
+    heroVideoUrl: spec.video ?? "",
+    loopLabel: spec.label,
+    introPreset: spec.preset,
+    introSpeed: spec.speed,
+    introIntensity: spec.intensity,
+    heroBlendPercent: spec.blend,
+    tone: spec.tone,
+    staff: SHARED_STAFF,
   };
 }
 
-function still(
-  name: string,
-  loopLabel: string,
-  introPreset: IntroPreset,
-  introSpeed: number,
-  introIntensity: number,
-  heroBlendPercent: number,
-  tone?: HeroTone,
-  ext = "svg",
-): NicheFilm {
-  return film(`/media/heroes/${name}.${ext}`, "", loopLabel, introPreset, introSpeed, introIntensity, heroBlendPercent, tone);
+const tradeFilm = filmFrom(TRADE_HERO);
+
+function filmFor(niche: ShopNiche): NicheFilm {
+  return filmFrom(CURATED_HERO[niche] ?? TRADE_HERO);
 }
 
-export function matchTradeScene(businessName: string): NicheFilm | null {
-  const name = businessName.trim();
-  if (!name) return null;
-  return TRADE_SCENES.find((scene) => scene.test.test(name))?.film ?? null;
-}
-
-/** Preview pages (?b=slug) and new shops read the same film, pan, and blend. */
-export function leadHeroFor(tradeType: string, businessName: string, category = ""): NicheFilm {
-  const named =
-    matchTradeScene(businessName) ??
-    matchTradeScene(category) ??
-    matchTradeScene(tradeType.replace(/-/g, " "));
-  if (named) return named;
-  return NICHE_MEDIA[isShopNiche(tradeType) ? tradeType : "trade"];
-}
-
-/** Films that used to be the niche hero. A saved shop still pointing at one follows the new film. */
-const PREVIOUS_NICHE_VIDEOS: Partial<Record<ShopNiche, readonly string[]>> = {
-  tattoo: ["/media/tattoo-gun.mp4"],
-  music: ["/media/music-hero.mp4"],
-  combat: ["/media/heroes/gladiator.mp4"],
-  creator: ["/media/heroes/content-creator.mp4", "/media/heroes/contentcreator.mp4"],
-  hunting: ["/media/heroes/deer-hunting-guide.mp4", "/media/heroes/private-hunting-guide.mp4"],
+/** One source for niche stills and looping hero films. Templates and heroes both read this. */
+export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
+  guide: tradeFilm,
+  fitness: filmFor("fitness"),
+  combat: tradeFilm,
+  wellness: filmFor("wellness"),
+  lessons: filmFor("lessons"),
+  salon: filmFor("salon"),
+  beauty: filmFor("beauty"),
+  tattoo: filmFor("tattoo"),
+  photo: filmFor("photo"),
+  pets: filmFor("pets"),
+  music: tradeFilm,
+  creator: filmFor("creator"),
+  prompt: tradeFilm,
+  entertainer: tradeFilm,
+  events: tradeFilm,
+  landscaper: filmFor("landscaper"),
+  foodtruck: tradeFilm,
+  dogwalk: filmFor("dogwalk"),
+  detailer: filmFor("detailer"),
+  hunting: filmFor("hunting"),
+  therapy: filmFor("therapy"),
+  bowtech: tradeFilm,
+  contractor: filmFor("contractor"),
+  clean: filmFor("clean"),
+  field: filmFor("field"),
+  locksmith: filmFor("locksmith"),
+  firewood: filmFor("firewood"),
+  security: filmFor("security"),
+  practice: filmFor("practice"),
+  counsel: filmFor("counsel"),
+  location: filmFor("location"),
+  studio: tradeFilm,
+  retail: tradeFilm,
+  trade: tradeFilm,
 };
 
 export function cleanCustomNiche(value: string): string {
@@ -407,21 +135,41 @@ export function cleanCustomNiche(value: string): string {
     .slice(0, 80);
 }
 
-/** A typed niche uses a matching shared film when one exists, otherwise the stock trade film. */
+/** A typed niche uses its curated film when it has one, otherwise the stock trade film. */
 export function heroForCustomNiche(title: string): NicheFilm {
   const label = cleanCustomNiche(title);
   if (label.length < 2) return NICHE_MEDIA.trade;
-  const scene = matchTradeScene(label);
-  if (scene && (scene.heroVideoUrl || scene.heroImageUrl)) return scene;
   try {
     const classified = classifyTrade(label);
-    if (classified.known && isShopNiche(classified.tradeType) && classified.tradeType !== "trade") {
+    if (classified.known && isShopNiche(classified.tradeType)) {
       return NICHE_MEDIA[classified.tradeType];
     }
   } catch {
     // A short or unnamed title keeps the stock film.
   }
   return NICHE_MEDIA.trade;
+}
+
+/** Preview pages and new shops read the niche film, or the trade film when the key is legacy. */
+export function leadHeroFor(tradeType: string, businessName: string, category = ""): NicheFilm {
+  const fromName = classifyQuiet(businessName);
+  if (fromName && fromName !== "trade") return NICHE_MEDIA[fromName];
+  const fromCategory = classifyQuiet(category) ?? classifyQuiet(tradeType.replace(/-/g, " "));
+  if (fromCategory) return NICHE_MEDIA[fromCategory];
+  if (isShopNiche(tradeType)) return NICHE_MEDIA[tradeType];
+  return NICHE_MEDIA.trade;
+}
+
+function classifyQuiet(label: string): ShopNiche | null {
+  const clean = cleanCustomNiche(label);
+  if (clean.length < 2) return null;
+  try {
+    const classified = classifyTrade(clean);
+    if (classified.known && isShopNiche(classified.tradeType)) return classified.tradeType;
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function resolveHeroMedia(shop: {
@@ -431,25 +179,30 @@ export function resolveHeroMedia(shop: {
   customNiche?: string;
 }) {
   const customTitle = cleanCustomNiche(shop.customNiche ?? "");
-  const media = customTitle ? heroForCustomNiche(customTitle) : (NICHE_MEDIA[shop.niche] ?? NICHE_MEDIA.location);
+  const media = customTitle ? heroForCustomNiche(customTitle) : (NICHE_MEDIA[shop.niche] ?? NICHE_MEDIA.trade);
   const stillUrl = shop.heroImageUrl ?? "";
   const customStill = stillUrl.startsWith("data:");
   const customVideo = isCustomHeroVideo(shop.heroVideoUrl);
-  const stored = shop.heroVideoUrl ?? "";
-  const replaced = (PREVIOUS_NICHE_VIDEOS[shop.niche] ?? []).includes(stored);
-  const nicheVideo = customTitle
-    ? media.heroVideoUrl
-    : replaced
-      ? media.heroVideoUrl
-      : stored || media.heroVideoUrl;
+  if (customVideo) {
+    return {
+      imageUrl: customStill ? stillUrl : media.heroImageUrl,
+      videoUrl: shop.heroVideoUrl,
+      tone: media.tone ?? null,
+      loopLabel: "Custom loop · this shop",
+    };
+  }
+  if (customStill) {
+    return {
+      imageUrl: stillUrl,
+      videoUrl: null,
+      tone: media.tone ?? null,
+      loopLabel: "Custom still · niche loop hidden",
+    };
+  }
   return {
-    imageUrl: stillUrl || media.heroImageUrl,
-    videoUrl: customVideo ? shop.heroVideoUrl : customStill ? null : nicheVideo,
+    imageUrl: media.heroImageUrl,
+    videoUrl: media.heroVideoUrl || null,
     tone: media.tone ?? null,
-    loopLabel: customVideo
-      ? "Custom loop · this shop"
-      : customStill
-        ? "Custom still · niche loop hidden"
-        : media.loopLabel,
+    loopLabel: media.loopLabel,
   };
 }

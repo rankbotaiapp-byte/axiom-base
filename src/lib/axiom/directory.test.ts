@@ -16,20 +16,21 @@ test("a new local trade gets its own key and the universal hero", () => {
   assert.equal(sitting.known, false);
   assert.equal(isTradeKey(sitting.tradeType), true);
   const hero = leadHeroFor(sitting.tradeType, "Park Loop Walks", sitting.tradeLabel);
-  assert.equal(hero.heroImageUrl, "/media/heroes/trade.jpg");
+  assert.equal(hero.heroImageUrl, "");
   assert.equal(hero.introPreset, "zoomin");
   assert.equal(hero.heroBlendPercent, 58);
 });
 
-test("a named trade still uses its own still", () => {
+test("a named trade uses the contractor film, and legacy keys use the trade film", () => {
   const hvac = classifyTrade("Rooftop HVAC");
   assert.equal(hvac.known, true);
   assert.equal(hvac.tradeType, "contractor");
   assert.equal(hvac.tradeLabel, "Rooftop HVAC");
-  assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "/media/heroes/hvac.jpg");
-  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "/media/heroes/hunting-guide.jpg");
-    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4.mp4");
-  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood.jpg");
+  assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroVideoUrl, "/media/contractor-hero.mp4");
+  assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "");
+  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "");
+  assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/welding-trade.mp4");
+  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "");
   assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/wood.mp4");
 });
 

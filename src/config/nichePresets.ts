@@ -229,7 +229,7 @@ export const NICHE_PRESETS: readonly NichePreset[] = [
   {
     id: "content",
     shopNiche: "creator",
-    label: "Content creation",
+    label: "Cinematic Video and Content Creator",
     title: "Frame Desk",
     tagline: "Shot, cut, and ready to post when you book it.",
     accent: "#7C6BF2",
@@ -599,7 +599,7 @@ export const NICHE_PRESETS: readonly NichePreset[] = [
   {
     id: "hunting",
     shopNiche: "hunting",
-    label: "Private hunting guide",
+    label: "Rugged Backcountry Services",
     title: "Ridge Line",
     tagline: "The hunt is booked before the gate opens.",
     accent: "#8B7355",
