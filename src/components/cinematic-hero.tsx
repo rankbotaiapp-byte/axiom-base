@@ -153,7 +153,7 @@ export function CinematicHero({
       style={{ ["--hero-blend" as string]: `${blend}%` }}
     >
       <div className="hero-blend absolute inset-0 overflow-hidden">
-        {imageSrc ? (
+        {imageSrc || (videoSrc && videoOk) ? (
           <motion.div
             className={cn("absolute -inset-[8%] origin-center", depthOn && "will-change-transform")}
             style={{ y: plateY }}
@@ -161,7 +161,19 @@ export function CinematicHero({
             animate={{ scale: 1.06 }}
             transition={animate ? { duration: 2.4, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
           >
-            <img src={imageSrc} alt="" className="hero-plate pointer-events-none absolute inset-0 h-full w-full" />
+            {imageSrc ? (
+              <img src={imageSrc} alt="" className="hero-plate pointer-events-none absolute inset-0 h-full w-full" />
+            ) : (
+              <video
+                className="hero-plate pointer-events-none absolute inset-0 h-full w-full"
+                src={videoSrc}
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-hidden
+              />
+            )}
           </motion.div>
         ) : null}
         {/* Sharp film opens inside the plate, then rests at full frame so the picture is not cropped. */}

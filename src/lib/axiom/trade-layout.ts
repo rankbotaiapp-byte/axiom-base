@@ -1,3 +1,5 @@
+import { applyDepthStudio, cloneHeroLayout, DEFAULT_HUD, parseHud, type StorefrontHud } from "./hud.ts";
+import { sanitizeLogoUrl } from "./prospect-brand.ts";
 import type { ShopNiche } from "./types.ts";
 
 /** Blocks a niche may place on the public page. Order is the layout. */
@@ -68,6 +70,10 @@ export type TradeProfile = {
   kinds: string[];
   partyMax: number;
   note: string;
+  /** Public logo URL. Empty keeps the monogram. */
+  logoUrl: string;
+  /** Closed storefront HUD. Stored in the existing trade_profile JSON. */
+  hud: StorefrontHud;
 };
 
 export type NicheLayout = {
@@ -297,6 +303,8 @@ const EMPTY: TradeProfile = {
   kinds: [],
   partyMax: 6,
   note: "",
+  logoUrl: "",
+  hud: { ...DEFAULT_HUD },
 };
 
 const DEFAULT_KINDS: Partial<Record<ShopNiche, string[]>> = {
@@ -325,6 +333,7 @@ export function defaultTradeProfile(niche: ShopNiche): TradeProfile {
     species: [...EMPTY.species],
     cuts: [...EMPTY.cuts],
     kinds: [...(DEFAULT_KINDS[niche] ?? EMPTY.kinds)],
+    hud: applyDepthStudio({ ...EMPTY.hud, layers: cloneHeroLayout(EMPTY.hud.layers) }, niche),
     partyMax: niche === "guide" ? 8 : niche === "fitness" || niche === "lessons" ? 4 : EMPTY.partyMax,
     radiusMiles: niche === "firewood" ? 25 : EMPTY.radiusMiles,
     deliveryNote: niche === "firewood" ? "The drop is the driveway. A tight lane needs a note." : "",
@@ -430,6 +439,8 @@ export function parseTradeProfile(niche: ShopNiche, raw: unknown): TradeProfile 
     kinds,
     partyMax: partyMax ?? base.partyMax,
     note: note ?? base.note,
+    logoUrl: sanitizeLogoUrl(record.logoUrl),
+    hud: parseHud(record.hud ?? base.hud),
   };
 }
 

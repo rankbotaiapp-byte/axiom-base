@@ -1,30 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { CinematicHero } from "@/components/cinematic-hero";
 import { Magnetic } from "@/components/magnetic";
-import { Reveal } from "@/components/reveal";
-import { ProofGallery } from "@/components/proof-gallery";
-import { Wordmark } from "@/components/shop-chrome";
-import { defaultProof } from "@/lib/axiom/gallery";
+import { NicheStorefront, type StorefrontService, type StorefrontStaff } from "@/components/niche-storefront";
 import { presetForShopNiche } from "@/config/nichePresets";
-import { NICHE_MEDIA } from "@/lib/axiom/media";
+import { mapBusinessToTemplateBrand, parseBusinessId, type BusinessBrandRecord } from "@/lib/axiom/business-brand";
+import { getBusinessBrand } from "@/lib/axiom/business-lookup";
+import { parseFunnelSearch } from "@/lib/axiom/funnel";
+import { NICHE_MEDIA, SHARED_STAFF } from "@/lib/axiom/media";
+import { applyDepthStudio, DEFAULT_HUD, paintHero, setHeroLayer, type HeroLayerId, type StorefrontHud } from "@/lib/axiom/hud";
+import { PreviewStudio } from "@/components/preview-studio";
 import {
   DEFAULT_HOURS,
   formatOffer,
+  isPublicNiche,
   NICHES,
   nicheCopy,
   PUBLIC_NICHE_ORDER,
-  WEEKDAYS,
 } from "@/lib/axiom/niches";
+import { resolveProspectBrand } from "@/lib/axiom/prospect-brand";
 import { isShopNiche, type ShopNiche } from "@/lib/axiom/types";
-import { initials } from "@/lib/utils";
 
-const SAMPLE_TIMES = ["9:00 AM", "10:30 AM", "1:00 PM", "3:30 PM"];
+type DemoSearch = ReturnType<typeof parseFunnelSearch> & { id?: string };
 
 export const Route = createFileRoute("/demo/$niche")({
+  validateSearch: (search: Record<string, unknown>): DemoSearch => {
+    const parsed = parseFunnelSearch(search);
+    const id = parseBusinessId(search.id);
+    return id ? { ...parsed, id } : parsed;
+  },
   loader: ({ params }) => {
     const niche = params.niche;
-    if (!isShopNiche(niche) || niche === "trade" || !PUBLIC_NICHE_ORDER.includes(niche)) throw notFound();
+    if (!isShopNiche(niche) || !isPublicNiche(niche)) throw notFound();
     return { niche };
   },
   component: NicheDemo,
@@ -37,41 +43,130 @@ function claimSearch(niche: ShopNiche) {
 
 function NicheDemo() {
   const { niche } = Route.useLoaderData();
+  const search = Route.useSearch();
   const template = NICHES[niche];
   const media = NICHE_MEDIA[niche];
   const copy = nicheCopy(niche);
   const bookLabel = presetForShopNiche(niche).bookingCta || copy.bookLabel;
-  const hasOwnFilm = Boolean(template.heroVideoUrl || template.heroImageUrl);
-  const videoUrl = template.heroVideoUrl || (hasOwnFilm ? "" : NICHE_MEDIA.trade.heroVideoUrl);
-  const imageUrl = template.heroImageUrl || NICHE_MEDIA.trade.heroImageUrl;
-  const hours = template.hours ?? DEFAULT_HOURS;
-  const [picked, setPicked] = useState<{ service: string; time: string } | null>(null);
+  const lookupId = search.id ?? "";
+  const lookupSlug = search.b || search.lead_slug || "";
+  const [loaded, setLoaded] = useState<BusinessBrandRecord | null>(null);
+  const [hud, setHud] = useState<StorefrontHud>(() => applyDepthStudio(DEFAULT_HUD, niche));
+  const [activeLayer, setActiveLayer] = useState<HeroLayerId>("headline");
+
+  useEffect(() => {
+    setHud(applyDepthStudio(DEFAULT_HUD, niche));
+  }, [niche]);
+
+  useEffect(() => {
+    if (!lookupId && !lookupSlug) {
+      setLoaded(null);
+      return;
+    }
+    let cancelled = false;
+    const request = lookupId
+      ? getBusinessBrand({ data: { id: lookupId } })
+      : getBusinessBrand({ data: { slug: lookupSlug } });
+    void request
+      .then((row) => {
+        if (!cancelled) setLoaded(row);
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lookupId, lookupSlug]);
+
+  const mapped = loaded ? mapBusinessToTemplateBrand(loaded) : null;
+  const brand = resolveProspectBrand({
+    fallbackName: mapped?.businessName || template.defaultName,
+    fallbackAccent: template.ringColor,
+    businessName: search.biz || mapped?.businessName,
+    logoUrl: search.logo || mapped?.logoUrl || undefined,
+    accent: search.accent || mapped?.accent || undefined,
+    contactName: mapped?.contactName,
+    contactPhone: search.phone || mapped?.contactPhone,
+    contactEmail: search.email || mapped?.contactEmail,
+  });
   const navigate = useNavigate();
+  const services: StorefrontService[] = template.services.map((service, index) => ({
+    key: `${service.name}-${index}`,
+    name: service.name,
+    description: service.description,
+    price: formatOffer(service),
+    group: service.group,
+  }));
+  const staff = [0, 1].map((index) => {
+    const person = template.employees[index];
+    return {
+      key: person?.displayName ?? `staff-${index}`,
+      displayName: person?.displayName ?? (index === 0 ? "Alex Morgan" : "Willa Grant"),
+      title: person?.title ?? "",
+      bio: person?.bio ?? "",
+      avatarUrl: SHARED_STAFF[index],
+    } satisfies StorefrontStaff;
+  }) as [StorefrontStaff, StorefrontStaff];
+  const painted = paintHero(media.heroImageUrl, media.heroVideoUrl || null, hud);
+  const heroChoices = [
+    { id: "film" as const, label: media.loopLabel },
+    ...(media.heroImageUrl ? [{ id: "still" as const, label: "Niche still" }] : []),
+    { id: "url" as const, label: "Custom URL" },
+  ];
 
   return (
     <main className="min-h-dvh bg-transparent pb-28">
-      <CinematicHero
-        imageUrl={imageUrl}
-        videoUrl={videoUrl || null}
-        blendPercent={template.heroBlendPercent}
+      <NicheStorefront
+        businessName={brand.businessName}
+        kicker={`Live preview · ${mapped?.categoryLabel || template.label}`}
+        tagline={template.tagline}
+        description={template.description}
+        address={mapped?.location || template.address}
+        accent={brand.accent}
+        logoUrl={brand.logoUrl}
+        contactName={brand.contactName}
+        contactPhone={brand.contactPhone}
+        contactEmail={brand.contactEmail}
+        services={services}
+        hours={template.hours ?? DEFAULT_HOURS}
+        staff={staff}
+        heroImageUrl={painted.imageUrl}
+        heroVideoUrl={painted.videoUrl}
+        blendPercent={hud.fade}
         introPreset={template.introPreset}
         introSpeed={template.introSpeed}
         introIntensity={template.introIntensity}
         tone={media.tone ?? null}
         fallbackImageUrl={NICHE_MEDIA.trade.heroImageUrl}
         fallbackVideoUrl={NICHE_MEDIA.trade.heroVideoUrl}
-      >
-        <div className="relative z-10 flex items-center justify-between gap-3 px-5 py-5 sm:px-10">
-          <Wordmark />
+        bookLabel={bookLabel}
+        bookHref="#book"
+        hud={hud}
+        headline={hud.headline}
+        layoutEditable
+        activeLayer={activeLayer}
+        onActiveLayer={setActiveLayer}
+        onLayerChange={(id, layer) => setHud((current) => setHeroLayer(current, id, layer))}
+        extra={
+          <PreviewStudio
+            hud={hud}
+            onChange={setHud}
+            heroChoices={heroChoices}
+            activeLayer={activeLayer}
+            onActiveLayer={setActiveLayer}
+          />
+        }
+        header={
           <label className="min-w-0">
-            <span className="sr-only">Explore all industries</span>
+            <span className="sr-only">Explore industries</span>
             <select
-              className="glass-panel h-11 max-w-48 rounded-xl px-3 text-sm text-fg"
+              className="h-11 max-w-48 rounded-xl bg-surface px-3 text-sm text-fg"
               value={niche}
               onChange={(event) => {
                 const next = event.target.value;
-                if (!isShopNiche(next) || next === "trade") return;
-                void navigate({ to: "/demo/$niche", params: { niche: next } });
+                if (!isPublicNiche(next)) return;
+                void navigate({ to: "/demo/$niche", params: { niche: next }, search });
               }}
             >
               {PUBLIC_NICHE_ORDER.map((key) => (
@@ -81,162 +176,27 @@ function NicheDemo() {
               ))}
             </select>
           </label>
-        </div>
-        <div className="mt-auto px-5 pb-16 pt-24 sm:px-10">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live preview · {template.label}</p>
-          <h1 className="mt-3 max-w-3xl font-display text-[clamp(3rem,10vw,6rem)] leading-[0.92]">
-            {template.defaultName}
-          </h1>
-          <p className="mt-4 max-w-lg text-base text-fg/80 sm:text-lg">{template.tagline}</p>
-          <Magnetic className="mt-8 inline-flex">
-            <a href="#book" className="glass-btn inline-flex h-12 items-center rounded-xl px-5 text-sm font-medium">
-              {bookLabel}
-            </a>
-          </Magnetic>
-        </div>
-      </CinematicHero>
-
-      <Reveal>
-      <ProofGallery
-        heading={copy.gallery}
-        frames={defaultProof(niche)}
-        note="Sample album for this trade. A claimed shop replaces it with the owner’s photos."
-      />
-
-      <section className="mx-auto max-w-5xl px-5 py-16 sm:px-10">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.menuKicker}</p>
-        <h2 className="mt-2 font-display text-3xl sm:text-4xl">{copy.menuHeading}</h2>
-        <p className="mt-4 max-w-xl text-muted">{template.description}</p>
-        <ul className="mt-8 grid gap-3">
-          {template.services.map((service, index) => {
-            const previous = template.services[index - 1];
-            const showGroup = service.group && service.group !== previous?.group;
-            return (
-              <li key={`${service.name}-${index}`}>
-                {showGroup ? (
-                  <p className="mb-3 mt-6 text-[11px] uppercase tracking-[0.18em] text-muted">{service.group}</p>
-                ) : null}
-                <div className="glass-panel lift-card rounded-[24px] px-5 py-4">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <p className="font-medium">{service.name}</p>
-                    <p className="shrink-0 text-sm text-muted">{formatOffer(service)}</p>
-                  </div>
-                  <p className="mt-1 text-sm text-muted">{service.description}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <section id="book" className="mx-auto max-w-5xl px-5 pb-16 sm:px-10">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.timeStep}</p>
-        <h2 className="mt-2 font-display text-3xl">{copy.timeHint}</h2>
-        <p className="mt-3 max-w-xl text-sm text-muted">
-          These times show the book. They are not held. Claim the storefront to take real requests.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          {template.services.slice(0, 4).map((service) => (
-            <button
-              key={service.name}
-              type="button"
-              className="h-11 rounded-xl px-4 text-sm"
-              style={{
-                boxShadow:
-                  picked?.service === service.name
-                    ? "0 0 0 1px var(--color-fg)"
-                    : "0 0 0 1px rgba(243,241,235,0.1)",
-              }}
-              onClick={() => setPicked({ service: service.name, time: picked?.time ?? SAMPLE_TIMES[0] })}
-            >
-              {service.name}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {SAMPLE_TIMES.map((time) => (
-            <button
-              key={time}
-              type="button"
-              className="h-11 rounded-xl px-4 text-sm"
-              style={{
-                boxShadow:
-                  picked?.time === time ? "0 0 0 1px var(--color-fg)" : "0 0 0 1px rgba(243,241,235,0.1)",
-              }}
-              onClick={() =>
-                setPicked({
-                  service: picked?.service ?? template.services[0]?.name ?? template.label,
-                  time,
-                })
-              }
-            >
-              {time}
-            </button>
-          ))}
-        </div>
-        {picked ? (
-          <p className="mt-4 text-sm text-muted">
-            {picked.service} · {picked.time}. Claim the storefront to accept this on a real book.
-          </p>
-        ) : null}
-      </section>
-
-      {template.employees.length > 0 ? (
-        <section className="mx-auto max-w-5xl px-5 pb-16 sm:px-10">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">{copy.bench}</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">{copy.heading}</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {template.employees.map((person) => (
-              <div
-                key={person.displayName}
-                className="glass-panel lift-card flex gap-4 rounded-[24px] p-3"
-              >
-                {person.avatarUrl ? (
-                  <img src={person.avatarUrl} alt="" className="size-24 shrink-0 rounded-2xl object-cover" />
-                ) : (
-                  <div className="grid size-24 shrink-0 place-items-center rounded-2xl bg-surface-2 font-display text-2xl">
-                    {initials(person.displayName || "Staff")}
-                  </div>
-                )}
-                <div className="py-2 pr-2">
-                  <p className="font-display text-2xl leading-tight">{person.displayName}</p>
-                  <p className="text-sm text-muted">{person.title}</p>
-                  <p className="mt-2 line-clamp-3 text-sm text-muted">{person.bio}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="mx-auto max-w-5xl px-5 pb-16 sm:px-10">
-        <h2 className="font-display text-3xl">Hours</h2>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-          {WEEKDAYS.map(([key, label]) => (
-            <li key={key} className="glass-panel flex justify-between rounded-xl px-4 py-3 text-sm">
-              <span>{label}</span>
-              <span className="text-muted">{hours[key] || "closed"}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-sm text-muted">{template.address}</p>
-      </section>
-      </Reveal>
-
-      <div className="glass-panel fixed inset-x-0 bottom-0 z-30 rounded-none px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pl-36">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted">
-            {template.label} preview. The film, services, and book are this trade’s.
-          </p>
-          <Link
-            to="/onboard"
-            search={claimSearch(niche)}
-            className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-fg px-5 text-sm font-medium text-bg"
+        }
+        footer={
+          <div
+            id="book"
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/92 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:pl-36"
           >
-            Claim This Storefront for Your Business
-          </Link>
-        </div>
-      </div>
+            <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted">{template.label} preview. The services and the book are this trade’s.</p>
+              <Magnetic className="inline-flex w-full sm:w-auto">
+                <Link
+                  to="/onboard"
+                  search={claimSearch(niche)}
+                  className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-xl bg-fg px-5 text-sm font-medium text-bg sm:w-auto"
+                >
+                  Claim This Storefront for Your Business
+                </Link>
+              </Magnetic>
+            </div>
+          </div>
+        }
+      />
     </main>
   );
 }

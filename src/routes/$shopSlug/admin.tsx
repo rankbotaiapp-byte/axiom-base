@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -9,11 +9,23 @@ import {
   getOperatorData,
   inviteEmployee,
   refreshStripeConnect,
-  updateShopBrand,
+  removeEmployee,
+  saveTradeProfile,
   setShopIntro,
+  setShopNiche,
+  updateEmployee,
+  updateNotifyChannels,
+  updateShopBrand,
 } from "@/lib/axiom/server";
-import { RING_PRESETS, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
-import { resolveHeroMedia } from "@/lib/axiom/media";
+import { readOutreachDesk } from "@/lib/axiom/master";
+import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
+import { sanitizeAccent, sanitizeLogoUrl } from "@/lib/axiom/prospect-brand";
+import { NICHES, PUBLIC_NICHE_ORDER, RING_PRESETS, isPublicNiche, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
+import { resolveHeroMedia, NICHE_MEDIA } from "@/lib/axiom/media";
+import { PreviewStudio } from "@/components/preview-studio";
+import { HeroTextCanvas } from "@/components/hero-text-canvas";
+import { HeroSpatial } from "@/components/hero-spatial";
+import { applyDepthStudio, hudVars, paintHero, setHeroLayer, type HeroLayerId, type StorefrontHud } from "@/lib/axiom/hud";
 import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { getBearerToken } from "@/lib/auth/client";
 import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
@@ -22,6 +34,7 @@ import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
 import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
+import { DesignCopilot } from "@/components/design-copilot";
 import { setAvatarScreen } from "@/components/avatar-help";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { TradeDesk } from "@/components/trade-desk";
@@ -241,6 +254,14 @@ function AdminShell({
         {tab === "settings" ? (
           <div className="grid gap-6">
             <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
+            <StorefrontPanel
+              shop={data.shop}
+              notifyEmail={data.notifyEmail}
+              notifyPhone={data.notifyPhone}
+              readonly={readonly}
+              platformDesk={Boolean(data.platformDesk)}
+              onReload={onReload}
+            />
             <TradeDesk shop={data.shop} readonly={readonly} onReload={onReload} />
             <ShopDashboardPanel
               shop={data.shop}
@@ -324,6 +345,7 @@ function AdminShell({
         city={cityFromAddress(data.shop.address)}
         welcome={data.mode === "owner" && !data.platformDesk ? data.shop.slug : undefined}
       />
+      <DesignCopilot slug={data.shop.slug} readonly={readonly} onApplied={onReload} />
     </main>
   );
 }
@@ -1037,6 +1059,263 @@ function BrandPanel({
   );
 }
 
+function StorefrontPanel({
+  shop,
+  notifyEmail,
+  notifyPhone,
+  readonly,
+  platformDesk,
+  onReload,
+}: {
+  shop: Shop;
+  notifyEmail: string;
+  notifyPhone: string;
+  readonly: boolean;
+  platformDesk: boolean;
+  onReload: () => void;
+}) {
+  const [logo, setLogo] = useState(shop.tradeProfile.logoUrl);
+  const [accent, setAccent] = useState(shop.neonAccent || shop.ringColor);
+  const [phone, setPhone] = useState(notifyPhone);
+  const [email, setEmail] = useState(notifyEmail);
+  const [niche, setNiche] = useState(isPublicNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
+  const [note, setNote] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [outreach, setOutreach] = useState<{ mode: string; chunkSize: number; intervalSeconds: number } | null>(null);
+  const [outreachError, setOutreachError] = useState<string | null>(null);
+  const [hud, setHud] = useState<StorefrontHud>(shop.tradeProfile.hud);
+  const [activeLayer, setActiveLayer] = useState<HeroLayerId>("headline");
+  const stageRef = useRef<HTMLDivElement>(null);
+  const bookPath = `/${shop.slug}/book`;
+  const previewNiche = isPublicNiche(niche) ? niche : shop.niche;
+  const nicheMedia = NICHE_MEDIA[previewNiche];
+  const painted = paintHero(nicheMedia.heroImageUrl, nicheMedia.heroVideoUrl || null, hud);
+  const legacyLabel = NICHES[shop.niche].label;
+
+  useEffect(() => {
+    setLogo(shop.tradeProfile.logoUrl);
+    setAccent(shop.neonAccent || shop.ringColor);
+    setNiche(isPublicNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
+    setHud(shop.tradeProfile.hud);
+  }, [shop.neonAccent, shop.niche, shop.ringColor, shop.tradeProfile]);
+
+  useEffect(() => {
+    setPhone(notifyPhone);
+    setEmail(notifyEmail);
+  }, [notifyEmail, notifyPhone]);
+
+  function persistHud(next: StorefrontHud) {
+    if (readonly) return;
+    void saveTradeProfile({
+      data: { slug: shop.slug, profile: { ...shop.tradeProfile, hud: next } },
+    }).catch((err: unknown) => setNote(err instanceof Error ? err.message : "Could not save the hero"));
+  }
+
+  useEffect(() => {
+    if (!platformDesk) return;
+    let cancelled = false;
+    void readOutreachDesk()
+      .then((config) => {
+        if (!cancelled) setOutreach(config);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setOutreachError(err instanceof Error ? err.message : "Outreach settings are unavailable");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [platformDesk]);
+
+  return (
+    <form
+      className="max-w-5xl rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (readonly) return;
+        const nextAccent = sanitizeAccent(accent);
+        const nextLogo = sanitizeLogoUrl(logo);
+        if (accent.trim() && !nextAccent) {
+          setNote("Accent must be a hex color like #C8F54A");
+          return;
+        }
+        if (logo.trim() && !nextLogo) {
+          setNote("Logo must be a site path or an https link");
+          return;
+        }
+        setBusy(true);
+        setNote(null);
+        void (async () => {
+          await saveTradeProfile({ data: { slug: shop.slug, profile: { ...shop.tradeProfile, logoUrl: nextLogo, hud } } });
+          if (nextAccent) {
+            await updateShopBrand({ data: { slug: shop.slug, neonAccent: nextAccent } });
+          }
+          await updateNotifyChannels({ data: { slug: shop.slug, notifyEmail: email, notifyPhone: phone } });
+          if (isPublicNiche(niche) && niche !== shop.niche) {
+            await setShopNiche({ data: { slug: shop.slug, niche } });
+          }
+        })()
+          .then(() => {
+            setNote("Saved");
+            onReload();
+          })
+          .catch((err: unknown) => setNote(err instanceof Error ? err.message : "Could not save"))
+          .finally(() => setBusy(false));
+      }}
+    >
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Storefront</p>
+      <p className="mt-1 font-display text-3xl">Brand and book</p>
+      <div className="mt-4">
+        <Label htmlFor="sf-logo">Logo URL</Label>
+        <Input id="sf-logo" value={logo} disabled={readonly} onChange={(e) => setLogo(e.target.value)} placeholder="/media/mark.png or https://" />
+      </div>
+      <div className="mt-3">
+        <Label htmlFor="sf-accent">Accent hex</Label>
+        <Input id="sf-accent" value={accent} disabled={readonly} onChange={(e) => setAccent(e.target.value)} placeholder="#C8F54A" />
+      </div>
+      <div className="mt-3">
+        <Label htmlFor="sf-phone">Contact phone</Label>
+        <Input id="sf-phone" value={phone} disabled={readonly} onChange={(e) => setPhone(e.target.value)} />
+      </div>
+      <div className="mt-3">
+        <Label htmlFor="sf-email">Contact email</Label>
+        <Input id="sf-email" value={email} disabled={readonly} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="mt-3">
+        <Label htmlFor="sf-niche">Trade</Label>
+        <select
+          id="sf-niche"
+          value={niche}
+          disabled={readonly}
+          onChange={(e) => {
+            const next = e.target.value as typeof niche;
+            setNiche(next);
+            setHud((current) => applyDepthStudio(current, next));
+          }}
+          className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+        >
+          {!isPublicNiche(shop.niche) ? (
+            <option value={shop.niche} disabled>
+              {legacyLabel} (not in the public list)
+            </option>
+          ) : null}
+          {PUBLIC_NICHE_ORDER.map((id) => (
+            <option key={id} value={id}>
+              {NICHES[id].label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mt-4">
+        <Label htmlFor="sf-book">Booking link</Label>
+        <div className="mt-2 flex gap-2">
+          <Input id="sf-book" readOnly value={bookPath} />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              void navigator.clipboard.writeText(bookPath).then(() => setCopied(true));
+            }}
+          >
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+      </div>
+      <div
+        ref={stageRef}
+        className="storefront-stage mt-6"
+        data-wash={hud.wash}
+        data-rim={hud.rim ? "on" : "off"}
+        data-scan={hud.scan ? "on" : "off"}
+        style={hudVars(hud, sanitizeAccent(accent) || shop.ringColor)}
+      >
+        <HeroSpatial rootRef={stageRef} />
+        <div className="relative min-h-[28rem] overflow-hidden">
+          <div className="hero-blend absolute inset-0">
+            {painted.imageUrl ? (
+              <img src={painted.imageUrl} alt="" className="hero-plate absolute -inset-[8%] h-[116%] w-[116%]" />
+            ) : painted.videoUrl ? (
+              <video
+                className="hero-plate pointer-events-none absolute -inset-[8%] h-[116%] w-[116%]"
+                src={painted.videoUrl}
+                muted
+                playsInline
+                loop
+                autoPlay
+                aria-hidden
+              />
+            ) : null}
+            <div className="hero-subject absolute inset-0">
+              {painted.imageUrl ? <img src={painted.imageUrl} alt="" className="hero-frame absolute inset-0 h-full w-full" /> : null}
+              {painted.videoUrl ? (
+                <video className="hero-frame absolute inset-0 z-[1] h-full w-full" src={painted.videoUrl} muted playsInline loop autoPlay />
+              ) : null}
+            </div>
+            <div className="hero-scan pointer-events-none absolute inset-0" />
+          </div>
+          <HeroTextCanvas
+            layers={hud.layers}
+            fallbacks={{
+              headline: shop.name,
+              subheadline: hud.headline || shop.tagline,
+              cta_button: "Book a time",
+            }}
+            editable={!readonly}
+            activeLayer={activeLayer}
+            onActiveLayer={setActiveLayer}
+            onLayerChange={(id, layer, persist) => {
+              setHud((current) => {
+                const next = setHeroLayer(current, id, layer);
+                if (persist) persistHud(next);
+                return next;
+              });
+            }}
+          />
+        </div>
+      </div>
+      <PreviewStudio
+        hud={hud}
+        onChange={setHud}
+        onCommit={(next) => persistHud(next)}
+        heroChoices={[
+          { id: "film", label: nicheMedia.loopLabel },
+          ...(nicheMedia.heroImageUrl ? [{ id: "still" as const, label: "Niche still" }] : []),
+          { id: "url", label: "Custom URL" },
+        ]}
+        activeLayer={activeLayer}
+        onActiveLayer={setActiveLayer}
+      />
+      {note ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
+      <Button type="submit" className="mt-5" disabled={readonly || busy}>
+        {busy ? "Saving" : "Save storefront"}
+      </Button>
+      {platformDesk ? (
+        <div className="mt-8 border-t border-line pt-6">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Outreach</p>
+          <p className="mt-1 font-display text-2xl">Campaign parameters</p>
+          <p className="mt-2 text-sm text-muted">Simulation stays on. This desk does not send.</p>
+          {outreach ? (
+            <p className="mt-3 text-sm">
+              Mode {outreach.mode}. Chunk {outreach.chunkSize}. Interval {outreach.intervalSeconds}s.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-muted">{outreachError ?? "Reading outreach settings…"}</p>
+          )}
+          <ul className="mt-4 grid gap-3">
+            {OUTREACH_STRATEGIES.map((item) => (
+              <li key={item.id} className="rounded-xl bg-surface-2 p-3 text-sm">
+                <p className="font-medium">{item.label}</p>
+                <p className="mt-1 text-muted">{item.line}</p>
+                <p className="mt-2 whitespace-pre-wrap text-xs text-faint">{item.text}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </form>
+  );
+}
+
 function TeamPanel({
   shop,
   employees,
@@ -1062,17 +1341,7 @@ function TeamPanel({
       ) : null}
       <ul className="grid gap-3">
         {employees.map((e) => (
-          <li key={e.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3">
-            {e.avatarUrl ? (
-              <img src={e.avatarUrl} alt="" className="size-14 rounded-xl object-cover" />
-            ) : null}
-            <div>
-              <p className="font-medium">{e.displayName}</p>
-              <p className="text-xs text-muted">
-                {e.title} · {e.inviteStatus}
-              </p>
-            </div>
-          </li>
+          <StaffRow key={e.id} shopSlug={shop.slug} employee={e} readonly={readonly} onReload={onReload} />
         ))}
       </ul>
       <form
@@ -1125,6 +1394,90 @@ function TeamPanel({
         ) : null}
       </form>
     </div>
+  );
+}
+
+function StaffRow({
+  shopSlug,
+  employee,
+  readonly,
+  onReload,
+}: {
+  shopSlug: string;
+  employee: Employee;
+  readonly: boolean;
+  onReload: () => void;
+}) {
+  const [name, setName] = useState(employee.displayName);
+  const [title, setTitle] = useState(employee.title);
+  const [bio, setBio] = useState(employee.bio);
+  const [phone, setPhone] = useState(employee.phone);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setName(employee.displayName);
+    setTitle(employee.title);
+    setBio(employee.bio);
+    setPhone(employee.phone);
+  }, [employee.bio, employee.displayName, employee.phone, employee.title]);
+
+  return (
+    <li className="rounded-2xl bg-surface p-4">
+      <p className="text-xs uppercase tracking-wider text-faint">{employee.inviteStatus}</p>
+      <div className="mt-3 grid gap-3">
+        <div>
+          <Label htmlFor={`staff-name-${employee.id}`}>Name</Label>
+          <Input id={`staff-name-${employee.id}`} value={name} disabled={readonly} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor={`staff-title-${employee.id}`}>Title</Label>
+          <Input id={`staff-title-${employee.id}`} value={title} disabled={readonly} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor={`staff-bio-${employee.id}`}>Bio</Label>
+          <Input id={`staff-bio-${employee.id}`} value={bio} disabled={readonly} onChange={(e) => setBio(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor={`staff-phone-${employee.id}`}>Phone</Label>
+          <Input id={`staff-phone-${employee.id}`} value={phone} disabled={readonly} onChange={(e) => setPhone(e.target.value)} />
+        </div>
+      </div>
+      {note ? <p className="mt-2 text-sm text-danger">{note}</p> : null}
+      <div className="mt-3 flex gap-2">
+        <Button
+          type="button"
+          disabled={readonly || busy}
+          onClick={() => {
+            setBusy(true);
+            setNote(null);
+            void updateEmployee({
+              data: { slug: shopSlug, employeeId: employee.id, displayName: name, title, bio, phone },
+            })
+              .then(() => onReload())
+              .catch((err: unknown) => setNote(err instanceof Error ? err.message : "Could not save"))
+              .finally(() => setBusy(false));
+          }}
+        >
+          Save
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={readonly || busy}
+          onClick={() => {
+            setBusy(true);
+            setNote(null);
+            void removeEmployee({ data: { slug: shopSlug, employeeId: employee.id } })
+              .then(() => onReload())
+              .catch((err: unknown) => setNote(err instanceof Error ? err.message : "Could not remove"))
+              .finally(() => setBusy(false));
+          }}
+        >
+          Remove
+        </Button>
+      </div>
+    </li>
   );
 }
 

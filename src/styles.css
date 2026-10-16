@@ -115,7 +115,7 @@
 .hero-plate {
   object-fit: cover;
   object-position: center;
-  filter: blur(28px) saturate(1.2);
+  filter: blur(var(--glass-blur, 28px)) saturate(1.2);
   opacity: 0.55;
   -webkit-mask-image: radial-gradient(
     ellipse 90% 84% at 50% 46%,
@@ -1444,5 +1444,74 @@
   .group:hover .media-zoom {
     transform: none;
     transition: none;
+  }
+
+  .hero-type-ink {
+    animation: none;
+    filter: none;
+    opacity: 1;
+  }
+}
+
+.hero-type-ink[data-effect="shimmer"] {
+  animation: hero-shimmer 2.8s linear infinite;
+}
+
+.hero-type-ink[data-effect="pulsating"] {
+  animation: hero-pulse 2.2s ease-in-out infinite;
+}
+
+.hero-type-ink[data-effect="flicker"] {
+  animation: hero-flicker 3.6s linear infinite;
+}
+
+@keyframes hero-shimmer {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes hero-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 12px var(--hero-ink, #f3f1eb));
+  }
+}
+
+@keyframes hero-flicker {
+  0%,
+  19%,
+  21%,
+  23%,
+  54%,
+  56%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  24%,
+  55% {
+    opacity: 0.4;
+  }
+  22% {
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-type-ink[data-effect="shimmer"],
+  .hero-type-ink[data-effect="pulsating"],
+  .hero-type-ink[data-effect="flicker"] {
+    animation: none;
+    filter: none;
+    opacity: 1;
   }
 }
