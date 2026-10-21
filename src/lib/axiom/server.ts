@@ -278,6 +278,18 @@ export const setEmployeeDashboard = createServerFn({
   const loaded = await import("./shop-server.server");
   return loaded.setEmployeeDashboardHandler(ctx);
 });
+export const todayFunnelPost = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((input: { slug?: string; shopId?: string }) => {
+  const slug = String(input?.slug ?? "").trim();
+  const shopId = String(input?.shopId ?? "").trim();
+  if (!slug && !shopId) throw new Error("Shop not found");
+  if (slug.length > 120 || shopId.length > 120) throw new Error("Shop not found");
+  return { slug, shopId };
+}).handler(async (ctx: any) => {
+  const loaded = await import("./funnel-post.server");
+  return loaded.todayFunnelPostHandler(ctx);
+});
 export const getOperatorData = createServerFn({
   method: "GET"
 }).middleware([authMiddleware]).validator((input: string | {

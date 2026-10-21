@@ -332,7 +332,7 @@ export function DesignCopilot({
               ) : (
                 <p className="px-3 py-6 text-sm text-muted">
                   {mode === "staging"
-                    ? "Pick a leopard, bear, or kayak film, or generate one. This does not change the public shop."
+                    ? "Pick a leopard, bear, kayak, or Sasquatch film, or generate one. This does not change the public shop."
                     : "The public shop is still on its last confirmed hero."}
                 </p>
               )}

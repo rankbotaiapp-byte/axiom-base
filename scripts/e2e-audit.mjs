@@ -26,7 +26,7 @@ const PRESETS = [
   {
     niche: "field",
     label: "Field service",
-    media: "/media/heroes/mobile-mechanic-hero.mp4",
+    media: "/media/heroes/auto-hero.mp4",
     wash: "obsidian",
     video: true,
   },

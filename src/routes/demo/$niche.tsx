@@ -142,6 +142,7 @@ function NicheDemo() {
         fallbackVideoUrl={NICHE_MEDIA.trade.heroVideoUrl}
         bookLabel={bookLabel}
         bookHref="#book"
+        niche={niche}
         hud={hud}
         headline={hud.headline}
         layoutEditable

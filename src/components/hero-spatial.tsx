@@ -66,10 +66,16 @@ export function HeroSpatial({ rootRef }: { rootRef: { readonly current: HTMLElem
       for (const body of bodies) body.el.style.transform = "";
     };
 
+    const heroOnScreen = () => {
+      const hero = root.querySelector("section");
+      const box = (hero ?? root).getBoundingClientRect();
+      return box.bottom > -80 && box.top < window.innerHeight + 80;
+    };
+
     const tick = (now: number) => {
       if (dead) return;
       raf = 0;
-      if (document.hidden) return;
+      if (document.visibilityState !== "visible" || !heroOnScreen()) return;
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
       frame += 1;
@@ -127,7 +133,7 @@ export function HeroSpatial({ rootRef }: { rootRef: { readonly current: HTMLElem
         const sx = (fx - 0.5) * 2 * slide;
         const sy = (fy - 0.46) * slide;
         const z = approach * slide * 1.6;
-        const scale = Math.min(1, 1 - 0.06 * (1 - approach) * push);
+        const scale = 1 + approach * 0.03 * push;
         subject.style.setProperty("--approach", approach.toFixed(3));
         subject.style.transform = `translate3d(${sx.toFixed(2)}px, ${sy.toFixed(2)}px, ${z.toFixed(2)}px) scale(${scale.toFixed(4)})`;
       }
@@ -185,20 +191,28 @@ export function HeroSpatial({ rootRef }: { rootRef: { readonly current: HTMLElem
         body.el.style.transform = `translate3d(${body.x.toFixed(2)}px, ${body.y.toFixed(2)}px, 0)`;
       }
 
+      if (heroOnScreen()) raf = requestAnimationFrame(tick);
+    };
+
+    const resume = () => {
+      if (dead || reduced.matches || raf) return;
+      if (document.visibilityState !== "visible" || !heroOnScreen()) return;
+      last = performance.now();
       raf = requestAnimationFrame(tick);
     };
 
     const onVisibility = () => {
-      if (dead || reduced.matches) return;
-      if (document.hidden) {
+      if (document.visibilityState !== "visible") {
         cancelAnimationFrame(raf);
         raf = 0;
         return;
       }
-      if (!raf) {
-        last = performance.now();
-        raf = requestAnimationFrame(tick);
-      }
+      resume();
+    };
+
+    const onPageHide = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
     };
 
     const onReduce = () => {
@@ -214,6 +228,9 @@ export function HeroSpatial({ rootRef }: { rootRef: { readonly current: HTMLElem
     root.addEventListener("pointerleave", onLeave);
     root.addEventListener("mouseleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", resume);
+    window.addEventListener("scroll", resume, { passive: true });
     reduced.addEventListener("change", onReduce);
     raf = requestAnimationFrame(tick);
 
@@ -224,6 +241,9 @@ export function HeroSpatial({ rootRef }: { rootRef: { readonly current: HTMLElem
       root.removeEventListener("pointerleave", onLeave);
       root.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", resume);
+      window.removeEventListener("scroll", resume);
       reduced.removeEventListener("change", onReduce);
       clearMotion();
     };

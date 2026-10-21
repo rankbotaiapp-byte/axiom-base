@@ -77,9 +77,8 @@ export function heroPlaybackRate(progress: number, intensity: number) {
 
 export function cameraMotion(preset: IntroPreset, intensity: number) {
   const i = Math.min(100, Math.max(0, intensity)) / 100;
-  // Motion stays inside the frame. Scale never passes 1, so object-contain
-  // keeps the whole film visible on a phone and on a desktop.
-  const fit = 1 - 0.12 * i;
+  // Scale stays at or above 1 so object-cover fills the viewport while the camera moves.
+  const fit = 1 + 0.12 * i;
   const pan = 3.5 * i;
 
   switch (preset) {

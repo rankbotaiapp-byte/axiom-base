@@ -490,7 +490,7 @@ function LandingStudio() {
               </>
             ) : null}
             {painted.videoUrl ? (
-              <video className="hero-frame absolute inset-0 h-full w-full" src={painted.videoUrl} muted playsInline loop autoPlay />
+              <video className="hero-frame absolute inset-0 h-full w-full object-cover" src={painted.videoUrl} autoPlay loop muted playsInline />
             ) : null}
             <div className="hero-scan pointer-events-none absolute inset-0" />
             <div className="hero-dissolve pointer-events-none absolute inset-0" />

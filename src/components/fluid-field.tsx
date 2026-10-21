@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { mixRgb, paletteFromFrame, type Rgb } from "@/lib/axiom/film-palette";
 
 const VERT = `#version 300 es
 in vec2 aPos;
@@ -100,63 +101,131 @@ function readAccent(): [number, number, number] {
   return hexToRgb(raw) ?? ACCENT;
 }
 
+const HERO_FILM = "/media/heroes/auto-hero.mp4";
+
+function heroFilm(): HTMLVideoElement | null {
+  const marked = document.querySelector<HTMLVideoElement>('video[data-film="auto-hero"]');
+  if (marked && marked.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && marked.videoWidth >= 2) {
+    return marked;
+  }
+  const nodes = document.querySelectorAll("video");
+  for (const node of nodes) {
+    if (!(node instanceof HTMLVideoElement)) continue;
+    const src = node.currentSrc || node.src;
+    if (!src.includes(HERO_FILM)) continue;
+    if (node.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || node.videoWidth < 2) continue;
+    return node;
+  }
+  return null;
+}
+
+function sampleHeroFilm(
+  video: HTMLVideoElement,
+  sample: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+): { accent: Rgb; copper: Rgb } | null {
+  try {
+    const w = sample.width;
+    const h = sample.height;
+    ctx.drawImage(video, 0, 0, w, h);
+    return paletteFromFrame(ctx.getImageData(0, 0, w, h).data);
+  } catch {
+    return null;
+  }
+}
+
+/** Buffer scale for the fluid canvas. Hard ceiling is 2 so 3x/4x phones do not oversample. */
+function drawingPixelRatio() {
+  const capped = Math.min(window.devicePixelRatio || 1, 2);
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  return coarse ? Math.min(capped, 1) : capped;
+}
+
+const GL_ATTRS = {
+  alpha: false,
+  antialias: false,
+  depth: false,
+  stencil: false,
+  preserveDrawingBuffer: false,
+} as const;
+
 export function FluidField() {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    let gl: WebGL2RenderingContext | null = null;
-    try {
-      gl = canvas.getContext("webgl2", {
-        alpha: false,
-        antialias: false,
-        depth: false,
-        stencil: false,
-        powerPreference: "high-performance",
-        preserveDrawingBuffer: false,
-      });
-    } catch {
-      gl = null;
-    }
-    if (!gl) {
-      document.documentElement.classList.add("fluid-off");
-      return () => document.documentElement.classList.remove("fluid-off");
-    }
 
-    const vs = compile(gl, gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
-    const program = gl.createProgram();
-    if (!vs || !fs || !program) {
-      document.documentElement.classList.add("fluid-off");
-      return () => document.documentElement.classList.remove("fluid-off");
-    }
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.bindAttribLocation(program, 0, "aPos");
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      document.documentElement.classList.add("fluid-off");
-      return () => document.documentElement.classList.remove("fluid-off");
-    }
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const contextAttrs: WebGLContextAttributes = {
+      ...GL_ATTRS,
+      powerPreference: coarse ? "low-power" : "high-performance",
+      failIfMajorPerformanceCaveat: coarse,
+    };
 
+    type Gpu = {
+      gl: WebGL2RenderingContext;
+      program: WebGLProgram;
+      buffer: WebGLBuffer;
+      uRes: WebGLUniformLocation | null;
+      uTime: WebGLUniformLocation | null;
+      uPointer: WebGLUniformLocation | null;
+      uAccent: WebGLUniformLocation | null;
+      uCopper: WebGLUniformLocation | null;
+      uBg: WebGLUniformLocation | null;
+      uTrail: WebGLUniformLocation | null;
+      uAge: WebGLUniformLocation | null;
+      uVel: WebGLUniformLocation | null;
+    };
+
+    const acquire = (): Gpu | null => {
+      let gl: WebGL2RenderingContext | null = null;
+      try {
+        gl = canvas.getContext("webgl2", contextAttrs);
+      } catch {
+        gl = null;
+      }
+      if (!gl || gl.isContextLost()) return null;
+      const vs = compile(gl, gl.VERTEX_SHADER, VERT);
+      const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+      const program = gl.createProgram();
+      if (!vs || !fs || !program) return null;
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.bindAttribLocation(program, 0, "aPos");
+      gl.linkProgram(program);
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+      const buffer = gl.createBuffer();
+      if (!buffer) return null;
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      return {
+        gl,
+        program,
+        buffer,
+        uRes: gl.getUniformLocation(program, "uRes"),
+        uTime: gl.getUniformLocation(program, "uTime"),
+        uPointer: gl.getUniformLocation(program, "uPointer"),
+        uAccent: gl.getUniformLocation(program, "uAccent"),
+        uCopper: gl.getUniformLocation(program, "uCopper"),
+        uBg: gl.getUniformLocation(program, "uBg"),
+        uTrail: gl.getUniformLocation(program, "uTrail[0]"),
+        uAge: gl.getUniformLocation(program, "uAge[0]"),
+        uVel: gl.getUniformLocation(program, "uVel"),
+      };
+    };
+
+    let gpu = acquire();
+    if (!gpu) {
+      document.documentElement.classList.add("fluid-off");
+      return () => document.documentElement.classList.remove("fluid-off");
+    }
     document.documentElement.classList.remove("fluid-off");
-    gl.useProgram(program);
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-    const uRes = gl.getUniformLocation(program, "uRes");
-    const uTime = gl.getUniformLocation(program, "uTime");
-    const uPointer = gl.getUniformLocation(program, "uPointer");
-    const uAccent = gl.getUniformLocation(program, "uAccent");
-    const uCopper = gl.getUniformLocation(program, "uCopper");
-    const uBg = gl.getUniformLocation(program, "uBg");
-    const uTrail = gl.getUniformLocation(program, "uTrail[0]");
-    const uAge = gl.getUniformLocation(program, "uAge[0]");
-    const uVel = gl.getUniformLocation(program, "uVel");
 
     const trail = new Float32Array(TRAIL * 2);
     const age = new Float32Array(TRAIL);
@@ -170,25 +239,32 @@ export function FluidField() {
     let pointerX = 0.5;
     let pointerY = 0.42;
     let steered = false;
-    let accent = readAccent();
+    let accent: Rgb = readAccent();
+    let copper: Rgb = COPPER;
     let lastPush = 0;
     let last = performance.now();
     let raf = 0;
     let frameCount = 0;
     let dead = false;
+    let lost = false;
     let vel = 0;
     let lastScroll = window.scrollY;
+    const sample = document.createElement("canvas");
+    sample.width = 32;
+    sample.height = 18;
+    const sampleCtx = sample.getContext("2d", { willReadFrequently: true });
 
     const bind = () => {
-      gl.useProgram(program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.enableVertexAttribArray(0);
-      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      if (!gpu || gpu.gl.isContextLost()) return;
+      gpu.gl.useProgram(gpu.program);
+      gpu.gl.bindBuffer(gpu.gl.ARRAY_BUFFER, gpu.buffer);
+      gpu.gl.enableVertexAttribArray(0);
+      gpu.gl.vertexAttribPointer(0, 2, gpu.gl.FLOAT, false, 0, 0);
     };
 
     const resize = () => {
-      const fine = window.matchMedia("(pointer: fine)").matches;
-      const dpr = Math.min(window.devicePixelRatio || 1, fine ? 1.25 : 1);
+      if (!gpu || gpu.gl.isContextLost()) return;
+      const dpr = drawingPixelRatio();
       const cssW = canvas.clientWidth || window.innerWidth;
       const cssH = canvas.clientHeight || window.innerHeight;
       const w = Math.max(1, Math.floor(cssW * dpr));
@@ -199,10 +275,12 @@ export function FluidField() {
         // Changing the drawing-buffer size resets WebGL state.
         bind();
       }
-      gl.viewport(0, 0, canvas.width, canvas.height);
+      gpu.gl.viewport(0, 0, canvas.width, canvas.height);
     };
 
     const draw = (now: number) => {
+      if (!gpu || gpu.gl.isContextLost()) return;
+      const { gl } = gpu;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       for (let i = 0; i < TRAIL; i++) age[i] += dt;
@@ -211,25 +289,55 @@ export function FluidField() {
         pointerY = 0.42 + Math.cos(now * 0.00011) * 0.04;
       }
       frameCount += 1;
-      if (frameCount % 120 === 0) accent = readAccent();
+      if (sampleCtx && frameCount % 6 === 0) pullFilm();
       vel *= 0.9;
-      gl.uniform2f(uRes, canvas.width, canvas.height);
-      gl.uniform1f(uTime, now * 0.001);
-      gl.uniform2f(uPointer, pointerX, pointerY);
-      gl.uniform3f(uAccent, accent[0], accent[1], accent[2]);
-      gl.uniform3f(uCopper, COPPER[0], COPPER[1], COPPER[2]);
-      gl.uniform3f(uBg, BG[0], BG[1], BG[2]);
-      gl.uniform2fv(uTrail, trail);
-      gl.uniform1fv(uAge, age);
-      if (uVel) gl.uniform1f(uVel, vel);
+      gl.uniform2f(gpu.uRes, canvas.width, canvas.height);
+      gl.uniform1f(gpu.uTime, now * 0.001);
+      gl.uniform2f(gpu.uPointer, pointerX, pointerY);
+      gl.uniform3f(gpu.uAccent, accent[0], accent[1], accent[2]);
+      gl.uniform3f(gpu.uCopper, copper[0], copper[1], copper[2]);
+      gl.uniform3f(gpu.uBg, BG[0], BG[1], BG[2]);
+      gl.uniform2fv(gpu.uTrail, trail);
+      gl.uniform1fv(gpu.uAge, age);
+      if (gpu.uVel) gl.uniform1f(gpu.uVel, vel);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const pullFilm = () => {
+      if (!sampleCtx) return false;
+      const film = heroFilm();
+      const next = film ? sampleHeroFilm(film, sample, sampleCtx) : null;
+      if (!next) {
+        if (!film && frameCount % 120 === 0) {
+          accent = readAccent();
+          copper = COPPER;
+        }
+        return false;
+      }
+      accent = mixRgb(accent, next.accent, 0.35);
+      copper = mixRgb(copper, next.copper, 0.35);
+      canvas.dataset.ripple = `${accent[0].toFixed(3)},${accent[1].toFixed(3)},${accent[2].toFixed(3)}`;
+      return true;
+    };
+
+    const halt = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
     };
 
     const frame = (now: number) => {
       if (dead) return;
       raf = 0;
-      if (document.hidden) return;
+      if (lost || !gpu || gpu.gl.isContextLost() || document.visibilityState !== "visible") return;
       draw(now);
+      raf = requestAnimationFrame(frame);
+    };
+
+    const pump = () => {
+      if (dead || lost || reduced.matches || document.visibilityState !== "visible" || raf) return;
+      last = performance.now();
       raf = requestAnimationFrame(frame);
     };
 
@@ -252,33 +360,65 @@ export function FluidField() {
       slot = (slot + 1) % TRAIL;
     };
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     const onVisibility = () => {
-      if (dead || reduced.matches) return;
-      if (document.hidden) {
-        cancelAnimationFrame(raf);
-        raf = 0;
+      if (document.visibilityState !== "visible") {
+        halt();
         return;
       }
-      if (!raf) raf = requestAnimationFrame(frame);
+      pump();
     };
+    const onPageHide = () => halt();
+    const onPageShow = () => pump();
+    const onLost = (event: Event) => {
+      event.preventDefault();
+      lost = true;
+      halt();
+      document.documentElement.classList.add("fluid-off");
+    };
+    const onRestored = () => {
+      if (dead) return;
+      gpu = acquire();
+      lost = !gpu;
+      if (!gpu) {
+        document.documentElement.classList.add("fluid-off");
+        return;
+      }
+      document.documentElement.classList.remove("fluid-off");
+      resize();
+      pump();
+    };
+
     resize();
+    const followFilm = window.setInterval(() => {
+      if (dead || lost || !gpu || gpu.gl.isContextLost()) return;
+      if (!pullFilm()) return;
+      if (reduced.matches) draw(performance.now());
+    }, 160);
     draw(performance.now());
     const kick = requestAnimationFrame(() => {
-      if (dead) return;
+      if (dead || lost) return;
       resize();
       draw(performance.now());
     });
 
     const observer = new ResizeObserver(() => resize());
     observer.observe(canvas);
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
     window.addEventListener("resize", resize);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
 
     const stop = () => {
       dead = true;
-      cancelAnimationFrame(raf);
+      halt();
+      window.clearInterval(followFilm);
       cancelAnimationFrame(kick);
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("pointermove", onPointer);
       window.removeEventListener("pointerdown", onPointer);
       window.removeEventListener("scroll", onScroll);

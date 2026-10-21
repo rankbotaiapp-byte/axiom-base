@@ -122,6 +122,8 @@ function CustomerHome() {
         fallbackVideoUrl={fallback.heroVideoUrl}
         bookLabel={bookLabel}
         bookHref={`/${data.shop.slug}/book`}
+        niche={data.shop.customNiche || data.shop.niche}
+        autoHero={data.shop.slug === "axiom-auto"}
         hud={data.shop.tradeProfile.hud}
         headline={data.shop.tradeProfile.hud.headline}
         header={

@@ -49,6 +49,8 @@ export function TelemetryLog() {
     let dead = false;
     const loop = (now: number) => {
       if (dead) return;
+      raf = 0;
+      if (document.visibilityState !== "visible") return;
       frames += 1;
       if (now - last >= 1000) {
         const fps = Math.round((frames * 1000) / (now - last));
@@ -59,6 +61,16 @@ export function TelemetryLog() {
       }
       raf = requestAnimationFrame(loop);
     };
+    const onVisibility = () => {
+      if (dead) return;
+      if (document.visibilityState !== "visible") {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        return;
+      }
+      if (!raf) raf = requestAnimationFrame(loop);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     raf = requestAnimationFrame(loop);
 
     const onNet = () => setSnap((prev) => ({ ...prev, ...readLink() }));
@@ -68,6 +80,7 @@ export function TelemetryLog() {
     return () => {
       dead = true;
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
       motion.removeEventListener("change", onMotion);
       window.removeEventListener("online", onNet);
       window.removeEventListener("offline", onNet);

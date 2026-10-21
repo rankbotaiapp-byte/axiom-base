@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, useMotionValue, useScroll } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +11,12 @@ import {
   writeIntroFx,
   type IntroPreset,
 } from "@/lib/axiom/intro";
+import {
+  AUTO_HERO_SRC,
+  AUTO_SEQUENCE,
+  autoBeatFromFilm,
+  type AutoBeat,
+} from "@/lib/axiom/auto-sequence";
 import type { HeroTone } from "@/lib/axiom/media";
 import { TelemetryLog } from "@/components/telemetry-log";
 
@@ -27,6 +33,8 @@ export function CinematicHero({
   fallbackImageUrl = "",
   fallbackVideoUrl = "",
   className,
+  sequence,
+  dashboard = null,
   children,
 }: {
   imageUrl: string;
@@ -41,6 +49,9 @@ export function CinematicHero({
   fallbackImageUrl?: string;
   fallbackVideoUrl?: string;
   className?: string;
+  /** Portal, then auto-hero.mp4, then the live desk. */
+  sequence?: "auto";
+  dashboard?: ReactNode;
   children: ReactNode;
 }) {
   const [reduced, setReduced] = useState(false);
@@ -48,9 +59,9 @@ export function CinematicHero({
   const [videoOk, setVideoOk] = useState(true);
   const [imageSrc, setImageSrc] = useState(imageUrl);
   const [videoSrc, setVideoSrc] = useState(videoUrl ?? "");
+  const [beat, setBeat] = useState<AutoBeat>("portal");
   const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
-  const featherId = useId().replace(/:/g, "");
   /**
    * Progress is 0 while the hero's top is at the top of the viewport and 1
    * when its bottom reaches that edge. Touch scrolling updates the same value.
@@ -78,7 +89,11 @@ export function CinematicHero({
 
   useEffect(() => {
     if (previewMode) return;
-    const sync = () => setFxOn(readIntroFx());
+    const sync = () => {
+      const autoFilm = sequence === "auto" || videoUrl === AUTO_HERO_SRC;
+      if (autoFilm && !readIntroFx()) writeIntroFx(true);
+      setFxOn(autoFilm ? true : readIntroFx());
+    };
     sync();
     window.addEventListener(INTRO_FX_EVENT, sync);
     window.addEventListener("storage", sync);
@@ -86,7 +101,7 @@ export function CinematicHero({
       window.removeEventListener(INTRO_FX_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
-  }, [previewMode]);
+  }, [previewMode, sequence, videoUrl]);
 
   useEffect(() => {
     setImageSrc(imageUrl);
@@ -94,19 +109,62 @@ export function CinematicHero({
     setVideoOk(Boolean(videoUrl));
   }, [imageUrl, videoUrl]);
 
+  const sequenced = sequence === "auto";
+  const autoFilm = sequenced || videoSrc === AUTO_HERO_SRC;
+  const showAutoPlayer = autoFilm;
+  const activeVideo = showAutoPlayer ? AUTO_HERO_SRC : videoSrc;
+
+  useEffect(() => {
+    if (!sequenced) return;
+    if (reduced) {
+      setBeat("dashboard");
+      return;
+    }
+    setBeat("portal");
+    const cut = window.setTimeout(() => {
+      setBeat((current) => (current === "portal" ? "mechanic" : current));
+    }, AUTO_SEQUENCE.portalMs);
+    const desk = window.setTimeout(() => {
+      setBeat("dashboard");
+    }, AUTO_SEQUENCE.portalMs + AUTO_SEQUENCE.dashboardSec * 1000 + 800);
+    return () => {
+      window.clearTimeout(cut);
+      window.clearTimeout(desk);
+    };
+  }, [reduced, sequenced, replayKey]);
+
   useEffect(() => {
     const el = videoRef.current;
-    if (!el || !videoSrc) return;
+    if (!showAutoPlayer || !el) return;
     el.muted = true;
-    const play = () => {
-      void el.play().catch(() => undefined);
-    };
-    play();
-    el.addEventListener("canplay", play);
-    return () => el.removeEventListener("canplay", play);
-  }, [videoSrc, videoOk]);
+    el.loop = true;
+    void el.play().catch(() => undefined);
+  }, [activeVideo, showAutoPlayer, beat]);
 
-  const skip = reduced || (!previewMode && !fxOn);
+  useEffect(() => {
+    const root = sectionRef.current;
+    if (!root || !videoSrc) return;
+    const sync = () => {
+      root.querySelectorAll("video").forEach((el) => {
+        el.muted = true;
+        if (document.visibilityState !== "visible") {
+          el.pause();
+          return;
+        }
+        void el.play().catch(() => undefined);
+      });
+    };
+    sync();
+    const el = videoRef.current;
+    el?.addEventListener("canplay", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      el?.removeEventListener("canplay", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [videoSrc, videoOk, imageSrc, sequenced, beat]);
+
+  const skip = reduced || (!previewMode && !fxOn) || sequenced;
   const preset: IntroPreset = skip ? "none" : introPreset;
   const intensity = Number.isFinite(introIntensity) ? introIntensity : 45;
   const speed = Number.isFinite(introSpeed) ? introSpeed : 40;
@@ -117,6 +175,16 @@ export function CinematicHero({
   const depthOn = !skip && intensity > 0;
 
   useEffect(() => {
+    if (sequenced) {
+      plateY.set(0);
+      backgroundY.set(0);
+      particleY.set(0);
+      washY.set(0);
+      lightY.set(0);
+      foregroundY.set(0);
+      if (videoRef.current) videoRef.current.playbackRate = 1;
+      return;
+    }
     // One scroll position drives every layer. Speeds come from parallaxTravel:
     // film slowest, wash and light farther, title in the opposite direction.
     const apply = (progress: number) => {
@@ -144,15 +212,20 @@ export function CinematicHero({
       foregroundY.set(0);
       if (videoRef.current) videoRef.current.playbackRate = 1;
     };
-  }, [scrollYProgress, depthOn, intensity, speed, plateY, backgroundY, particleY, washY, lightY, foregroundY]);
+  }, [scrollYProgress, depthOn, intensity, speed, plateY, backgroundY, particleY, washY, lightY, foregroundY, sequenced]);
 
   return (
     <section
       ref={sectionRef}
-      className={cn("relative isolate flex min-h-[100dvh] flex-col overflow-hidden bg-transparent", className)}
+      className={cn(
+        "relative isolate flex w-full flex-col overflow-hidden bg-transparent",
+        previewMode ? "min-h-[28rem]" : "h-screen min-h-[100dvh]",
+        sequenced && (beat === "dashboard" ? "hero-sequence is-dashboard" : "hero-sequence is-reel"),
+        className,
+      )}
       style={{ ["--hero-blend" as string]: `${blend}%` }}
     >
-      <div className="hero-blend absolute inset-0 overflow-hidden">
+      <div className="hero-blend absolute inset-0 h-full w-full overflow-hidden">
         {imageSrc || (videoSrc && videoOk) ? (
           <motion.div
             className={cn("absolute -inset-[8%] origin-center", depthOn && "will-change-transform")}
@@ -162,10 +235,10 @@ export function CinematicHero({
             transition={animate ? { duration: 2.4, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
           >
             {imageSrc ? (
-              <img src={imageSrc} alt="" className="hero-plate pointer-events-none absolute inset-0 h-full w-full" />
+              <img src={imageSrc} alt="" className="hero-plate pointer-events-none absolute inset-0 h-full w-full object-cover" />
             ) : (
               <video
-                className="hero-plate pointer-events-none absolute inset-0 h-full w-full"
+                className="hero-plate pointer-events-none absolute inset-0 h-full w-full object-cover"
                 src={videoSrc}
                 autoPlay
                 loop
@@ -176,11 +249,11 @@ export function CinematicHero({
             )}
           </motion.div>
         ) : null}
-        {/* Sharp film opens inside the plate, then rests at full frame so the picture is not cropped. */}
+        {/* Sharp film covers the viewport. The plate stays behind it as the ambient blur. */}
         <motion.div
           className={cn("hero-sharp absolute inset-0 origin-center", depthOn && "will-change-transform")}
           style={{ y: backgroundY }}
-          initial={animate ? { scale: 0.82 } : { scale: 1 }}
+          initial={{ scale: 1 }}
           animate={{ scale: 1 }}
           transition={animate ? { duration: 1.8, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
         >
@@ -200,7 +273,7 @@ export function CinematicHero({
               <img
                 src={imageSrc}
                 alt=""
-                className="hero-frame pointer-events-none absolute inset-0 h-full w-full outline-none"
+                className="hero-frame pointer-events-none absolute inset-0 h-full w-full object-cover outline-none"
                 onError={() => {
                   if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
                     setImageSrc(fallbackImageUrl);
@@ -210,10 +283,31 @@ export function CinematicHero({
                 }}
               />
             ) : null}
-            {videoSrc && videoOk ? (
+            {showAutoPlayer ? (
+              <div className="hero-player absolute inset-0 z-[6]">
+                <video
+                  ref={videoRef}
+                  data-film="auto-hero"
+                  className="hero-frame pointer-events-none absolute inset-0 h-full w-full object-cover"
+                  src={AUTO_HERO_SRC}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  poster={imageSrc || undefined}
+                  onTimeUpdate={(event) => {
+                    if (!sequenced) return;
+                    const next = autoBeatFromFilm(event.currentTarget.currentTime);
+                    setBeat((current) => (current === "portal" || current === next ? current : next));
+                  }}
+                />
+              </div>
+            ) : videoSrc && videoOk ? (
               <video
                 ref={videoRef}
-                className="hero-frame pointer-events-none absolute inset-0 z-[1] h-full w-full"
+                key={`${videoSrc}-${replayKey ?? "0"}`}
+                className="hero-frame pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover"
                 src={videoSrc}
                 autoPlay
                 loop
@@ -265,19 +359,6 @@ export function CinematicHero({
           style={{ y: lightY }}
         />
         <div aria-hidden className="hero-scan pointer-events-none absolute inset-0 z-[4]" />
-        <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full" aria-hidden>
-          <defs>
-            <radialGradient id={featherId} cx="50%" cy="42%" r="72%">
-              <stop offset="0%" stopColor="#050507" stopOpacity="0" />
-              <stop offset="40%" stopColor="#050507" stopOpacity="0" />
-              <stop offset="62%" stopColor="#050507" stopOpacity="0.1" />
-              <stop offset="78%" stopColor="#050507" stopOpacity="0.42" />
-              <stop offset="90%" stopColor="#050507" stopOpacity="0.78" />
-              <stop offset="100%" stopColor="#050507" stopOpacity="1" />
-            </radialGradient>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#${featherId})`} />
-        </svg>
         {animate ? (
           <motion.div
             aria-hidden
@@ -289,15 +370,31 @@ export function CinematicHero({
         ) : null}
       </div>
       <div className="hero-dissolve pointer-events-none absolute inset-0 z-10" />
+      <p className="sr-only" aria-live="polite">
+        {sequenced
+          ? beat === "portal"
+            ? "Portal"
+            : beat === "mechanic"
+              ? "Mechanic at the car"
+              : beat === "headunit"
+                ? "Interior head unit"
+                : "Axiom desk"
+          : ""}
+      </p>
       <TelemetryLog />
       <motion.div
         className={cn(
-          "relative z-20 flex min-h-0 flex-1 flex-col",
+          "hero-foreground relative z-20 flex min-h-0 flex-1 flex-col",
           depthOn && "will-change-transform",
         )}
         style={{ y: foregroundY }}
       >
         {children}
+        {sequenced && dashboard ? (
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col" aria-hidden={beat !== "dashboard"}>
+            {dashboard}
+          </div>
+        ) : null}
       </motion.div>
     </section>
   );

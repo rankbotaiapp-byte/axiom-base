@@ -213,6 +213,7 @@ export function LeadTerritory({
       fallbackVideoUrl={NICHE_MEDIA.trade.heroVideoUrl}
       bookLabel={nicheCopy(niche.niche).bookLabel}
       bookHref="#territory"
+      niche={lead?.tradeLabel || niche.niche}
       header={layout === "pitch" ? <Wordmark /> : undefined}
     />
   );

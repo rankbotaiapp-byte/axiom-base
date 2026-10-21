@@ -20,6 +20,7 @@ import { Route as ShopSlugIndexRouteImport } from './routes/$shopSlug/index'
 import { Route as ShopSlugAdminRouteImport } from './routes/$shopSlug/admin'
 import { Route as ShopSlugBookRouteImport } from './routes/$shopSlug/book'
 import { Route as ShopSlugEmployeeRouteImport } from './routes/$shopSlug/employee'
+import { Route as ShopSlugGateRouteImport } from './routes/$shopSlug/gate'
 import { Route as ApiGetAvatarTokenRouteImport } from './routes/api/get-avatar-token'
 import { Route as DemoNicheRouteImport } from './routes/demo/$niche'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
@@ -89,6 +90,11 @@ const ShopSlugBookRoute = ShopSlugBookRouteImport.update({
 const ShopSlugEmployeeRoute = ShopSlugEmployeeRouteImport.update({
   id: '/employee',
   path: '/employee',
+  getParentRoute: () => ShopSlugRouteRoute,
+} as any)
+const ShopSlugGateRoute = ShopSlugGateRouteImport.update({
+  id: '/gate',
+  path: '/gate',
   getParentRoute: () => ShopSlugRouteRoute,
 } as any)
 const ApiGetAvatarTokenRoute = ApiGetAvatarTokenRouteImport.update({
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
+  '/$shopSlug/gate': typeof ShopSlugGateRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/demo/$niche': typeof DemoNicheRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
+  '/$shopSlug/gate': typeof ShopSlugGateRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/demo/$niche': typeof DemoNicheRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/$shopSlug/admin': typeof ShopSlugAdminRoute
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
+  '/$shopSlug/gate': typeof ShopSlugGateRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/demo/$niche': typeof DemoNicheRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
+    | '/$shopSlug/gate'
     | '/api/get-avatar-token'
     | '/demo/$niche'
     | '/invite/$token'
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
+    | '/$shopSlug/gate'
     | '/api/get-avatar-token'
     | '/demo/$niche'
     | '/invite/$token'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
     | '/$shopSlug/employee'
+    | '/$shopSlug/gate'
     | '/api/get-avatar-token'
     | '/demo/$niche'
     | '/invite/$token'
@@ -440,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopSlugEmployeeRouteImport
       parentRoute: typeof ShopSlugRouteRoute
     }
+    '/$shopSlug/gate': {
+      id: '/$shopSlug/gate'
+      path: '/gate'
+      fullPath: '/$shopSlug/gate'
+      preLoaderRoute: typeof ShopSlugGateRouteImport
+      parentRoute: typeof ShopSlugRouteRoute
+    }
     '/api/get-avatar-token': {
       id: '/api/get-avatar-token'
       path: '/api/get-avatar-token'
@@ -552,6 +571,7 @@ interface ShopSlugRouteRouteChildren {
   ShopSlugAdminRoute: typeof ShopSlugAdminRoute
   ShopSlugBookRoute: typeof ShopSlugBookRoute
   ShopSlugEmployeeRoute: typeof ShopSlugEmployeeRoute
+  ShopSlugGateRoute: typeof ShopSlugGateRoute
   ShopSlugIndexRoute: typeof ShopSlugIndexRoute
   ShopSlugStaffEmployeeIdRoute: typeof ShopSlugStaffEmployeeIdRoute
 }
@@ -560,6 +580,7 @@ const ShopSlugRouteRouteChildren: ShopSlugRouteRouteChildren = {
   ShopSlugAdminRoute: ShopSlugAdminRoute,
   ShopSlugBookRoute: ShopSlugBookRoute,
   ShopSlugEmployeeRoute: ShopSlugEmployeeRoute,
+  ShopSlugGateRoute: ShopSlugGateRoute,
   ShopSlugIndexRoute: ShopSlugIndexRoute,
   ShopSlugStaffEmployeeIdRoute: ShopSlugStaffEmployeeIdRoute,
 }

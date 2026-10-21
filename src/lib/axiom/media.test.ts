@@ -15,7 +15,7 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/heroes/barber-hero.mp4");
     assert.equal(NICHE_MEDIA.tattoo.heroVideoUrl, "/media/heroes/tattoo-hero.mp4");
     assert.equal(NICHE_MEDIA.tattoo.heroImageUrl, "");
-    assert.equal(NICHE_MEDIA.field.heroVideoUrl, "/media/heroes/mobile-mechanic-hero.mp4");
+    assert.equal(NICHE_MEDIA.field.heroVideoUrl, "/media/heroes/auto-hero.mp4");
     assert.equal(NICHE_MEDIA.music.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     assert.equal(NICHE_MEDIA.studio.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     assert.equal(NICHE_MEDIA.retail.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
@@ -116,8 +116,9 @@ describe("niche media", () => {
     assert.equal(leadHeroFor("contractor", "Summit Roofing").heroVideoUrl, "/media/heroes/trades-hero.mp4");
     assert.equal(leadHeroFor("contractor", "Valley Electric").heroVideoUrl, "/media/heroes/trades-hero.mp4");
     assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "");
-    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
-    assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/charging-bear.mp4");
+    assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
+    assert.equal(leadHeroFor("outdoor-expeditions", "Ridge Outfitters", "Outdoor expeditions").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
+    assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/hunting-guide.mp4");
     assert.equal(NICHE_MEDIA.hunting.tone, "backcountry");
     assert.equal(NICHE_MEDIA.therapy.heroVideoUrl, "/media/heroes/physicaltherapist.mp4");
     assert.equal(NICHE_MEDIA.bowtech.heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
@@ -153,7 +154,7 @@ describe("niche media", () => {
     assert.equal(leadHeroFor("field", "Oak Lawn Care").heroVideoUrl, "/media/heroes/landscaper.mp4");
     assert.equal(leadHeroFor("food-truck", "Urban Eats", "Mobile food truck").heroVideoUrl, NICHE_MEDIA.trade.heroVideoUrl);
     assert.equal(leadHeroFor("trade", "Main Street Plumbing").heroVideoUrl, "/media/heroes/trades-hero.mp4");
-    assert.equal(leadHeroFor("field", "Curb Call Rogue").heroVideoUrl, "/media/heroes/mobile-mechanic-hero.mp4");
+    assert.equal(leadHeroFor("field", "Curb Call Rogue").heroVideoUrl, "/media/heroes/auto-hero.mp4");
   });
 
   it("falls back to the niche film when the shop row has no video", () => {

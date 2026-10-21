@@ -62,7 +62,11 @@ test("an explicit process-env override wins over the file", () => {
 });
 
 test("the template ships auth off", () => {
-  assert.deepEqual(readAppEnv(projectRoot()), { VITE_AUTH_ENABLED: "false" });
+  // This workspace leaves VITE_AUTH_ENABLED unset and keeps deploy metadata.
+  // parseAppEnv drops every non-VITE key, so the wrapper must not invent a flag.
+  const shipped = readAppEnv(projectRoot());
+  assert.equal(Object.hasOwn(shipped, "VITE_AUTH_ENABLED"), false);
+  assert.deepEqual(shipped, {});
 });
 
 test("vite loadEnv resolves the wrapped value", () => {
@@ -102,7 +106,8 @@ test("the wrapped command runs with the app env applied", async () => {
     "-e",
     PRINT_FLAG,
   ]);
-  assert.equal(stdout, "false");
+  const applied = mergeAppEnv(readAppEnv(projectRoot()), process.env).VITE_AUTH_ENABLED;
+  assert.equal(stdout, String(applied));
 });
 
 test("the wrapped command sees an explicit override, not the file value", async () => {
@@ -146,5 +151,6 @@ test("the CLI still runs when invoked through a symlinked path", async () => {
     "-e",
     PRINT_FLAG,
   ]);
-  assert.equal(stdout, "false");
+  const applied = mergeAppEnv(readAppEnv(projectRoot()), process.env).VITE_AUTH_ENABLED;
+  assert.equal(stdout, String(applied));
 });

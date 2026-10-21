@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { HeroTextCanvas } from "@/components/hero-text-canvas";
 import { Link } from "@tanstack/react-router";
 import { CinematicHero } from "@/components/cinematic-hero";
+import { AUTO_HERO_POSTER, AUTO_HERO_SRC } from "@/lib/axiom/auto-sequence";
 import { HoloCard } from "@/components/holo-card";
 import { Reveal } from "@/components/reveal";
 import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
@@ -10,6 +11,9 @@ import type { IntroPreset } from "@/lib/axiom/intro";
 import { WEEKDAYS } from "@/lib/axiom/niches";
 import { DEFAULT_HUD, hudVars, type HeroLayerId, type HeroTextLayer, type StorefrontHud } from "@/lib/axiom/hud";
 import { HeroSpatial } from "@/components/hero-spatial";
+import { BarberMirrorStudio, usesBarberMirror } from "@/components/barber-mirror-studio";
+import { OutdoorGuideStudio, usesOutdoorGuide } from "@/components/outdoor-guide-studio";
+import { usesAutomotiveCockpit } from "@/lib/axiom/cockpit";
 import { formatPhone, initials } from "@/lib/utils";
 
 export type StorefrontService = {
@@ -58,6 +62,8 @@ export function NicheStorefront({
   header,
   extra,
   footer,
+  niche = "",
+  autoHero = false,
   hud = DEFAULT_HUD,
   headline = "",
   layoutEditable = false,
@@ -92,6 +98,9 @@ export function NicheStorefront({
   header?: ReactNode;
   extra?: ReactNode;
   footer?: ReactNode;
+  niche?: string;
+  /** The Axiom Auto tenant always plays the finished portal-to-cockpit film. */
+  autoHero?: boolean;
   hud?: StorefrontHud;
   headline?: string;
   layoutEditable?: boolean;
@@ -101,6 +110,22 @@ export function NicheStorefront({
 }) {
   const contact = [contactName, contactPhone ? formatPhone(contactPhone) : "", contactEmail].filter(Boolean).join(" · ");
   const stageRef = useRef<HTMLDivElement>(null);
+  const trade = [businessName, kicker, tagline, description].filter(Boolean).join(" ");
+  const cockpit = autoHero || usesAutomotiveCockpit(niche, trade);
+  const mirror = usesBarberMirror(niche, trade);
+  const outdoor = usesOutdoorGuide(niche, trade);
+  const chrome = (
+    <>
+      <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
+      <div data-spatial="nav" className="relative z-10 flex items-center justify-between gap-3 px-5 py-5 sm:px-10">
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandMark name={businessName} logoUrl={logoUrl ?? ""} />
+          {header}
+        </div>
+        <p className="hidden max-w-xs truncate text-right text-sm text-muted sm:block">{contact || "\u00a0"}</p>
+      </div>
+    </>
+  );
 
   return (
     <div
@@ -112,7 +137,41 @@ export function NicheStorefront({
       data-scan={hud.scan ? "on" : "off"}
       style={hudVars(hud, accent)}
     >
-      <HeroSpatial rootRef={stageRef} />
+      {cockpit || mirror || outdoor ? null : <HeroSpatial rootRef={stageRef} />}
+      {cockpit ? (
+        <CinematicHero
+          sequence="auto"
+          imageUrl={heroImageUrl || AUTO_HERO_POSTER}
+          videoUrl={AUTO_HERO_SRC}
+          blendPercent={blendPercent}
+          introPreset={introPreset}
+          introSpeed={introSpeed}
+          introIntensity={introIntensity}
+          tone={tone ?? null}
+          fallbackImageUrl={fallbackImageUrl}
+          fallbackVideoUrl={fallbackVideoUrl}
+          dashboard={
+            <OfferingDesk
+              businessName={businessName}
+              services={services}
+              staff={staff}
+              hours={hours}
+              bookHref={bookHref}
+              bookLabel={bookLabel}
+            />
+          }
+        >
+          {chrome}
+        </CinematicHero>
+      ) : mirror ? (
+        <BarberMirrorStudio businessName={businessName} bookHref={bookHref} services={services}>
+          {chrome}
+        </BarberMirrorStudio>
+      ) : outdoor ? (
+        <OutdoorGuideStudio businessName={businessName} bookHref={bookHref} services={services} hud={hud}>
+          {chrome}
+        </OutdoorGuideStudio>
+      ) : (
       <CinematicHero
         imageUrl={heroImageUrl}
         videoUrl={heroVideoUrl}
@@ -124,14 +183,7 @@ export function NicheStorefront({
         fallbackImageUrl={fallbackImageUrl}
         fallbackVideoUrl={fallbackVideoUrl}
       >
-        <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
-        <div data-spatial="nav" className="relative z-10 flex items-center justify-between gap-3 px-5 py-5 sm:px-10">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandMark name={businessName} logoUrl={logoUrl ?? ""} />
-            {header}
-          </div>
-          <p className="hidden max-w-xs truncate text-right text-sm text-muted sm:block">{contact || "\u00a0"}</p>
-        </div>
+        {chrome}
         <div className="relative z-10 flex min-h-[18rem] flex-1 flex-col px-5 pb-24 pt-6 sm:px-10">
           <p className="pointer-events-none min-h-4 text-[11px] uppercase tracking-[0.22em] text-muted">{kicker || "\u00a0"}</p>
           <p className="pointer-events-none mt-2 min-h-5 text-sm text-muted sm:hidden">{contact || "\u00a0"}</p>
@@ -152,6 +204,7 @@ export function NicheStorefront({
           </div>
         </div>
       </CinematicHero>
+      )}
       <div className="hero-contact" aria-hidden />
 
       <ServiceCards services={services} description={description} />
@@ -159,6 +212,80 @@ export function NicheStorefront({
       {hours ? <HoursBlock hours={hours} address={address} contact={contact} /> : null}
       {extra}
       {footer}
+    </div>
+  );
+}
+
+function shopSlugFromBook(bookHref?: string): string | null {
+  if (!bookHref) return null;
+  const match = /^\/([^/?#]+)\/book\/?$/.exec(bookHref);
+  return match?.[1] ?? null;
+}
+
+function OfferingDesk({
+  businessName,
+  services,
+  staff,
+  hours,
+  bookHref,
+  bookLabel,
+}: {
+  businessName: string;
+  services: StorefrontService[];
+  staff: readonly [StorefrontStaff, StorefrontStaff];
+  hours?: Record<string, string>;
+  bookHref?: string;
+  bookLabel: string;
+}) {
+  const slug = shopSlugFromBook(bookHref);
+  const openDays = hours ? Object.values(hours).filter((value) => value && !/closed/i.test(value)).length : 0;
+  const crew = staff.filter((person) => person.displayName).length;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col justify-end px-5 pb-8 sm:px-10 sm:pb-12">
+      <div className="mx-auto w-full max-w-5xl rounded-[28px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] sm:p-8">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Axiom desk</p>
+        <h2 className="mt-2 font-display text-4xl text-fg sm:text-5xl">{businessName}</h2>
+        <p className="mt-2 max-w-xl text-sm text-muted">
+          The book, the crew, and the prices for this curb. This is the desk the shop runs.
+        </p>
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          <DeskStat label="On the book" value={String(services.length)} />
+          <DeskStat label="Crew" value={String(crew)} />
+          <DeskStat label="Open days" value={hours ? String(openDays) : "—"} />
+        </div>
+        <ul className="mt-6 divide-y divide-line">
+          {services.slice(0, 4).map((service) => (
+            <li key={service.key} className="flex items-baseline justify-between gap-3 py-3">
+              <span className="text-sm text-fg">{service.name}</span>
+              <span className="shrink-0 text-sm text-accent">{service.price}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6 flex flex-wrap gap-2">
+          {bookHref ? (
+            <a href={bookHref} className="inline-flex h-11 items-center rounded-xl bg-fg px-4 text-sm text-bg">
+              {bookLabel}
+            </a>
+          ) : null}
+          {slug ? (
+            <a
+              href={`/${slug}/admin`}
+              className="inline-flex h-11 items-center rounded-xl px-4 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.12)]"
+            >
+              Open the live desk
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeskStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-bg px-3 py-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-1 font-display text-2xl text-fg">{value}</p>
     </div>
   );
 }

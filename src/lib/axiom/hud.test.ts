@@ -72,7 +72,7 @@ test("the five industry heroes bind their film and studio depth together", () =>
   const cases = [
     ["tattoo", "/media/heroes/tattoo-hero.mp4", "", "ember"],
     ["location", "/media/heroes/barber-hero.mp4", "", "obsidian"],
-    ["field", "/media/heroes/mobile-mechanic-hero.mp4", "", "obsidian"],
+    ["field", "/media/heroes/auto-hero.mp4", "", "obsidian"],
     ["contractor", "/media/heroes/trades-hero.mp4", "", "tide"],
     ["events", "", "/media/heroes/events-planner-hero.jpg", "copper"],
   ] as const;

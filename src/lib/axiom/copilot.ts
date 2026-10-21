@@ -437,7 +437,7 @@ export function unpackBusinessMemory(raw: string): BusinessMemoryPayload {
   }
 }
 
-/** Owner films under public/media/heroes. Creator uses leopard; hunting uses the charging bear. */
+/** Owner films under public/media/heroes. Creator uses leopard; the hunting template uses the verified Sasquatch film. */
 export const STAGE_LIBRARY = [
   {
     id: "leopard",
@@ -459,6 +459,13 @@ export const STAGE_LIBRARY = [
     url: "/media/heroes/white-water-rafting.mp4",
     medium: "video",
     prompt: "Kayak film on the staging plane",
+  },
+  {
+    id: "sasquatch",
+    label: "Sasquatch",
+    url: "/media/heroes/hunting-guide.mp4",
+    medium: "video",
+    prompt: "Verified hunting guide film on the staging plane",
   },
 ] as const;
 

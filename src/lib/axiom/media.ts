@@ -48,7 +48,7 @@ const CURATED_HERO: Partial<Record<ShopNiche, HeroSpec>> = {
   therapy: { video: "/media/heroes/physicaltherapist.mp4", label: "Session loop · physicaltherapist.mp4", preset: "kenburns", speed: 30, intensity: 40, blend: 66 },
   contractor: { video: "/media/heroes/trades-hero.mp4", label: "Site loop · trades-hero.mp4", preset: "zoomin", speed: 30, intensity: 38, blend: 56, tone: "site" },
   clean: { video: "/media/heroes/clean.mp4", label: "Clean loop · clean.mp4", preset: "zoomout", speed: 26, intensity: 36, blend: 56 },
-  field: { video: "/media/heroes/mobile-mechanic-hero.mp4", label: "Field loop · mobile-mechanic-hero.mp4", preset: "panlr", speed: 30, intensity: 44, blend: 64, tone: "site" },
+  field: { video: "/media/heroes/auto-hero.mp4", label: "Field loop · auto-hero.mp4", preset: "panlr", speed: 30, intensity: 44, blend: 64, tone: "site" },
   locksmith: { video: "/media/heroes/mobile-locksmith.mp4", label: "Van loop · mobile-locksmith.mp4", preset: "panlr", speed: 28, intensity: 42, blend: 58, tone: "site" },
   firewood: { video: "/media/heroes/wood.mp4", label: "Wood loop · wood.mp4", preset: "kenburns", speed: 30, intensity: 40, blend: 58, tone: "site" },
   security: { video: "/media/heroes/private-security.mp4", label: "Post loop · private-security.mp4", preset: "kenburns", speed: 30, intensity: 42, blend: 60 },
@@ -56,7 +56,7 @@ const CURATED_HERO: Partial<Record<ShopNiche, HeroSpec>> = {
   counsel: { video: "/media/heroes/counsel.mp4", label: "Counsel loop · counsel.mp4", preset: "fade", speed: 22, intensity: 32, blend: 72 },
   location: { video: "/media/heroes/barber-hero.mp4", label: "Barber loop · barber-hero.mp4", preset: "kenburns", speed: 34, intensity: 46, blend: 58 },
   events: { image: "/media/heroes/events-planner-hero.jpg", label: "Events still · events-planner-hero.jpg", preset: "kenburns", speed: 28, intensity: 42, blend: 62 },
-  hunting: { video: "/media/heroes/charging-bear.mp4", label: "Backcountry loop · charging-bear.mp4", preset: "zoomin", speed: 28, intensity: 42, blend: 64, tone: "backcountry" },
+  hunting: { video: "/media/heroes/hunting-guide.mp4", label: "Verified · hunting-guide.mp4", preset: "zoomin", speed: 28, intensity: 42, blend: 64, tone: "backcountry" },
   creator: { video: "/media/heroes/leopard.mp4", label: "Cinema loop · leopard.mp4", preset: "kenburns", speed: 34, intensity: 46, blend: 62, tone: "cinema" },
 };
 
@@ -151,8 +151,18 @@ export function heroForCustomNiche(title: string): NicheFilm {
   return NICHE_MEDIA.trade;
 }
 
+const OUTDOOR_GUIDE_KEYS = new Set(["hunting", "hunting-guide", "outdoor-expeditions"]);
+
+/** Hunting, hunting-guide, and outdoor-expeditions share the Sasquatch film. */
+export function isOutdoorGuideNiche(value: string): boolean {
+  const key = value.trim().toLowerCase().replace(/[\s_]+/g, "-");
+  if (OUTDOOR_GUIDE_KEYS.has(key)) return true;
+  return /\b(hunting[-\s]?guides?|outdoor[-\s]?expeditions?)\b/i.test(value);
+}
+
 /** Preview pages and new shops read the niche film, or the trade film when the key is legacy. */
 export function leadHeroFor(tradeType: string, businessName: string, category = ""): NicheFilm {
+  if (isOutdoorGuideNiche(tradeType) || isOutdoorGuideNiche(category)) return NICHE_MEDIA.hunting;
   const fromName = classifyQuiet(businessName);
   if (fromName && fromName !== "trade") return NICHE_MEDIA[fromName];
   const fromCategory = classifyQuiet(category) ?? classifyQuiet(tradeType.replace(/-/g, " "));

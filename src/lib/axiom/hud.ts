@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { isOutdoorGuideNiche } from "./media.ts";
 import { sanitizeAccent, sanitizeContactLine, sanitizeLogoUrl } from "./prospect-brand.ts";
 
 /** Closed wash presets. The stylesheet owns the gradients. */
@@ -129,6 +130,57 @@ export function cloneHeroLayout(layout: HeroTextLayout): HeroTextLayout {
   };
 }
 
+export type LookPresetId = "studio" | "frost" | "minimal";
+
+export type LookPreset = {
+  id: LookPresetId;
+  label: string;
+  line: string;
+  hud: Pick<StorefrontHud, "wash" | "fade" | "glow" | "blur" | "force" | "radius" | "damp" | "depth" | "rim" | "scan" | "card">;
+};
+
+/** Public looks. The step indexes stay inside the closed slider tables. */
+export const LOOK_PRESETS: readonly LookPreset[] = [
+  {
+    id: "studio",
+    label: "High-Tech Studio",
+    line: "A bright rim, a deep field, and a live scan.",
+    hud: { wash: "obsidian", fade: 76, glow: 100, blur: 3, force: 3, radius: 2, damp: 1, depth: 4, rim: true, scan: true, card: 1 },
+  },
+  {
+    id: "frost",
+    label: "Frosted Glass",
+    line: "Soft glass, a wide field, and a slow settle.",
+    hud: { wash: "tide", fade: 60, glow: 25, blur: 3, force: 1, radius: 3, damp: 3, depth: 2, rim: true, scan: false, card: 2 },
+  },
+  {
+    id: "minimal",
+    label: "Clean Minimal",
+    line: "Quiet type, a short reach, and no glow.",
+    hud: { wash: "obsidian", fade: 44, glow: 0, blur: 0, force: 0, radius: 0, damp: 2, depth: 0, rim: false, scan: false, card: 0 },
+  },
+];
+
+export function activeLookPreset(hud: StorefrontHud): LookPresetId | null {
+  const match = LOOK_PRESETS.find((preset) => {
+    const look = preset.hud;
+    return (
+      look.wash === hud.wash &&
+      look.fade === hud.fade &&
+      look.glow === hud.glow &&
+      look.blur === hud.blur &&
+      look.force === hud.force &&
+      look.radius === hud.radius &&
+      look.damp === hud.damp &&
+      look.depth === hud.depth &&
+      look.rim === hud.rim &&
+      look.scan === hud.scan &&
+      look.card === hud.card
+    );
+  });
+  return match?.id ?? null;
+}
+
 export const DEFAULT_HUD: StorefrontHud = {
   wash: "obsidian",
   fade: 60,
@@ -227,6 +279,7 @@ export function depthStudio(niche: string) {
 
 /** Apply a niche depth preset without touching the text layers. */
 export function applyDepthStudio(hud: StorefrontHud, niche: string): StorefrontHud {
+  if (isOutdoorGuideNiche(niche)) return { ...hud, ...LOOK_PRESETS[0].hud };
   const look = depthStudio(niche);
   if (!look) return hud;
   return { ...hud, ...look };

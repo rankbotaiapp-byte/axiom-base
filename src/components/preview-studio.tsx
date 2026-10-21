@@ -14,7 +14,9 @@ import {
   HERO_LAYER_IDS,
   HERO_LAYER_LABELS,
   HERO_WASHES,
+  LOOK_PRESETS,
   RADIUS_STEPS,
+  activeLookPreset,
   sanitizeGradient,
   setHeroLayer,
   type HeroLayerId,
@@ -30,6 +32,7 @@ export function PreviewStudio({
   heroChoices,
   activeLayer = "headline",
   onActiveLayer,
+  variant = "public",
 }: {
   hud: StorefrontHud;
   onChange: (next: StorefrontHud) => void;
@@ -38,6 +41,8 @@ export function PreviewStudio({
   heroChoices: { id: HeroPick; label: string }[];
   activeLayer?: HeroLayerId;
   onActiveLayer?: (id: HeroLayerId) => void;
+  /** Public onboarding offers three looks. Admin keeps the raw physics sliders. */
+  variant?: "public" | "admin";
 }) {
   function patch(partial: Partial<StorefrontHud>) {
     onChange({ ...hud, ...partial });
@@ -66,30 +71,7 @@ export function PreviewStudio({
             onActiveLayer={onActiveLayer}
             editLayer={editLayer}
           />
-          <label className="text-sm text-muted">
-            Edge fade {hud.fade}%
-            <input
-              type="range"
-              min={0}
-              max={FADE_STEPS.length - 1}
-              step={1}
-              value={FADE_STEPS.indexOf(hud.fade)}
-              onChange={(event) => patch({ fade: FADE_STEPS[Number(event.target.value)] ?? hud.fade })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
-          <label className="text-sm text-muted">
-            Glow {hud.glow}
-            <input
-              type="range"
-              min={0}
-              max={GLOW_STEPS.length - 1}
-              step={1}
-              value={GLOW_STEPS.indexOf(hud.glow)}
-              onChange={(event) => patch({ glow: GLOW_STEPS[Number(event.target.value)] ?? hud.glow })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
+          {variant === "public" ? <LookPresets hud={hud} onPick={patch} /> : null}
           <label className="text-sm text-muted">
             Card opacity {Math.round((CARD_STEPS[hud.card] ?? 0.5) * 100)}%
             <input
@@ -102,66 +84,55 @@ export function PreviewStudio({
               className="mt-2 w-full accent-accent"
             />
           </label>
-          <label className="text-sm text-muted">
-            Glass blur {BLUR_STEPS[hud.blur] ?? 22}px
-            <input
-              type="range"
-              min={0}
-              max={BLUR_STEPS.length - 1}
-              step={1}
-              value={hud.blur}
-              onChange={(event) => patch({ blur: Number(event.target.value) })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
-          <label className="text-sm text-muted">
-            Displacement {FORCE_STEPS[hud.force] ?? 16}px
-            <input
-              type="range"
-              min={0}
-              max={FORCE_STEPS.length - 1}
-              step={1}
-              value={hud.force}
-              onChange={(event) => patch({ force: Number(event.target.value) })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
-          <label className="text-sm text-muted">
-            Proximity {RADIUS_STEPS[hud.radius] ?? 140}px
-            <input
-              type="range"
-              min={0}
-              max={RADIUS_STEPS.length - 1}
-              step={1}
-              value={hud.radius}
-              onChange={(event) => patch({ radius: Number(event.target.value) })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
-          <label className="text-sm text-muted">
-            Spring damping {DAMP_STEPS[hud.damp] ?? 10}
-            <input
-              type="range"
-              min={0}
-              max={DAMP_STEPS.length - 1}
-              step={1}
-              value={hud.damp}
-              onChange={(event) => patch({ damp: Number(event.target.value) })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
-          <label className="text-sm text-muted">
-            Depth feather {DEPTH_STEPS[hud.depth] ?? 0.7}
-            <input
-              type="range"
-              min={0}
-              max={DEPTH_STEPS.length - 1}
-              step={1}
-              value={hud.depth}
-              onChange={(event) => patch({ depth: Number(event.target.value) })}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
+          {variant === "admin" ? (
+            <details className="rounded-2xl bg-surface-2 px-4 py-3">
+              <summary className="cursor-pointer text-sm text-fg">Advanced 3D & Shader Physics (Developer Mode)</summary>
+              <div className="mt-4 grid gap-4">
+                <PhysicsSlider
+                  label={`Edge fade ${hud.fade}%`}
+                  max={FADE_STEPS.length - 1}
+                  value={Math.max(0, FADE_STEPS.indexOf(hud.fade))}
+                  onChange={(index) => patch({ fade: FADE_STEPS[index] ?? hud.fade })}
+                />
+                <PhysicsSlider
+                  label={`Glow ${hud.glow}`}
+                  max={GLOW_STEPS.length - 1}
+                  value={Math.max(0, GLOW_STEPS.indexOf(hud.glow))}
+                  onChange={(index) => patch({ glow: GLOW_STEPS[index] ?? hud.glow })}
+                />
+                <PhysicsSlider
+                  label={`Glass blur ${BLUR_STEPS[hud.blur] ?? 22}px`}
+                  max={BLUR_STEPS.length - 1}
+                  value={hud.blur}
+                  onChange={(index) => patch({ blur: index })}
+                />
+                <PhysicsSlider
+                  label={`Spring damping ${DAMP_STEPS[hud.damp] ?? 10}`}
+                  max={DAMP_STEPS.length - 1}
+                  value={hud.damp}
+                  onChange={(index) => patch({ damp: index })}
+                />
+                <PhysicsSlider
+                  label={`Displacement ${FORCE_STEPS[hud.force] ?? 16}px`}
+                  max={FORCE_STEPS.length - 1}
+                  value={hud.force}
+                  onChange={(index) => patch({ force: index })}
+                />
+                <PhysicsSlider
+                  label={`Proximity ${RADIUS_STEPS[hud.radius] ?? 140}px`}
+                  max={RADIUS_STEPS.length - 1}
+                  value={hud.radius}
+                  onChange={(index) => patch({ radius: index })}
+                />
+                <PhysicsSlider
+                  label={`Depth feather ${DEPTH_STEPS[hud.depth] ?? 0.7}`}
+                  max={DEPTH_STEPS.length - 1}
+                  value={hud.depth}
+                  onChange={(index) => patch({ depth: index })}
+                />
+              </div>
+            </details>
+          ) : null}
           <label className="text-sm text-muted">
             Wash
             <select
@@ -222,6 +193,65 @@ export function PreviewStudio({
         </div>
       </div>
     </section>
+  );
+}
+
+function LookPresets({ hud, onPick }: { hud: StorefrontHud; onPick: (partial: Partial<StorefrontHud>) => void }) {
+  const active = activeLookPreset(hud);
+  return (
+    <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Studio look">
+      {LOOK_PRESETS.map((preset) => (
+        <button
+          key={preset.id}
+          type="button"
+          role="radio"
+          aria-checked={active === preset.id}
+          onClick={() => onPick(preset.hud)}
+          className={`rounded-2xl px-3 py-3 text-left ${active === preset.id ? "bg-fg text-bg" : "bg-surface-2 text-fg"}`}
+        >
+          <span
+            aria-hidden
+            className={`block h-8 rounded-lg ${preset.id === "studio" ? "bg-accent" : preset.id === "frost" ? "bg-surface" : "bg-bg"}`}
+            style={
+              preset.id === "frost"
+                ? { boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 28%, transparent)", backdropFilter: "blur(8px)" }
+                : preset.id === "minimal"
+                  ? { boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 18%, transparent)" }
+                  : { boxShadow: "0 0 18px color-mix(in srgb, var(--color-accent) 55%, transparent)" }
+            }
+          />
+          <span className="mt-2 block text-sm">{preset.label}</span>
+          <span className={`mt-1 block text-xs ${active === preset.id ? "text-bg/70" : "text-muted"}`}>{preset.line}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PhysicsSlider({
+  label,
+  max,
+  value,
+  onChange,
+}: {
+  label: string;
+  max: number;
+  value: number;
+  onChange: (index: number) => void;
+}) {
+  return (
+    <label className="text-sm text-muted">
+      {label}
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-2 w-full accent-accent"
+      />
+    </label>
   );
 }
 

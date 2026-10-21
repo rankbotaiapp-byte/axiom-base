@@ -39,6 +39,7 @@ import { setAvatarScreen } from "@/components/avatar-help";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { TradeDesk } from "@/components/trade-desk";
 import { ProspectScan } from "@/components/prospect-scan";
+import { TodayPost } from "@/components/today-post";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -497,6 +498,7 @@ function Overview({
               ))}
           </ul>
         )}
+        <TodayPost slug={data.shop.slug} />
         <div className="mt-8">
           <ProspectScan
             slug={data.shop.slug}
@@ -1248,7 +1250,7 @@ function StorefrontPanel({
             <div className="hero-subject absolute inset-0">
               {painted.imageUrl ? <img src={painted.imageUrl} alt="" className="hero-frame absolute inset-0 h-full w-full" /> : null}
               {painted.videoUrl ? (
-                <video className="hero-frame absolute inset-0 z-[1] h-full w-full" src={painted.videoUrl} muted playsInline loop autoPlay />
+                <video className="hero-frame absolute inset-0 z-[1] h-full w-full object-cover" src={painted.videoUrl} autoPlay loop muted playsInline />
               ) : null}
             </div>
             <div className="hero-scan pointer-events-none absolute inset-0" />
@@ -1274,6 +1276,7 @@ function StorefrontPanel({
         </div>
       </div>
       <PreviewStudio
+        variant="admin"
         hud={hud}
         onChange={setHud}
         onCommit={(next) => persistHud(next)}

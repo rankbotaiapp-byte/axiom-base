@@ -84,7 +84,7 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("HVAC").heroVideoUrl, "/media/heroes/trades-hero.mp4");
   assert.equal(heroFor("Plumbing").heroVideoUrl, "/media/heroes/trades-hero.mp4");
   assert.equal(heroFor("Hunting guide").heroImageUrl, "");
-  assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/charging-bear.mp4");
+  assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
   assert.equal(heroFor("Physical therapy").heroVideoUrl, "/media/heroes/physicaltherapist.mp4");
   assert.equal(classifyTrade("Physical therapy").tradeType, "therapy");
   assert.equal(classifyTrade("Hunting guide").tradeType, "hunting");
@@ -98,5 +98,5 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("Dog walking").heroImageUrl, "");
   assert.equal(heroFor("Dog walking").heroVideoUrl, "/media/heroes/dogwalking.mp4");
   assert.equal(heroFor("Auto detailing").heroVideoUrl, "/media/heroes/mobile-detailer.mp4");
-  assert.equal(heroFor("Mobile mechanic").heroVideoUrl, "/media/heroes/mobile-mechanic-hero.mp4");
+  assert.equal(heroFor("Mobile mechanic").heroVideoUrl, "/media/heroes/auto-hero.mp4");
 });
