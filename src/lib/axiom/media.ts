@@ -1,7 +1,8 @@
 import { classifyTrade } from "./directory.ts";
+import { filmMatchingText, isCatalogHeroUrl, resolveNicheFilm } from "./hero-films.ts";
 import type { IntroPreset } from "./intro.ts";
 import { isCustomHeroVideo } from "./hero-video.ts";
-import { isShopNiche, type ShopNiche } from "./types.ts";
+import { isShopNiche, SHOP_NICHES, type ShopNiche } from "./types.ts";
 
 export type HeroTone = "stage" | "site" | "backcountry" | "cinema";
 
@@ -84,17 +85,31 @@ function filmFrom(spec: HeroSpec): NicheFilm {
   };
 }
 
-const tradeFilm = filmFrom(TRADE_HERO);
-
 function filmFor(niche: ShopNiche): NicheFilm {
-  return filmFrom(CURATED_HERO[niche] ?? TRADE_HERO);
+  const spec = niche === "trade" ? TRADE_HERO : CURATED_HERO[niche];
+  const base = spec ?? TRADE_HERO;
+  const resolved = resolveNicheFilm(niche, spec?.video ?? "");
+  const video = resolved || (spec ? (spec.video ?? "") : (TRADE_HERO.video ?? ""));
+  const file = video.split("/").pop() ?? "";
+  const label =
+    spec && (spec.video ?? "") === video
+      ? spec.label
+      : file
+        ? `${file.replace(/(\.mp4)+$/i, "").replace(/-/g, " ")} film`
+        : base.label;
+  return filmFrom({
+    ...base,
+    image: spec?.image,
+    video,
+    label,
+  });
 }
 
 /** One source for niche stills and looping hero films. Templates and heroes both read this. */
 export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
-  guide: tradeFilm,
+  guide: filmFor("guide"),
   fitness: filmFor("fitness"),
-  combat: tradeFilm,
+  combat: filmFor("combat"),
   wellness: filmFor("wellness"),
   lessons: filmFor("lessons"),
   salon: filmFor("salon"),
@@ -102,18 +117,18 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
   tattoo: filmFor("tattoo"),
   photo: filmFor("photo"),
   pets: filmFor("pets"),
-  music: tradeFilm,
+  music: filmFor("music"),
   creator: filmFor("creator"),
-  prompt: tradeFilm,
-  entertainer: tradeFilm,
+  prompt: filmFor("prompt"),
+  entertainer: filmFor("entertainer"),
   events: filmFor("events"),
   landscaper: filmFor("landscaper"),
-  foodtruck: tradeFilm,
+  foodtruck: filmFor("foodtruck"),
   dogwalk: filmFor("dogwalk"),
   detailer: filmFor("detailer"),
   hunting: filmFor("hunting"),
   therapy: filmFor("therapy"),
-  bowtech: tradeFilm,
+  bowtech: filmFor("bowtech"),
   contractor: filmFor("contractor"),
   clean: filmFor("clean"),
   field: filmFor("field"),
@@ -123,10 +138,22 @@ export const NICHE_MEDIA: Record<ShopNiche, NicheFilm> = {
   practice: filmFor("practice"),
   counsel: filmFor("counsel"),
   location: filmFor("location"),
-  studio: tradeFilm,
-  retail: tradeFilm,
-  trade: tradeFilm,
+  studio: filmFor("studio"),
+  retail: filmFor("retail"),
+  trade: filmFor("trade"),
 };
+
+export function nicheFilmCatalog() {
+  return SHOP_NICHES.map((niche) => {
+    const film = NICHE_MEDIA[niche];
+    return {
+      niche,
+      videoUrl: film.heroVideoUrl,
+      file: film.heroVideoUrl.split("/").pop() || "still",
+      label: film.loopLabel,
+    };
+  });
+}
 
 export function cleanCustomNiche(value: string): string {
   return value
@@ -136,6 +163,17 @@ export function cleanCustomNiche(value: string): string {
     .slice(0, 80);
 }
 
+function withSpecificFilm(film: NicheFilm, text: string): NicheFilm {
+  const match = filmMatchingText(text, film.heroVideoUrl);
+  if (!match || match === film.heroVideoUrl) return film;
+  const file = match.split("/").pop() ?? "film";
+  return {
+    ...film,
+    heroVideoUrl: match,
+    loopLabel: `${file.replace(/(\.mp4)+$/i, "").replace(/-/g, " ")} film`,
+  };
+}
+
 /** A typed niche uses its curated film when it has one, otherwise the stock trade film. */
 export function heroForCustomNiche(title: string): NicheFilm {
   const label = cleanCustomNiche(title);
@@ -143,12 +181,12 @@ export function heroForCustomNiche(title: string): NicheFilm {
   try {
     const classified = classifyTrade(label);
     if (classified.known && isShopNiche(classified.tradeType)) {
-      return NICHE_MEDIA[classified.tradeType];
+      return withSpecificFilm(NICHE_MEDIA[classified.tradeType], label);
     }
   } catch {
     // A short or unnamed title keeps the stock film.
   }
-  return NICHE_MEDIA.trade;
+  return withSpecificFilm(NICHE_MEDIA.trade, label);
 }
 
 const OUTDOOR_GUIDE_KEYS = new Set(["hunting", "hunting-guide", "outdoor-expeditions"]);
@@ -162,13 +200,15 @@ export function isOutdoorGuideNiche(value: string): boolean {
 
 /** Preview pages and new shops read the niche film, or the trade film when the key is legacy. */
 export function leadHeroFor(tradeType: string, businessName: string, category = ""): NicheFilm {
+  const named = [businessName, category].filter((part) => part && part.trim()).join(" ");
+  const text = named || tradeType.replace(/-/g, " ");
   if (isOutdoorGuideNiche(tradeType) || isOutdoorGuideNiche(category)) return NICHE_MEDIA.hunting;
   const fromName = classifyQuiet(businessName);
-  if (fromName && fromName !== "trade") return NICHE_MEDIA[fromName];
+  if (fromName && fromName !== "trade") return withSpecificFilm(NICHE_MEDIA[fromName], text);
   const fromCategory = classifyQuiet(category) ?? classifyQuiet(tradeType.replace(/-/g, " "));
-  if (fromCategory) return NICHE_MEDIA[fromCategory];
-  if (isShopNiche(tradeType)) return NICHE_MEDIA[tradeType];
-  return NICHE_MEDIA.trade;
+  if (fromCategory) return withSpecificFilm(NICHE_MEDIA[fromCategory], text);
+  if (isShopNiche(tradeType)) return withSpecificFilm(NICHE_MEDIA[tradeType], text);
+  return withSpecificFilm(NICHE_MEDIA.trade, text);
 }
 
 function classifyQuiet(label: string): ShopNiche | null {
@@ -181,6 +221,14 @@ function classifyQuiet(label: string): ShopNiche | null {
     return null;
   }
   return null;
+}
+
+function isPinnedCatalog(url: string | null, niche: ShopNiche): boolean {
+  if (!isCatalogHeroUrl(url) || !url) return false;
+  if (url === NICHE_MEDIA[niche]?.heroVideoUrl || url === NICHE_MEDIA.trade.heroVideoUrl) return false;
+  const curated = niche === "trade" ? TRADE_HERO.video : CURATED_HERO[niche]?.video;
+  if (curated && url === curated) return false;
+  return true;
 }
 
 export function resolveHeroMedia(shop: {
@@ -208,6 +256,15 @@ export function resolveHeroMedia(shop: {
       videoUrl: null,
       tone: media.tone ?? null,
       loopLabel: "Custom still · niche loop hidden",
+    };
+  }
+  if (isPinnedCatalog(shop.heroVideoUrl, shop.niche)) {
+    const file = String(shop.heroVideoUrl).split("/").pop() ?? "film";
+    return {
+      imageUrl: media.heroImageUrl,
+      videoUrl: shop.heroVideoUrl,
+      tone: media.tone ?? null,
+      loopLabel: `Catalog film · ${file}`,
     };
   }
   return {

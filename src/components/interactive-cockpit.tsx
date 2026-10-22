@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion, useMotionTemplate, useReducedMotion } from "framer-motion";
 import { useBiokineticEngine } from "@/hooks/use-biokinetic-engine";
-import { AUTO_HERO_SRC } from "@/lib/axiom/auto-sequence";
+import { AUTO_HERO_SRC, swapMissingAutoHero } from "@/lib/axiom/auto-sequence";
 
 const POSTER = "/media/auto-hero.jpg";
 /** Power glyph inside coastal-drive.mp4, as a fraction of the frame. */
@@ -266,7 +266,7 @@ export function InteractiveCockpit({
           }
           transition={{ duration: 0.4, ease: "easeInOut" }}
         >
-          <video className="cockpit-film" src={AUTO_HERO_SRC} poster={POSTER} autoPlay loop muted playsInline />
+          <video className="cockpit-film" src={AUTO_HERO_SRC} poster={POSTER} autoPlay loop muted playsInline onError={(event) => swapMissingAutoHero(event.currentTarget)} />
           <motion.div aria-hidden className="pointer-events-none absolute inset-0 z-[5]" style={{ backdropFilter: glassBlur }} />
           {scene === "rift" ? (
             <button type="button" className="cockpit-warp" onClick={engage}>
@@ -291,6 +291,7 @@ export function InteractiveCockpit({
             muted
             playsInline
             className="w-full h-full object-cover"
+            onError={(event) => swapMissingAutoHero(event.currentTarget)}
           />
           <motion.div aria-hidden className="pointer-events-none absolute inset-0 z-[5]" style={{ backdropFilter: glassBlur }} />
           {phase === 0 ? (

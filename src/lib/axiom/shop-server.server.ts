@@ -938,6 +938,17 @@ export const updateShopBrandHandler = async ({
     const message = err instanceof Error ? err.message : "";
     if (!/neon_accent|glow_enabled|layout_json/i.test(message)) throw err;
   }
+  if (typeof data.catalogFilm === "string") {
+    const { isCatalogHeroUrl } = await import("./hero-films");
+    const next = data.catalogFilm.trim();
+    if (next === "default") {
+      if (isCatalogHeroUrl(row.hero_video_url)) {
+        await sql`update shops set hero_video_url = null where id = ${row.id}`;
+      }
+    } else if (isCatalogHeroUrl(next)) {
+      await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
+    }
+  }
   return {
     ok: true as const,
     onboarding: flags

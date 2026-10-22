@@ -71,10 +71,10 @@ test("the five depth films open with a stronger studio look", () => {
 test("the five industry heroes bind their film and studio depth together", () => {
   const cases = [
     ["tattoo", "/media/heroes/tattoo-hero.mp4", "", "ember"],
-    ["location", "/media/heroes/barber-hero.mp4", "", "obsidian"],
-    ["field", "/media/heroes/auto-hero.mp4", "", "obsidian"],
-    ["contractor", "/media/heroes/trades-hero.mp4", "", "tide"],
-    ["events", "", "/media/heroes/events-planner-hero.jpg", "copper"],
+    ["location", "/media/heroes/barbers-hero.mp4.mp4", "", "obsidian"],
+    ["field", "/media/heroes/auto-repair.mp4.mp4", "", "obsidian"],
+    ["contractor", "/media/heroes/contractors-hero.mp4.mp4", "", "tide"],
+    ["events", "/media/heroes/events.mp4", "/media/heroes/events-planner-hero.jpg", "copper"],
   ] as const;
   const catalog = readFileSync(new URL("./niches.ts", import.meta.url), "utf8");
   assert.match(catalog, /export const PUBLIC_NICHE_ORDER[\s\S]*?"events"/);

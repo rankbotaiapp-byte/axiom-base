@@ -48,6 +48,8 @@ import { listPlatformPulse, type PlatformPulse } from "@/lib/axiom/master";
 import { createLeadCsvReader, IMPORT_BATCH, importBulkLeads, importRegistrySweep, leadCsvChunks, type BulkImportResult } from "@/lib/axiom/bulk-import";
 import { SWEEP_PER_COUNTY } from "@/lib/axiom/registry-sweep";
 import { formatMoney } from "@/lib/utils";
+import { nicheFilmCatalog } from "@/lib/axiom/media";
+import { catalogChoices, readMasterTelemetry, readNicheOverrides, writeMasterTelemetry, writeNicheFilmOverride } from "@/lib/axiom/hero-films";
 
 type Desk = Awaited<ReturnType<typeof getMasterDesk>>;
 type FunnelLinks = Awaited<ReturnType<typeof generateRegionalFunnel>>;
@@ -56,6 +58,79 @@ function stayOnDesk(pathname: string): "/admin" | "/master" | "/master-admin" {
   if (pathname === "/admin") return "/admin";
   if (pathname.startsWith("/master-admin")) return "/master-admin";
   return "/master";
+}
+
+function HeroFilmPanel() {
+  const films = useMemo(() => nicheFilmCatalog(), []);
+  const [lines, setLines] = useState(["", "", ""]);
+  const [saved, setSaved] = useState(false);
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const stored = readMasterTelemetry();
+    setLines([stored[0] ?? "", stored[1] ?? "", stored[2] ?? ""]);
+    setOverrides(readNicheOverrides());
+  }, []);
+
+  return (
+    <section className="mt-8 rounded-[28px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <h2 className="font-display text-2xl">Hero films</h2>
+      <p className="mt-1 max-w-2xl text-sm text-muted">
+        Each niche plays the film matched from the hero folder. Contractors, plumbing, auto repair, and barbers keep their named films. A shop pins a different file from its brand panel. These lines are saved in this browser and drawn on every hero opened here.
+      </p>
+      <ul className="mt-4 grid max-h-80 gap-2 overflow-auto sm:grid-cols-2">
+        {films.map((film) => (
+          <li key={film.niche} className="grid gap-2 rounded-xl bg-bg px-3 py-2 text-sm">
+            <span className="capitalize">{film.niche}</span>
+            <select
+              aria-label={`${film.niche} film`}
+              value={overrides[film.niche] || "default"}
+              onChange={(event) => {
+                writeNicheFilmOverride(film.niche, event.target.value);
+                setOverrides(readNicheOverrides());
+              }}
+              className="h-10 rounded-lg bg-surface px-2 text-sm text-fg"
+            >
+              <option value="default">Matched · {film.file}</option>
+              {catalogChoices(film.niche).map((choice) => (
+                <option key={choice.url} value={choice.url}>
+                  {choice.label}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 grid gap-3">
+        {lines.map((line, index) => (
+          <input
+            key={index}
+            value={line}
+            maxLength={80}
+            aria-label={`Telemetry line ${index + 1}`}
+            placeholder={index === 0 ? "Telemetry line" : "Another line"}
+            onChange={(event) => {
+              const next = lines.slice();
+              next[index] = event.target.value;
+              setLines(next);
+              setSaved(false);
+            }}
+            className="h-11 rounded-xl bg-bg px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+          />
+        ))}
+        <button
+          type="button"
+          className="h-11 justify-self-start rounded-xl bg-fg px-4 text-sm font-medium text-bg"
+          onClick={() => {
+            writeMasterTelemetry(lines);
+            setSaved(true);
+          }}
+        >
+          {saved ? "Telemetry saved" : "Save telemetry"}
+        </button>
+      </div>
+    </section>
+  );
 }
 
 export function MasterAdminPage() {
@@ -432,6 +507,7 @@ function DeskView({
       </div>
 
       <AutopilotCard mode={desk.outreach.mode} onDispatched={onRefresh} />
+      <HeroFilmPanel />
 
       <OutreachEngine
         onLaunched={onRefresh}

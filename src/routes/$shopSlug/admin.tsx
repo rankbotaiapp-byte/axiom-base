@@ -22,6 +22,7 @@ import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
 import { sanitizeAccent, sanitizeLogoUrl } from "@/lib/axiom/prospect-brand";
 import { NICHES, PUBLIC_NICHE_ORDER, RING_PRESETS, isPublicNiche, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
 import { resolveHeroMedia, NICHE_MEDIA } from "@/lib/axiom/media";
+import { catalogChoices, isCatalogHeroUrl, readMasterTelemetry } from "@/lib/axiom/hero-films";
 import { PreviewStudio } from "@/components/preview-studio";
 import { HeroTextCanvas } from "@/components/hero-text-canvas";
 import { HeroSpatial } from "@/components/hero-spatial";
@@ -590,9 +591,16 @@ function BrandPanel({
   const [uploading, setUploading] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [localVideo, setLocalVideo] = useState<string | null>(null);
+  const nicheFilm = NICHE_MEDIA[shop.niche]?.heroVideoUrl ?? "";
+  const storedPin =
+    isCatalogHeroUrl(shop.heroVideoUrl) && shop.heroVideoUrl !== nicheFilm && shop.heroVideoUrl !== NICHE_MEDIA.trade.heroVideoUrl
+      ? shop.heroVideoUrl
+      : "";
+  const [catalog, setCatalog] = useState(storedPin);
   const canIntro = !readonly || shop.isShowcase;
   const hero = resolveHeroMedia(shop);
-  const previewVideo = localVideo ?? hero.videoUrl;
+  const previewVideo = localVideo ?? (catalog || hero.videoUrl);
+  const films = catalogChoices(shop.niche);
 
   useEffect(() => {
     setLocalVideo((current) => {
@@ -600,6 +608,10 @@ function BrandPanel({
       return null;
     });
   }, [shop.heroVideoUrl]);
+
+  useEffect(() => {
+    setCatalog(storedPin);
+  }, [storedPin]);
 
   async function save(extra?: { heroImageUrl?: string; markService?: boolean }) {
     setSaving(true);
@@ -633,6 +645,19 @@ function BrandPanel({
           },
         });
       }
+      onReload();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onCatalog(value: string) {
+    const next = value === "default" ? "" : value;
+    setCatalog(next);
+    if (readonly) return;
+    setSaving(true);
+    try {
+      await updateShopBrand({ data: { slug: shop.slug, catalogFilm: value } });
       onReload();
     } finally {
       setSaving(false);
@@ -730,6 +755,14 @@ function BrandPanel({
           tone={hero.tone}
           replayKey={replay}
           previewMode
+          brand={{
+            name: shop.name,
+            accent: neon,
+            logoUrl: shop.tradeProfile?.logoUrl || undefined,
+            city: cityFromAddress(shop.address),
+            trade: shopTradeLabel(shop),
+          }}
+          telemetry={readMasterTelemetry()}
           className="min-h-[420px]"
         >
           <div className="mt-auto p-6">
@@ -784,6 +817,26 @@ function BrandPanel({
                   : ".mp4, up to 12 MB. Stored for this shop only."}
             </p>
             {videoError ? <p className="mt-2 text-sm text-danger">{videoError}</p> : null}
+          </div>
+          <div className="mt-4">
+            <Label htmlFor="catalog-film">Niche film</Label>
+            <select
+              id="catalog-film"
+              value={catalog || "default"}
+              disabled={readonly || uploading}
+              onChange={(e) => void onCatalog(e.target.value)}
+              className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            >
+              <option value="default">Matched niche film</option>
+              {films.map((film) => (
+                <option key={film.url} value={film.url}>
+                  {film.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-muted">
+              The matcher picks the film from the niche name. Choose another file from the hero folder to pin it on this shop.
+            </p>
           </div>
           <div className="mt-4">
             <Label htmlFor="intro-preset">Preset</Label>

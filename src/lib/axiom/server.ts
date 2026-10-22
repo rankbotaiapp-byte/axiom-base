@@ -157,6 +157,7 @@ export const updateShopBrand = createServerFn({
   neonAccent?: string;
   glowEnabled?: boolean;
   layout?: LayoutBlock[];
+  catalogFilm?: string;
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.updateShopBrandHandler(ctx);

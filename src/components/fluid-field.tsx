@@ -101,7 +101,7 @@ function readAccent(): [number, number, number] {
   return hexToRgb(raw) ?? ACCENT;
 }
 
-const HERO_FILM = "/media/heroes/auto-hero.mp4";
+const HERO_FILMS = ["/media/heroes/auto-hero.mp4", "/media/heroes/auto-repair.mp4.mp4"];
 
 function heroFilm(): HTMLVideoElement | null {
   const marked = document.querySelector<HTMLVideoElement>('video[data-film="auto-hero"]');
@@ -112,7 +112,7 @@ function heroFilm(): HTMLVideoElement | null {
   for (const node of nodes) {
     if (!(node instanceof HTMLVideoElement)) continue;
     const src = node.currentSrc || node.src;
-    if (!src.includes(HERO_FILM)) continue;
+    if (!HERO_FILMS.some((film) => src.includes(film))) continue;
     if (node.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || node.videoWidth < 2) continue;
     return node;
   }

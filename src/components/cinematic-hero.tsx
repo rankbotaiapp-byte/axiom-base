@@ -13,6 +13,7 @@ import {
 } from "@/lib/axiom/intro";
 import {
   AUTO_HERO_SRC,
+  swapMissingAutoHero,
   AUTO_SEQUENCE,
   autoBeatFromFilm,
   type AutoBeat,
@@ -32,6 +33,8 @@ export function CinematicHero({
   tone = null,
   fallbackImageUrl = "",
   fallbackVideoUrl = "",
+  brand = null,
+  telemetry = [],
   className,
   sequence,
   dashboard = null,
@@ -48,6 +51,8 @@ export function CinematicHero({
   tone?: HeroTone | null;
   fallbackImageUrl?: string;
   fallbackVideoUrl?: string;
+  brand?: { name: string; accent?: string; logoUrl?: string; city?: string; trade?: string } | null;
+  telemetry?: readonly string[];
   className?: string;
   /** Portal, then auto-hero.mp4, then the live desk. */
   sequence?: "auto";
@@ -296,6 +301,7 @@ export function CinematicHero({
                   playsInline
                   preload="auto"
                   poster={imageSrc || undefined}
+                  onError={(event) => swapMissingAutoHero(event.currentTarget)}
                   onTimeUpdate={(event) => {
                     if (!sequenced) return;
                     const next = autoBeatFromFilm(event.currentTarget.currentTime);
@@ -370,6 +376,34 @@ export function CinematicHero({
         ) : null}
       </div>
       <div className="hero-dissolve pointer-events-none absolute inset-0 z-10" />
+      {brand?.name ? (
+        <div className="pointer-events-none absolute bottom-8 left-5 z-30 flex max-w-[min(28rem,70%)] items-center gap-3 sm:left-8">
+          <span
+            className="h-10 w-1 shrink-0 rounded-full"
+            style={{ background: brand.accent || "var(--color-accent)" }}
+            aria-hidden
+          />
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt="" className="h-9 w-9 rounded-full object-cover shadow-[0_8px_24px_rgba(0,0,0,0.45)]" />
+          ) : null}
+          <div className="min-w-0">
+            <p
+              className="truncate text-[11px] uppercase tracking-[0.22em] text-fg"
+              style={{ textShadow: "0 8px 20px rgba(0,0,0,0.7)" }}
+            >
+              {brand.name}
+            </p>
+            {brand.trade || brand.city ? (
+              <p
+                className="truncate text-[10px] uppercase tracking-[0.16em] text-fg/80"
+                style={{ textShadow: "0 8px 20px rgba(0,0,0,0.7)" }}
+              >
+                {[brand.trade, brand.city].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <p className="sr-only" aria-live="polite">
         {sequenced
           ? beat === "portal"
@@ -381,7 +415,7 @@ export function CinematicHero({
                 : "Axiom desk"
           : ""}
       </p>
-      <TelemetryLog />
+      <TelemetryLog dataset={telemetry} />
       <motion.div
         className={cn(
           "hero-foreground relative z-20 flex min-h-0 flex-1 flex-col",

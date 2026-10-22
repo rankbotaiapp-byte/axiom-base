@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { HeroTextCanvas } from "@/components/hero-text-canvas";
 import { Link } from "@tanstack/react-router";
 import { CinematicHero } from "@/components/cinematic-hero";
@@ -6,7 +6,8 @@ import { AUTO_HERO_POSTER, AUTO_HERO_SRC } from "@/lib/axiom/auto-sequence";
 import { HoloCard } from "@/components/holo-card";
 import { Reveal } from "@/components/reveal";
 import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
-import type { HeroTone } from "@/lib/axiom/media";
+import { NICHE_MEDIA, type HeroTone } from "@/lib/axiom/media";
+import { isShopNiche } from "@/lib/axiom/types";
 import type { IntroPreset } from "@/lib/axiom/intro";
 import { WEEKDAYS } from "@/lib/axiom/niches";
 import { DEFAULT_HUD, hudVars, type HeroLayerId, type HeroTextLayer, type StorefrontHud } from "@/lib/axiom/hud";
@@ -14,6 +15,7 @@ import { HeroSpatial } from "@/components/hero-spatial";
 import { BarberMirrorStudio, usesBarberMirror } from "@/components/barber-mirror-studio";
 import { OutdoorGuideStudio, usesOutdoorGuide } from "@/components/outdoor-guide-studio";
 import { usesAutomotiveCockpit } from "@/lib/axiom/cockpit";
+import { applyBrowserFilmOverride, readMasterTelemetry, readNicheFilmOverride } from "@/lib/axiom/hero-films";
 import { formatPhone, initials } from "@/lib/utils";
 
 export type StorefrontService = {
@@ -110,10 +112,22 @@ export function NicheStorefront({
 }) {
   const contact = [contactName, contactPhone ? formatPhone(contactPhone) : "", contactEmail].filter(Boolean).join(" · ");
   const stageRef = useRef<HTMLDivElement>(null);
-  const trade = [businessName, kicker, tagline, description].filter(Boolean).join(" ");
-  const cockpit = autoHero || usesAutomotiveCockpit(niche, trade);
-  const mirror = usesBarberMirror(niche, trade);
-  const outdoor = usesOutdoorGuide(niche, trade);
+  const [masterLines, setMasterLines] = useState<string[]>([]);
+  const [filmOverride, setFilmOverride] = useState("");
+  useEffect(() => {
+    setMasterLines(readMasterTelemetry());
+    setFilmOverride(readNicheFilmOverride(niche));
+  }, [niche]);
+  const nicheFilm = isShopNiche(niche) ? NICHE_MEDIA[niche].heroVideoUrl : "";
+  const playedVideo = applyBrowserFilmOverride(heroVideoUrl, nicheFilm, filmOverride);
+  const city = (address ?? "").split(",").map((part) => part.trim()).filter(Boolean)[1] ?? "";
+  const tradeLabel = kicker || niche;
+  const tradeText = [businessName, kicker, tagline, description].filter(Boolean).join(" ");
+  const telemetry = masterLines;
+  const brand = { name: businessName, accent, logoUrl, city, trade: tradeLabel };
+  const cockpit = autoHero || usesAutomotiveCockpit(niche, tradeText);
+  const mirror = usesBarberMirror(niche, tradeText);
+  const outdoor = usesOutdoorGuide(niche, tradeText);
   const chrome = (
     <>
       <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
@@ -150,6 +164,8 @@ export function NicheStorefront({
           tone={tone ?? null}
           fallbackImageUrl={fallbackImageUrl}
           fallbackVideoUrl={fallbackVideoUrl}
+          brand={brand}
+          telemetry={telemetry}
           dashboard={
             <OfferingDesk
               businessName={businessName}
@@ -174,7 +190,7 @@ export function NicheStorefront({
       ) : (
       <CinematicHero
         imageUrl={heroImageUrl}
-        videoUrl={heroVideoUrl}
+        videoUrl={playedVideo}
         blendPercent={blendPercent}
         introPreset={introPreset}
         introSpeed={introSpeed}
@@ -182,6 +198,8 @@ export function NicheStorefront({
         tone={tone ?? null}
         fallbackImageUrl={fallbackImageUrl}
         fallbackVideoUrl={fallbackVideoUrl}
+        brand={brand}
+        telemetry={telemetry}
       >
         {chrome}
         <div className="relative z-10 flex min-h-[18rem] flex-1 flex-col px-5 pb-24 pt-6 sm:px-10">

@@ -75,28 +75,28 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
     return leadHeroFor(classified.tradeType, lead.businessName, classified.tradeLabel);
   }
 
-  assert.equal(heroFor("Guide services").heroVideoUrl, "/media/heroes/welding-trade.mp4");
+  assert.equal(heroFor("Guide services").heroVideoUrl, "/media/heroes/guide.mp4");
   assert.equal(heroFor("Photography").heroVideoUrl, "/media/heroes/photo.mp4");
-  assert.equal(heroFor("Barber").heroVideoUrl, "/media/heroes/barber-hero.mp4");
+  assert.equal(heroFor("Barber").heroVideoUrl, "/media/heroes/barbers-hero.mp4.mp4");
   assert.equal(heroFor("Hair salon").heroImageUrl, "");
   assert.equal(heroFor("Hair salon").heroVideoUrl, "/media/heroes/salon.mp4");
   assert.equal(heroFor("HVAC").heroImageUrl, "");
-  assert.equal(heroFor("HVAC").heroVideoUrl, "/media/heroes/trades-hero.mp4");
-  assert.equal(heroFor("Plumbing").heroVideoUrl, "/media/heroes/trades-hero.mp4");
+  assert.equal(heroFor("HVAC").heroVideoUrl, "/media/heroes/contractors-hero.mp4.mp4");
+  assert.equal(heroFor("Plumbing").heroVideoUrl, "/media/heroes/plumbers-hero.mp4.mp4");
   assert.equal(heroFor("Hunting guide").heroImageUrl, "");
   assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
   assert.equal(heroFor("Physical therapy").heroVideoUrl, "/media/heroes/physicaltherapist.mp4");
   assert.equal(classifyTrade("Physical therapy").tradeType, "therapy");
   assert.equal(classifyTrade("Hunting guide").tradeType, "hunting");
   assert.equal(classifyTrade("Custom bow technician").tradeType, "bowtech");
-  assert.equal(heroFor("Custom bow technician").heroVideoUrl, "/media/heroes/welding-trade.mp4");
+  assert.equal(heroFor("Custom bow technician").heroVideoUrl, "/media/heroes/custom-bow-tech.mp4");
   assert.equal(heroFor("Private security").heroVideoUrl, "/media/heroes/private-security.mp4");
-  assert.equal(heroFor("Mobile food truck").heroVideoUrl, "/media/heroes/welding-trade.mp4");
+  assert.equal(heroFor("Mobile food truck").heroVideoUrl, "/media/heroes/mobile-foodtruck.mp4");
   assert.equal(heroFor("Landscaper").heroVideoUrl, "/media/heroes/landscaper.mp4");
   assert.equal(heroFor("Air conditioning").heroImageUrl, "");
-  assert.equal(heroFor("Air conditioning").heroVideoUrl, "/media/heroes/trades-hero.mp4");
+  assert.equal(heroFor("Air conditioning").heroVideoUrl, "/media/heroes/contractors-hero.mp4.mp4");
   assert.equal(heroFor("Dog walking").heroImageUrl, "");
   assert.equal(heroFor("Dog walking").heroVideoUrl, "/media/heroes/dogwalking.mp4");
   assert.equal(heroFor("Auto detailing").heroVideoUrl, "/media/heroes/mobile-detailer.mp4");
-  assert.equal(heroFor("Mobile mechanic").heroVideoUrl, "/media/heroes/auto-hero.mp4");
+  assert.equal(heroFor("Mobile mechanic").heroVideoUrl, "/media/heroes/auto-repair.mp4.mp4");
 });

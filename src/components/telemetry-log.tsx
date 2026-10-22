@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BROWSER_LOG_ORDER } from "@/lib/axiom/hero-films";
 
 const TYPE_MS = 32;
 const HOLD_MS = 1100;
@@ -21,21 +22,30 @@ function readLink(): Pick<Snapshot, "secure" | "online" | "webgl"> {
 }
 
 function lineFor(snap: Snapshot, index: number) {
-  if (index === 0) return `GPU  ${snap.webgl ? "WebGL2 core online" : "WebGL core standby"}`;
-  if (index === 1) return `FRAME  ${snap.fps > 0 ? snap.fps : "—"} fps`;
-  if (index === 2) return `LINK  ${snap.secure ? "secure" : "open"}  ${snap.online ? "verified" : "down"}`;
+  const key = BROWSER_LOG_ORDER[index];
+  if (key === "GPU") return `GPU  ${snap.webgl ? "WebGL2 core online" : "WebGL core standby"}`;
+  if (key === "FRAME") return `FRAME  ${snap.fps > 0 ? snap.fps : "—"} fps`;
+  if (key === "LINK") return `LINK  ${snap.secure ? "secure" : "open"}  ${snap.online ? "verified" : "down"}`;
   return "AI  engine standby";
 }
 
-/** Compact core log for the hero. Readings come from this browser, once a second. */
-export function TelemetryLog() {
+/** Saved master-desk lines, then GPU, frame rate, link, and engine. */
+export function TelemetryLog({ dataset = [] }: { dataset?: readonly string[] }) {
+  const extra = dataset.map((line) => line.trim()).filter(Boolean).slice(0, 3);
+  const total = BROWSER_LOG_ORDER.length + extra.length;
   const [snap, setSnap] = useState<Snapshot>({ webgl: true, fps: 0, secure: true, online: true });
   const [index, setIndex] = useState(0);
   const [count, setCount] = useState(0);
   const [reduced, setReduced] = useState(false);
-  const [script, setScript] = useState("GPU  WebGL2 core online");
+  const [script, setScript] = useState(extra[0] || "GPU  WebGL2 core online");
   const snapRef = useRef(snap);
   snapRef.current = snap;
+  const extraKey = extra.join("\n");
+
+  const lineAt = (shot: Snapshot, cursor: number) => {
+    if (cursor < extra.length) return extra[cursor] ?? "";
+    return lineFor(shot, cursor - extra.length);
+  };
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -88,17 +98,17 @@ export function TelemetryLog() {
   }, []);
 
   useEffect(() => {
-    setScript(lineFor(snapRef.current, index));
+    setScript(lineAt(snapRef.current, index));
     setCount(0);
-  }, [index]);
+  }, [index, extraKey]);
 
-  const full = reduced ? lineFor(snap, index) : script;
+  const full = reduced ? lineAt(snap, index) : script;
 
   useEffect(() => {
     if (!reduced) return;
-    const timer = window.setInterval(() => setIndex((n) => (n + 1) % 4), 2400);
+    const timer = window.setInterval(() => setIndex((n) => (n + 1) % total), 2400);
     return () => window.clearInterval(timer);
-  }, [reduced]);
+  }, [reduced, total]);
 
   useEffect(() => {
     if (reduced) return;
@@ -107,11 +117,11 @@ export function TelemetryLog() {
       return () => window.clearTimeout(timer);
     }
     const timer = window.setTimeout(() => {
-      setIndex((n) => (n + 1) % 4);
+      setIndex((n) => (n + 1) % total);
       setCount(0);
     }, HOLD_MS);
     return () => window.clearTimeout(timer);
-  }, [count, full, reduced]);
+  }, [count, full, reduced, total]);
 
   const shown = reduced ? full : full.slice(0, count);
 
