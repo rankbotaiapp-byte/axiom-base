@@ -18,6 +18,7 @@ import {
   autoBeatFromFilm,
   type AutoBeat,
 } from "@/lib/axiom/auto-sequence";
+import { heroVideoList, nextReelIndex } from "@/lib/axiom/hero-films";
 import type { HeroTone } from "@/lib/axiom/media";
 import { TelemetryLog } from "@/components/telemetry-log";
 
@@ -41,7 +42,8 @@ export function CinematicHero({
   children,
 }: {
   imageUrl: string;
-  videoUrl?: string | null;
+  /** One film, or a niche playlist. A list advances on `ended`. */
+  videoUrl?: string | readonly string[] | null;
   blendPercent: number;
   introPreset?: IntroPreset;
   introSpeed?: number;
@@ -59,11 +61,15 @@ export function CinematicHero({
   dashboard?: ReactNode;
   children: ReactNode;
 }) {
+  const reels = heroVideoList(videoUrl);
+  const reelKey = reels.join("|");
+  const primaryReel = reels[0] ?? "";
   const [reduced, setReduced] = useState(false);
   const [fxOn, setFxOn] = useState(true);
   const [videoOk, setVideoOk] = useState(true);
   const [imageSrc, setImageSrc] = useState(imageUrl);
-  const [videoSrc, setVideoSrc] = useState(videoUrl ?? "");
+  const [videoSrc, setVideoSrc] = useState(primaryReel);
+  const tried = useRef(new Set<string>());
   const [beat, setBeat] = useState<AutoBeat>("portal");
   const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -95,7 +101,7 @@ export function CinematicHero({
   useEffect(() => {
     if (previewMode) return;
     const sync = () => {
-      const autoFilm = sequence === "auto" || videoUrl === AUTO_HERO_SRC;
+      const autoFilm = sequence === "auto" || primaryReel === AUTO_HERO_SRC;
       if (autoFilm && !readIntroFx()) writeIntroFx(true);
       setFxOn(autoFilm ? true : readIntroFx());
     };
@@ -106,18 +112,46 @@ export function CinematicHero({
       window.removeEventListener(INTRO_FX_EVENT, sync);
       window.removeEventListener("storage", sync);
     };
-  }, [previewMode, sequence, videoUrl]);
+  }, [previewMode, sequence, reelKey, primaryReel]);
 
   useEffect(() => {
+    tried.current = new Set();
     setImageSrc(imageUrl);
-    setVideoSrc(videoUrl ?? "");
-    setVideoOk(Boolean(videoUrl));
-  }, [imageUrl, videoUrl]);
+    setVideoSrc(primaryReel);
+    setVideoOk(Boolean(primaryReel));
+  }, [imageUrl, reelKey, primaryReel]);
 
   const sequenced = sequence === "auto";
   const autoFilm = sequenced || videoSrc === AUTO_HERO_SRC;
   const showAutoPlayer = autoFilm;
   const activeVideo = showAutoPlayer ? AUTO_HERO_SRC : videoSrc;
+  const cycling = reels.length > 1 && reels.includes(videoSrc) && !showAutoPlayer;
+  const activeReel = Math.max(0, reels.indexOf(videoSrc));
+
+  const advanceReel = () => {
+    if (!cycling) return;
+    const next = nextReelIndex(reels.indexOf(videoSrc), reels.length);
+    setVideoSrc(reels[next] ?? videoSrc);
+    setVideoOk(true);
+  };
+
+  const missReel = () => {
+    if (cycling && !tried.current.has(videoSrc)) {
+      tried.current.add(videoSrc);
+      if (tried.current.size < reels.length) {
+        const next = nextReelIndex(reels.indexOf(videoSrc), reels.length);
+        setVideoSrc(reels[next] ?? "");
+        setVideoOk(true);
+        return;
+      }
+    }
+    if (fallbackVideoUrl && videoSrc !== fallbackVideoUrl) {
+      setVideoSrc(fallbackVideoUrl);
+      setVideoOk(true);
+      return;
+    }
+    setVideoOk(false);
+  };
 
   useEffect(() => {
     if (!sequenced) return;
@@ -246,7 +280,7 @@ export function CinematicHero({
                 className="hero-plate pointer-events-none absolute inset-0 h-full w-full object-cover"
                 src={videoSrc}
                 autoPlay
-                loop
+                loop={!cycling}
                 muted
                 playsInline
                 aria-hidden
@@ -316,18 +350,12 @@ export function CinematicHero({
                 className="hero-frame pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover"
                 src={videoSrc}
                 autoPlay
-                loop
+                loop={!cycling}
                 muted
                 playsInline
                 poster={imageSrc || undefined}
-                onError={() => {
-                  if (fallbackVideoUrl && videoSrc !== fallbackVideoUrl) {
-                    setVideoSrc(fallbackVideoUrl);
-                    setVideoOk(true);
-                    return;
-                  }
-                  setVideoOk(false);
-                }}
+                onEnded={advanceReel}
+                onError={missReel}
               />
             ) : null}
             </div>
@@ -404,16 +432,46 @@ export function CinematicHero({
           </div>
         </div>
       ) : null}
+      {cycling ? (
+        <div
+          className="pointer-events-auto absolute bottom-24 right-5 z-30 flex items-center gap-1 rounded-full bg-bg/70 px-2 py-1 sm:right-8"
+          role="group"
+          aria-label="Hero reels"
+        >
+          {reels.map((src, index) => {
+            const current = index === activeReel;
+            const name = (src.split("/").pop() ?? `Reel ${index + 1}`).replace(/(\.mp4)+$/i, "").replace(/-/g, " ");
+            return (
+              <button
+                key={src}
+                type="button"
+                aria-current={current ? "true" : undefined}
+                aria-label={`${name}, reel ${index + 1} of ${reels.length}`}
+                onClick={() => {
+                  tried.current.delete(src);
+                  setVideoSrc(src);
+                  setVideoOk(true);
+                }}
+                className="inline-flex h-11 w-11 items-center justify-center"
+              >
+                <span className={cn("block h-1.5 rounded-full", current ? "w-6 bg-accent" : "w-1.5 bg-fg/50")} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <p className="sr-only" aria-live="polite">
-        {sequenced
-          ? beat === "portal"
-            ? "Portal"
-            : beat === "mechanic"
-              ? "Mechanic at the car"
-              : beat === "headunit"
-                ? "Interior head unit"
-                : "Axiom desk"
-          : ""}
+        {cycling
+          ? `Reel ${activeReel + 1} of ${reels.length}`
+          : sequenced
+            ? beat === "portal"
+              ? "Portal"
+              : beat === "mechanic"
+                ? "Mechanic at the car"
+                : beat === "headunit"
+                  ? "Interior head unit"
+                  : "Axiom desk"
+            : ""}
       </p>
       <TelemetryLog dataset={telemetry} />
       <motion.div

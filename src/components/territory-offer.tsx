@@ -203,7 +203,7 @@ export function LeadTerritory({
       hours={niche.hours ?? DEFAULT_HOURS}
       staff={staff}
       heroImageUrl={hero.heroImageUrl}
-      heroVideoUrl={hero.heroVideoUrl || null}
+      heroVideoUrl={hero.heroVideos.length > 1 ? hero.heroVideos : hero.heroVideoUrl || null}
       blendPercent={hero.heroBlendPercent}
       introPreset={hero.introPreset}
       introSpeed={hero.introSpeed}

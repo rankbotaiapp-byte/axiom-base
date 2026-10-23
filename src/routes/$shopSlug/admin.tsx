@@ -19,8 +19,7 @@ import {
 } from "@/lib/axiom/server";
 import { readOutreachDesk } from "@/lib/axiom/master";
 import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
-import { sanitizeAccent, sanitizeLogoUrl } from "@/lib/axiom/prospect-brand";
-import { NICHES, PUBLIC_NICHE_ORDER, RING_PRESETS, isPublicNiche, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
+import { NICHES, PUBLIC_NICHE_ORDER, isPublicNiche, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
 import { resolveHeroMedia, NICHE_MEDIA } from "@/lib/axiom/media";
 import { catalogChoices, isCatalogHeroUrl, readMasterTelemetry } from "@/lib/axiom/hero-films";
 import { PreviewStudio } from "@/components/preview-studio";
@@ -29,8 +28,10 @@ import { HeroSpatial } from "@/components/hero-spatial";
 import { applyDepthStudio, hudVars, paintHero, setHeroLayer, type HeroLayerId, type StorefrontHud } from "@/lib/axiom/hud";
 import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { getBearerToken } from "@/lib/auth/client";
-import { INTRO_PRESETS, type IntroPreset } from "@/lib/axiom/intro";
-import { LAYOUT_BLOCKS, NEON_PRESETS, type LayoutBlock } from "@/lib/axiom/storefront";
+import { PRESENTATION_STYLES, isPresentationStyle, presentationForIntro, type IntroPreset } from "@/lib/axiom/intro";
+import { LAYOUT_BLOCKS, type LayoutBlock } from "@/lib/axiom/storefront";
+import { BrandStudio } from "@/components/brand-studio";
+import { compileBrandMark, parseBrandStudio, rippleTheme, themeSurface, type RippleThemeId } from "@/lib/axiom/brand-studio";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
 import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
@@ -584,6 +585,9 @@ function BrandPanel({
   const [intensity, setIntensity] = useState(shop.introIntensity);
   const [glow, setGlow] = useState(shop.glowEnabled);
   const [neon, setNeon] = useState(shop.neonAccent || shop.ringColor);
+  const [theme, setTheme] = useState<RippleThemeId | "">(shop.tradeProfile.studio.theme);
+  const [header, setHeader] = useState(shop.tradeProfile.studio.header || shop.name);
+  const [brandLine, setBrandLine] = useState(shop.tradeProfile.studio.tagline || shop.tagline);
   const [layout, setLayout] = useState<LayoutBlock[]>(shop.layout);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [replay, setReplay] = useState(0);
@@ -613,6 +617,30 @@ function BrandPanel({
     setCatalog(storedPin);
   }, [storedPin]);
 
+  useEffect(() => {
+    setColor(shop.ringColor);
+    setNeon(shop.neonAccent || shop.ringColor);
+    setTheme(shop.tradeProfile.studio.theme);
+    setHeader(shop.tradeProfile.studio.header || shop.name);
+    setBrandLine(shop.tradeProfile.studio.tagline || shop.tagline);
+  }, [shop]);
+
+  function studioPayload(next?: { theme?: RippleThemeId | ""; presentation?: IntroPreset }) {
+    const presentation = next?.presentation ?? preset;
+    return parseBrandStudio({
+      header,
+      tagline: brandLine,
+      theme: next?.theme ?? theme,
+      presentation: isPresentationStyle(presentation) ? presentation : shop.tradeProfile.studio.presentation,
+    });
+  }
+
+  async function saveStudio(next?: { theme?: RippleThemeId | ""; presentation?: IntroPreset }) {
+    const studio = studioPayload(next);
+    await saveTradeProfile({ data: { slug: shop.slug, profile: { ...shop.tradeProfile, studio } } });
+    return studio;
+  }
+
   async function save(extra?: { heroImageUrl?: string; markService?: boolean }) {
     setSaving(true);
     try {
@@ -627,11 +655,14 @@ function BrandPanel({
         });
       }
       if (!readonly) {
+        const studio = studioPayload();
+        const chosen = rippleTheme(studio.theme);
+        await saveTradeProfile({ data: { slug: shop.slug, profile: { ...shop.tradeProfile, studio } } });
         await updateShopBrand({
           data: {
             slug: shop.slug,
             heroBlendPercent: blend,
-            ringColor: color,
+            ringColor: chosen?.ring ?? color,
             introPreset: preset,
             introSpeed: speed,
             introIntensity: intensity,
@@ -639,7 +670,7 @@ function BrandPanel({
             primaryServiceId: primary || undefined,
             markHero: true,
             markService: extra?.markService ?? Boolean(primary),
-            neonAccent: neon,
+            neonAccent: chosen?.accent ?? neon,
             glowEnabled: glow,
             layout,
           },
@@ -664,12 +695,6 @@ function BrandPanel({
     }
   }
 
-  async function persistColor(next: string) {
-    setColor(next);
-    ring.setRingColor(next);
-    await ring.persistRingColor(next);
-  }
-
   async function persistIntro(next?: {
     introPreset?: IntroPreset;
     introSpeed?: number;
@@ -687,6 +712,7 @@ function BrandPanel({
       await setShopIntro({
         data: { slug: shop.slug, introPreset: p, introSpeed: s, introIntensity: n },
       });
+      if (!readonly && isPresentationStyle(p)) await saveStudio({ presentation: p });
     } catch {
       /* preview still shows locally */
     }
@@ -744,7 +770,14 @@ function BrandPanel({
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <div className="overflow-hidden rounded-[28px]" style={{ ["--neon" as string]: neon, ["--glow" as string]: glow ? "0.7" : "0" }}>
+      <div
+        className="overflow-hidden rounded-[28px]"
+        style={{
+          ["--neon" as string]: neon,
+          ["--glow" as string]: glow ? "0.7" : "0",
+          ...(rippleTheme(theme) ? themeSurface(rippleTheme(theme)!) : {}),
+        }}
+      >
         <CinematicHero
           imageUrl={hero.imageUrl}
           videoUrl={previewVideo}
@@ -758,7 +791,7 @@ function BrandPanel({
           brand={{
             name: shop.name,
             accent: neon,
-            logoUrl: shop.tradeProfile?.logoUrl || undefined,
+            logoUrl: header ? compileBrandMark(header, brandLine, rippleTheme(theme)?.accent || neon).dataUrl : shop.tradeProfile?.logoUrl || undefined,
             city: cityFromAddress(shop.address),
             trade: shopTradeLabel(shop),
           }}
@@ -839,17 +872,17 @@ function BrandPanel({
             </p>
           </div>
           <div className="mt-4">
-            <Label htmlFor="intro-preset">Preset</Label>
+            <Label htmlFor="intro-preset">Presentation</Label>
             <select
               id="intro-preset"
-              value={preset}
+              value={presentationForIntro(preset)}
               disabled={!canIntro}
               onChange={(e) => void persistIntro({ introPreset: e.target.value as IntroPreset })}
               className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
             >
-              {INTRO_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
+              {PRESENTATION_STYLES.map((style) => (
+                <option key={style.id} value={style.id}>
+                  {style.label}
                 </option>
               ))}
             </select>
@@ -908,69 +941,32 @@ function BrandPanel({
           </Button>
         </div>
 
+        <BrandStudio
+          header={header}
+          tagline={brandLine}
+          theme={theme}
+          disabled={readonly}
+          onHeader={setHeader}
+          onTagline={setBrandLine}
+          onTheme={(id) => {
+            const next = rippleTheme(id);
+            if (!next) return;
+            setTheme(id);
+            setColor(next.ring);
+            setNeon(next.accent);
+            ring.setRingColor(next.ring);
+            if (readonly) return;
+            void (async () => {
+              await saveStudio({ theme: id });
+              await updateShopBrand({
+                data: { slug: shop.slug, ringColor: next.ring, neonAccent: next.accent, glowEnabled: glow, layout },
+              });
+              onReload();
+            })();
+          }}
+        />
         <div className="mt-6">
-          <Label htmlFor="ring">Ring color · all dashboards</Label>
-          <p className="mt-1 text-xs text-muted">
-            Perimeter glow shared by customers, staff, and this console. Incoming books pulse it;
-            confirmations lock it.
-          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {RING_PRESETS.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                aria-label={p.name}
-                onClick={() => void persistColor(p.value)}
-                className="size-10 rounded-full"
-                style={{
-                  background: p.value,
-                  boxShadow:
-                    color.toUpperCase() === p.value.toUpperCase()
-                      ? `0 0 0 2px var(--color-bg), 0 0 0 4px ${p.value}`
-                      : "0 0 0 1px rgba(243,241,235,0.16)",
-                }}
-              />
-            ))}
-            <input
-              id="ring"
-              type="color"
-              value={color}
-              onChange={(e) => {
-                const next = e.target.value;
-                setColor(next);
-                ring.setRingColor(next);
-              }}
-              onBlur={() => void persistColor(color)}
-              className="h-11 w-16 cursor-pointer rounded-xl bg-surface-2"
-            />
-          </div>
-        </div>
-        <div className="mt-6">
-          <Label htmlFor="neon-glow">Neon accent</Label>
-          <p className="mt-1 text-xs text-muted">Glass edges on the public page. The ring stays the perimeter.</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {NEON_PRESETS.map((presetColor) => (
-              <button
-                key={presetColor.value}
-                type="button"
-                aria-label={presetColor.name}
-                disabled={readonly}
-                onClick={() => {
-                  setNeon(presetColor.value);
-                  void updateShopBrand({
-                    data: { slug: shop.slug, neonAccent: presetColor.value, glowEnabled: glow, layout },
-                  }).then(() => onReload());
-                }}
-                className="size-10 rounded-full"
-                style={{
-                  background: presetColor.value,
-                  boxShadow:
-                    neon.toUpperCase() === presetColor.value
-                      ? `0 0 0 2px var(--color-bg), 0 0 0 4px ${presetColor.value}`
-                      : "0 0 0 1px rgba(243,241,235,0.16)",
-                }}
-              />
-            ))}
             <button
               id="neon-glow"
               type="button"
@@ -1129,8 +1125,6 @@ function StorefrontPanel({
   platformDesk: boolean;
   onReload: () => void;
 }) {
-  const [logo, setLogo] = useState(shop.tradeProfile.logoUrl);
-  const [accent, setAccent] = useState(shop.neonAccent || shop.ringColor);
   const [phone, setPhone] = useState(notifyPhone);
   const [email, setEmail] = useState(notifyEmail);
   const [niche, setNiche] = useState(isPublicNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
@@ -1149,11 +1143,9 @@ function StorefrontPanel({
   const legacyLabel = NICHES[shop.niche].label;
 
   useEffect(() => {
-    setLogo(shop.tradeProfile.logoUrl);
-    setAccent(shop.neonAccent || shop.ringColor);
     setNiche(isPublicNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
     setHud(shop.tradeProfile.hud);
-  }, [shop.neonAccent, shop.niche, shop.ringColor, shop.tradeProfile]);
+  }, [shop.niche, shop.tradeProfile]);
 
   useEffect(() => {
     setPhone(notifyPhone);
@@ -1188,23 +1180,10 @@ function StorefrontPanel({
       onSubmit={(event) => {
         event.preventDefault();
         if (readonly) return;
-        const nextAccent = sanitizeAccent(accent);
-        const nextLogo = sanitizeLogoUrl(logo);
-        if (accent.trim() && !nextAccent) {
-          setNote("Accent must be a hex color like #C8F54A");
-          return;
-        }
-        if (logo.trim() && !nextLogo) {
-          setNote("Logo must be a site path or an https link");
-          return;
-        }
         setBusy(true);
         setNote(null);
         void (async () => {
-          await saveTradeProfile({ data: { slug: shop.slug, profile: { ...shop.tradeProfile, logoUrl: nextLogo, hud } } });
-          if (nextAccent) {
-            await updateShopBrand({ data: { slug: shop.slug, neonAccent: nextAccent } });
-          }
+          await saveTradeProfile({ data: { slug: shop.slug, profile: { ...shop.tradeProfile, hud } } });
           await updateNotifyChannels({ data: { slug: shop.slug, notifyEmail: email, notifyPhone: phone } });
           if (isPublicNiche(niche) && niche !== shop.niche) {
             await setShopNiche({ data: { slug: shop.slug, niche } });
@@ -1220,14 +1199,7 @@ function StorefrontPanel({
     >
       <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Storefront</p>
       <p className="mt-1 font-display text-3xl">Brand and book</p>
-      <div className="mt-4">
-        <Label htmlFor="sf-logo">Logo URL</Label>
-        <Input id="sf-logo" value={logo} disabled={readonly} onChange={(e) => setLogo(e.target.value)} placeholder="/media/mark.png or https://" />
-      </div>
-      <div className="mt-3">
-        <Label htmlFor="sf-accent">Accent hex</Label>
-        <Input id="sf-accent" value={accent} disabled={readonly} onChange={(e) => setAccent(e.target.value)} placeholder="#C8F54A" />
-      </div>
+      <p className="mt-2 text-sm text-muted">The mark, the ripple theme, and the glass tint are set on the brand tab.</p>
       <div className="mt-3">
         <Label htmlFor="sf-phone">Contact phone</Label>
         <Input id="sf-phone" value={phone} disabled={readonly} onChange={(e) => setPhone(e.target.value)} />
@@ -1282,7 +1254,7 @@ function StorefrontPanel({
         data-wash={hud.wash}
         data-rim={hud.rim ? "on" : "off"}
         data-scan={hud.scan ? "on" : "off"}
-        style={hudVars(hud, sanitizeAccent(accent) || shop.ringColor)}
+        style={hudVars(hud, shop.neonAccent || shop.ringColor)}
       >
         <HeroSpatial rootRef={stageRef} />
         <div className="relative min-h-[28rem] overflow-hidden">

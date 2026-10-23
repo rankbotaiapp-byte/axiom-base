@@ -17,6 +17,7 @@ import { StorefrontAuditWidget } from "@/components/StorefrontAuditWidget";
 import { presetsForShop } from "@/config/nichePresets";
 import { formatOffer, NICHES, nicheCopy } from "@/lib/axiom/niches";
 import { resolveHeroMedia, heroForCustomNiche, NICHE_MEDIA, SHARED_STAFF } from "@/lib/axiom/media";
+import { compileBrandMark, rippleTheme, themeSurface } from "@/lib/axiom/brand-studio";
 import { paintHero } from "@/lib/axiom/hud";
 import { resolveProspectBrand } from "@/lib/axiom/prospect-brand";
 import type { AccessMode } from "@/lib/axiom/types";
@@ -56,7 +57,7 @@ function CustomerHome() {
   const bookLabel = presetsForShop(data.shop.niche)[0]?.bookingCta ?? copy.bookLabel;
   const contact = employees.find((e) => e.phone)?.phone;
   const hero = resolveHeroMedia(data.shop);
-  const painted = paintHero(hero.imageUrl, hero.videoUrl, data.shop.tradeProfile.hud);
+  const painted = paintHero(hero.imageUrl, hero.videoUrl, data.shop.tradeProfile.hud, hero.videos);
   const nicheFilm = data.shop.customNiche ? heroForCustomNiche(data.shop.customNiche) : NICHE_MEDIA[data.shop.niche];
   const fallback = data.shop.customNiche ? NICHE_MEDIA.trade : nicheFilm;
   const brand = resolveProspectBrand({
@@ -65,6 +66,10 @@ function CustomerHome() {
     logoUrl: data.shop.tradeProfile.logoUrl,
     contactPhone: contact ? String(contact) : "",
   });
+  const studio = data.shop.tradeProfile.studio;
+  const theme = rippleTheme(studio.theme);
+  const mark = studio.header ? compileBrandMark(studio.header, studio.tagline || data.shop.tagline, theme?.accent || brand.accent) : null;
+  const surface = theme ? themeSurface(theme) : undefined;
   const templatePeople = NICHES[data.shop.niche].employees;
   const staff = [0, 1].map((index) => {
     const person = employees[index];
@@ -99,8 +104,8 @@ function CustomerHome() {
         tagline={data.shop.tagline}
         description={data.shop.description}
         address={data.shop.address}
-        accent={brand.accent}
-        logoUrl={brand.logoUrl}
+        accent={theme?.accent || brand.accent}
+        logoUrl={mark?.dataUrl || brand.logoUrl}
         contactPhone={brand.contactPhone}
         services={services.map((service) => ({
           key: service.id,
@@ -112,9 +117,9 @@ function CustomerHome() {
         hours={hours}
         staff={staff}
         heroImageUrl={painted.imageUrl}
-        heroVideoUrl={painted.videoUrl}
+        heroVideoUrl={painted.videos.length > 1 ? painted.videos : painted.videoUrl}
         blendPercent={data.shop.heroBlendPercent}
-        introPreset={data.shop.introPreset}
+        introPreset={studio.presentation || data.shop.introPreset}
         introSpeed={data.shop.introSpeed}
         introIntensity={data.shop.introIntensity}
         tone={hero.tone}
@@ -125,6 +130,7 @@ function CustomerHome() {
         niche={data.shop.customNiche || data.shop.niche}
         autoHero={data.shop.slug === "axiom-auto"}
         hud={data.shop.tradeProfile.hud}
+        surface={surface}
         headline={data.shop.tradeProfile.hud.headline}
         header={
           <div className="min-w-0 flex-1">

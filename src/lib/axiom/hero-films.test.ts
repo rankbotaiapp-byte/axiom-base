@@ -3,7 +3,7 @@ import { readdirSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { AUTO_REPAIR_SRC, swapMissingAutoHero } from "./auto-sequence.ts";
-import { resolveHeroMedia } from "./media.ts";
+import { PHOTO_REELS, resolveHeroMedia } from "./media.ts";
 import {
   BROWSER_LOG_ORDER,
   HERO_MP4_FILES,
@@ -13,6 +13,8 @@ import {
   filmMatchingText,
   heroStem,
   heroTelemetryOrder,
+  heroVideoList,
+  nextReelIndex,
   resolveNicheFilm,
   scoreHeroFile,
 } from "./hero-films.ts";
@@ -32,8 +34,6 @@ describe("hero film directory", () => {
     const skipped = HERO_MP4_FILES.filter((file) => /\b(welcome|outreach|coastal|charging)\b/i.test(heroStem(file)));
     assert.deepEqual(skipped.sort(), [
       "admin-welcome.mp4",
-      "charging-bear.mp4",
-      "coastal-drive.mp4",
       "employee-welcome.mp4",
       "intro-welcome.mp4",
       "outreach-welcome.mp4",
@@ -46,25 +46,25 @@ describe("hero film directory", () => {
   });
 
   it("keeps the named films on their niches", () => {
-    assert.equal(resolveNicheFilm("contractor"), "/media/heroes/contractors-hero.mp4.mp4");
-    assert.equal(resolveNicheFilm("field"), "/media/heroes/auto-repair.mp4.mp4");
-    assert.equal(resolveNicheFilm("location"), "/media/heroes/barbers-hero.mp4.mp4");
+    assert.equal(resolveNicheFilm("contractor"), "/media/heroes/contractors-hero.mp4");
+    assert.equal(resolveNicheFilm("field"), "/media/heroes/auto-repair.mp4");
+    assert.equal(resolveNicheFilm("location", "/media/heroes/barber-hero.mp4"), UNIVERSAL_FALLBACK);
     assert.equal(filmMatchingText("Main Street Plumbing"), "/media/heroes/plumbers-hero.mp4.mp4");
-    assert.equal(filmMatchingText("Northside Barbers"), "/media/heroes/barbers-hero.mp4.mp4");
-    assert.equal(filmMatchingText("Rogue Auto Repair"), "/media/heroes/auto-repair.mp4.mp4");
-    assert.equal(filmMatchingText("Mobile mechanic"), "/media/heroes/auto-repair.mp4.mp4");
-    assert.equal(filmMatchingText("Mobile mechanics"), "/media/heroes/auto-repair.mp4.mp4");
-    assert.equal(filmMatchingText("Rooftop HVAC"), "/media/heroes/contractors-hero.mp4.mp4");
+    assert.equal(filmMatchingText("Northside Barbers"), null);
+    assert.equal(filmMatchingText("Rogue Auto Repair"), "/media/heroes/auto-repair.mp4");
+    assert.equal(filmMatchingText("Mobile mechanic"), "/media/heroes/auto-repair.mp4");
+    assert.equal(filmMatchingText("Mobile mechanics"), "/media/heroes/auto-repair.mp4");
+    assert.equal(filmMatchingText("Rooftop HVAC"), "/media/heroes/contractors-hero.mp4");
     assert.equal(filmMatchingText("Acme Mechanical"), null);
     assert.equal(resolveNicheFilm("firewood", "/media/heroes/wood.mp4"), UNIVERSAL_FALLBACK);
-    assert.equal(catalogChoices("field")[0]?.url, "/media/heroes/auto-repair.mp4.mp4");
-    assert.equal(catalogChoices("location")[0]?.url, "/media/heroes/barbers-hero.mp4.mp4");
+    assert.equal(catalogChoices("field")[0]?.url, "/media/heroes/auto-repair.mp4");
+    assert.equal(catalogChoices("location")[0]?.url, UNIVERSAL_FALLBACK);
   });
 
   it("lets a shop upload or a tenant pin beat the niche film and a browser override", () => {
     const upload = "/api/hero-video/shop_1?v=2";
     const pin = "/media/heroes/plumbers-hero.mp4.mp4";
-    const nicheFilm = "/media/heroes/contractors-hero.mp4.mp4";
+    const nicheFilm = "/media/heroes/contractors-hero.mp4";
     const browserPick = "/media/heroes/trades-hero.mp4";
     assert.equal(resolveHeroMedia({ niche: "contractor", heroImageUrl: "", heroVideoUrl: upload }).videoUrl, upload);
     assert.equal(resolveHeroMedia({ niche: "contractor", heroImageUrl: "", heroVideoUrl: pin }).videoUrl, pin);
@@ -96,9 +96,22 @@ describe("hero film directory", () => {
     assert.equal(missing.src, "/api/hero-video/shop_1");
   });
 
+  it("accepts one film or a rotation and advances on ended", () => {
+    assert.deepEqual(heroVideoList(PHOTO_REELS[0]), [PHOTO_REELS[0]]);
+    assert.deepEqual(heroVideoList([PHOTO_REELS[0], PHOTO_REELS[0], PHOTO_REELS[1]]), [PHOTO_REELS[0], PHOTO_REELS[1]]);
+    assert.equal(nextReelIndex(0, 3), 1);
+    assert.equal(nextReelIndex(2, 3), 0);
+    assert.equal(nextReelIndex(0, 1), 0);
+    assert.deepEqual(applyBrowserFilmOverride(PHOTO_REELS, PHOTO_REELS[0], ""), PHOTO_REELS);
+    assert.equal(
+      applyBrowserFilmOverride(PHOTO_REELS, PHOTO_REELS[0], "/media/heroes/trades-hero.mp4"),
+      "/media/heroes/trades-hero.mp4",
+    );
+  });
+
   it("offers the plumber film as a contractor pin without making it the niche default", () => {
     const choices = catalogChoices("contractor").map((row) => row.url);
-    assert.equal(choices[0], "/media/heroes/contractors-hero.mp4.mp4");
+    assert.equal(choices[0], "/media/heroes/contractors-hero.mp4");
     assert.equal(choices.includes("/media/heroes/plumbers-hero.mp4.mp4"), true);
   });
 });

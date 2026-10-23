@@ -6,7 +6,7 @@ import type { FaceLandmarker, NormalizedLandmark } from "@mediapipe/tasks-vision
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.1/wasm";
 const MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const ROOM = "/media/heroes/barbers-hero.mp4.mp4";
+const ROOM = "/media/heroes/universal-fallback.mp4.mp4";
 const FRAME_SHIFT = { x: 28, y: 16 };
 const DECK_SHIFT = { x: 48, y: 28 };
 

@@ -171,18 +171,20 @@ test("channel routing splits mobile lines from real email addresses", () => {
   assert.match(packed, /trickle/);
 });
 
-test("a nurture loop is day 0, day 3, and day 6, and a click stops it", () => {
+test("a nurture loop is day 0, 48 hours, day 3, and day 6, and a click stops it", () => {
   const start = new Date("2026-10-05T12:00:00.000Z");
   const plan = followUpSchedule(start);
-  assert.deepEqual(plan.map((step) => step.day), [0, 3, 6]);
+  assert.deepEqual(plan.map((step) => step.day), [0, 2, 3, 6]);
   assert.deepEqual(plan.map((step) => step.label), [
     "Day 0 Initial Hook",
+    "48 hour unactivated reminder",
     "Day 3 Competitor Proof Bump",
     "Day 6 Loss Aversion Final Call",
   ]);
   assert.equal(plan[0]?.status, "sent");
   assert.equal(plan[1]?.status, "scheduled");
-  assert.equal(plan[2]?.scheduledAt, "2026-10-11T12:00:00.000Z");
+  assert.equal(plan[1]?.scheduledAt, "2026-10-07T12:00:00.000Z");
+  assert.equal(plan[3]?.scheduledAt, "2026-10-11T12:00:00.000Z");
   const launched = { text: "sms hook", emailSubject: "subject", emailBody: "email hook" };
   assert.equal(followUpBody(0, "sms", launched), "sms hook");
   assert.match(followUpBody(0, "email", launched), /email hook/);

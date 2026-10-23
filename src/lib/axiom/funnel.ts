@@ -21,6 +21,8 @@ export type FunnelSearch = {
   pitch?: boolean;
   session_id?: string;
   greet?: boolean;
+  preview?: boolean;
+  business?: string;
   biz?: string;
   trade?: string;
   city?: string;
@@ -73,6 +75,8 @@ export function parseFunnelSearch(source: Record<string, unknown>): FunnelSearch
     ...(query.stopToken ? { t: query.stopToken } : {}),
     ...(source.pitch === true || source.pitch === "1" || source.pitch === "true" ? { pitch: true as const } : {}),
     ...(source.greet === true || source.greet === "1" || source.greet === "true" ? { greet: true as const } : {}),
+    ...(source.preview === true || source.preview === "1" || source.preview === "true" ? { preview: true as const } : {}),
+    ...(clip(source.business, 80) ? { business: clip(source.business, 80) } : {}),
     ...(clip(source.biz, 80) ? { biz: clip(source.biz, 80) } : {}),
     ...(clip(source.trade, 80) ? { trade: clip(source.trade, 80) } : {}),
     ...(clip(source.city, 80) ? { city: clip(source.city, 80) } : {}),
@@ -304,6 +308,7 @@ export function packOutreachPackage(draft: {
 
 export const FOLLOW_UP_STEPS = [
   { day: 0, label: "Day 0 Initial Hook" },
+  { day: 2, label: "48 hour unactivated reminder" },
   { day: 3, label: "Day 3 Competitor Proof Bump" },
   { day: 6, label: "Day 6 Loss Aversion Final Call" },
 ] as const;
@@ -311,7 +316,7 @@ export const FOLLOW_UP_STEPS = [
 export type FollowTouchStatus = "sent" | "scheduled" | "skipped";
 export type NurtureStatus = "active" | "stopped" | "complete";
 
-/** Day 0 goes out with the launch. Day 3 and Day 6 wait, unless the lead already clicked. */
+/** Day 0 goes out with the launch. The 48-hour, day 3, and day 6 notes wait unless the lead already clicked. */
 export function followUpSchedule(from: Date): {
   day: number;
   label: string;
@@ -334,6 +339,11 @@ export function followUpBody(
 ): string {
   if (day === 0) {
     return channel === "sms" ? launched.text : `${launched.emailSubject}\n\n${launched.emailBody}`;
+  }
+  if (day === 2) {
+    return channel === "sms"
+      ? "{owner} — {business} has not activated the page. The book is still open.\n{url}"
+      : "48 hours on the {business} page\n\nHi {owner},\n\nThe {trade} page for {city} is still unactivated. The book stays open.\n\n{url}";
   }
   if (day === 3) {
     return channel === "sms"

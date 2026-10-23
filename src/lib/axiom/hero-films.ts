@@ -2,29 +2,24 @@ import type { ShopNiche } from "./types.ts";
 
 /**
  * Films on disk under public/media/heroes. The matcher is case-insensitive
- * and ignores a repeated .mp4 extension, so contractors-hero.mp4.mp4 still
- * reads as "contractors hero".
+ * and ignores a repeated .mp4 extension, so plumbers-hero.mp4.mp4 still
+ * reads as "plumbers hero".
  */
 export const HERO_MP4_FILES = [
   "admin-welcome.mp4",
-  "aesthetic-master.mp4.mp4",
-  "auto-repair.mp4.mp4",
-  "barber-hero.mp4",
-  "barbers-hero.mp4.mp4",
-  "charging-bear.mp4",
+  "aesthetic-master.mp4",
+  "auto-repair.mp4",
   "clean.mp4",
-  "coastal-drive.mp4",
-  "content-creator.mp4",
-  "contractors-hero.mp4.mp4",
-  "counsel.mp4",
-  "custom-bow-tech.mp4",
+  "contractors-hero.mp4",
+  "custom-bow-tech-hero.mp4.mp4",
   "dogwalking.mp4",
   "employee-welcome.mp4",
   "entertainer.mp4",
   "events.mp4",
   "guide.mp4",
-  "gunsmith.mp4",
+  "gunsmith-hero.mp4",
   "hunting-guide.mp4",
+  "hvac-hero.mp4",
   "intro-welcome.mp4",
   "landscaper.mp4",
   "leopard.mp4",
@@ -32,19 +27,16 @@ export const HERO_MP4_FILES = [
   "mobile-detailer.mp4",
   "mobile-foodtruck.mp4",
   "mobile-locksmith.mp4",
-  "music-artist.mp4",
+  "music-hero.mp4",
   "nails-lashes.mp4",
-  "outdoor-master.mp4.mp4",
+  "outdoor-master.mp4",
   "outreach-welcome.mp4",
   "petgroom.mp4",
-  "photo.mp4",
-  "physicaltherapist.mp4",
+  "photographer.mp4",
   "plumbers-hero.mp4.mp4",
   "private-security.mp4",
-  "pro-drone-surveyer.mp4",
-  "retail.mp4",
+  "pro-drone-surveyer.mp4 (2).mp4",
   "salon.mp4",
-  "snow-sports-lessons-3.mp4",
   "snow-sports-lessons.mp4",
   "social-media-content-creator.mp4",
   "tattoo-hero.mp4",
@@ -106,19 +98,19 @@ const FILLER = new Set(["hero", "master", "mobile", "custom", "loop"]);
 
 /** Named films win their niche even when another file scores as high. */
 const NICHE_PRIORITY: Partial<Record<ShopNiche, string>> = {
-  contractor: "contractors-hero.mp4.mp4",
-  field: "auto-repair.mp4.mp4",
-  location: "barbers-hero.mp4.mp4",
+  contractor: "contractors-hero.mp4",
+  field: "auto-repair.mp4",
+  photo: "photographer.mp4",
 };
 
 /** A business title uses these before the fuzzy score. Plumbing stays off the contractor reel. */
 const TEXT_PRIORITY: readonly { pattern: RegExp; file: string }[] = [
   { pattern: /\bplumb(?:ing|ers|er)?\b/i, file: "plumbers-hero.mp4.mp4" },
-  { pattern: /\bauto[\s-]*repair\b|\bmechanics?\b/i, file: "auto-repair.mp4.mp4" },
+  { pattern: /\bauto[\s-]*repair\b|\bmechanics?\b/i, file: "auto-repair.mp4" },
   { pattern: /\bbarbers?\b/i, file: "barbers-hero.mp4.mp4" },
   {
     pattern: /\b(?:hvac|roof(?:ing|ers|er)?|electric(?:al|ian|ians)?|air conditioning|contractors?)\b/i,
-    file: "contractors-hero.mp4.mp4",
+    file: "contractors-hero.mp4",
   },
 ];
 
@@ -282,6 +274,29 @@ export function filmMatchingText(text: string, current = ""): string | null {
   return `/media/heroes/${best}`;
 }
 
+/** A niche entry may name one film or a rotation. Empty and repeated URLs drop out. */
+export function heroVideoList(value: string | readonly string[] | null | undefined): string[] {
+  const source = typeof value === "string" ? [value] : value;
+  if (!source) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of source) {
+    if (typeof item !== "string") continue;
+    const url = item.trim();
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    out.push(url);
+  }
+  return out;
+}
+
+/** Next reel after `onEnded`. A single film stays put. */
+export function nextReelIndex(index: number, count: number): number {
+  if (count <= 1) return 0;
+  const current = Number.isFinite(index) ? Math.trunc(index) : 0;
+  return (current + count + 1) % count;
+}
+
 export function isCatalogHeroUrl(url: string | null | undefined): boolean {
   if (!url || !url.startsWith("/media/heroes/")) return false;
   const file = url.slice("/media/heroes/".length);
@@ -361,12 +376,15 @@ export function readNicheFilmOverride(niche: string): string {
  * A shop upload or a tenant pin keeps the URL it already resolved to.
  */
 export function applyBrowserFilmOverride(
-  heroVideoUrl: string | null,
+  heroVideoUrl: string | readonly string[] | null,
   nicheFilm: string,
   override: string,
-): string | null {
-  if (override && heroVideoUrl && heroVideoUrl === nicheFilm) return override;
-  return heroVideoUrl;
+): string | readonly string[] | null {
+  const list = heroVideoList(heroVideoUrl);
+  const primary = list[0] ?? null;
+  if (override && primary && primary === nicheFilm) return override;
+  if (list.length > 1) return list;
+  return primary;
 }
 
 /** Saved master-desk lines, then GPU, frame rate, link, and engine. */

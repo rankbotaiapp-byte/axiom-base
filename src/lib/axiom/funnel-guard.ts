@@ -25,7 +25,7 @@ export function funnelBucketOpen(hitsInWindow: number, limit: number): boolean {
 }
 
 export function isDueNurtureStep(step: number): boolean {
-  return step === 3 || step === 6;
+  return step === 2 || step === 3 || step === 6;
 }
 
 /** Simulation logs the touch. Live sends only when both providers are configured. */

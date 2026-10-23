@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { heroVideoList } from "./hero-films.ts";
 import { isOutdoorGuideNiche } from "./media.ts";
 import { sanitizeAccent, sanitizeContactLine, sanitizeLogoUrl } from "./prospect-brand.ts";
 
@@ -343,17 +344,19 @@ export function paintHero(
   nicheImage: string,
   nicheVideo: string | null,
   hud: StorefrontHud,
-): { imageUrl: string; videoUrl: string | null } {
+  nicheVideos?: readonly string[],
+): { imageUrl: string; videoUrl: string | null; videos: readonly string[] } {
   const film = nicheVideo || null;
+  const playlist = heroVideoList(nicheVideos && nicheVideos.length > 0 ? nicheVideos : film);
   const still = nicheImage || "";
   if (hud.heroPick === "still") {
-    return still ? { imageUrl: still, videoUrl: null } : { imageUrl: "", videoUrl: film };
+    return still ? { imageUrl: still, videoUrl: null, videos: [] } : { imageUrl: "", videoUrl: film, videos: playlist };
   }
   if (hud.heroPick === "url") {
     const url = sanitizeLogoUrl(hud.heroUrl);
-    if (!url) return { imageUrl: still, videoUrl: film };
-    if (VIDEO.test(url)) return { imageUrl: still, videoUrl: url };
-    return { imageUrl: url, videoUrl: null };
+    if (!url) return { imageUrl: still, videoUrl: film, videos: playlist };
+    if (VIDEO.test(url)) return { imageUrl: still, videoUrl: url, videos: [url] };
+    return { imageUrl: url, videoUrl: null, videos: [] };
   }
-  return { imageUrl: still, videoUrl: film };
+  return { imageUrl: still, videoUrl: playlist[0] ?? film, videos: playlist };
 }

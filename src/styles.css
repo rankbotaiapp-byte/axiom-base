@@ -175,7 +175,7 @@
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   background:
     linear-gradient(180deg, color-mix(in srgb, white 14%, transparent), transparent 46%),
-    color-mix(in srgb, var(--color-surface) calc(var(--card-alpha, 0.52) * 100%), transparent);
+    color-mix(in srgb, var(--glass-tint, var(--color-surface)) calc(var(--card-alpha, 0.52) * 100%), transparent);
   -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(1.35);
   backdrop-filter: blur(var(--glass-blur, 22px)) saturate(1.35);
   box-shadow:
@@ -403,7 +403,7 @@
 .lift-card {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--color-fg) 9%, transparent), transparent 42%),
-    color-mix(in srgb, var(--color-surface) 50%, transparent);
+    color-mix(in srgb, var(--glass-tint, var(--color-surface)) 50%, transparent);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
   backdrop-filter: blur(22px) saturate(1.35);
   box-shadow:
@@ -2129,4 +2129,35 @@
 
 .today-post-go:disabled {
   opacity: 0.4;
+}
+
+.ripple-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-fg) 8%, transparent), transparent 48%),
+    color-mix(in srgb, var(--glass-tint, var(--color-surface)) 46%, transparent);
+  box-shadow:
+    inset 0 0 0 2px var(--ring-color, var(--color-accent)),
+    inset 0 0 18px color-mix(in srgb, var(--ring-color, var(--color-accent)) 35%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.touch-ripple {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  border: 2px solid var(--ripple, var(--color-accent));
+  transform: translate(-50%, -50%);
+  animation: touch-ripple 720ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes touch-ripple {
+  to {
+    transform: translate(-50%, -50%) scale(16);
+    opacity: 0;
+  }
 }

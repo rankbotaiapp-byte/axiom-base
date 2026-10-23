@@ -54,6 +54,7 @@ export function NicheStorefront({
   heroVideoUrl,
   blendPercent,
   introPreset,
+  surface = {},
   introSpeed,
   introIntensity,
   tone,
@@ -87,9 +88,11 @@ export function NicheStorefront({
   hours?: Record<string, string>;
   staff: readonly [StorefrontStaff, StorefrontStaff];
   heroImageUrl: string;
-  heroVideoUrl: string | null;
+  heroVideoUrl: string | readonly string[] | null;
   blendPercent: number;
   introPreset?: IntroPreset;
+  /** Ripple theme variables. Glass, ring, and touch accent follow the shop theme. */
+  surface?: Record<string, string>;
   introSpeed?: number;
   introIntensity?: number;
   tone?: HeroTone | null;
@@ -146,10 +149,11 @@ export function NicheStorefront({
       ref={stageRef}
       className="storefront-stage"
       data-neon="on"
+      data-ripple-theme={surface["--ripple"] ? "on" : "off"}
       data-wash={hud.wash}
       data-rim={hud.rim ? "on" : "off"}
       data-scan={hud.scan ? "on" : "off"}
-      style={hudVars(hud, accent)}
+      style={{ ...hudVars(hud, accent), ...surface }}
     >
       {cockpit || mirror || outdoor ? null : <HeroSpatial rootRef={stageRef} />}
       {cockpit ? (

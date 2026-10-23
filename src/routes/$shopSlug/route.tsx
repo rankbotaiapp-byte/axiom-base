@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createFileRoute, isNotFound, Link, Outlet, notFound } from "@tanstack/react-router";
 import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-ring";
+import { rippleTheme } from "@/lib/axiom/brand-studio";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
 import { isClientAbort } from "@/lib/client-abort";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -121,7 +122,7 @@ function ShopLayout() {
       <AxiomRingProvider
         shopId={data.shop.id}
         slug={data.shop.slug}
-        ringColor={data.shop.ringColor}
+        ringColor={rippleTheme(data.shop.tradeProfile.studio.theme)?.ring || data.shop.ringColor}
         mode={mode}
         watchEmployeeId={employeeId}
       >

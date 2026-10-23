@@ -1,3 +1,12 @@
+export const PRESENTATION_STYLES = [
+  { id: "cinematic-pan", label: "Cinematic Pan" },
+  { id: "hud-lock", label: "HUD Tactical Lock-In" },
+  { id: "split-velocity", label: "Split-Screen Velocity" },
+  { id: "orbital-pulse", label: "Orbital Ambient Pulse" },
+] as const;
+
+export type PresentationStyle = (typeof PRESENTATION_STYLES)[number]["id"];
+
 export type IntroPreset =
   | "kenburns"
   | "zoomin"
@@ -5,7 +14,8 @@ export type IntroPreset =
   | "panlr"
   | "pantd"
   | "fade"
-  | "none";
+  | "none"
+  | PresentationStyle;
 
 export const INTRO_PRESETS: { id: IntroPreset; label: string }[] = [
   { id: "kenburns", label: "Ken Burns (Scale + Pan Inward)" },
@@ -20,10 +30,24 @@ export const INTRO_PRESETS: { id: IntroPreset; label: string }[] = [
 export const INTRO_FX_KEY = "axiom:intro-fx";
 export const INTRO_FX_EVENT = "axiom:intro-fx";
 
+export function isPresentationStyle(value: string): value is PresentationStyle {
+  return PRESENTATION_STYLES.some((style) => style.id === value);
+}
+
 export function parseIntroPreset(raw: unknown): IntroPreset {
   const v = typeof raw === "string" ? raw.toLowerCase() : "";
+  if (isPresentationStyle(v)) return v;
   if (INTRO_PRESETS.some((p) => p.id === v)) return v as IntroPreset;
   return "kenburns";
+}
+
+/** The dashboard selector shows the four presentation styles. Older presets stay stored until one is chosen. */
+export function presentationForIntro(preset: IntroPreset): PresentationStyle {
+  if (isPresentationStyle(preset)) return preset;
+  if (preset === "panlr" || preset === "pantd" || preset === "kenburns") return "cinematic-pan";
+  if (preset === "zoomin" || preset === "zoomout") return "hud-lock";
+  if (preset === "fade" || preset === "none") return "orbital-pulse";
+  return "split-velocity";
 }
 
 export function readIntroFx(): boolean {
@@ -111,6 +135,26 @@ export function cameraMotion(preset: IntroPreset, intensity: number) {
       return {
         initial: { scale: fit, x: "0%", y: "0%", opacity: 0 },
         animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
+      };
+    case "cinematic-pan":
+      return {
+        initial: { scale: fit, x: `${-pan * 1.8}%`, y: "0%", opacity: 1 },
+        animate: { scale: fit, x: `${pan * 1.8}%`, y: "0%", opacity: 1 },
+      };
+    case "hud-lock":
+      return {
+        initial: { scale: fit + 0.08, x: `${pan}%`, y: `${-pan * 0.45}%`, opacity: 0.35 },
+        animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
+      };
+    case "split-velocity":
+      return {
+        initial: { scale: fit, x: `${-pan * 2.4}%`, y: `${pan * 0.2}%`, opacity: 1 },
+        animate: { scale: 1, x: "0%", y: "0%", opacity: 1 },
+      };
+    case "orbital-pulse":
+      return {
+        initial: { scale: 1, x: `${pan}%`, y: `${-pan}%`, opacity: 0.8 },
+        animate: { scale: fit, x: `${-pan * 0.4}%`, y: `${pan * 0.4}%`, opacity: 1 },
       };
     default:
       return {

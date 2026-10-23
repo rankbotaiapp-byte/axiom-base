@@ -26,7 +26,7 @@ test("a named trade uses the contractor film, and legacy keys use the trade film
   assert.equal(hvac.known, true);
   assert.equal(hvac.tradeType, "contractor");
   assert.equal(hvac.tradeLabel, "Rooftop HVAC");
-  assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroVideoUrl, "/media/heroes/contractors-hero.mp4.mp4");
+  assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroVideoUrl, "/media/heroes/contractors-hero.mp4");
   assert.equal(leadHeroFor(hvac.tradeType, "Acme Mechanical", hvac.tradeLabel).heroImageUrl, "");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");

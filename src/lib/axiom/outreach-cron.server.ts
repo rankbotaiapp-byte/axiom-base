@@ -15,7 +15,8 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
   const header = request.headers.get("x-outreach-cron") ?? "";
   if (!secretMatches(header, secret)) return Response.json({ error: "Forbidden" }, { status: 403 });
   const sql = await getSql();
-  const batch = await drainOutreachQueue(sql);
-  const nurture = await drainNurtureTouches(sql);
+  const origin = new URL(request.url).origin;
+  const batch = await drainOutreachQueue(sql, origin);
+  const nurture = await drainNurtureTouches(sql, origin);
   return Response.json({ batchReleased: batch.released, nurtureReleased: nurture.released });
 }

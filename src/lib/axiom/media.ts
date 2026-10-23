@@ -1,5 +1,5 @@
 import { classifyTrade } from "./directory.ts";
-import { filmMatchingText, isCatalogHeroUrl, resolveNicheFilm } from "./hero-films.ts";
+import { filmMatchingText, heroVideoList, isCatalogHeroUrl, resolveNicheFilm, UNIVERSAL_FALLBACK } from "./hero-films.ts";
 import type { IntroPreset } from "./intro.ts";
 import { isCustomHeroVideo } from "./hero-video.ts";
 import { isShopNiche, SHOP_NICHES, type ShopNiche } from "./types.ts";
@@ -11,7 +11,10 @@ export const SHARED_STAFF = ["/media/alex-morgan.jpg", "/media/willa-grant.jpg"]
 
 export type NicheFilm = {
   heroImageUrl: string;
+  /** First reel. Single-film niches keep this as their only URL. */
   heroVideoUrl: string;
+  /** One film, or a rotation. Photography and wildlife share three reels. */
+  heroVideos: readonly string[];
   loopLabel: string;
   tone?: HeroTone;
   introPreset: IntroPreset;
@@ -22,9 +25,16 @@ export type NicheFilm = {
   staff: readonly [string, string];
 };
 
+/** Wildlife, studio, and outdoor photography, in rotation order. */
+export const PHOTO_REELS = [
+  "/media/heroes/wildlife-photographer.mp4",
+  "/media/heroes/photographer.mp4",
+  "/media/heroes/outdoor-master.mp4",
+] as const;
+
 type HeroSpec = {
   image?: string;
-  video?: string;
+  video?: string | readonly string[];
   label: string;
   preset: IntroPreset;
   speed: number;
@@ -41,7 +51,7 @@ const CURATED_HERO: Partial<Record<ShopNiche, HeroSpec>> = {
   salon: { video: "/media/heroes/salon.mp4", label: "Salon loop · salon.mp4", preset: "panlr", speed: 32, intensity: 40, blend: 58 },
   beauty: { video: "/media/heroes/nails-lashes.mp4", label: "Beauty loop · nails-lashes.mp4", preset: "kenburns", speed: 36, intensity: 42, blend: 62 },
   tattoo: { video: "/media/heroes/tattoo-hero.mp4", label: "Tattoo loop · tattoo-hero.mp4", preset: "panlr", speed: 28, intensity: 50, blend: 58 },
-  photo: { video: "/media/heroes/photo.mp4", label: "Photo loop · photo.mp4", preset: "zoomin", speed: 34, intensity: 48, blend: 64 },
+  photo: { video: PHOTO_REELS, label: "Photo reel · wildlife, photographer, outdoor", preset: "zoomin", speed: 34, intensity: 48, blend: 64 },
   pets: { video: "/media/heroes/petgroom.mp4", label: "Groom loop · petgroom.mp4", preset: "panlr", speed: 30, intensity: 38, blend: 58 },
   landscaper: { video: "/media/heroes/landscaper.mp4", label: "Yard loop · landscaper.mp4", preset: "pantd", speed: 26, intensity: 40, blend: 56, tone: "site" },
   dogwalk: { video: "/media/heroes/dogwalking.mp4", label: "Walk loop · dogwalking.mp4", preset: "panlr", speed: 28, intensity: 40, blend: 58, tone: "site" },
@@ -56,7 +66,7 @@ const CURATED_HERO: Partial<Record<ShopNiche, HeroSpec>> = {
   practice: { image: "/media/heroes/practice.jpg", label: "Practice still", preset: "kenburns", speed: 30, intensity: 40, blend: 66 },
   counsel: { video: "/media/heroes/counsel.mp4", label: "Counsel loop · counsel.mp4", preset: "fade", speed: 22, intensity: 32, blend: 72 },
   location: { video: "/media/heroes/barber-hero.mp4", label: "Barber loop · barber-hero.mp4", preset: "kenburns", speed: 34, intensity: 46, blend: 58 },
-  events: { image: "/media/heroes/events-planner-hero.jpg", label: "Events still · events-planner-hero.jpg", preset: "kenburns", speed: 28, intensity: 42, blend: 62 },
+  events: { image: "/media/heroes/events.jpg", label: "Events still · events.jpg", preset: "kenburns", speed: 28, intensity: 42, blend: 62 },
   hunting: { video: "/media/heroes/hunting-guide.mp4", label: "Verified · hunting-guide.mp4", preset: "zoomin", speed: 28, intensity: 42, blend: 64, tone: "backcountry" },
   creator: { video: "/media/heroes/leopard.mp4", label: "Cinema loop · leopard.mp4", preset: "kenburns", speed: 34, intensity: 46, blend: 62, tone: "cinema" },
 };
@@ -72,9 +82,11 @@ const TRADE_HERO: HeroSpec = {
 };
 
 function filmFrom(spec: HeroSpec): NicheFilm {
+  const videos = heroVideoList(spec.video);
   return {
     heroImageUrl: spec.image ?? "",
-    heroVideoUrl: spec.video ?? "",
+    heroVideoUrl: videos[0] ?? "",
+    heroVideos: videos,
     loopLabel: spec.label,
     introPreset: spec.preset,
     introSpeed: spec.speed,
@@ -88,8 +100,19 @@ function filmFrom(spec: HeroSpec): NicheFilm {
 function filmFor(niche: ShopNiche): NicheFilm {
   const spec = niche === "trade" ? TRADE_HERO : CURATED_HERO[niche];
   const base = spec ?? TRADE_HERO;
-  const resolved = resolveNicheFilm(niche, spec?.video ?? "");
-  const video = resolved || (spec ? (spec.video ?? "") : (TRADE_HERO.video ?? ""));
+  const listed = heroVideoList(spec?.video);
+  if (listed.length > 1) {
+    const ready = listed.filter((url) => isCatalogHeroUrl(url));
+    const videos = ready.length > 0 ? ready : [UNIVERSAL_FALLBACK];
+    return filmFrom({
+      ...base,
+      image: spec?.image,
+      video: videos,
+      label: spec && ready.length === listed.length ? spec.label : base.label,
+    });
+  }
+  const resolved = resolveNicheFilm(niche, listed[0] ?? "");
+  const video = resolved || (spec ? (listed[0] ?? "") : (heroVideoList(TRADE_HERO.video)[0] ?? ""));
   const file = video.split("/").pop() ?? "";
   const label =
     spec && (spec.video ?? "") === video
@@ -165,11 +188,12 @@ export function cleanCustomNiche(value: string): string {
 
 function withSpecificFilm(film: NicheFilm, text: string): NicheFilm {
   const match = filmMatchingText(text, film.heroVideoUrl);
-  if (!match || match === film.heroVideoUrl) return film;
+  if (!match || film.heroVideos.includes(match)) return film;
   const file = match.split("/").pop() ?? "film";
   return {
     ...film,
     heroVideoUrl: match,
+    heroVideos: [match],
     loopLabel: `${file.replace(/(\.mp4)+$/i, "").replace(/-/g, " ")} film`,
   };
 }
@@ -225,9 +249,10 @@ function classifyQuiet(label: string): ShopNiche | null {
 
 function isPinnedCatalog(url: string | null, niche: ShopNiche): boolean {
   if (!isCatalogHeroUrl(url) || !url) return false;
-  if (url === NICHE_MEDIA[niche]?.heroVideoUrl || url === NICHE_MEDIA.trade.heroVideoUrl) return false;
-  const curated = niche === "trade" ? TRADE_HERO.video : CURATED_HERO[niche]?.video;
-  if (curated && url === curated) return false;
+  const media = NICHE_MEDIA[niche];
+  if (media?.heroVideos.includes(url) || url === NICHE_MEDIA.trade.heroVideoUrl) return false;
+  const spec = niche === "trade" ? TRADE_HERO : CURATED_HERO[niche];
+  if (heroVideoList(spec?.video).includes(url)) return false;
   return true;
 }
 
@@ -246,6 +271,7 @@ export function resolveHeroMedia(shop: {
     return {
       imageUrl: customStill ? stillUrl : media.heroImageUrl,
       videoUrl: shop.heroVideoUrl,
+      videos: heroVideoList(shop.heroVideoUrl),
       tone: media.tone ?? null,
       loopLabel: "Custom loop · this shop",
     };
@@ -254,6 +280,7 @@ export function resolveHeroMedia(shop: {
     return {
       imageUrl: stillUrl,
       videoUrl: null,
+      videos: [],
       tone: media.tone ?? null,
       loopLabel: "Custom still · niche loop hidden",
     };
@@ -263,6 +290,7 @@ export function resolveHeroMedia(shop: {
     return {
       imageUrl: media.heroImageUrl,
       videoUrl: shop.heroVideoUrl,
+      videos: heroVideoList(shop.heroVideoUrl),
       tone: media.tone ?? null,
       loopLabel: `Catalog film · ${file}`,
     };
@@ -270,6 +298,7 @@ export function resolveHeroMedia(shop: {
   return {
     imageUrl: media.heroImageUrl,
     videoUrl: media.heroVideoUrl || null,
+    videos: media.heroVideos,
     tone: media.tone ?? null,
     loopLabel: media.loopLabel,
   };

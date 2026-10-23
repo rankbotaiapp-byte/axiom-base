@@ -3,6 +3,7 @@ import { env } from "@/lib/env.server";
 import { newId } from "@/lib/utils";
 import { isDueNurtureStep, nurtureReleasePlan, splitOutreachEmail } from "./funnel-guard";
 import { isLeadSlug } from "./funnel";
+import { appendPreviewLink, isHomePreviewCounty, shouldSendUnactivatedFollowUp, tenantPreviewUrl } from "./preview-link";
 import { toE164 } from "./notify-target";
 import {
   insideSendWindow,
@@ -93,7 +94,7 @@ function dispatchWindow(row: { timing: string; profile: string }): { timing: Sen
  * interval has passed since the previous release, so a restart cannot dump the backlog.
  * Nights, Fridays, and weekends push the chunk to the next open window.
  */
-export async function drainOutreachQueue(sql: Sql): Promise<{ released: boolean }> {
+export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ released: boolean }> {
   await sql`
     update outreach_dispatches
     set status = 'queued'
@@ -158,6 +159,7 @@ export async function drainOutreachQueue(sql: Sql): Promise<{ released: boolean 
   } catch {
     messages = [];
   }
+  messages = await stampPreviewLinks(sql, row.county, origin, messages);
   const slugs = slugList(messages.map((message) => message.leadSlug));
   const clicked = new Set<string>();
   if (slugs) {
@@ -248,15 +250,17 @@ type DueTouch = {
   county: string;
   trade_type: string;
   timing: string;
+  business_name: string | null;
+  claimed: boolean | null;
   contact_email: string | null;
   contact_phone: string | null;
 };
 
 /**
- * Send due Day 3 and Day 6 touches. Simulation writes the live wire.
+ * Send due 48-hour, day 3, and day 6 touches. Simulation writes the live wire.
  * Live mode calls Resend or Twilio, and only then marks the touch sent.
  */
-export async function drainNurtureTouches(sql: Sql): Promise<{ released: number }> {
+export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ released: number }> {
   const config = readOutreachConfig();
   const credentialsReady = config.mode === "live" ? (await import("./notify.server")).missingOutreachCredentials().length === 0 : false;
   const plan = nurtureReleasePlan(config.mode, credentialsReady);
@@ -264,12 +268,12 @@ export async function drainNurtureTouches(sql: Sql): Promise<{ released: number 
 
   const due = await sql<DueTouch>`
     select t.id, t.step, t.body, t.attempts, s.id as sequence_id, s.lead_slug, s.channel, s.county,
-      s.trade_type, s.timing, l.contact_email, l.contact_phone
+      s.trade_type, s.timing, l.business_name, l.claimed, l.contact_email, l.contact_phone
     from outreach_touches t
     join outreach_sequences s on s.id = t.sequence_id
     left join preloaded_leads l on l.lead_slug = s.lead_slug
     where t.status = 'scheduled'
-      and t.step in (3, 6)
+      and t.step in (2, 3, 6)
       and t.scheduled_at <= now()
       and s.status = 'active'
     order by t.scheduled_at asc, t.step asc
@@ -315,6 +319,16 @@ export async function drainNurtureTouches(sql: Sql): Promise<{ released: number 
   const channel = batch[0]?.channel === "sms" ? "sms" : "email";
   const county = batch[0]?.county ?? "";
   for (const touch of batch) {
+    if (
+      !shouldSendUnactivatedFollowUp({
+        step: numStep(touch.step),
+        claimed: Boolean(touch.claimed),
+        clicked: false,
+      })
+    ) {
+      await sql`update outreach_touches set status = 'skipped' where id = ${touch.id} and status = 'scheduled'`;
+      continue;
+    }
     const claimed = await sql<{ id: string }>`
       update outreach_touches
       set attempts = attempts + 1
@@ -323,7 +337,16 @@ export async function drainNurtureTouches(sql: Sql): Promise<{ released: number 
     `;
     if (!claimed[0]) continue;
     const touchChannel = touch.channel === "sms" ? "sms" : "email";
-    const outcome = await releaseNurtureTouch(touch, touchChannel, plan);
+    const preview = origin
+      ? tenantPreviewUrl(origin, {
+          businessName: touch.business_name ?? "",
+          tradeType: touch.trade_type,
+          county: touch.county,
+          leadSlug: touch.lead_slug,
+        })
+      : null;
+    const body = preview && isHomePreviewCounty(touch.county) ? appendPreviewLink(touch.body, preview) : touch.body;
+    const outcome = await releaseNurtureTouch({ ...touch, body }, touchChannel, plan);
     if (outcome === "sent") {
       sent += 1;
       await sql`update outreach_touches set status = 'sent' where id = ${touch.id}`;
@@ -383,6 +406,38 @@ async function releaseNurtureTouch(
   const message = splitOutreachEmail(touch.body);
   const result = await deliverOutreachMessage({ channel, to, subject: message.subject, body: message.text });
   return result.status === "sent" ? "sent" : "failed";
+}
+
+async function stampPreviewLinks(sql: Sql, county: string, origin: string, messages: QueueMessage[]): Promise<QueueMessage[]> {
+  if (!origin || !isHomePreviewCounty(county)) return messages;
+  const pending = messages.filter((message) => !message.body.includes("preview=true"));
+  if (pending.length === 0) return messages;
+  const slugs = slugList(pending.map((message) => message.leadSlug));
+  if (!slugs) return messages;
+  let rows: { business_name: string; trade_type: string; lead_slug: string; county: string }[] = [];
+  try {
+    rows = await sql<{ business_name: string; trade_type: string; lead_slug: string; county: string }>`
+      select business_name, trade_type, lead_slug, county
+      from preloaded_leads
+      where lead_slug = any(string_to_array(${slugs}, ','))
+    `;
+  } catch (err) {
+    if (missingRelation(err, "preloaded_leads")) return messages;
+    throw err;
+  }
+  const bySlug = new Map(rows.map((row) => [row.lead_slug, row]));
+  return messages.map((message) => {
+    const row = bySlug.get(message.leadSlug);
+    if (!row) return message;
+    const url = tenantPreviewUrl(origin, {
+      businessName: row.business_name,
+      tradeType: row.trade_type,
+      county: row.county || county,
+      leadSlug: row.lead_slug,
+    });
+    if (!url) return message;
+    return { ...message, body: appendPreviewLink(message.body, url) };
+  });
 }
 
 function numStep(value: unknown): number {

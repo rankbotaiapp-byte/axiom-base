@@ -3,7 +3,8 @@ import { env } from "@/lib/env.server";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { newId } from "@/lib/utils";
 import { nicheLabel } from "./directory";
-import { funnelUrl, outreachStrategy, renderOutreachMessage } from "./funnel";
+import { outreachStrategy, renderOutreachMessage } from "./funnel";
+import { outreachDestination } from "./preview-link";
 import { verifyMasterPass } from "./master-bypass";
 import { bypassSecret } from "./master-bypass.server";
 import { MASTER_COOKIE } from "./master-owner";
@@ -244,12 +245,13 @@ export async function readAutopilot(request: Request): Promise<AutopilotProposal
 
 function messageFor(lead: AutopilotLead, channel: "email" | "sms", origin: string): { leadSlug: string; to: string; subject: string; body: string } {
   const draft = outreachStrategy("done-for-you");
-  const url = funnelUrl(origin, {
-    leadSlug: lead.leadSlug,
-    county: lead.county,
+  const url = outreachDestination(origin, {
     businessName: lead.businessName,
-    trade: nicheLabel(lead.tradeType),
+    tradeType: lead.tradeType,
+    county: lead.county,
+    leadSlug: lead.leadSlug,
     city: lead.city,
+    trade: nicheLabel(lead.tradeType),
     greet: true,
   });
   const tokens = {

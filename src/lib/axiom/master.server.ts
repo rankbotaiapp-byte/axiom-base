@@ -1,7 +1,8 @@
 import { dbSource, getSql } from "@/lib/db";
 import { cleanLead } from "./master";
 import { newId } from "@/lib/utils";
-import { channelFromPackage, followUpBody, followUpSchedule, deskPreviewPath, funnelUrl, isEmailReady, isLeadSlug, isSmsReady, leadSlugFrom, nurtureStatus, outreachPublicTokens, outreachStrategy, packOutreachPackage, renderOutreachMessage, parseFunnelQuery, parseHasWebsite, parsePhoneLine, parseReviewCount, parseReviewScore, publicLeadFromRow, strategyLabelFromPackage, type PhoneLine } from "./funnel";
+import { channelFromPackage, followUpBody, followUpSchedule, deskPreviewPath, isEmailReady, isLeadSlug, isSmsReady, leadSlugFrom, nurtureStatus, outreachPublicTokens, outreachStrategy, packOutreachPackage, renderOutreachMessage, parseFunnelQuery, parseHasWebsite, parsePhoneLine, parseReviewCount, parseReviewScore, publicLeadFromRow, strategyLabelFromPackage, type PhoneLine } from "./funnel";
+import { outreachDestination } from "./preview-link";
 import { hashStopToken, newStopToken } from "./funnel-guard";
 import { nextSendInstant, parseSendTiming, planSmartChunks, timingProfileFor, type SendTiming } from "./outreach-queue";
 import { toE164 } from "./notify-target";
@@ -681,9 +682,12 @@ export const generateRegionalFunnelHandler = async ({
       county: row.county,
       tradeType: row.trade_type,
       leadSlug: row.lead_slug,
-      url: funnelUrl(origin, {
+      url: outreachDestination(origin, {
+        businessName: row.business_name,
+        tradeType: row.trade_type,
+        county: row.county,
         leadSlug: row.lead_slug,
-        county: row.county
+        city: row.city
       })
     }))
   };
@@ -732,9 +736,15 @@ async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: st
       tradeType: row.trade_type,
       tradeLabel: tradeLabel(row.trade_type, row.trade_label ?? ""),
       leadSlug: row.lead_slug,
-      url: funnelUrl(origin, {
+      url: outreachDestination(origin, {
+        businessName: row.business_name,
+        tradeType: row.trade_type,
+        tradeLabel: row.trade_label ?? "",
+        county: row.county,
         leadSlug: row.lead_slug,
-        county: row.county
+        city: row.city,
+        trade: tradeLabel(row.trade_type, row.trade_label ?? ""),
+        greet: true
       }),
       contactEmail: row.contact_email ?? "",
       contactPhone: row.contact_phone ?? "",
@@ -1171,14 +1181,16 @@ export const launchOutreachBatchHandler = async ({
   const stopTokens = new Map(batch.map(lead => [lead.leadSlug, newStopToken()] as const));
   const tracked = batch.map(lead => ({
     ...lead,
-    url: funnelUrl(origin, {
-      leadSlug: lead.leadSlug,
+    url: outreachDestination(origin, {
+      businessName: lead.businessName,
+      tradeType: lead.tradeType,
+      tradeLabel: lead.tradeLabel,
       county: lead.county,
+      leadSlug: lead.leadSlug,
+      city: lead.city,
       stopToken: stopTokens.get(lead.leadSlug),
       greet: true,
-      businessName: lead.businessName,
-      trade: tradeLabel(lead.tradeType, lead.tradeLabel),
-      city: lead.city
+      trade: tradeLabel(lead.tradeType, lead.tradeLabel)
     })
   }));
   const started = new Date();
