@@ -136,6 +136,7 @@
     --tracking-tight: -.025em;
     --tracking-wide: .025em;
     --tracking-wider: .05em;
+    --tracking-widest: .1em;
     --leading-tight: 1.25;
     --leading-snug: 1.375;
     --leading-normal: 1.5;
@@ -536,6 +537,10 @@
 
   .inset-0 {
     inset: 0;
+  }
+
+  .inset-\[-8\%\] {
+    inset: -8%;
   }
 
   .inset-x-0 {
@@ -2264,6 +2269,11 @@
     letter-spacing: var(--tracking-wider);
   }
 
+  .tracking-widest {
+    --tw-tracking: var(--tracking-widest);
+    letter-spacing: var(--tracking-widest);
+  }
+
   .text-balance {
     text-wrap: balance;
   }
@@ -3209,6 +3219,10 @@
 
     .lg\:grid-cols-\[minmax\(0\,1\.4fr\)_minmax\(16rem\,0\.8fr\)\] {
       grid-template-columns: minmax(0, 1.4fr) minmax(16rem, .8fr);
+    }
+
+    .lg\:grid-cols-\[minmax\(0\,1\.4fr\)_minmax\(18rem\,0\.85fr\)\] {
+      grid-template-columns: minmax(0, 1.4fr) minmax(18rem, .85fr);
     }
 
     .lg\:grid-cols-\[minmax\(0\,1\.15fr\)_minmax\(18rem\,0\.85fr\)\] {

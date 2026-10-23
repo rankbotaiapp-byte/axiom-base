@@ -51,6 +51,12 @@ test("a branding payload keeps the mark text and drops an unknown theme", () => 
   assert.equal(studio.tagline, "Night hunt");
   assert.equal(studio.theme, "crimson");
   assert.equal(studio.presentation, "hud-lock");
+  assert.equal(studio.motion.pan, false);
+  const kept = parseBrandStudio({ motion: { pan: true, ripple: false, neon: true, particle: true } });
+  assert.equal(kept.motion.pan, true);
+  assert.equal(kept.motion.neon, true);
+  assert.equal(kept.motion.particle, true);
+  assert.equal(kept.motion.ripple, false);
   const junk = parseBrandStudio({ header: "<b>Hi</b>", theme: "purple", presentation: "spin" });
   assert.equal(junk.theme, "");
   assert.equal(junk.presentation, "");

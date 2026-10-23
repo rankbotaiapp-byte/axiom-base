@@ -1,3 +1,4 @@
+import { EMPTY_HERO_MOTION, parseHeroMotion, type HeroMotionState } from "./hero-motion.ts";
 import { isPresentationStyle, type PresentationStyle } from "./intro.ts";
 
 export const RIPPLE_THEMES = [
@@ -16,6 +17,7 @@ export type BrandStudioState = {
   tagline: string;
   theme: RippleThemeId | "";
   presentation: PresentationStyle | "";
+  motion: HeroMotionState;
 };
 
 export const EMPTY_BRAND_STUDIO: BrandStudioState = {
@@ -23,6 +25,7 @@ export const EMPTY_BRAND_STUDIO: BrandStudioState = {
   tagline: "",
   theme: "",
   presentation: "",
+  motion: { ...EMPTY_HERO_MOTION },
 };
 
 const SYMBOLS = ["arc", "diamond", "bolt", "ring"] as const;
@@ -73,6 +76,7 @@ export function parseBrandStudio(raw: unknown): BrandStudioState {
     tagline: cleanLine(record.tagline, 72),
     theme,
     presentation,
+    motion: parseHeroMotion(record.motion),
   };
 }
 

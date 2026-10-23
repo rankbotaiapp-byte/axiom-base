@@ -31,6 +31,7 @@ import { getBearerToken } from "@/lib/auth/client";
 import { PRESENTATION_STYLES, isPresentationStyle, presentationForIntro, type IntroPreset } from "@/lib/axiom/intro";
 import { LAYOUT_BLOCKS, type LayoutBlock } from "@/lib/axiom/storefront";
 import { BrandStudio } from "@/components/brand-studio";
+import { HeroMotionDesk } from "@/components/hero-motion-desk";
 import { compileBrandMark, parseBrandStudio, rippleTheme, themeSurface, type RippleThemeId } from "@/lib/axiom/brand-studio";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
@@ -163,14 +164,14 @@ function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "settings" | "services" | "pricing" | "brand" | "work" | "team" | "alerts" | "billing">("overview");
+  const [tab, setTab] = useState<"overview" | "settings" | "services" | "pricing" | "brand" | "hero" | "work" | "team" | "alerts" | "billing">("overview");
   const [linking, setLinking] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
   const paymentsLocked =
     !readonly && !data.platformDesk && data.payments.processorReady && !data.payments.chargesEnabled;
 
   useEffect(() => {
-    const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "work" ? "storefront_editor" : "lead_dashboard";
+    const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "hero" || tab === "work" ? "storefront_editor" : "lead_dashboard";
     setAvatarScreen(screen);
     return () => setAvatarScreen(null);
   }, [tab]);
@@ -181,6 +182,7 @@ function AdminShell({
     services: copy.menuHeading,
     pricing: "Pricing",
     brand: "Look",
+    hero: "Hero",
     work: "Work",
     team: copy.staffStep,
     alerts: "Alerts",
@@ -233,7 +235,7 @@ function AdminShell({
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "settings", "services", "pricing", "brand", "work", "team", "alerts", "billing"] as const).map((t) => (
+        {(["overview", "settings", "services", "pricing", "brand", "hero", "work", "team", "alerts", "billing"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -285,6 +287,9 @@ function AdminShell({
             readonly={readonly}
             onReload={onReload}
           />
+        ) : null}
+        {tab === "hero" ? (
+          <HeroMotionDesk shop={data.shop} readonly={readonly} onReload={onReload} />
         ) : null}
         {tab === "work" ? (
           <ProofGalleryManager
@@ -632,6 +637,7 @@ function BrandPanel({
       tagline: brandLine,
       theme: next?.theme ?? theme,
       presentation: isPresentationStyle(presentation) ? presentation : shop.tradeProfile.studio.presentation,
+      motion: shop.tradeProfile.studio.motion,
     });
   }
 
