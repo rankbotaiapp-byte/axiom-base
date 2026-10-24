@@ -71,7 +71,7 @@ test("the five depth films open with a stronger studio look", () => {
 test("the five industry heroes bind their film and studio depth together", () => {
   const cases = [
     ["tattoo", "/media/heroes/tattoo-hero.mp4", "", "ember"],
-    ["location", "/media/heroes/universal-fallback.mp4.mp4", "", "obsidian"],
+    ["location", "/media/heroes/barber-hero.mp4", "", "obsidian"],
     ["field", "/media/heroes/auto-repair.mp4", "", "obsidian"],
     ["contractor", "/media/heroes/contractors-hero.mp4", "", "tide"],
     ["events", "/media/heroes/events.mp4", "/media/heroes/events.jpg", "copper"],

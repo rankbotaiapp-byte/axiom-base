@@ -265,7 +265,7 @@ export function resolveHeroMedia(shop: {
   const customTitle = cleanCustomNiche(shop.customNiche ?? "");
   const media = customTitle ? heroForCustomNiche(customTitle) : (NICHE_MEDIA[shop.niche] ?? NICHE_MEDIA.trade);
   const stillUrl = shop.heroImageUrl ?? "";
-  const customStill = stillUrl.startsWith("data:");
+  const customStill = stillUrl.startsWith("data:") || stillUrl.startsWith("/api/hero/brand/");
   const customVideo = isCustomHeroVideo(shop.heroVideoUrl);
   if (customVideo) {
     return {

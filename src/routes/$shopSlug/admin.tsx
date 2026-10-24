@@ -31,8 +31,12 @@ import { getBearerToken } from "@/lib/auth/client";
 import { PRESENTATION_STYLES, isPresentationStyle, presentationForIntro, type IntroPreset } from "@/lib/axiom/intro";
 import { LAYOUT_BLOCKS, type LayoutBlock } from "@/lib/axiom/storefront";
 import { BrandStudio } from "@/components/brand-studio";
+import { BrandedHeroStudio } from "@/components/branded-hero-studio";
 import { HeroMotionDesk } from "@/components/hero-motion-desk";
+import { HolographicStage } from "@/components/HolographicStage";
+import { ShopDeskSettings } from "@/components/ShopDeskSettings";
 import { compileBrandMark, parseBrandStudio, rippleTheme, themeSurface, type RippleThemeId } from "@/lib/axiom/brand-studio";
+import { brandPlate, heroAtmosphereActive } from "@/lib/axiom/hero-brand";
 import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
 import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
@@ -164,14 +168,14 @@ function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "settings" | "services" | "pricing" | "brand" | "hero" | "work" | "team" | "alerts" | "billing">("overview");
+  const [tab, setTab] = useState<"overview" | "settings" | "services" | "pricing" | "brand" | "hero" | "assistant" | "work" | "team" | "alerts" | "billing">("overview");
   const [linking, setLinking] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
   const paymentsLocked =
     !readonly && !data.platformDesk && data.payments.processorReady && !data.payments.chargesEnabled;
 
   useEffect(() => {
-    const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "hero" || tab === "work" ? "storefront_editor" : "lead_dashboard";
+    const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "hero" || tab === "assistant" || tab === "work" ? "storefront_editor" : "lead_dashboard";
     setAvatarScreen(screen);
     return () => setAvatarScreen(null);
   }, [tab]);
@@ -183,6 +187,7 @@ function AdminShell({
     pricing: "Pricing",
     brand: "Look",
     hero: "Hero",
+    assistant: "Assistant",
     work: "Work",
     team: copy.staffStep,
     alerts: "Alerts",
@@ -235,7 +240,7 @@ function AdminShell({
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "settings", "services", "pricing", "brand", "hero", "work", "team", "alerts", "billing"] as const).map((t) => (
+        {(["overview", "settings", "services", "pricing", "brand", "hero", "assistant", "work", "team", "alerts", "billing"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -274,6 +279,7 @@ function AdminShell({
               disabled={readonly && !data.shop.isShowcase}
               onReload={onReload}
             />
+            <ShopDeskSettings />
           </div>
         ) : null}
         {tab === "services" ? (
@@ -289,8 +295,19 @@ function AdminShell({
           />
         ) : null}
         {tab === "hero" ? (
-          <HeroMotionDesk shop={data.shop} readonly={readonly} onReload={onReload} />
+          <div className="grid gap-6">
+            <Link
+              to="/$shopSlug/admin/hero-studio"
+              params={{ shopSlug: data.shop.slug }}
+              className="hero-studio-back"
+            >
+              Open the branding studio
+            </Link>
+            <HeroMotionDesk shop={data.shop} readonly={readonly} onReload={onReload} />
+            <BrandedHeroStudio shop={data.shop} readonly={readonly} onReload={onReload} />
+          </div>
         ) : null}
+        {tab === "assistant" ? <HolographicStage businessName={data.shop.name} /> : null}
         {tab === "work" ? (
           <ProofGalleryManager
             slug={data.shop.slug}
@@ -801,6 +818,14 @@ function BrandPanel({
             city: cityFromAddress(shop.address),
             trade: shopTradeLabel(shop),
           }}
+          effect={heroAtmosphereActive(shop.heroImageUrl, shop.heroBrandingTagline) ? shop.heroEffectType : null}
+          brandTagline={shop.heroBrandingTagline}
+          brandSticker={brandPlate({
+            name: shop.name,
+            niche: shop.niche,
+            trade: shopTradeLabel(shop),
+            tagline: shop.heroBrandingTagline,
+          }).sticker}
           telemetry={readMasterTelemetry()}
           className="min-h-[420px]"
         >

@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDatabaseUnavailable } from "../../scripts/db-availability.mjs";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+
+export { isDatabaseUnavailable };
 
 /** Which database backend is active. Music and contractor niches live in 0008. */
 export type DbSource = "neon" | "pglite";
@@ -53,7 +56,26 @@ const globalRef = globalThis as typeof globalThis & {
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
   __pgMigratePromise__?: Promise<void>;
+  __pgHostDeferred__?: boolean;
+  __pgOfflineWarned__?: boolean;
 };
+
+function localDevelopment() {
+  return process.env.NODE_ENV !== "production";
+}
+
+/** Local dev keeps serving when the hosted database cannot be reached. */
+function deferHostedDatabase(err: unknown) {
+  if (!localDevelopment() || !isDatabaseUnavailable(err)) return false;
+  if (!globalRef.__pgHostDeferred__) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[db] hosted postgres is unreachable (${message}). Local development is staying up without it.`,
+    );
+  }
+  globalRef.__pgHostDeferred__ = true;
+  return true;
+}
 
 /**
  * Result-type parity: Postgres sends every value as text plus a type OID — the
@@ -158,7 +180,14 @@ async function migratePostgres(): Promise<void> {
 async function migratePostgresConnected(): Promise<void> {
   if (!databaseUrl) return;
   const { Pool } = await import("pg");
-  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: 1,
+    connectionTimeoutMillis: localDevelopment() ? 4_000 : 15_000,
+  });
+  pool.on("error", (err) => {
+    console.error("[db] connection dropped", err instanceof Error ? err.message : err);
+  });
   try {
   const client = await pool.connect();
   try {
@@ -195,7 +224,9 @@ async function migratePostgresConnected(): Promise<void> {
 }
 
 function migratePostgresOnce(): Promise<void> {
+  if (globalRef.__pgHostDeferred__) return Promise.resolve();
   globalRef.__pgMigratePromise__ ??= migratePostgres().catch((err) => {
+    if (deferHostedDatabase(err)) return;
     globalRef.__pgMigratePromise__ = undefined;
     throw err;
   });
@@ -320,6 +351,21 @@ async function createPgliteSql(): Promise<Sql> {
 
 let sqlPromise: Promise<Sql> | null = null;
 
+/**
+ * Local development stand-in used only after the hosted database has already
+ * refused a connection. Reads come back empty so route loaders can render.
+ * The assistant studio keeps its own browser storage and does not need these rows.
+ */
+function localFallbackSql(): Sql {
+  if (!globalRef.__pgOfflineWarned__) {
+    globalRef.__pgOfflineWarned__ = true;
+    console.warn(
+      "[db] Hosted Postgres is not accepting connections. Local development is running without it.",
+    );
+  }
+  return toSql(async () => []);
+}
+
 async function createSql(): Promise<Sql> {
   if (typeof window !== "undefined") {
     throw new Error(
@@ -328,8 +374,14 @@ async function createSql(): Promise<Sql> {
     );
   }
   if (dbSource === "neon") {
-    await migratePostgresOnce();
-    return createNeonSql();
+    try {
+      await migratePostgresOnce();
+      if (globalRef.__pgHostDeferred__) return localFallbackSql();
+      return await createNeonSql();
+    } catch (err) {
+      if (!deferHostedDatabase(err)) throw err;
+      return localFallbackSql();
+    }
   }
   return createPgliteSql();
 }
@@ -344,7 +396,8 @@ async function createSql(): Promise<Sql> {
  */
 export async function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
   if (dbSource === "neon") {
-    await getSql();
+    const sql = await getSql();
+    if (globalRef.__pgHostDeferred__) return fn(sql);
     const pool = globalRef.__pgPool__;
     if (!pool) throw new Error("Postgres pool is not ready");
     const client = await withDbRetry(() => pool.connect());
@@ -414,7 +467,10 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
  * Finish DB bootstrap before the server handles traffic.
  *
  * - **Postgres** (`DATABASE_URL`): apply pending migrations before queries.
- *   Existing lead, shop, and nurture rows stay put across restarts.
+ *   Existing lead, shop, and nurture rows stay put across restarts. In local
+ *   development, a connection failure is logged and the server keeps running.
+ *   Queries return no rows until the process restarts and the hosted database
+ *   accepts connections again. Browser storage still holds the assistant.
  * - **PGLite** (no `DATABASE_URL`): open the in-memory DB and apply the same
  *   files. That database is empty again after the process exits.
  *
@@ -438,6 +494,7 @@ if (typeof window === "undefined") {
       : "[db] in-memory postgres — DATABASE_URL is unset, so rows reset when this process stops",
   );
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
+    if (deferHostedDatabase(err)) return;
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] bootstrap failed:", err);
     throw err;

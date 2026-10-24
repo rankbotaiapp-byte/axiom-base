@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShopSlugRouteRouteImport } from './routes/$shopSlug/route'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AssistantStudioRouteImport } from './routes/assistant-studio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MasterRouteImport } from './routes/master'
 import { Route as OnboardRouteImport } from './routes/onboard'
+import { Route as TentChaseRouteImport } from './routes/tent-chase'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ShopSlugIndexRouteImport } from './routes/$shopSlug/index'
 import { Route as ShopSlugAdminRouteImport } from './routes/$shopSlug/admin'
@@ -25,6 +27,7 @@ import { Route as ApiGetAvatarTokenRouteImport } from './routes/api/get-avatar-t
 import { Route as DemoNicheRouteImport } from './routes/demo/$niche'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/index'
+import { Route as ShopSlugAdminHeroStudioRouteImport } from './routes/$shopSlug/admin.hero-studio'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBusinessBrandRouteImport } from './routes/api/business.brand'
@@ -32,10 +35,14 @@ import { Route as ApiBusinessBrandsRouteImport } from './routes/api/business.bra
 import { Route as ApiBusinessPreviewLinksRouteImport } from './routes/api/business.preview-links'
 import { Route as ApiGearGuardianCheckoutRouteImport } from './routes/api/gear-guardian.checkout'
 import { Route as ApiHeroVideoShopIdRouteImport } from './routes/api/hero-video.$shopId'
+import { Route as ApiHeroAnimateRouteImport } from './routes/api/hero/animate'
+import { Route as ApiHeroBrandRouteImport } from './routes/api/hero/brand'
 import { Route as ApiMasterAutopilotRouteImport } from './routes/api/master.autopilot'
 import { Route as ApiOutreachCronRouteImport } from './routes/api/outreach.cron'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe.webhook'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
+import { Route as ApiAdminHeroStudioGenerateRouteImport } from './routes/api/admin/hero-studio/generate'
+import { Route as ApiHeroBrandShopIdRouteImport } from './routes/api/hero/brand.$shopId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +59,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssistantStudioRoute = AssistantStudioRouteImport.update({
+  id: '/assistant-studio',
+  path: '/assistant-studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -65,6 +77,11 @@ const MasterRoute = MasterRouteImport.update({
 const OnboardRoute = OnboardRouteImport.update({
   id: '/onboard',
   path: '/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TentChaseRoute = TentChaseRouteImport.update({
+  id: '/tent-chase',
+  path: '/tent-chase',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -117,6 +134,11 @@ const MasterAdminIndexRoute = MasterAdminIndexRouteImport.update({
   path: '/master-admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShopSlugAdminHeroStudioRoute = ShopSlugAdminHeroStudioRouteImport.update({
+  id: '/hero-studio',
+  path: '/hero-studio',
+  getParentRoute: () => ShopSlugAdminRoute,
+} as any)
 const ShopSlugStaffEmployeeIdRoute = ShopSlugStaffEmployeeIdRouteImport.update({
   id: '/staff/$employeeId',
   path: '/staff/$employeeId',
@@ -152,6 +174,16 @@ const ApiHeroVideoShopIdRoute = ApiHeroVideoShopIdRouteImport.update({
   path: '/api/hero-video/$shopId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHeroAnimateRoute = ApiHeroAnimateRouteImport.update({
+  id: '/api/hero/animate',
+  path: '/api/hero/animate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHeroBrandRoute = ApiHeroBrandRouteImport.update({
+  id: '/api/hero/brand',
+  path: '/api/hero/brand',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMasterAutopilotRoute = ApiMasterAutopilotRouteImport.update({
   id: '/api/master/autopilot',
   path: '/api/master/autopilot',
@@ -172,16 +204,29 @@ const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   path: '/api/webhooks/stripe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminHeroStudioGenerateRoute =
+  ApiAdminHeroStudioGenerateRouteImport.update({
+    id: '/api/admin/hero-studio/generate',
+    path: '/api/admin/hero-studio/generate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiHeroBrandShopIdRoute = ApiHeroBrandShopIdRouteImport.update({
+  id: '/$shopId',
+  path: '/$shopId',
+  getParentRoute: () => ApiHeroBrandRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$shopSlug': typeof ShopSlugRouteRouteWithChildren
   '/admin': typeof AdminRoute
+  '/assistant-studio': typeof AssistantStudioRoute
   '/login': typeof LoginRoute
   '/master': typeof MasterRoute
   '/onboard': typeof OnboardRoute
+  '/tent-chase': typeof TentChaseRoute
   '/welcome': typeof WelcomeRoute
-  '/$shopSlug/admin': typeof ShopSlugAdminRoute
+  '/$shopSlug/admin': typeof ShopSlugAdminRouteWithChildren
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/$shopSlug/gate': typeof ShopSlugGateRoute
@@ -190,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
+  '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
@@ -197,19 +243,25 @@ export interface FileRoutesByFullPath {
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/hero/animate': typeof ApiHeroAnimateRoute
+  '/api/hero/brand': typeof ApiHeroBrandRouteWithChildren
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
+  '/api/hero/brand/$shopId': typeof ApiHeroBrandShopIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/assistant-studio': typeof AssistantStudioRoute
   '/login': typeof LoginRoute
   '/master': typeof MasterRoute
   '/onboard': typeof OnboardRoute
+  '/tent-chase': typeof TentChaseRoute
   '/welcome': typeof WelcomeRoute
-  '/$shopSlug/admin': typeof ShopSlugAdminRoute
+  '/$shopSlug/admin': typeof ShopSlugAdminRouteWithChildren
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/$shopSlug/gate': typeof ShopSlugGateRoute
@@ -218,6 +270,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug': typeof ShopSlugIndexRoute
   '/master-admin': typeof MasterAdminIndexRoute
+  '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
@@ -225,21 +278,27 @@ export interface FileRoutesByTo {
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/hero/animate': typeof ApiHeroAnimateRoute
+  '/api/hero/brand': typeof ApiHeroBrandRouteWithChildren
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
+  '/api/hero/brand/$shopId': typeof ApiHeroBrandShopIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$shopSlug': typeof ShopSlugRouteRouteWithChildren
   '/admin': typeof AdminRoute
+  '/assistant-studio': typeof AssistantStudioRoute
   '/login': typeof LoginRoute
   '/master': typeof MasterRoute
   '/onboard': typeof OnboardRoute
+  '/tent-chase': typeof TentChaseRoute
   '/welcome': typeof WelcomeRoute
-  '/$shopSlug/admin': typeof ShopSlugAdminRoute
+  '/$shopSlug/admin': typeof ShopSlugAdminRouteWithChildren
   '/$shopSlug/book': typeof ShopSlugBookRoute
   '/$shopSlug/employee': typeof ShopSlugEmployeeRoute
   '/$shopSlug/gate': typeof ShopSlugGateRoute
@@ -248,6 +307,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
+  '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
@@ -255,10 +315,14 @@ export interface FileRoutesById {
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
   '/api/gear-guardian/checkout': typeof ApiGearGuardianCheckoutRoute
   '/api/hero-video/$shopId': typeof ApiHeroVideoShopIdRoute
+  '/api/hero/animate': typeof ApiHeroAnimateRoute
+  '/api/hero/brand': typeof ApiHeroBrandRouteWithChildren
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
+  '/api/hero/brand/$shopId': typeof ApiHeroBrandShopIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -266,9 +330,11 @@ export interface FileRouteTypes {
     | '/'
     | '/$shopSlug'
     | '/admin'
+    | '/assistant-studio'
     | '/login'
     | '/master'
     | '/onboard'
+    | '/tent-chase'
     | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
@@ -279,6 +345,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/$shopSlug/'
     | '/master-admin/'
+    | '/$shopSlug/admin/hero-studio'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/business/brand'
@@ -286,17 +353,23 @@ export interface FileRouteTypes {
     | '/api/business/preview-links'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/hero/animate'
+    | '/api/hero/brand'
     | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/stripe/webhook'
     | '/api/webhooks/stripe'
+    | '/api/admin/hero-studio/generate'
+    | '/api/hero/brand/$shopId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
+    | '/assistant-studio'
     | '/login'
     | '/master'
     | '/onboard'
+    | '/tent-chase'
     | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
@@ -307,6 +380,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/$shopSlug'
     | '/master-admin'
+    | '/$shopSlug/admin/hero-studio'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/business/brand'
@@ -314,18 +388,24 @@ export interface FileRouteTypes {
     | '/api/business/preview-links'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/hero/animate'
+    | '/api/hero/brand'
     | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/stripe/webhook'
     | '/api/webhooks/stripe'
+    | '/api/admin/hero-studio/generate'
+    | '/api/hero/brand/$shopId'
   id:
     | '__root__'
     | '/'
     | '/$shopSlug'
     | '/admin'
+    | '/assistant-studio'
     | '/login'
     | '/master'
     | '/onboard'
+    | '/tent-chase'
     | '/welcome'
     | '/$shopSlug/admin'
     | '/$shopSlug/book'
@@ -336,6 +416,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/$shopSlug/'
     | '/master-admin/'
+    | '/$shopSlug/admin/hero-studio'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
     | '/api/business/brand'
@@ -343,19 +424,25 @@ export interface FileRouteTypes {
     | '/api/business/preview-links'
     | '/api/gear-guardian/checkout'
     | '/api/hero-video/$shopId'
+    | '/api/hero/animate'
+    | '/api/hero/brand'
     | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/stripe/webhook'
     | '/api/webhooks/stripe'
+    | '/api/admin/hero-studio/generate'
+    | '/api/hero/brand/$shopId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShopSlugRouteRoute: typeof ShopSlugRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
+  AssistantStudioRoute: typeof AssistantStudioRoute
   LoginRoute: typeof LoginRoute
   MasterRoute: typeof MasterRoute
   OnboardRoute: typeof OnboardRoute
+  TentChaseRoute: typeof TentChaseRoute
   WelcomeRoute: typeof WelcomeRoute
   ApiGetAvatarTokenRoute: typeof ApiGetAvatarTokenRoute
   DemoNicheRoute: typeof DemoNicheRoute
@@ -367,10 +454,13 @@ export interface RootRouteChildren {
   ApiBusinessPreviewLinksRoute: typeof ApiBusinessPreviewLinksRoute
   ApiGearGuardianCheckoutRoute: typeof ApiGearGuardianCheckoutRoute
   ApiHeroVideoShopIdRoute: typeof ApiHeroVideoShopIdRoute
+  ApiHeroAnimateRoute: typeof ApiHeroAnimateRoute
+  ApiHeroBrandRoute: typeof ApiHeroBrandRouteWithChildren
   ApiMasterAutopilotRoute: typeof ApiMasterAutopilotRoute
   ApiOutreachCronRoute: typeof ApiOutreachCronRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
+  ApiAdminHeroStudioGenerateRoute: typeof ApiAdminHeroStudioGenerateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -396,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assistant-studio': {
+      id: '/assistant-studio'
+      path: '/assistant-studio'
+      fullPath: '/assistant-studio'
+      preLoaderRoute: typeof AssistantStudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -415,6 +512,13 @@ declare module '@tanstack/react-router' {
       path: '/onboard'
       fullPath: '/onboard'
       preLoaderRoute: typeof OnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tent-chase': {
+      id: '/tent-chase'
+      path: '/tent-chase'
+      fullPath: '/tent-chase'
+      preLoaderRoute: typeof TentChaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/welcome': {
@@ -487,6 +591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterAdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$shopSlug/admin/hero-studio': {
+      id: '/$shopSlug/admin/hero-studio'
+      path: '/hero-studio'
+      fullPath: '/$shopSlug/admin/hero-studio'
+      preLoaderRoute: typeof ShopSlugAdminHeroStudioRouteImport
+      parentRoute: typeof ShopSlugAdminRoute
+    }
     '/$shopSlug/staff/$employeeId': {
       id: '/$shopSlug/staff/$employeeId'
       path: '/staff/$employeeId'
@@ -536,6 +647,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHeroVideoShopIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/hero/animate': {
+      id: '/api/hero/animate'
+      path: '/api/hero/animate'
+      fullPath: '/api/hero/animate'
+      preLoaderRoute: typeof ApiHeroAnimateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/hero/brand': {
+      id: '/api/hero/brand'
+      path: '/api/hero/brand'
+      fullPath: '/api/hero/brand'
+      preLoaderRoute: typeof ApiHeroBrandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/master/autopilot': {
       id: '/api/master/autopilot'
       path: '/api/master/autopilot'
@@ -564,11 +689,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/hero-studio/generate': {
+      id: '/api/admin/hero-studio/generate'
+      path: '/api/admin/hero-studio/generate'
+      fullPath: '/api/admin/hero-studio/generate'
+      preLoaderRoute: typeof ApiAdminHeroStudioGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/hero/brand/$shopId': {
+      id: '/api/hero/brand/$shopId'
+      path: '/$shopId'
+      fullPath: '/api/hero/brand/$shopId'
+      preLoaderRoute: typeof ApiHeroBrandShopIdRouteImport
+      parentRoute: typeof ApiHeroBrandRoute
+    }
   }
 }
 
+interface ShopSlugAdminRouteChildren {
+  ShopSlugAdminHeroStudioRoute: typeof ShopSlugAdminHeroStudioRoute
+}
+
+const ShopSlugAdminRouteChildren: ShopSlugAdminRouteChildren = {
+  ShopSlugAdminHeroStudioRoute: ShopSlugAdminHeroStudioRoute,
+}
+
+const ShopSlugAdminRouteWithChildren = ShopSlugAdminRoute._addFileChildren(
+  ShopSlugAdminRouteChildren,
+)
+
 interface ShopSlugRouteRouteChildren {
-  ShopSlugAdminRoute: typeof ShopSlugAdminRoute
+  ShopSlugAdminRoute: typeof ShopSlugAdminRouteWithChildren
   ShopSlugBookRoute: typeof ShopSlugBookRoute
   ShopSlugEmployeeRoute: typeof ShopSlugEmployeeRoute
   ShopSlugGateRoute: typeof ShopSlugGateRoute
@@ -577,7 +728,7 @@ interface ShopSlugRouteRouteChildren {
 }
 
 const ShopSlugRouteRouteChildren: ShopSlugRouteRouteChildren = {
-  ShopSlugAdminRoute: ShopSlugAdminRoute,
+  ShopSlugAdminRoute: ShopSlugAdminRouteWithChildren,
   ShopSlugBookRoute: ShopSlugBookRoute,
   ShopSlugEmployeeRoute: ShopSlugEmployeeRoute,
   ShopSlugGateRoute: ShopSlugGateRoute,
@@ -589,13 +740,27 @@ const ShopSlugRouteRouteWithChildren = ShopSlugRouteRoute._addFileChildren(
   ShopSlugRouteRouteChildren,
 )
 
+interface ApiHeroBrandRouteChildren {
+  ApiHeroBrandShopIdRoute: typeof ApiHeroBrandShopIdRoute
+}
+
+const ApiHeroBrandRouteChildren: ApiHeroBrandRouteChildren = {
+  ApiHeroBrandShopIdRoute: ApiHeroBrandShopIdRoute,
+}
+
+const ApiHeroBrandRouteWithChildren = ApiHeroBrandRoute._addFileChildren(
+  ApiHeroBrandRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShopSlugRouteRoute: ShopSlugRouteRouteWithChildren,
   AdminRoute: AdminRoute,
+  AssistantStudioRoute: AssistantStudioRoute,
   LoginRoute: LoginRoute,
   MasterRoute: MasterRoute,
   OnboardRoute: OnboardRoute,
+  TentChaseRoute: TentChaseRoute,
   WelcomeRoute: WelcomeRoute,
   ApiGetAvatarTokenRoute: ApiGetAvatarTokenRoute,
   DemoNicheRoute: DemoNicheRoute,
@@ -607,10 +772,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBusinessPreviewLinksRoute: ApiBusinessPreviewLinksRoute,
   ApiGearGuardianCheckoutRoute: ApiGearGuardianCheckoutRoute,
   ApiHeroVideoShopIdRoute: ApiHeroVideoShopIdRoute,
+  ApiHeroAnimateRoute: ApiHeroAnimateRoute,
+  ApiHeroBrandRoute: ApiHeroBrandRouteWithChildren,
   ApiMasterAutopilotRoute: ApiMasterAutopilotRoute,
   ApiOutreachCronRoute: ApiOutreachCronRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
+  ApiAdminHeroStudioGenerateRoute: ApiAdminHeroStudioGenerateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

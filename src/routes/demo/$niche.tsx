@@ -4,6 +4,7 @@ import { parseBusinessId, type BusinessBrandRecord } from "@/lib/axiom/business-
 import { getBusinessBrand } from "@/lib/axiom/business-lookup";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
+import { storefrontRevealHero } from "@/components/storefront-reveal";
 import { TenantPreview } from "@/components/tenant-preview";
 import type { ShopNiche } from "@/lib/axiom/types";
 
@@ -65,6 +66,7 @@ function NicheDemo() {
       onNiche={(next) => {
         void navigate({ to: "/demo/$niche", params: { niche: next }, search });
       }}
+      revealHero={storefrontRevealHero(niche)}
       claim={
         <Link
           to="/onboard"

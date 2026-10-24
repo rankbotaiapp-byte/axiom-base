@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { HeroTextCanvas } from "@/components/hero-text-canvas";
 import { Link } from "@tanstack/react-router";
 import { CinematicHero } from "@/components/cinematic-hero";
+import { TacticalHero } from "@/components/tactical-hero";
 import { AUTO_HERO_POSTER, AUTO_HERO_SRC } from "@/lib/axiom/auto-sequence";
 import { HoloCard } from "@/components/holo-card";
 import { Reveal } from "@/components/reveal";
@@ -14,7 +15,15 @@ import { DEFAULT_HUD, hudVars, type HeroLayerId, type HeroTextLayer, type Storef
 import { HeroSpatial } from "@/components/hero-spatial";
 import { BarberMirrorStudio, usesBarberMirror } from "@/components/barber-mirror-studio";
 import { OutdoorGuideStudio, usesOutdoorGuide } from "@/components/outdoor-guide-studio";
+import { HolographicStage } from "@/components/HolographicStage";
+import { StorefrontPresence, storefrontFilm } from "@/components/storefront-presence";
+import { storefrontRevealHero } from "@/components/storefront-reveal";
+import { usesCeramicReveal } from "@/lib/axiom/ceramic-reveal";
+import { usesRiverReveal } from "@/lib/axiom/river-reveal";
 import { usesAutomotiveCockpit } from "@/lib/axiom/cockpit";
+import { ownerHeroMedia } from "@/lib/axiom/hero-motion";
+import { brandPlate, heroAtmosphereActive, type HeroEffect } from "@/lib/axiom/hero-brand";
+import { HeroBrandFrame } from "@/components/hero-weather";
 import { applyBrowserFilmOverride, readMasterTelemetry, readNicheFilmOverride } from "@/lib/axiom/hero-films";
 import { formatPhone, initials } from "@/lib/utils";
 
@@ -69,6 +78,11 @@ export function NicheStorefront({
   autoHero = false,
   hud = DEFAULT_HUD,
   headline = "",
+  heroEffect = "smoke",
+  heroTagline = "",
+  heroPrompt = "",
+  morphDurationSec = 4.5,
+  revealHero,
   layoutEditable = false,
   activeLayer = "headline",
   onActiveLayer,
@@ -108,6 +122,12 @@ export function NicheStorefront({
   autoHero?: boolean;
   hud?: StorefrontHud;
   headline?: string;
+  heroEffect?: HeroEffect;
+  heroTagline?: string;
+  heroPrompt?: string;
+  morphDurationSec?: number;
+  /** Scratch-off wildlife hero. Used when this storefront is the outdoor guide. */
+  revealHero?: ReactNode;
   layoutEditable?: boolean;
   activeLayer?: HeroLayerId;
   onActiveLayer?: (id: HeroLayerId) => void;
@@ -128,10 +148,34 @@ export function NicheStorefront({
   const tradeText = [businessName, kicker, tagline, description].filter(Boolean).join(" ");
   const telemetry = masterLines;
   const brand = { name: businessName, accent, logoUrl, city, trade: tradeLabel };
+  const owned = autoHero ? null : ownerHeroMedia(playedVideo, heroImageUrl);
+  const plate = brandPlate({ name: businessName, niche, trade: kicker, tagline: heroTagline });
+  const atmosphere = heroEffect === "orb_genesis_transform" || heroAtmosphereActive(heroImageUrl, heroTagline);
+  const brandFrame = atmosphere ? (
+    <HeroBrandFrame
+      effect={heroEffect}
+      tagline={plate.line || heroTagline}
+      sticker={plate.sticker}
+      prompt={heroPrompt}
+      morphDurationSec={morphDurationSec}
+      name={businessName}
+    />
+  ) : null;
+  const cinematicBrand = atmosphere
+    ? {
+        effect: heroEffect,
+        brandTagline: plate.line || heroTagline,
+        brandSticker: plate.sticker,
+        heroPrompt,
+        morphDurationSec,
+      }
+    : { effect: null, brandTagline: "", brandSticker: "", heroPrompt: "", morphDurationSec: 4.5 };
   const cockpit = autoHero || usesAutomotiveCockpit(niche, tradeText);
   const mirror = usesBarberMirror(niche, tradeText);
   const outdoor = usesOutdoorGuide(niche, tradeText);
-  const chrome = (
+  const ceramic = !outdoor && usesCeramicReveal(niche, tradeText);
+  const river = !outdoor && !ceramic && usesRiverReveal(niche, tradeText);
+  const renderChrome = () => (
     <>
       <div className="hero-scrim pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden />
       <div data-spatial="nav" className="relative z-10 flex items-center justify-between gap-3 px-5 py-5 sm:px-10">
@@ -155,8 +199,39 @@ export function NicheStorefront({
       data-scan={hud.scan ? "on" : "off"}
       style={{ ...hudVars(hud, accent), ...surface }}
     >
-      {cockpit || mirror || outdoor ? null : <HeroSpatial rootRef={stageRef} />}
-      {cockpit ? (
+      <StorefrontPresence
+        name={businessName}
+        kicker={kicker}
+        tagline={tagline || headline}
+        videoUrl={
+          owned?.video ||
+          (cockpit ? AUTO_HERO_SRC : null) ||
+          playedVideo ||
+          fallbackVideoUrl
+        }
+        imageUrl={owned?.image || heroImageUrl || fallbackImageUrl}
+        bookHref={bookHref}
+        bookLabel={bookLabel}
+      >
+        {renderChrome()}
+      </StorefrontPresence>
+      <HolographicStage
+        businessName={businessName}
+        customer
+        filmUrl={storefrontFilm(
+          owned?.video || (cockpit ? AUTO_HERO_SRC : null) || playedVideo || fallbackVideoUrl,
+        )}
+        posterUrl={owned?.image || heroImageUrl || fallbackImageUrl || undefined}
+      />
+      {owned || cockpit || mirror || outdoor || ceramic || river ? null : <HeroSpatial rootRef={stageRef} />}
+      {owned ? (
+        <div className="hero-atmosphere-host">
+          <TacticalHero videoUrl={owned.video || undefined} imageUrl={owned.image || undefined} label={businessName}>
+            <div className="relative z-10">{renderChrome()}</div>
+          </TacticalHero>
+          {brandFrame}
+        </div>
+      ) : cockpit ? (
         <CinematicHero
           sequence="auto"
           imageUrl={heroImageUrl || AUTO_HERO_POSTER}
@@ -170,6 +245,7 @@ export function NicheStorefront({
           fallbackVideoUrl={fallbackVideoUrl}
           brand={brand}
           telemetry={telemetry}
+          {...cinematicBrand}
           dashboard={
             <OfferingDesk
               businessName={businessName}
@@ -181,16 +257,43 @@ export function NicheStorefront({
             />
           }
         >
-          {chrome}
+          {renderChrome()}
         </CinematicHero>
       ) : mirror ? (
-        <BarberMirrorStudio businessName={businessName} bookHref={bookHref} services={services}>
-          {chrome}
-        </BarberMirrorStudio>
+        <div className="hero-atmosphere-host">
+          <BarberMirrorStudio
+            businessName={businessName}
+            bookHref={bookHref}
+            services={services}
+            filmUrl={typeof playedVideo === "string" ? playedVideo : playedVideo?.[0]}
+          >
+            {renderChrome()}
+          </BarberMirrorStudio>
+          {brandFrame}
+        </div>
       ) : outdoor ? (
-        <OutdoorGuideStudio businessName={businessName} bookHref={bookHref} services={services} hud={hud}>
-          {chrome}
-        </OutdoorGuideStudio>
+        <div className="hero-atmosphere-host">
+          <OutdoorGuideStudio businessName={businessName} bookHref={bookHref} services={services} hud={hud} hero={revealHero}>
+            {renderChrome()}
+          </OutdoorGuideStudio>
+          {brandFrame}
+        </div>
+      ) : ceramic ? (
+        <div className="hero-atmosphere-host">
+          <section className="ceramic-stage" aria-label="Ceramic coat studio" data-asset="car-pristine-base.mp4">
+            {revealHero ?? storefrontRevealHero(niche, tradeText)}
+            <div className="relative z-10">{renderChrome()}</div>
+          </section>
+          {brandFrame}
+        </div>
+      ) : river ? (
+        <div className="hero-atmosphere-host">
+          <section className="river-stage" aria-label="River hawk studio" data-asset="river-hawk-base.mp4">
+            {revealHero ?? storefrontRevealHero(niche, tradeText)}
+            <div className="relative z-10">{renderChrome()}</div>
+          </section>
+          {brandFrame}
+        </div>
       ) : (
       <CinematicHero
         imageUrl={heroImageUrl}
@@ -204,8 +307,9 @@ export function NicheStorefront({
         fallbackVideoUrl={fallbackVideoUrl}
         brand={brand}
         telemetry={telemetry}
+        {...cinematicBrand}
       >
-        {chrome}
+        {renderChrome()}
         <div className="relative z-10 flex min-h-[18rem] flex-1 flex-col px-5 pb-24 pt-6 sm:px-10">
           <p className="pointer-events-none min-h-4 text-[11px] uppercase tracking-[0.22em] text-muted">{kicker || "\u00a0"}</p>
           <p className="pointer-events-none mt-2 min-h-5 text-sm text-muted sm:hidden">{contact || "\u00a0"}</p>

@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { motion, useMotionTemplate, useReducedMotion, useTransform } from "framer-motion";
+import { motion, useReducedMotion, useTransform } from "framer-motion";
 import { useBiokineticEngine } from "@/hooks/use-biokinetic-engine";
-import { DEPTH_STEPS, DEFAULT_HUD, type StorefrontHud } from "@/lib/axiom/hud";
-import { isOutdoorGuideNiche, NICHE_MEDIA } from "@/lib/axiom/media";
-
-const FILM = NICHE_MEDIA.hunting.heroVideoUrl;
+import { DEFAULT_HUD, type StorefrontHud } from "@/lib/axiom/hud";
+import { isOutdoorGuideNiche } from "@/lib/axiom/media";
+import { SwipeRevealHero } from "@/components/SwipeRevealHero";
 
 const DEFAULT_OFFERS = [
   { name: "Half day", description: "A morning or an evening on private ground.", price: "$350" },
@@ -28,12 +27,14 @@ export function OutdoorGuideStudio({
   bookHref,
   services,
   hud = DEFAULT_HUD,
+  hero,
   children,
 }: {
   businessName: string;
   bookHref?: string;
   services?: readonly GuideOffer[];
   hud?: StorefrontHud;
+  hero?: ReactNode;
   children?: ReactNode;
 }) {
   const offers = services && services.length > 0 ? services : DEFAULT_OFFERS;
@@ -41,21 +42,22 @@ export function OutdoorGuideStudio({
   const biokinetic = useBiokineticEngine({ cameraGranted: false, reducedMotion: reduce });
   const [index, setIndex] = useState(0);
   const offer = offers[index] ?? offers[0];
-  const feather = DEPTH_STEPS[hud.depth] ?? 1.25;
-  const canopyBlur = useMotionTemplate`blur(calc(${feather * 10}px + ${biokinetic.backdropBlurAmount}px))`;
   const frameScale = useTransform(biokinetic.cameraDollyScale, [1, 1.16], [1, 1.48]);
   const frameFade = useTransform(biokinetic.cameraDollyScale, [1, 1.16], [1, 0.35]);
   const cardLift = useTransform(biokinetic.cameraDollyScale, [1, 1.16], [18, -28]);
 
   return (
-    <section className="outdoor-stage" aria-label="Outdoor guide studio" data-asset="hunting-guide.mp4">
-      <motion.div className="outdoor-rig" style={{ scale: biokinetic.cameraDollyScale }}>
-        <motion.div className="outdoor-canopy" style={{ filter: canopyBlur }}>
-          <video src={FILM} muted playsInline autoPlay loop className="h-full w-full object-cover" />
-        </motion.div>
-        <div className="outdoor-subject">
-          <video src={FILM} muted playsInline autoPlay loop className="h-full w-full object-cover" />
-        </div>
+    <section className="outdoor-stage is-prey" aria-label="Outdoor guide studio" data-asset="owl_midnight_dive.mp4" data-depth={hud.depth}>
+      {hero ?? (
+        <SwipeRevealHero
+          baseVideoSrc="/media/heroes/owl_midnight_dive.mp4"
+          coverImageSrc="/media/heroes/pine-brush-cover.png"
+          badgeText="ACTIVE INTERACTION: UNVEIL THE WILDLIFE."
+          heading="The Silent Apex Predator"
+          subheading="Swipe across the canopy brush to uncover the hidden wildlife below."
+        />
+      )}
+      <motion.div className="outdoor-rig pointer-events-none" style={{ scale: biokinetic.cameraDollyScale }}>
         <motion.div className="outdoor-frame" style={{ scale: frameScale, opacity: frameFade }} aria-hidden />
       </motion.div>
       <div className="relative z-10">{children}</div>

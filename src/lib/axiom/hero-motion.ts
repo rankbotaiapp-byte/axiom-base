@@ -1,4 +1,6 @@
+import { isBrandedHeroStill } from "./hero-brand.ts";
 import { isCatalogHeroUrl } from "./hero-films.ts";
+import { isCustomHeroVideo } from "./hero-video.ts";
 import { twoWordBrand, type TwoWordBrand } from "./particle-brand.ts";
 
 export const HERO_MOTIONS = [
@@ -95,6 +97,19 @@ export type LiveHeroPlan = {
   motion: HeroMotionState;
   mediaPath: string;
 };
+
+/** A shop-owned film or still. Catalog paths stay on the niche hero. */
+export function ownerHeroMedia(
+  video: string | readonly string[] | null | undefined,
+  image: string | null | undefined,
+): { video: string; image: string } | null {
+  const list = Array.isArray(video) ? video : typeof video === "string" && video ? [video] : [];
+  const film = list.find((url) => isCustomHeroVideo(url)) ?? "";
+  const still =
+    typeof image === "string" && (image.startsWith("data:image/") || isBrandedHeroStill(image)) ? image : "";
+  if (!film && !still) return null;
+  return { video: film, image: still };
+}
 
 /** What Set as Live Hero writes. An upload wins over a niche preset. Unknown films are dropped. */
 export function planLiveHero(draft: LiveHeroDraft, motion: HeroMotionState): LiveHeroPlan {

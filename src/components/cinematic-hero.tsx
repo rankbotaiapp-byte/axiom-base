@@ -20,6 +20,8 @@ import {
 } from "@/lib/axiom/auto-sequence";
 import { heroVideoList, nextReelIndex } from "@/lib/axiom/hero-films";
 import type { HeroTone } from "@/lib/axiom/media";
+import type { HeroEffect } from "@/lib/axiom/hero-brand";
+import { HeroBrandFrame } from "@/components/hero-weather";
 import { TelemetryLog } from "@/components/telemetry-log";
 
 export function CinematicHero({
@@ -36,6 +38,11 @@ export function CinematicHero({
   fallbackVideoUrl = "",
   brand = null,
   telemetry = [],
+  effect = null,
+  brandTagline = "",
+  brandSticker = "",
+  heroPrompt = "",
+  morphDurationSec = 4.5,
   className,
   sequence,
   dashboard = null,
@@ -55,6 +62,11 @@ export function CinematicHero({
   fallbackVideoUrl?: string;
   brand?: { name: string; accent?: string; logoUrl?: string; city?: string; trade?: string } | null;
   telemetry?: readonly string[];
+  effect?: HeroEffect | null;
+  brandTagline?: string;
+  brandSticker?: string;
+  heroPrompt?: string;
+  morphDurationSec?: number;
   className?: string;
   /** Portal, then auto-hero.mp4, then the live desk. */
   sequence?: "auto";
@@ -404,6 +416,16 @@ export function CinematicHero({
         ) : null}
       </div>
       <div className="hero-dissolve pointer-events-none absolute inset-0 z-10" />
+      {effect ? (
+        <HeroBrandFrame
+          effect={effect}
+          tagline={brandTagline}
+          sticker={brandSticker}
+          prompt={heroPrompt}
+          morphDurationSec={morphDurationSec}
+          name={brand?.name}
+        />
+      ) : null}
       {brand?.name ? (
         <div className="pointer-events-none absolute bottom-8 left-5 z-30 flex max-w-[min(28rem,70%)] items-center gap-3 sm:left-8">
           <span

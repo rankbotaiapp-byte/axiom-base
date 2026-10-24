@@ -1,3 +1,4 @@
+import type { HeroEffect } from "./hero-brand";
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 import type { LayoutBlock, ThemeProfile } from "./storefront";
@@ -74,6 +75,10 @@ export type Shop = {
   heroImageUrl: string;
   heroVideoUrl: string | null;
   heroBlendPercent: number;
+  heroEffectType: HeroEffect;
+  heroBrandingTagline: string;
+  heroPrompt: string;
+  morphDurationSec: number;
   introPreset: IntroPreset;
   introSpeed: number;
   introIntensity: number;

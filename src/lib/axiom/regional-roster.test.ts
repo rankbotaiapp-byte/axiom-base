@@ -78,7 +78,7 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("Guide services").heroVideoUrl, "/media/heroes/guide.mp4");
   assert.equal(heroFor("Photography").heroVideoUrl, "/media/heroes/wildlife-photographer.mp4");
   assert.equal(heroFor("Photography").heroVideos.length, 3);
-  assert.equal(heroFor("Barber").heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+  assert.equal(heroFor("Barber").heroVideoUrl, "/media/heroes/barber-hero.mp4");
   assert.equal(heroFor("Hair salon").heroImageUrl, "");
   assert.equal(heroFor("Hair salon").heroVideoUrl, "/media/heroes/salon.mp4");
   assert.equal(heroFor("HVAC").heroImageUrl, "");

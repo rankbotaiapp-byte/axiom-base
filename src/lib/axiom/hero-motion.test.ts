@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { heroMotionPreview, heroPresetLabel, parseHeroMotion, planLiveHero } from "./hero-motion.ts";
+import { heroMotionPreview, heroPresetLabel, ownerHeroMedia, parseHeroMotion, planLiveHero } from "./hero-motion.ts";
+import { heroClipTooLong } from "./hero-video.ts";
 
 test("owner presets use the trade names on the dashboard", () => {
   assert.equal(heroPresetLabel("field", "Field service"), "Auto Repair");
@@ -30,6 +31,19 @@ test("set as live hero pins a catalog film and the motion that the shop can stor
   assert.equal(plan.glowEnabled, true);
   assert.equal(plan.uploadVideo, false);
   assert.deepEqual(plan.motion, { pan: true, ripple: true, neon: true, particle: false });
+});
+
+test("a shop upload is the hero and a catalog film is not", () => {
+  assert.equal(heroClipTooLong(21), true);
+  assert.equal(heroClipTooLong(12), false);
+  assert.equal(heroClipTooLong(Number.NaN), false);
+  const owned = ownerHeroMedia("/api/hero-video/shop_abc?v=4", "data:image/jpeg;base64,aa");
+  assert.deepEqual(owned, { video: "/api/hero-video/shop_abc?v=4", image: "data:image/jpeg;base64,aa" });
+  assert.deepEqual(ownerHeroMedia(null, "data:image/jpeg;base64,aa"), {
+    video: "",
+    image: "data:image/jpeg;base64,aa",
+  });
+  assert.equal(ownerHeroMedia("/media/heroes/landscaper.mp4", "/media/heroes/landscaper.jpg"), null);
 });
 
 test("an upload replaces the niche film and a stray path is not a hero", () => {

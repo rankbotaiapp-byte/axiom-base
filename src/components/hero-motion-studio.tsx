@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TacticalHero } from "@/components/tactical-hero";
 import { Button } from "@/components/ui/button";
 import {
   HERO_MOTIONS,
@@ -10,6 +11,7 @@ import {
   type HeroMotionState,
   type LiveHeroPlan,
 } from "@/lib/axiom/hero-motion";
+import { inspectHeroUpload } from "@/lib/axiom/hero-poster";
 import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { isCatalogHeroUrl } from "@/lib/axiom/hero-films";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
@@ -20,6 +22,8 @@ import { coveredShare, createCover, revealStroke } from "@/lib/axiom/particle-br
 export type HeroMotionPublish = {
   plan: LiveHeroPlan;
   file: File | null;
+  /** JPEG data URL captured from the upload. Used as the still and the video poster. */
+  poster?: string;
 };
 
 export type HeroMotionResult = {
@@ -32,7 +36,7 @@ const ROWS = 40;
 const BRUSH = 5.5;
 const LEAD: ShopNiche[] = ["field", "landscaper", "contractor"];
 
-type Upload = { file: File; url: string; kind: "video" | "image" };
+type Upload = { file: File; url: string; kind: "video" | "image"; poster: string };
 
 function leadRank(niche: ShopNiche): number {
   const index = LEAD.indexOf(niche);
@@ -76,6 +80,7 @@ export function HeroMotionStudio({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hot, setHot] = useState(false);
   const [painted, setPainted] = useState(false);
   const [hidden, setHidden] = useState(1);
   const particleRef = useRef<HTMLCanvasElement>(null);
@@ -231,8 +236,8 @@ export function HeroMotionStudio({
     setNotice(null);
   }
 
-  function chooseFile(file: File | undefined) {
-    if (!file) return;
+  async function chooseFile(file: File | undefined) {
+    if (!file || busy) return;
     const video = file.type === "video/mp4" || file.name.toLowerCase().endsWith(".mp4");
     const image = file.type.startsWith("image/");
     if (!video && !image) {
@@ -243,22 +248,41 @@ export function HeroMotionStudio({
       setError("Video must be 12 MB or smaller");
       return;
     }
-    const url = URL.createObjectURL(file);
-    setUpload((current) => {
-      if (current) URL.revokeObjectURL(current.url);
-      return { file, url, kind: video ? "video" : "image" };
-    });
+    setBusy(true);
     setError(null);
     setNotice(null);
+    try {
+      const inspected = await inspectHeroUpload(file);
+      const url = URL.createObjectURL(file);
+      const next: Upload = { file, url, kind: video ? "video" : "image", poster: inspected.poster };
+      setUpload((current) => {
+        if (current) URL.revokeObjectURL(current.url);
+        return next;
+      });
+      if (!readonly) await commit(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that file");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function publish() {
     if (readonly || busy) return;
+    setBusy(true);
+    try {
+      await commit(upload);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commit(current: Upload | null) {
     const plan = planLiveHero(
       {
-        upload: upload?.kind ?? null,
-        catalogVideo: upload ? "" : (preset?.url ?? ""),
-        catalogImage: upload ? "" : (preset?.image ?? ""),
+        upload: current?.kind ?? null,
+        catalogVideo: current ? "" : (preset?.url ?? ""),
+        catalogImage: current ? "" : (preset?.image ?? ""),
       },
       motionOn,
     );
@@ -266,16 +290,13 @@ export function HeroMotionStudio({
       setError("Choose a niche film or upload a photo or video.");
       return;
     }
-    setBusy(true);
     setError(null);
     try {
-      const result = await onSetLive({ plan, file: upload?.file ?? null });
+      const result = await onSetLive({ plan, file: current?.file ?? null, poster: current?.poster });
       setNotice(result.path);
       if (result.warning) setError(result.warning);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not set the live hero");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -284,10 +305,34 @@ export function HeroMotionStudio({
       <p className="text-xs uppercase tracking-widest text-muted">Storefront</p>
       <h2 className="mt-1 font-display text-4xl">Hero Motion & Generation Studio</h2>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Upload a photo or video, or start from a niche film. The loop plays with your business name and two-word mark. Set as Live Hero writes that asset onto this shop.
+        Drop a photo or a short MP4. It becomes this shop&apos;s hero, with a poster frame, as soon as the file lands. Niche films stay available until you upload your own.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.85fr)]">
+        {upload ? (
+          <TacticalHero
+            compact
+            label={shop.name}
+            videoUrl={upload.kind === "video" ? upload.url : undefined}
+            imageUrl={upload.kind === "image" ? upload.url : upload.poster}
+          >
+            {motionOn.ripple ? (
+              <canvas ref={rippleRef} aria-hidden className="pointer-events-none absolute inset-0 z-[2] h-full w-full text-accent" />
+            ) : null}
+            {motionOn.particle ? (
+              <canvas
+                ref={particleRef}
+                aria-label="Swipe to reveal the hero loop"
+                className="pointer-events-auto absolute inset-0 z-[2] h-full w-full touch-none text-bg"
+              />
+            ) : null}
+            {motionOn.particle && !painted ? <div className="pointer-events-none absolute inset-0 z-[2] bg-bg" /> : null}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-5">
+              <p className="text-xs uppercase tracking-widest text-accent">{preview.line}</p>
+              <p className="font-display text-3xl text-fg">{shop.name}</p>
+            </div>
+          </TacticalHero>
+        ) : (
         <div className="relative aspect-video overflow-hidden rounded-[24px] bg-bg" style={{ perspective: "900px" }}>
           <motion.div
             className="pointer-events-none absolute inset-[-8%]"
@@ -351,11 +396,29 @@ export function HeroMotionStudio({
             </p>
           </div>
         </div>
+        )}
 
         <div className="pointer-events-auto flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2">
-            <label className="pointer-events-auto inline-flex h-11 cursor-pointer items-center rounded-full bg-surface-2 px-4 text-sm text-fg">
-              Upload photo or video
+          <div className="flex flex-col gap-2">
+            <label
+              className={`hero-drop ${hot ? "is-hot" : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setHot(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setHot(true);
+              }}
+              onDragLeave={() => setHot(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setHot(false);
+                void chooseFile(event.dataTransfer.files?.[0]);
+              }}
+            >
+              <span className="text-sm text-fg">{busy ? "Reading the file…" : "Drop a photo or short MP4"}</span>
+              <span className="text-xs text-muted">This shop&apos;s hero library. 12 MB, under 20 seconds.</span>
               <input
                 type="file"
                 accept="image/*,video/mp4,.mp4"
@@ -364,7 +427,7 @@ export function HeroMotionStudio({
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   event.target.value = "";
-                  chooseFile(file);
+                  void chooseFile(file);
                 }}
               />
             </label>
@@ -385,7 +448,9 @@ export function HeroMotionStudio({
             ) : null}
           </div>
           <p className="text-sm text-muted">
-            {upload ? `Previewing your ${upload.kind}. It replaces the niche film when you set it live.` : "Niche films play from the hero library."}
+            {upload
+              ? `Your ${upload.kind} is in the tactical frame. A poster frame was cut from it.`
+              : "Niche films play from the hero library until you drop your own."}
           </p>
 
           <div className="flex flex-wrap gap-2" role="listbox" aria-label="Niche presets">

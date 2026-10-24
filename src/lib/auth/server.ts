@@ -168,8 +168,20 @@ const grokUserInfoUrl = `${issuerBase}/api/auth/oauth2/userinfo`;
 // SAME DB as app data, including email/password users. Both use the Better Auth
 // schema from `migrations/auth/0001_auth.sql`, copied into `migrations/` when
 // the app turns sign-in on.
+function hostedAuthPool(connectionString: string) {
+  const pool = new Pool({
+    connectionString,
+    connectionTimeoutMillis: process.env.NODE_ENV === "production" ? 15_000 : 4_000,
+  });
+  // An idle pooler reset emits `error`. Without a listener Node exits the dev server.
+  pool.on("error", (err) => {
+    console.error("[auth] database connection dropped", err instanceof Error ? err.message : err);
+  });
+  return pool;
+}
+
 const database = databaseUrl
-  ? new Pool({ connectionString: databaseUrl })
+  ? hostedAuthPool(databaseUrl)
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
 /** Session token cookie name — also read by the live-preview popup completion page. */

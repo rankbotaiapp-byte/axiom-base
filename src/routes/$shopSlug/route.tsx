@@ -3,6 +3,7 @@ import { createFileRoute, isNotFound, Link, Outlet, notFound } from "@tanstack/r
 import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-ring";
 import { rippleTheme } from "@/lib/axiom/brand-studio";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
+import { isDatabaseUnavailable } from "../../../scripts/db-availability.mjs";
 import { isClientAbort } from "@/lib/client-abort";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type { AccessMode, ShopPublic } from "@/lib/axiom/types";
@@ -74,6 +75,12 @@ export const Route = createFileRoute("/$shopSlug")({
     } catch (error) {
       if (isNotFound(error)) throw error;
       if (abortController.signal.aborted || isClientAbort(error)) throw notFound();
+      if (isDatabaseUnavailable(error)) {
+        console.warn(
+          `[shop] hosted database is paused; /${params.shopSlug} stays closed until it accepts connections`,
+        );
+        throw notFound();
+      }
       console.error(`[shop] failed to load /${params.shopSlug}`, error);
       const message = error instanceof Error && error.message ? error.message : "Shop data is temporarily unavailable";
       throw new Error(message);

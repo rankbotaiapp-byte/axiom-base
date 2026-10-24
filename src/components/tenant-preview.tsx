@@ -33,12 +33,14 @@ export function TenantPreview({
   loaded = null,
   onNiche,
   claim,
+  revealHero,
 }: {
   niche: ShopNiche;
   search: TenantPreviewSearch;
   loaded?: BusinessBrandRecord | null;
   onNiche: (niche: ShopNiche) => void;
   claim: ReactNode;
+  revealHero?: ReactNode;
 }) {
   const template = NICHES[niche];
   const media = NICHE_MEDIA[niche];
@@ -135,6 +137,7 @@ export function TenantPreview({
         bookLabel={bookLabel}
         bookHref="#book"
         niche={niche}
+        revealHero={revealHero}
         hud={hud}
         headline={hud.headline}
         layoutEditable

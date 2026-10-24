@@ -15,7 +15,7 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.locksmith.heroVideoUrl, "/media/heroes/mobile-locksmith.mp4");
     assert.equal(NICHE_MEDIA.contractor.heroVideoUrl, "/media/heroes/contractors-hero.mp4");
     assert.equal(NICHE_MEDIA.contractor.tone, "site");
-    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/heroes/barber-hero.mp4");
     assert.equal(NICHE_MEDIA.tattoo.heroVideoUrl, "/media/heroes/tattoo-hero.mp4");
     assert.equal(NICHE_MEDIA.tattoo.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.field.heroVideoUrl, "/media/heroes/auto-repair.mp4");
@@ -52,7 +52,7 @@ describe("niche media", () => {
       heroVideoUrl: "/api/hero-video/shop_abc?v=2",
     });
     assert.equal(media.videoUrl, "/api/hero-video/shop_abc?v=2");
-    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+    assert.equal(NICHE_MEDIA.location.heroVideoUrl, "/media/heroes/barber-hero.mp4");
   });
 
   it("uses the tiger-deer film when a fitness shop has no custom film", () => {

@@ -9,6 +9,7 @@ import { parseIntroPreset, type IntroPreset } from "./intro";
 import { parseGlowEnabled, parseLayout, parseNeonAccent, parseThemeProfile, parseWeek, type LayoutBlock, type WeekKey } from "./storefront";
 import { parseTradeProfile, type TradeProfile } from "./trade-layout";
 import { dueNowCents, isCollectionMode, isPricingType, listPriceCents, type MerchantPrice } from "./merchant-pricing";
+import { keepHeroBrand, parseHeroEffect, parseMorphDuration, readHeroBrandFallback } from "./hero-brand";
 import { isShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {
   id: string;
@@ -22,6 +23,10 @@ type ShopRow = {
   hero_image_url: string;
   hero_video_url: string | null;
   hero_blend_percent: number;
+  hero_effect_type?: string | null;
+  hero_branding_tagline?: string | null;
+  hero_prompt?: string | null;
+  morph_duration_sec?: number | string | null;
   intro_preset?: string;
   intro_speed?: number;
   intro_intensity?: number;
@@ -97,6 +102,7 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     heroImageUrl: r.hero_image_url || "",
     heroVideoUrl: r.hero_video_url || null,
     heroBlendPercent: finiteNumber(r.hero_blend_percent, 60),
+    ...heroBrandFields(r),
     introPreset: parseIntroPreset(r.intro_preset),
     introSpeed: finiteNumber(r.intro_speed ?? 40, 40),
     introIntensity: finiteNumber(r.intro_intensity ?? 45, 45),
@@ -119,6 +125,26 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     createdAt: String(r.created_at)
   };
 }
+function heroBrandFields(row: ShopRow): {
+  heroEffectType: Shop["heroEffectType"];
+  heroBrandingTagline: string;
+  heroPrompt: string;
+  morphDurationSec: number;
+} {
+  const fallback = readHeroBrandFallback(row.trade_profile);
+  const columnTagline = typeof row.hero_branding_tagline === "string" ? row.hero_branding_tagline : "";
+  const columnEffect = typeof row.hero_effect_type === "string" ? parseHeroEffect(row.hero_effect_type) : null;
+  const useFallback = !columnTagline.trim() && Boolean(fallback.tagline || fallback.prompt);
+  const columnPrompt = typeof row.hero_prompt === "string" ? row.hero_prompt : "";
+  const columnDuration = row.morph_duration_sec == null ? null : parseMorphDuration(row.morph_duration_sec);
+  return {
+    heroEffectType: useFallback ? fallback.effect : columnEffect ?? fallback.effect,
+    heroBrandingTagline: useFallback ? fallback.tagline : columnTagline,
+    heroPrompt: columnPrompt || fallback.prompt,
+    morphDurationSec: columnDuration ?? fallback.morphDurationSec,
+  };
+}
+
 function isOn(value: unknown) {
   return value === true || value === 1 || value === "t" || value === "true";
 }
@@ -965,7 +991,7 @@ export const saveTradeProfileHandler = async ({
   const profile = parseTradeProfile(niche, data.profile);
   const sql = await getSql();
   try {
-    await sql`update shops set trade_profile = ${JSON.stringify(profile)} where id = ${row.id}`;
+    await sql`update shops set trade_profile = ${keepHeroBrand(profile, row.trade_profile)} where id = ${row.id}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     if (/trade_profile/i.test(message)) throw new Error("Trade profile is not on this database yet");
@@ -1416,6 +1442,15 @@ async function allowOperator(row: {
   } = await import("./platform-owner.server");
   return isPlatformOwner(userId);
 }
+export async function assertCanModifyShopById(shopId: string, userId: string) {
+  const sql = await getSql();
+  const rows = await sql<ShopRow>`select * from shops where id = ${shopId} limit 1`;
+  const row = rows[0];
+  if (!row) throw new Error("Shop not found");
+  await assertCanModifyShop(row, userId);
+  return row;
+}
+
 async function assertCanModifyShop(row: {
   id: string;
   owner_user_id: string | null;

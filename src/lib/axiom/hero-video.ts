@@ -1,4 +1,10 @@
 export const HERO_VIDEO_MAX_BYTES = 12 * 1024 * 1024;
+export const HERO_CLIP_MAX_SECONDS = 20;
+
+/** A finite clip longer than the shop limit is rejected. An unknown duration is allowed. */
+export function heroClipTooLong(seconds: number): boolean {
+  return Number.isFinite(seconds) && seconds > HERO_CLIP_MAX_SECONDS;
+}
 
 /** ISO BMFF files start with a size field and the `ftyp` brand. */
 export function isMp4(bytes: Uint8Array): boolean {

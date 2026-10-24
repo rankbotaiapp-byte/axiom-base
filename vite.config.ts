@@ -10,6 +10,7 @@ import { nitro } from "nitro/vite";
 import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
+import { isDatabaseUnavailable } from "./scripts/db-availability.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
@@ -44,6 +45,12 @@ function pgliteBootstrapPlugin(): Plugin {
           await mod.ensureDbReady();
         }
       } catch (err) {
+        if (process.env.NODE_ENV !== "production" && isDatabaseUnavailable(err)) {
+          console.warn(
+            "[app-builder] Hosted Postgres is unreachable. The dev server is staying up without it.",
+          );
+          return;
+        }
         console.error("[app-builder] DB bootstrap failed:", err);
         throw err;
       }

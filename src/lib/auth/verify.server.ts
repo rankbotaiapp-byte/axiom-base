@@ -1,4 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server";
+import { isDatabaseUnavailable } from "../db";
 import { gateIdentityEnabled } from "./gate-identity.server";
 import { auth, authConfigured } from "./server";
 
@@ -65,9 +66,17 @@ export async function getSessionUser(
     headers = new Headers(request.headers);
     headers.set("Authorization", `Bearer ${bearerToken}`);
   }
-  const session = await auth.api.getSession({ headers });
-  if (!session?.user) return null;
-  return { id: session.user.id, email: session.user.email ?? null };
+  try {
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) return null;
+    return { id: session.user.id, email: session.user.email ?? null };
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production" && isDatabaseUnavailable(err)) {
+      console.warn("[auth] hosted database is unreachable; continuing signed out");
+      return null;
+    }
+    throw err;
+  }
 }
 
 /**

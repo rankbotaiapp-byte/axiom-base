@@ -5,6 +5,7 @@ import { HoloCard } from "@/components/holo-card";
 import { Magnetic } from "@/components/magnetic";
 import { Reveal } from "@/components/reveal";
 import { NicheStorefront, type StorefrontStaff } from "@/components/niche-storefront";
+import { storefrontRevealHero } from "@/components/storefront-reveal";
 import { ProductShelf } from "@/components/product-shelf";
 import { NeonField, SnapEstimate } from "@/components/snap-estimate";
 import { offerModel, shelfFor } from "@/lib/axiom/storefront";
@@ -128,8 +129,16 @@ function CustomerHome() {
         bookLabel={bookLabel}
         bookHref={`/${data.shop.slug}/book`}
         niche={data.shop.customNiche || data.shop.niche}
+        revealHero={storefrontRevealHero(
+          data.shop.customNiche || data.shop.niche,
+          [data.shop.name, data.shop.tagline, data.shop.description].filter(Boolean).join(" "),
+        )}
         autoHero={data.shop.slug === "axiom-auto"}
         hud={data.shop.tradeProfile.hud}
+        heroEffect={data.shop.heroEffectType}
+        heroTagline={data.shop.heroBrandingTagline}
+        heroPrompt={data.shop.heroPrompt}
+        morphDurationSec={data.shop.morphDurationSec}
         surface={surface}
         headline={data.shop.tradeProfile.hud.headline}
         header={

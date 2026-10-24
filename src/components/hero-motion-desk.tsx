@@ -45,7 +45,14 @@ export function HeroMotionDesk({
       path = json.heroVideoUrl;
     }
     const uploadedStill = plan.heroImageUrl === "upload";
-    const heroImageUrl = uploadedStill && file ? await fileToDataUrl(file, 900) : uploadedStill ? undefined : plan.heroImageUrl;
+    const heroImageUrl = action.poster
+      ? action.poster
+      : uploadedStill && file
+        ? await fileToDataUrl(file, 900)
+        : uploadedStill
+          ? undefined
+          : plan.heroImageUrl;
+    const clearStill = !heroImageUrl && Boolean(plan.catalogFilm) && shop.heroImageUrl.startsWith("data:");
     await updateShopBrand({
       data: {
         slug: shop.slug,
@@ -53,7 +60,7 @@ export function HeroMotionDesk({
         glowEnabled: plan.glowEnabled,
         ...(plan.introPreset ? { introPreset: plan.introPreset } : {}),
         ...(plan.catalogFilm ? { catalogFilm: plan.catalogFilm } : {}),
-        ...(heroImageUrl ? { heroImageUrl } : {}),
+        ...(heroImageUrl ? { heroImageUrl } : clearStill ? { heroImageUrl: "" } : {}),
       },
     });
     let warning: string | undefined;

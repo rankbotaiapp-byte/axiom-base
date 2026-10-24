@@ -48,9 +48,9 @@ describe("hero film directory", () => {
   it("keeps the named films on their niches", () => {
     assert.equal(resolveNicheFilm("contractor"), "/media/heroes/contractors-hero.mp4");
     assert.equal(resolveNicheFilm("field"), "/media/heroes/auto-repair.mp4");
-    assert.equal(resolveNicheFilm("location", "/media/heroes/barber-hero.mp4"), UNIVERSAL_FALLBACK);
+    assert.equal(resolveNicheFilm("location", "/media/heroes/barber-hero.mp4"), "/media/heroes/barber-hero.mp4");
     assert.equal(filmMatchingText("Main Street Plumbing"), "/media/heroes/plumbers-hero.mp4.mp4");
-    assert.equal(filmMatchingText("Northside Barbers"), null);
+    assert.equal(filmMatchingText("Northside Barbers"), "/media/heroes/barber-hero.mp4");
     assert.equal(filmMatchingText("Rogue Auto Repair"), "/media/heroes/auto-repair.mp4");
     assert.equal(filmMatchingText("Mobile mechanic"), "/media/heroes/auto-repair.mp4");
     assert.equal(filmMatchingText("Mobile mechanics"), "/media/heroes/auto-repair.mp4");
@@ -58,7 +58,7 @@ describe("hero film directory", () => {
     assert.equal(filmMatchingText("Acme Mechanical"), null);
     assert.equal(resolveNicheFilm("firewood", "/media/heroes/wood.mp4"), UNIVERSAL_FALLBACK);
     assert.equal(catalogChoices("field")[0]?.url, "/media/heroes/auto-repair.mp4");
-    assert.equal(catalogChoices("location")[0]?.url, UNIVERSAL_FALLBACK);
+    assert.equal(catalogChoices("location")[0]?.url, "/media/heroes/barber-hero.mp4");
   });
 
   it("lets a shop upload or a tenant pin beat the niche film and a browser override", () => {
