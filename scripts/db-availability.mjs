@@ -17,6 +17,8 @@ export function isDatabaseUnavailable(err) {
       code === "08006" ||
       code === "08007" ||
       code === "53300" ||
+      // Hosted primary / replica answering read-only — cannot migrate locally.
+      code === "25006" ||
       code === "ENOTFOUND" ||
       code === "EAI_AGAIN" ||
       code === "ECONNRESET" ||
@@ -33,7 +35,7 @@ export function isDatabaseUnavailable(err) {
     ) {
       return true;
     }
-    return /EAUTHQUERY|connection to database not available|the database system is not accepting connections|Hosted Postgres is not accepting connections|hot standby mode is disabled|connection terminated|timeout expired|ECONNREFUSED|ENOTFOUND|ECONNRESET|getaddrinfo/i.test(
+    return /EAUTHQUERY|connection to database not available|the database system is not accepting connections|Hosted Postgres is not accepting connections|hot standby mode is disabled|cannot execute .+ in a read-only transaction|read-only transaction|connection terminated|timeout expired|ECONNREFUSED|ENOTFOUND|ECONNRESET|getaddrinfo/i.test(
       message,
     );
   }

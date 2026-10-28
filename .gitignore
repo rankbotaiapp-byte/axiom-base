@@ -1,5 +1,13 @@
 node_modules/
 .next/
+build/
+dist/
+.output/
+.turbo/
+coverage/
+.cache/
+*.tsbuildinfo
+debug.log
 .project_id
 .github_repo
 .env
