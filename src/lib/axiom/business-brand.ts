@@ -22,6 +22,7 @@ export type BusinessBrandRecord = {
   categoryLabel: string;
   city: string;
   county: string;
+  nicheSlug: string;
   location: string;
   phone: string;
   email: string;
@@ -161,6 +162,7 @@ export function previewUrlForBusiness(
 ): string {
   const path = deskPreviewPath({
     leadSlug: record.slug,
+    leadId: record.id,
     county: record.county,
     city: record.city,
     businessName: record.businessName,

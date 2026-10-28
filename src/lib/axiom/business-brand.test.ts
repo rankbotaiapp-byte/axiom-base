@@ -24,6 +24,7 @@ function sample(overrides: Partial<BusinessBrandRecord> = {}): BusinessBrandReco
     categoryLabel: "Guide services",
     city: "Merlin",
     county: "Josephine County",
+    nicheSlug: "guide",
     location: "Merlin · Josephine County",
     phone: "555-010-0199",
     email: "desk@example.com",
@@ -82,6 +83,7 @@ test("preview urls use the desk b param and omit contact lines", () => {
   assert.equal(url.origin, "https://axiom.example");
   assert.equal(url.pathname, "/");
   assert.equal(url.searchParams.get("b"), "glass-eddy");
+  assert.equal(url.searchParams.get("lead"), "lead_abc123");
   assert.equal(url.searchParams.get("utm_source"), "desk");
   assert.equal(url.searchParams.get("biz"), "Glass Eddy");
   assert.equal(url.searchParams.get("county"), "Josephine County");

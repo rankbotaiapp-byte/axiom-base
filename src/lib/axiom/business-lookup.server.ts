@@ -15,6 +15,7 @@ import {
   type PageOrder,
   type TemplateBrandProps,
 } from "./business-brand.ts";
+import { previewNicheSlug } from "./preview-link.ts";
 import { sanitizeContactLine } from "./prospect-brand.ts";
 
 /**
@@ -77,6 +78,7 @@ function rowToRecord(row: LeadRow): BusinessBrandRecord {
     categoryLabel,
     city,
     county,
+    nicheSlug: previewNicheSlug(row.trade_type, row.trade_label ?? ""),
     location: [city, county].filter(Boolean).join(" · "),
     phone: sanitizeContactLine(row.contact_phone, 40),
     email: sanitizeContactLine(row.contact_email, 120),
@@ -323,8 +325,8 @@ function jsonError(err: unknown): Response {
 export async function handleBusinessBrandGet(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const id = url.searchParams.get("id") ?? "";
-    const slug = url.searchParams.get("slug") ?? "";
+    const id = url.searchParams.get("lead") || url.searchParams.get("id") || "";
+    const slug = url.searchParams.get("slug") || url.searchParams.get("b") || "";
     if (!id && !slug) return Response.json({ error: "Pass a business id or a slug" }, { status: 400 });
     const ref = parseBusinessRef({ id, slug });
     const record = await readBusinessBrand(ref);

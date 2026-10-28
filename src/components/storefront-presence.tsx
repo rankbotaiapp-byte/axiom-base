@@ -28,6 +28,7 @@ export function StorefrontPresence({
   imageUrl,
   bookHref,
   bookLabel,
+  showOrb = true,
   children,
 }: {
   name: string;
@@ -37,6 +38,7 @@ export function StorefrontPresence({
   imageUrl?: string | null;
   bookHref?: string;
   bookLabel?: string;
+  showOrb?: boolean;
   children?: ReactNode;
 }) {
   const hostRef = useRef<HTMLElement>(null);
@@ -79,7 +81,7 @@ export function StorefrontPresence({
       ref={hostRef}
       className="tactical-hero is-stage storefront-orb-hero"
       aria-label={`${name} hero`}
-      data-storefront-hero="orb"
+      data-storefront-hero={showOrb ? "orb" : "film"}
     >
       <div className="tactical-plate">
         <video
@@ -111,6 +113,7 @@ export function StorefrontPresence({
             </a>
           ) : null}
         </div>
+        {showOrb ? (
         <div className="storefront-orb pointer-events-auto">
           <div className="storefront-orb-view">
             {visible && ready ? (
@@ -141,6 +144,7 @@ export function StorefrontPresence({
             }}
           />
         </div>
+        ) : null}
       </div>
     </section>
   );

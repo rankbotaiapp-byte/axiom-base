@@ -56,7 +56,8 @@ describe("hero film directory", () => {
     assert.equal(filmMatchingText("Mobile mechanics"), "/media/heroes/auto-repair.mp4");
     assert.equal(filmMatchingText("Rooftop HVAC"), "/media/heroes/contractors-hero.mp4");
     assert.equal(filmMatchingText("Acme Mechanical"), null);
-    assert.equal(resolveNicheFilm("firewood", "/media/heroes/wood.mp4"), UNIVERSAL_FALLBACK);
+    assert.equal(resolveNicheFilm("firewood", "/media/heroes/wood.mp4"), "/media/heroes/firewood-hero.mp4");
+    assert.equal(resolveNicheFilm("firewood", "/media/heroes/firewood-hero.mp4"), "/media/heroes/firewood-hero.mp4");
     assert.equal(catalogChoices("field")[0]?.url, "/media/heroes/auto-repair.mp4");
     assert.equal(catalogChoices("location")[0]?.url, "/media/heroes/barber-hero.mp4");
   });

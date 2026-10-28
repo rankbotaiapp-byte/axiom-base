@@ -2577,6 +2577,17 @@
   pointer-events: none;
 }
 
+.storefront-orb-hero[data-storefront-hero="film"] .tactical-plate {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 5.75rem;
+}
+
+.storefront-orb-hero[data-storefront-hero="film"] .storefront-orb-copy {
+  padding: 1.25rem 1.25rem 0.75rem;
+}
+
 .storefront-orb-book {
   display: inline-flex;
   align-items: center;
@@ -3446,4 +3457,642 @@
 @media (max-width: 800px) {
   .hero-studio-grid { grid-template-columns: 1fr; }
   .hero-studio-stage { min-height: 22rem; }
+}
+
+.glass-shard-frame {
+  position: relative;
+}
+
+.glass-shard-matrix {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  align-content: end;
+  gap: 0.75rem;
+  padding: 1rem 1rem 5.5rem;
+  background: color-mix(in srgb, var(--color-bg) 42%, transparent);
+  pointer-events: auto;
+  transition: opacity 280ms ease-out;
+}
+
+.glass-shard-film {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.glass-shard-matrix[data-clear="on"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.glass-shard-hint,
+.glass-shard-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-shard-hint {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  line-height: 1.15;
+  color: var(--color-fg);
+}
+
+.glass-shard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  max-width: 52rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.glass-shard {
+  min-height: 4.5rem;
+  padding: 0.7rem 0.75rem;
+  border: 0;
+  border-radius: 0.7rem;
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  text-align: left;
+  color: var(--color-fg);
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 38%, transparent);
+  transform: rotate(var(--shard-tilt, 0deg));
+  transition: transform 220ms ease-out, opacity 220ms ease-out;
+}
+
+.glass-shard strong,
+.glass-shard span {
+  display: block;
+}
+
+.glass-shard span {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.glass-shard.is-broke {
+  opacity: 0;
+  transform: translateY(-1.1rem) rotate(calc(var(--shard-tilt, 0deg) + 12deg));
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .glass-shard-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.studio-drop {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-border);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.studio-drop.is-hot {
+  box-shadow:
+    0 0 0 1px var(--neon, var(--color-accent)),
+    0 0 28px color-mix(in srgb, var(--neon, var(--color-accent)) 40%, transparent);
+}
+
+.studio-drop.is-locked {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.studio-drop img,
+.studio-cine img,
+.craft-button img,
+.axiom-studio img {
+  outline: none;
+}
+
+.studio-cine {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.studio-cine-preview {
+  min-height: 28rem;
+  border-radius: var(--radius-xl);
+}
+
+.studio-cine-stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+  overflow: hidden;
+}
+
+.studio-cine-rig {
+  position: absolute;
+  inset: -12%;
+  transform-style: preserve-3d;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  will-change: transform;
+}
+
+.studio-cine-rig img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.studio-cine-neon {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--neon, var(--color-accent)) 70%, transparent);
+  box-shadow: inset 0 0 80px color-mix(in srgb, var(--neon, var(--color-accent)) 42%, transparent);
+  transform: translateZ(48px);
+}
+
+.studio-cine-beam {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  width: 22%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--neon, var(--color-accent)) 55%, transparent),
+    transparent
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.studio-cine-beam.is-still {
+  left: 18%;
+  opacity: 0.45;
+}
+
+.studio-cine-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--color-bg), transparent 46%);
+  pointer-events: none;
+}
+
+.studio-cine-copy {
+  position: relative;
+  z-index: 1;
+  min-height: inherit;
+}
+
+.craft-button {
+  position: relative;
+  display: flex;
+  min-height: 13rem;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-border);
+  color: var(--color-accent);
+  text-align: left;
+}
+
+.craft-button-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1.1rem 1.25rem 1.15rem;
+  background: linear-gradient(to top, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 78%, transparent) 34%, transparent 58%);
+}
+
+.craft-loop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.craft-svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.craft-wood,
+.craft-wall,
+.craft-grass,
+.craft-griddle,
+.craft-lock,
+.craft-nozzle,
+.craft-lens {
+  fill: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.craft-run {
+  animation-duration: var(--craft-seconds, 3s);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.craft-saw-blade {
+  fill: currentColor;
+  stroke: none;
+  animation-name: craft-saw-travel;
+}
+
+.craft-teeth {
+  stroke: var(--color-bg);
+  stroke-width: 1.5;
+}
+
+.craft-saw-kerf {
+  transform-box: fill-box;
+  transform-origin: left center;
+  stroke: none;
+  fill: currentColor;
+  animation-name: craft-kerf;
+}
+
+.craft-dust {
+  fill: currentColor;
+  stroke: none;
+  animation-name: craft-dust;
+}
+
+.craft-fan {
+  transform-origin: 42px 96px;
+  stroke-width: 3;
+  animation-name: craft-fan-sweep;
+}
+
+.craft-grime {
+  transform-box: fill-box;
+  transform-origin: right center;
+  fill: color-mix(in srgb, currentColor 40%, transparent);
+  stroke: none;
+  animation-name: craft-clean;
+}
+
+.craft-mower {
+  transform-origin: 160px 96px;
+  stroke-width: 4;
+  animation-name: craft-spin;
+}
+
+.craft-spin {
+  transform-origin: 160px 90px;
+  fill: color-mix(in srgb, currentColor 28%, transparent);
+  animation-name: craft-spin;
+}
+
+.craft-shear-a {
+  transform-origin: 70px 70px;
+  stroke-width: 4;
+  animation-name: craft-shear-top;
+}
+
+.craft-shear-b {
+  transform-origin: 70px 110px;
+  stroke-width: 4;
+  animation-name: craft-shear-bottom;
+}
+
+.craft-hair {
+  stroke-width: 3;
+  opacity: 0.7;
+}
+
+.craft-needle {
+  fill: currentColor;
+  animation-name: craft-bob;
+}
+
+.craft-ink-line {
+  stroke-width: 3;
+  stroke-dasharray: 180;
+  animation-name: craft-draw;
+  animation-timing-function: linear;
+}
+
+.craft-flash {
+  fill: currentColor;
+  stroke: none;
+  animation-name: craft-flash;
+}
+
+.craft-leash {
+  transform-origin: 70px 40px;
+  animation-name: craft-swing;
+}
+
+.craft-paw {
+  fill: color-mix(in srgb, currentColor 35%, transparent);
+  animation-name: craft-stamp;
+}
+
+.craft-string {
+  transform-origin: center;
+  transform-box: fill-box;
+  stroke-width: 3;
+  animation-name: craft-vibrate;
+}
+
+.craft-pick {
+  fill: currentColor;
+  animation-name: craft-pick;
+}
+
+.craft-flame {
+  fill: color-mix(in srgb, currentColor 55%, transparent);
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation-name: craft-flicker;
+}
+
+.craft-key {
+  fill: none;
+  stroke-width: 3;
+  animation-name: craft-turn;
+}
+
+.craft-bow-string {
+  transform-origin: 210px 90px;
+  animation-name: craft-draw-string;
+}
+
+.craft-arrow {
+  animation-name: craft-loose;
+}
+
+.craft-pulse {
+  transform-origin: 160px 90px;
+  transform-box: fill-box;
+  animation-name: craft-ripple;
+}
+
+.is-late {
+  animation-delay: 0.4s;
+}
+
+.is-later {
+  animation-delay: 0.8s;
+}
+
+.craft-pulse.is-late {
+  animation-delay: 1s;
+}
+
+.craft-pulse.is-later {
+  animation-delay: 2s;
+}
+
+@keyframes craft-saw-travel {
+  0%,
+  100% {
+    transform: translate(28px, 98px);
+  }
+  42%,
+  58% {
+    transform: translate(196px, 98px);
+  }
+}
+
+@keyframes craft-kerf {
+  0%,
+  100% {
+    transform: scaleX(0.04);
+  }
+  42%,
+  70% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes craft-dust {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  30%,
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes craft-fan-sweep {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: rotate(20deg);
+    opacity: 1;
+  }
+}
+
+@keyframes craft-clean {
+  0%,
+  12% {
+    transform: scaleX(1);
+  }
+  68%,
+  82% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes craft-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes craft-shear-top {
+  0%,
+  100% {
+    transform: rotate(16deg);
+  }
+  50% {
+    transform: rotate(-6deg);
+  }
+}
+
+@keyframes craft-shear-bottom {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes craft-bob {
+  0%,
+  100% {
+    transform: translate(108px, 78px);
+  }
+  50% {
+    transform: translate(210px, 104px);
+  }
+}
+
+@keyframes craft-draw {
+  0% {
+    stroke-dashoffset: 180;
+  }
+  70%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes craft-flash {
+  0%,
+  70%,
+  100% {
+    opacity: 0.15;
+  }
+  78% {
+    opacity: 1;
+  }
+}
+
+@keyframes craft-swing {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes craft-stamp {
+  0%,
+  40% {
+    opacity: 0;
+  }
+  55%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes craft-vibrate {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  25% {
+    transform: scaleY(3);
+  }
+  50% {
+    transform: scaleY(0.5);
+  }
+  75% {
+    transform: scaleY(2.2);
+  }
+}
+
+@keyframes craft-pick {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(18px, 8px);
+  }
+}
+
+@keyframes craft-flicker {
+  0%,
+  100% {
+    transform: scaleY(0.85) scaleX(1);
+  }
+  40% {
+    transform: scaleY(1.15) scaleX(0.9);
+  }
+  70% {
+    transform: scaleY(0.95) scaleX(1.08);
+  }
+}
+
+@keyframes craft-turn {
+  0%,
+  100% {
+    transform: translate(168px, 90px) rotate(0deg);
+  }
+  40%,
+  68% {
+    transform: translate(168px, 90px) rotate(-72deg);
+  }
+}
+
+@keyframes craft-draw-string {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  35%,
+  55% {
+    transform: translateX(-26px);
+  }
+}
+
+@keyframes craft-loose {
+  0%,
+  40% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  78%,
+  100% {
+    transform: translateX(70px);
+    opacity: 0;
+  }
+}
+
+@keyframes craft-ripple {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .craft-run {
+    animation: none;
+  }
 }

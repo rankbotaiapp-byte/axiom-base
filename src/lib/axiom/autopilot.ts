@@ -3,6 +3,7 @@ import { isEmailReady } from "./funnel.ts";
 export type AutopilotMode = "simulation" | "live";
 
 export type AutopilotLead = {
+  id: string;
   leadSlug: string;
   businessName: string;
   city: string;

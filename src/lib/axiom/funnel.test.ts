@@ -43,10 +43,13 @@ test("b wins over lead_slug and junk is dropped", () => {
   });
   assert.deepEqual(query, {
     leadSlug: "glass-eddy",
+    leadId: "",
     utmSource: "regional",
     county: "Grand County",
     stopToken: "",
   });
+  assert.equal(parseFunnelQuery({ lead: "lead_abc123def456" }).leadId, "lead_abc123def456");
+  assert.equal(parseFunnelSearch({ lead: "lead_abc123def456" }).lead, "lead_abc123def456");
   assert.equal(parseFunnelQuery({ b: "not a slug" }).leadSlug, "");
 });
 
@@ -204,10 +207,13 @@ test("a nurture loop is day 0, 48 hours, day 3, and day 6, and a click stops it"
 });
 
 test("campaign urls put the lead slug in b", () => {
-  const url = new URL(funnelUrl("https://axiom.example/", { leadSlug: "glass-eddy", county: "Grand County" }));
+  const url = new URL(
+    funnelUrl("https://axiom.example/", { leadSlug: "glass-eddy", leadId: "lead_glasseddy01", county: "Grand County" }),
+  );
   assert.equal(url.origin, "https://axiom.example");
   assert.equal(url.pathname, "/");
   assert.equal(url.searchParams.get("b"), "glass-eddy");
+  assert.equal(url.searchParams.get("lead"), "lead_glasseddy01");
   assert.equal(url.searchParams.get("county"), "Grand County");
   assert.equal(url.searchParams.get("utm_source"), "regional");
   assert.equal(url.searchParams.get("t"), null);

@@ -5,7 +5,8 @@ import { leadHeroFor } from "./media.ts";
 
 test("known directory labels stay on the built-in niche", () => {
   assert.deepEqual(classifyTrade("Barber"), { tradeType: "location", tradeLabel: "Barber", known: true });
-  assert.deepEqual(classifyTrade("advisor"), { tradeType: "counsel", tradeLabel: "Advisor", known: true });
+  assert.equal(classifyTrade("advisor").tradeType, "advisor");
+  assert.equal(classifyTrade("advisor").known, false);
   assert.equal(classifyTrade("location").tradeType, "location");
 });
 
@@ -31,8 +32,8 @@ test("a named trade uses the contractor film, and legacy keys use the trade film
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroImageUrl, "");
   assert.equal(leadHeroFor("hunting-guide", "Ridge Outfitters", "Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
   assert.equal(leadHeroFor("outdoor-expeditions", "Ridge Outfitters", "Outdoor expeditions").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
-  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "");
-  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood-hero.jpg");
+  assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/firewood-hero.mp4");
 });
 
 test("a paid lead uses its niche template", () => {
@@ -63,6 +64,9 @@ test("registry titles map onto platform niches", () => {
   assert.equal(classifyTrade("Framing").tradeType, "contractor");
   assert.equal(classifyTrade("Construction").tradeType, "contractor");
   assert.equal(classifyTrade("Firewood").tradeType, "firewood");
+  assert.equal(classifyTrade("Defensible space").tradeType, "firewood");
+  assert.equal(classifyTrade("Forestry").tradeType, "firewood");
+  assert.equal(classifyTrade("Clinic").tradeType, "clinic");
   assert.equal(classifyTrade("Lock Services").tradeType, "locksmith");
   assert.equal(classifyTrade("Handyman").tradeType, "field");
   assert.equal(classifyTrade("Mobile services").tradeType, "field");

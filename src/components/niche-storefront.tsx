@@ -26,6 +26,10 @@ import { brandPlate, heroAtmosphereActive, type HeroEffect } from "@/lib/axiom/h
 import { HeroBrandFrame } from "@/components/hero-weather";
 import { applyBrowserFilmOverride, readMasterTelemetry, readNicheFilmOverride } from "@/lib/axiom/hero-films";
 import { formatPhone, initials } from "@/lib/utils";
+import { CraftLoop } from "@/components/craft-loop";
+import { StudioCinematicHero } from "@/components/studio-cinematic-hero";
+import { craftKindFor } from "@/lib/axiom/studio-craft";
+import type { StudioIdentity } from "@/lib/axiom/studio-identity";
 
 export type StorefrontService = {
   key: string;
@@ -83,10 +87,12 @@ export function NicheStorefront({
   heroPrompt = "",
   morphDurationSec = 4.5,
   revealHero,
+  heroPresence = "orb",
   layoutEditable = false,
   activeLayer = "headline",
   onActiveLayer,
   onLayerChange,
+  cinematic = null,
 }: {
   businessName: string;
   kicker: string;
@@ -128,10 +134,14 @@ export function NicheStorefront({
   morphDurationSec?: number;
   /** Scratch-off wildlife hero. Used when this storefront is the outdoor guide. */
   revealHero?: ReactNode;
+  /** Demo pages drop the center orb and play a full-bleed film. */
+  heroPresence?: "orb" | "film";
   layoutEditable?: boolean;
   activeLayer?: HeroLayerId;
   onActiveLayer?: (id: HeroLayerId) => void;
   onLayerChange?: (id: HeroLayerId, layer: HeroTextLayer, persist: boolean) => void;
+  /** Published Axiom Studio intro. Replaces the stock hero on the shop. */
+  cinematic?: { plateUrl: string; identity: StudioIdentity } | null;
 }) {
   const contact = [contactName, contactPhone ? formatPhone(contactPhone) : "", contactEmail].filter(Boolean).join(" · ");
   const stageRef = useRef<HTMLDivElement>(null);
@@ -142,7 +152,10 @@ export function NicheStorefront({
     setFilmOverride(readNicheFilmOverride(niche));
   }, [niche]);
   const nicheFilm = isShopNiche(niche) ? NICHE_MEDIA[niche].heroVideoUrl : "";
-  const playedVideo = applyBrowserFilmOverride(heroVideoUrl, nicheFilm, filmOverride);
+  const playedVideo =
+    heroPresence === "film"
+      ? heroVideoUrl
+      : applyBrowserFilmOverride(heroVideoUrl, nicheFilm, filmOverride);
   const city = (address ?? "").split(",").map((part) => part.trim()).filter(Boolean)[1] ?? "";
   const tradeLabel = kicker || niche;
   const tradeText = [businessName, kicker, tagline, description].filter(Boolean).join(" ");
@@ -199,6 +212,30 @@ export function NicheStorefront({
       data-scan={hud.scan ? "on" : "off"}
       style={{ ...hudVars(hud, accent), ...surface }}
     >
+      {cinematic ? (
+        <StudioCinematicHero plateUrl={cinematic.plateUrl} identity={cinematic.identity}>
+          {renderChrome()}
+          <div className="relative z-10 flex min-h-[70dvh] flex-1 flex-col justify-end px-5 pb-16 pt-6 sm:px-10">
+            <p className="pointer-events-none min-h-4 text-[11px] uppercase tracking-[0.22em] text-muted">{kicker || "\u00a0"}</p>
+            <div className="relative mt-4 min-h-[16rem] flex-1">
+              <HeroTextCanvas
+                layers={hud.layers}
+                fallbacks={{
+                  headline: businessName,
+                  subheadline: tagline || headline,
+                  cta_button: bookLabel,
+                }}
+                editable={layoutEditable}
+                activeLayer={activeLayer}
+                onActiveLayer={onActiveLayer}
+                onLayerChange={onLayerChange}
+                bookHref={bookHref}
+              />
+            </div>
+          </div>
+        </StudioCinematicHero>
+      ) : (
+      <>
       <StorefrontPresence
         name={businessName}
         kicker={kicker}
@@ -210,11 +247,13 @@ export function NicheStorefront({
           fallbackVideoUrl
         }
         imageUrl={owned?.image || heroImageUrl || fallbackImageUrl}
-        bookHref={bookHref}
+        bookHref={heroPresence === "film" ? undefined : bookHref}
         bookLabel={bookLabel}
+        showOrb={heroPresence === "orb"}
       >
         {renderChrome()}
       </StorefrontPresence>
+      {heroPresence === "orb" ? (
       <HolographicStage
         businessName={businessName}
         customer
@@ -223,6 +262,7 @@ export function NicheStorefront({
         )}
         posterUrl={owned?.image || heroImageUrl || fallbackImageUrl || undefined}
       />
+      ) : null}
       {owned || cockpit || mirror || outdoor || ceramic || river ? null : <HeroSpatial rootRef={stageRef} />}
       {owned ? (
         <div className="hero-atmosphere-host">
@@ -331,9 +371,11 @@ export function NicheStorefront({
         </div>
       </CinematicHero>
       )}
+      </>
+      )}
       <div className="hero-contact" aria-hidden />
 
-      <ServiceCards services={services} description={description} />
+      <ServiceCards services={services} description={description} niche={niche} accent={accent} bookHref={bookHref} />
       <StaffRow people={staff} />
       {hours ? <HoursBlock hours={hours} address={address} contact={contact} /> : null}
       {extra}
@@ -438,10 +480,17 @@ function BrandMark({ name, logoUrl }: { name: string; logoUrl: string }) {
 export function ServiceCards({
   services,
   description,
+  niche = "",
+  accent = "",
+  bookHref,
 }: {
   services: StorefrontService[];
   description?: string;
+  niche?: string;
+  accent?: string;
+  bookHref?: string;
 }) {
+  const slug = shopSlugFromBook(bookHref);
   return (
     <section className="mx-auto max-w-5xl px-5 py-16 sm:px-10">
       <Reveal>
@@ -455,19 +504,40 @@ export function ServiceCards({
           const previous = services[index - 1];
           const showGroup = service.group && service.group !== previous?.group;
           const span = index % 3 === 0 ? "lg:col-span-7" : index % 3 === 1 ? "lg:col-span-5 lg:mt-10" : "lg:col-span-8 lg:col-start-3";
+          const kind = craftKindFor(niche, service.name);
+          const body = (
+            <>
+              <CraftLoop kind={kind} />
+              <span className="craft-button-copy">
+                <span className="flex items-baseline justify-between gap-4">
+                  <span className="font-medium text-fg">{service.name}</span>
+                  <span className="shrink-0 text-sm">{service.price}</span>
+                </span>
+                <span className="mt-1 line-clamp-2 text-sm text-muted">{service.description}</span>
+              </span>
+            </>
+          );
           return (
             <div key={service.key} data-spatial="card" className={`min-w-0 ${span}`}>
               {showGroup ? (
                 <p className="mb-3 mt-6 text-[11px] uppercase tracking-[0.18em] text-muted">{service.group}</p>
               ) : null}
-              <HoloCard className="hud-card h-full rounded-[24px] px-5 py-4">
-                <div className="flex items-baseline justify-between gap-4">
-                  <p className="font-medium">{service.name}</p>
-                  <p className="shrink-0 text-sm text-muted">{service.price}</p>
-                </div>
-                <p className="mt-1 text-sm text-muted">{service.description}</p>
-                <StatusPill tone={toneAt(index)} className="mt-3" />
-              </HoloCard>
+              {slug ? (
+                <Link
+                  to="/$shopSlug/book"
+                  params={{ shopSlug: slug }}
+                  search={{ service: service.key }}
+                  className="craft-button"
+                  style={accent ? { color: accent } : undefined}
+                  aria-label={`${service.name}, ${service.price}`}
+                >
+                  {body}
+                </Link>
+              ) : (
+                <a href={bookHref || "#book"} className="craft-button" style={accent ? { color: accent } : undefined}>
+                  {body}
+                </a>
+              )}
             </div>
           );
         })}

@@ -4,9 +4,11 @@ import { sanitizeAccent, sanitizeContactLine, sanitizeLogoUrl } from "./prospect
 export const LEAD_STORAGE_KEY = "axiom.lead";
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const LEAD_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 
 export type FunnelQuery = {
   leadSlug: string;
+  leadId: string;
   utmSource: string;
   county: string;
   stopToken: string;
@@ -17,6 +19,7 @@ export type FunnelSearch = {
   utm_source?: string;
   county?: string;
   lead_slug?: string;
+  lead?: string;
   t?: string;
   pitch?: boolean;
   session_id?: string;
@@ -41,6 +44,12 @@ export function isLeadSlug(value: string): boolean {
   return SLUG.test(value);
 }
 
+/** Primary key on `preloaded_leads` (`lead_…` or a UUID). */
+export function parseLeadId(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  return LEAD_ID.test(raw) ? raw : "";
+}
+
 /** Business + city becomes the tracking slug. */
 export function leadSlugFrom(businessName: string, city: string): string {
   const raw = `${businessName} ${city}`
@@ -59,6 +68,7 @@ export function parseFunnelQuery(source: Record<string, unknown>): FunnelQuery {
   const stopToken = clip(source.t, 80).toLowerCase();
   return {
     leadSlug,
+    leadId: parseLeadId(source.lead) || parseLeadId(source.id),
     utmSource: clip(source.utm_source, 80),
     county: clip(source.county, 80),
     stopToken: /^[a-f0-9]{32,80}$/.test(stopToken) ? stopToken : "",
@@ -70,6 +80,7 @@ export function parseFunnelSearch(source: Record<string, unknown>): FunnelSearch
   const query = parseFunnelQuery(source);
   return {
     ...(query.leadSlug ? { b: query.leadSlug, lead_slug: query.leadSlug } : {}),
+    ...(query.leadId ? { lead: query.leadId } : {}),
     ...(query.utmSource ? { utm_source: query.utmSource } : {}),
     ...(query.county ? { county: query.county } : {}),
     ...(query.stopToken ? { t: query.stopToken } : {}),
@@ -391,6 +402,7 @@ export function funnelUrl(
   origin: string,
   lead: {
     leadSlug: string;
+    leadId?: string;
     county: string;
     stopToken?: string;
     greet?: boolean;
@@ -402,6 +414,8 @@ export function funnelUrl(
   const base = origin.replace(/\/$/, "");
   const url = new URL("/", base.endsWith("/") ? base : `${base}/`);
   url.searchParams.set("b", lead.leadSlug);
+  const leadId = parseLeadId(lead.leadId);
+  if (leadId) url.searchParams.set("lead", leadId);
   if (lead.county) url.searchParams.set("county", lead.county);
   url.searchParams.set("utm_source", "regional");
   if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
@@ -420,12 +434,15 @@ export function funnelUrl(
 /** One prospect, pre-configured. Opens are logged because this is not the pitch layout. */
 export function deskPreviewPath(lead: {
   leadSlug: string;
+  leadId?: string;
   county?: string;
   city?: string;
   businessName?: string;
   trade?: string;
 }): string {
   const params = new URLSearchParams({ b: lead.leadSlug, utm_source: "desk" });
+  const leadId = parseLeadId(lead.leadId);
+  if (leadId) params.set("lead", leadId);
   const county = (lead.county ?? "").trim();
   const city = (lead.city ?? "").trim();
   const business = (lead.businessName ?? "").trim();

@@ -136,7 +136,7 @@ describe("niche media", () => {
     assert.equal(leadHeroFor("outdoor-expeditions", "Ridge Outfitters", "Outdoor expeditions").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
     assert.equal(NICHE_MEDIA.hunting.heroVideoUrl, "/media/heroes/hunting-guide.mp4");
     assert.equal(NICHE_MEDIA.hunting.tone, "backcountry");
-    assert.equal(NICHE_MEDIA.therapy.heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+    assert.equal(NICHE_MEDIA.therapy.heroVideoUrl, "/media/heroes/wellness.mp4");
     assert.equal(NICHE_MEDIA.bowtech.heroVideoUrl, "/media/heroes/custom-bow-tech-hero.mp4.mp4");
     const stock = NICHE_MEDIA.trade.heroVideoUrl;
     assert.equal(heroForCustomNiche("Watchmaker").heroVideoUrl, stock);
@@ -162,9 +162,9 @@ describe("niche media", () => {
     assert.equal(NICHE_MEDIA.trade.heroVideoUrl, "/media/heroes/welding-trade.mp4");
     assert.equal(NICHE_MEDIA.trade.heroImageUrl, "");
     assert.equal(NICHE_MEDIA.security.heroVideoUrl, "/media/heroes/private-security.mp4");
-    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "");
-    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
-    assert.equal(NICHE_MEDIA.firewood.heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroImageUrl, "/media/heroes/firewood-hero.jpg");
+    assert.equal(leadHeroFor("firewood", "Oak Cord", "Firewood").heroVideoUrl, "/media/heroes/firewood-hero.mp4");
+    assert.equal(NICHE_MEDIA.firewood.heroVideoUrl, "/media/heroes/firewood-hero.mp4");
     assert.equal(NICHE_MEDIA.contractor.heroImageUrl, "");
     assert.equal(leadHeroFor("field", "Oak Lawn Care").heroImageUrl, "");
     assert.equal(leadHeroFor("field", "Oak Lawn Care").heroVideoUrl, "/media/heroes/landscaper.mp4");

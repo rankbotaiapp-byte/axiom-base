@@ -11,6 +11,7 @@ import { PreviewStudio } from "@/components/preview-studio";
 import { AxiomGenerativeBrandingStudio } from "@/components/brand-studio";
 import { compileBrandMark, rippleTheme, themeSurface, type RippleThemeId } from "@/lib/axiom/brand-studio";
 import { PRESENTATION_STYLES, type PresentationStyle } from "@/lib/axiom/intro";
+import { demoHeroFilm } from "@/lib/axiom/demo-hero";
 import { previewStyleId, previewThemeId } from "@/lib/axiom/preview-link";
 import { DEFAULT_HOURS, formatOffer, isPublicNiche, NICHES, nicheCopy, PUBLIC_NICHE_ORDER } from "@/lib/axiom/niches";
 import { resolveProspectBrand } from "@/lib/axiom/prospect-brand";
@@ -126,7 +127,8 @@ export function TenantPreview({
         hours={template.hours ?? DEFAULT_HOURS}
         staff={staff}
         heroImageUrl={painted.imageUrl}
-        heroVideoUrl={painted.videos.length > 1 ? painted.videos : painted.videoUrl}
+        heroVideoUrl={demoHeroFilm(niche, mapped?.categoryLabel || mapped?.category || search.trade)}
+        heroPresence="film"
         blendPercent={hud.fade}
         introPreset={previewOn ? styleId : template.introPreset}
         introSpeed={template.introSpeed}

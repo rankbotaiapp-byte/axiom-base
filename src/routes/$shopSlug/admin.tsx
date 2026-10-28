@@ -57,6 +57,8 @@ import { CinematicHero } from "@/components/cinematic-hero";
 import { ProofGalleryManager } from "@/components/proof-gallery";
 import { PaymentGate } from "@/components/payment-gate";
 import { PricingSettings } from "@/components/pricing-settings";
+import { OwnerLaunchDesk } from "@/components/owner-launch-desk";
+import { AxiomStudio } from "@/components/axiom-studio";
 
 export const Route = createFileRoute("/$shopSlug/admin")({
   validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master" } => {
@@ -67,7 +69,7 @@ export const Route = createFileRoute("/$shopSlug/admin")({
   component: AdminPage,
 });
 
-type OpData = {
+export type OpData = {
   mode: AccessMode;
   shop: Shop;
   appointments: Appointment[];
@@ -159,7 +161,7 @@ function AdminPage() {
   }} />;
 }
 
-function AdminShell({
+export function AdminShell({
   data,
   readonly,
   onReload,
@@ -168,24 +170,40 @@ function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "settings" | "services" | "pricing" | "brand" | "hero" | "assistant" | "work" | "team" | "alerts" | "billing">("overview");
+  const [tab, setTab] = useState<
+    | "overview"
+    | "launch"
+    | "settings"
+    | "services"
+    | "pricing"
+    | "brand"
+    | "studio"
+    | "hero"
+    | "assistant"
+    | "work"
+    | "team"
+    | "alerts"
+    | "billing"
+  >(!readonly && (!data.shop.onboarding.hero || !data.shop.onboarding.service) ? "launch" : "overview");
   const [linking, setLinking] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
   const paymentsLocked =
     !readonly && !data.platformDesk && data.payments.processorReady && !data.payments.chargesEnabled;
 
   useEffect(() => {
-    const screen = tab === "settings" || tab === "services" || tab === "brand" || tab === "hero" || tab === "assistant" || tab === "work" ? "storefront_editor" : "lead_dashboard";
+    const screen = tab === "launch" || tab === "settings" || tab === "services" || tab === "brand" || tab === "studio" || tab === "hero" || tab === "assistant" || tab === "work" ? "storefront_editor" : "lead_dashboard";
     setAvatarScreen(screen);
     return () => setAvatarScreen(null);
   }, [tab]);
   const copy = nicheCopy(data.shop.niche);
   const tabLabel: Record<typeof tab, string> = {
     overview: "Overview",
+    launch: "Launch",
     settings: "Settings",
     services: copy.menuHeading,
     pricing: "Pricing",
     brand: "Look",
+    studio: "Axiom Studio",
     hero: "Hero",
     assistant: "Assistant",
     work: "Work",
@@ -221,9 +239,11 @@ function AdminShell({
           <Link
             to="/$shopSlug"
             params={{ shopSlug: data.shop.slug }}
-            className="inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted hover:text-fg"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-11 items-center rounded-xl bg-fg px-4 text-sm font-medium text-bg"
           >
-            Customer site
+            View Customer-Facing Site
           </Link>
           <Link
             to="/$shopSlug/employee"
@@ -240,7 +260,7 @@ function AdminShell({
       ) : null}
 
       <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "settings", "services", "pricing", "brand", "hero", "assistant", "work", "team", "alerts", "billing"] as const).map((t) => (
+        {(["overview", "studio", "launch", "settings", "services", "pricing", "brand", "hero", "assistant", "work", "team", "alerts", "billing"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -260,6 +280,9 @@ function AdminShell({
       <div className="relative px-5 py-8 sm:px-8">
         {tab === "overview" ? (
           <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
+        ) : null}
+        {tab === "launch" ? (
+          <OwnerLaunchDesk shop={data.shop} readonly={readonly} onReload={onReload} />
         ) : null}
         {tab === "settings" ? (
           <div className="grid gap-6">
@@ -294,6 +317,7 @@ function AdminShell({
             onReload={onReload}
           />
         ) : null}
+        {tab === "studio" ? <AxiomStudio shop={data.shop} readonly={readonly} onReload={onReload} /> : null}
         {tab === "hero" ? (
           <div className="grid gap-6">
             <Link

@@ -975,6 +975,9 @@ export const updateShopBrandHandler = async ({
       await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
     }
   }
+  if (data.clearHeroVideo === true) {
+    await sql`update shops set hero_video_url = null where id = ${row.id}`;
+  }
   return {
     ok: true as const,
     onboarding: flags

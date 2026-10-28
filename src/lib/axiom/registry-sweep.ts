@@ -196,7 +196,7 @@ const SWEEP_FILINGS: readonly { craft: string; phrase: string }[] = [
   { craft: "Firewood", phrase: "Firewood cutting" },
   { craft: "Watch", phrase: "Private security" },
   { craft: "Practice", phrase: "Practice" },
-  { craft: "Advisor", phrase: "Advisor" },
+  { craft: "Ledger", phrase: "Counsel" },
   { craft: "Barber", phrase: "Barber" },
   { craft: "Studio", phrase: "Studio" },
   { craft: "Retail", phrase: "Retail / Merchandise" },

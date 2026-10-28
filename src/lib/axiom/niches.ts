@@ -80,8 +80,6 @@ export const PUBLIC_NICHE_ORDER: ShopNiche[] = [
   "locksmith",
   "firewood",
   "security",
-  "practice",
-  "counsel",
   "events",
   "location",
   "hunting",

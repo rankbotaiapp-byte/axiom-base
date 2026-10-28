@@ -94,10 +94,16 @@ const OID_DATE = 1082;
 const OID_INTERVAL = 1186;
 const identity = (v: string) => v;
 
+function isStatementTimeout(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "";
+  return code === "57014" || /statement timeout/i.test(message);
+}
+
 function transientDbError(err: unknown) {
   const message = err instanceof Error ? err.message : "";
   const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "";
-  if (code === "57014" || /statement timeout/i.test(message)) return false;
+  if (isStatementTimeout(err)) return false;
   return (
     code === "ENOTFOUND" ||
     code === "EAI_AGAIN" ||
@@ -190,7 +196,18 @@ async function migratePostgresConnected(): Promise<void> {
   });
   try {
   const client = await pool.connect();
+  client.on("error", (err) => {
+    console.error("[db] connection dropped", err instanceof Error ? err.message : err);
+  });
   try {
+    if (localDevelopment()) {
+      try {
+        // A stuck index must not hold the dev server for the role's full timeout.
+        await client.query("set statement_timeout = '20s'");
+      } catch {
+        // The role may forbid changing it. A timeout below is still non-fatal locally.
+      }
+    }
     await client.query(
       "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
     );
@@ -210,6 +227,14 @@ async function migratePostgresConnected(): Promise<void> {
           await client.query("ROLLBACK");
         } catch {
           // Keep the original migration error if the connection already died.
+        }
+        if (localDevelopment() && (isStatementTimeout(err) || transientDbError(err))) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn(
+            `[db] skipped ${name} this boot (${message}). Local development is staying up.`,
+          );
+          if (transientDbError(err)) return;
+          continue;
         }
         console.error(`[db] migration failed: ${name}`);
         throw err;

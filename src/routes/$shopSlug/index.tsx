@@ -19,6 +19,7 @@ import { presetsForShop } from "@/config/nichePresets";
 import { formatOffer, NICHES, nicheCopy } from "@/lib/axiom/niches";
 import { resolveHeroMedia, heroForCustomNiche, NICHE_MEDIA, SHARED_STAFF } from "@/lib/axiom/media";
 import { compileBrandMark, rippleTheme, themeSurface } from "@/lib/axiom/brand-studio";
+import { identitySurface, isStudioPlate, studioLogo } from "@/lib/axiom/studio-identity";
 import { paintHero } from "@/lib/axiom/hud";
 import { resolveProspectBrand } from "@/lib/axiom/prospect-brand";
 import type { AccessMode } from "@/lib/axiom/types";
@@ -68,9 +69,17 @@ function CustomerHome() {
     contactPhone: contact ? String(contact) : "",
   });
   const studio = data.shop.tradeProfile.studio;
+  const identity = data.shop.tradeProfile.studioIdentity;
   const theme = rippleTheme(studio.theme);
   const mark = studio.header ? compileBrandMark(studio.header, studio.tagline || data.shop.tagline, theme?.accent || brand.accent) : null;
-  const surface = theme ? themeSurface(theme) : undefined;
+  const surface = {
+    ...(theme ? themeSurface(theme) : {}),
+    ...(identity.locked ? identitySurface(identity) : {}),
+  };
+  const cinematic =
+    identity.locked && identity.animated && isStudioPlate(hero.imageUrl)
+      ? { plateUrl: hero.imageUrl, identity }
+      : null;
   const templatePeople = NICHES[data.shop.niche].employees;
   const staff = [0, 1].map((index) => {
     const person = employees[index];
@@ -105,8 +114,8 @@ function CustomerHome() {
         tagline={data.shop.tagline}
         description={data.shop.description}
         address={data.shop.address}
-        accent={theme?.accent || brand.accent}
-        logoUrl={mark?.dataUrl || brand.logoUrl}
+        accent={identity.locked ? identity.accent : theme?.accent || brand.accent}
+        logoUrl={identity.locked ? studioLogo(identity) : mark?.dataUrl || brand.logoUrl}
         contactPhone={brand.contactPhone}
         services={services.map((service) => ({
           key: service.id,
@@ -140,6 +149,7 @@ function CustomerHome() {
         heroPrompt={data.shop.heroPrompt}
         morphDurationSec={data.shop.morphDurationSec}
         surface={surface}
+        cinematic={cinematic}
         headline={data.shop.tradeProfile.hud.headline}
         header={
           <div className="min-w-0 flex-1">

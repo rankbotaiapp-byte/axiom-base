@@ -26,6 +26,13 @@ test("demo slugs accept niche ids and film names such as auto-repair", () => {
   assert.equal(resolveDemoNiche("auto_repair.mp4"), "field");
   assert.equal(resolveDemoNiche("photo"), "photo");
   assert.equal(resolveDemoNiche("field"), "field");
+  assert.equal(resolveDemoNiche("firewood"), "firewood");
+  assert.equal(resolveDemoNiche("defensible-space"), "firewood");
+  assert.equal(resolveDemoNiche("clinic"), null);
+  assert.equal(resolveDemoNiche("practice"), null);
+  assert.equal(resolveDemoNiche("advisor"), null);
+  assert.equal(resolveDemoNiche("counsel"), null);
+  assert.equal(resolveDemoNiche("consulting"), null);
   assert.equal(resolveDemoNiche("not-a-real-trade-xyz"), null);
 });
 
@@ -37,6 +44,7 @@ test("home counties get a personalized demo preview link", () => {
         tradeType: "Photography",
         county,
         leadSlug: "north-frame-medford",
+        leadId: "lead_northframe01",
         city: "Medford",
       }) ?? "",
     );
@@ -45,12 +53,30 @@ test("home counties get a personalized demo preview link", () => {
     assert.equal(url.searchParams.get("preview"), "true");
     assert.equal(url.searchParams.get("business"), "North Frame");
     assert.equal(url.searchParams.get("b"), "north-frame-medford");
+    assert.equal(url.searchParams.get("lead"), "lead_northframe01");
   }
   assert.equal(
     tenantPreviewUrl(ORIGIN, { businessName: "North Frame", tradeType: "Photography", county: "Grand County" }),
     null,
   );
   assert.equal(isHomePreviewCounty("Lane County"), false);
+});
+
+test("home-county outreach links carry the niche path and the lead id", () => {
+  const url = new URL(
+    outreachDestination(ORIGIN, {
+      businessName: "North Frame",
+      tradeType: "Photography",
+      county: "Jackson County",
+      leadSlug: "north-frame-medford",
+      leadId: "lead_northframe01",
+      city: "Medford",
+    }),
+  );
+  assert.equal(url.pathname, "/demo/photo");
+  assert.equal(url.searchParams.get("lead"), "lead_northframe01");
+  assert.equal(url.searchParams.get("b"), "north-frame-medford");
+  assert.equal(url.searchParams.get("city"), "Medford");
 });
 
 test("a lead outside the home region keeps the homepage funnel", () => {
@@ -60,11 +86,39 @@ test("a lead outside the home region keeps the homepage funnel", () => {
       tradeType: "Guide services",
       county: "Grand County",
       leadSlug: "glass-eddy",
+      leadId: "lead_glasseddy01",
     }),
   );
   assert.equal(url.pathname, "/");
   assert.equal(url.searchParams.get("preview"), null);
   assert.equal(url.searchParams.get("b"), "glass-eddy");
+  assert.equal(url.searchParams.get("lead"), "lead_glasseddy01");
+});
+
+test("clinic leads do not open the retired medical demo", () => {
+  assert.equal(previewNicheSlug("Practice"), "trade");
+  assert.equal(previewNicheSlug("clinic", "Medical clinic"), "trade");
+  const url = new URL(
+    tenantPreviewUrl(ORIGIN, {
+      businessName: "Lane Practice",
+      tradeType: "Practice",
+      county: "Jackson County",
+    }) ?? "",
+  );
+  assert.equal(url.pathname, "/demo/trade");
+});
+
+test("advisor leads do not open the retired counsel demo", () => {
+  assert.equal(previewNicheSlug("Advisor"), "trade");
+  assert.equal(previewNicheSlug("counsel", "Financial consulting"), "trade");
+  const url = new URL(
+    tenantPreviewUrl(ORIGIN, {
+      businessName: "Plain Counsel",
+      tradeType: "Advisor",
+      county: "Jackson County",
+    }) ?? "",
+  );
+  assert.equal(url.pathname, "/demo/trade");
 });
 
 test("every preloaded category resolves to a demo niche", () => {

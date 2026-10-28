@@ -18,6 +18,7 @@ export const HERO_MP4_FILES = [
   "employee-welcome.mp4",
   "entertainer.mp4",
   "events.mp4",
+  "firewood-hero.mp4",
   "guide.mp4",
   "gunsmith-hero.mp4",
   "hunting-guide.mp4",
@@ -37,6 +38,7 @@ export const HERO_MP4_FILES = [
   "outreach-welcome.mp4",
   "petgroom.mp4",
   "photographer.mp4",
+  "physical-trainer-hero.mp4.mp4",
   "plumbers-hero.mp4.mp4",
   "private-security.mp4",
   "pro-drone-surveyer.mp4 (2).mp4",
@@ -82,13 +84,13 @@ const NICHE_PHRASES: Record<ShopNiche, readonly string[]> = {
   dogwalk: ["dogwalking", "dog walking"],
   detailer: ["mobile detailer", "detailer"],
   hunting: ["hunting guide", "hunting", "outdoor master"],
-  therapy: ["physical therapist", "physicaltherapist", "therapy"],
+  therapy: ["physical therapist", "physicaltherapist", "therapy", "wellness"],
   bowtech: ["custom bow tech", "bow tech", "bowtech"],
   contractor: ["contractors hero", "contractors", "contractor"],
   clean: ["clean"],
   field: ["auto repair", "auto hero", "mobile mechanic", "field"],
   locksmith: ["mobile locksmith", "locksmith"],
-  firewood: ["firewood", "wood"],
+  firewood: ["firewood hero", "firewood", "chainsaw", "logging", "wood"],
   security: ["private security", "security"],
   practice: ["practice"],
   counsel: ["counsel", "advisor"],
@@ -106,11 +108,16 @@ const NICHE_PRIORITY: Partial<Record<ShopNiche, string>> = {
   contractor: "contractors-hero.mp4",
   field: "auto-repair.mp4",
   photo: "photographer.mp4",
+  locksmith: "mobile-locksmith.mp4",
+  firewood: "firewood-hero.mp4",
+  therapy: "wellness.mp4",
 };
 
 /** A business title uses these before the fuzzy score. Plumbing stays off the contractor reel. */
 const TEXT_PRIORITY: readonly { pattern: RegExp; file: string }[] = [
   { pattern: /\bplumb(?:ing|ers|er)?\b/i, file: "plumbers-hero.mp4.mp4" },
+  { pattern: /\blocksmiths?\b|\brekeys?\b|\blockouts?\b/i, file: "mobile-locksmith.mp4" },
+  { pattern: /\bfirewood\b|\bcordwood\b|\bdefensible(?:\s+space)?\b|\bforestry\b|\bchainsaw\b/i, file: "firewood-hero.mp4" },
   { pattern: /\bauto[\s-]*repair\b|\bmechanics?\b/i, file: "auto-repair.mp4" },
   { pattern: /\bbarbers?\b/i, file: "barber-hero.mp4" },
   {
@@ -150,6 +157,8 @@ function sharedPrefix(a: string, b: string): number {
 export function scoreHeroFile(file: string, niche: ShopNiche): number {
   const stem = heroStem(file);
   if (!stem || SKIP.test(stem)) return 0;
+  if (niche === "therapy" && /\b(trainer|fitness|tiger|weld|trade)\b/.test(stem)) return 0;
+  if (niche === "fitness" && /\btherap/.test(stem)) return 0;
   if (NICHE_PRIORITY[niche] === file) return 220;
   if (niche !== "trade" && /\b(fallback|universals?)\b/.test(stem)) return 0;
   let best = 0;
@@ -252,6 +261,7 @@ function scoreText(hay: string, file: string): number {
 export function filmMatchingText(text: string, current = ""): string | null {
   const hay = text.toLowerCase().replace(/\s+/g, " ").trim();
   if (hay.length < 3) return null;
+  if (/\bphysical therap|\bphysiotherap|\bphysio\b/i.test(hay)) return null;
   for (const rule of TEXT_PRIORITY) {
     if (!rule.pattern.test(hay) || !onDisk(rule.file)) continue;
     const url = heroPath(rule.file);

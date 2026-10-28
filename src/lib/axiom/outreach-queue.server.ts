@@ -246,11 +246,13 @@ type DueTouch = {
   attempts: number;
   sequence_id: string;
   lead_slug: string;
+  lead_id: string | null;
   channel: string;
   county: string;
   trade_type: string;
   timing: string;
   business_name: string | null;
+  city: string | null;
   claimed: boolean | null;
   contact_email: string | null;
   contact_phone: string | null;
@@ -268,7 +270,7 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
 
   const due = await sql<DueTouch>`
     select t.id, t.step, t.body, t.attempts, s.id as sequence_id, s.lead_slug, s.channel, s.county,
-      s.trade_type, s.timing, l.business_name, l.claimed, l.contact_email, l.contact_phone
+      s.trade_type, s.timing, l.id as lead_id, l.business_name, l.city, l.claimed, l.contact_email, l.contact_phone
     from outreach_touches t
     join outreach_sequences s on s.id = t.sequence_id
     left join preloaded_leads l on l.lead_slug = s.lead_slug
@@ -343,6 +345,8 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
           tradeType: touch.trade_type,
           county: touch.county,
           leadSlug: touch.lead_slug,
+          leadId: touch.lead_id ?? "",
+          city: touch.city ?? "",
         })
       : null;
     const body = preview && isHomePreviewCounty(touch.county) ? appendPreviewLink(touch.body, preview) : touch.body;
@@ -414,10 +418,10 @@ async function stampPreviewLinks(sql: Sql, county: string, origin: string, messa
   if (pending.length === 0) return messages;
   const slugs = slugList(pending.map((message) => message.leadSlug));
   if (!slugs) return messages;
-  let rows: { business_name: string; trade_type: string; lead_slug: string; county: string }[] = [];
+  let rows: { id: string; business_name: string; trade_type: string; lead_slug: string; county: string; city: string }[] = [];
   try {
-    rows = await sql<{ business_name: string; trade_type: string; lead_slug: string; county: string }>`
-      select business_name, trade_type, lead_slug, county
+    rows = await sql<{ id: string; business_name: string; trade_type: string; lead_slug: string; county: string; city: string }>`
+      select id, business_name, trade_type, lead_slug, county, city
       from preloaded_leads
       where lead_slug = any(string_to_array(${slugs}, ','))
     `;
@@ -434,6 +438,8 @@ async function stampPreviewLinks(sql: Sql, county: string, origin: string, messa
       tradeType: row.trade_type,
       county: row.county || county,
       leadSlug: row.lead_slug,
+      leadId: row.id,
+      city: row.city,
     });
     if (!url) return message;
     return { ...message, body: appendPreviewLink(message.body, url) };

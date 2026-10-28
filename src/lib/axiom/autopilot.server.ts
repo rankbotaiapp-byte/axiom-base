@@ -136,6 +136,7 @@ async function bestLocalCell(sql: Sql): Promise<Cell | null> {
 async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<AutopilotLead[]> {
   const map = (
     rows: {
+      id: string;
       lead_slug: string;
       business_name: string;
       city: string;
@@ -146,6 +147,7 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
     }[],
   ): AutopilotLead[] =>
     rows.map((row) => ({
+      id: row.id,
       leadSlug: row.lead_slug,
       businessName: row.business_name,
       city: row.city,
@@ -156,6 +158,7 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
     }));
   try {
     const rows = await sql<{
+      id: string;
       lead_slug: string;
       business_name: string;
       city: string;
@@ -164,7 +167,7 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
       contact_email: string | null;
       contact_phone: string | null;
     }>`
-      select lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
+      select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
       from preloaded_leads
       where claimed = false
         and lower(county) = lower(${county})
@@ -181,6 +184,7 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
   } catch (err) {
     if (!missingRelation(err)) throw err;
     const rows = await sql<{
+      id: string;
       lead_slug: string;
       business_name: string;
       city: string;
@@ -189,7 +193,7 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
       contact_email: string | null;
       contact_phone: string | null;
     }>`
-      select lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
+      select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
       from preloaded_leads
       where claimed = false
         and lower(county) = lower(${county})
@@ -250,6 +254,7 @@ function messageFor(lead: AutopilotLead, channel: "email" | "sms", origin: strin
     tradeType: lead.tradeType,
     county: lead.county,
     leadSlug: lead.leadSlug,
+    leadId: lead.id,
     city: lead.city,
     trade: nicheLabel(lead.tradeType),
     greet: true,

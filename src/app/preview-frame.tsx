@@ -2,20 +2,33 @@
 
 import { useRouter } from "next/navigation";
 import { TenantPreview, type TenantPreviewSearch } from "@/components/tenant-preview";
+import type { BusinessBrandRecord } from "@/lib/axiom/business-brand";
 import type { ShopNiche } from "@/lib/axiom/types";
 
-export function PreviewFrame({ niche, search }: { niche: ShopNiche; search: TenantPreviewSearch }) {
+export function PreviewFrame({
+  niche,
+  search,
+  loaded = null,
+  lead = "",
+}: {
+  niche: ShopNiche;
+  search: TenantPreviewSearch;
+  loaded?: BusinessBrandRecord | null;
+  lead?: string;
+}) {
   const router = useRouter();
   const query = new URLSearchParams();
   if (search.preview) query.set("preview", "true");
   if (search.business) query.set("business", search.business);
   if (search.biz && !search.business) query.set("business", search.biz);
   if (search.city) query.set("city", search.city);
+  if (lead) query.set("lead", lead);
   const suffix = query.toString();
   return (
     <TenantPreview
       niche={niche}
       search={search}
+      loaded={loaded}
       onNiche={(next) => {
         router.push(suffix ? `/demo/${next}?${suffix}` : `/demo/${next}`);
       }}

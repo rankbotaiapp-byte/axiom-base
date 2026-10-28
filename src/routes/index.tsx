@@ -470,7 +470,7 @@ function LiveBook({ showcases }: { showcases: Shop[] | null }) {
 function LandingStudio() {
   const [hud, setHud] = useState<StorefrontHud>(DEFAULT_HUD);
   const [activeLayer, setActiveLayer] = useState<HeroLayerId>("headline");
-  const media = NICHE_MEDIA.practice;
+  const media = NICHE_MEDIA.firewood;
   const painted = paintHero(media.heroImageUrl, media.heroVideoUrl || null, hud);
   return (
     <section id="studio">
@@ -498,7 +498,7 @@ function LandingStudio() {
           <HeroTextCanvas
             layers={hud.layers}
             fallbacks={{
-              headline: "The book, open.",
+              headline: "Axiom",
               subheadline: "Feather, glow, and the line.",
               cta_button: "Book a time",
             }}

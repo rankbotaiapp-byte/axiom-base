@@ -55,9 +55,13 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
     niches.add(classifyTrade(lead.tradeType).tradeType);
   }
   for (const niche of SHOP_NICHES) {
-    if (niche === "trade") continue;
+    if (niche === "trade" || niche === "practice" || niche === "counsel") continue;
     assert.ok(niches.has(niche), niche);
   }
+  assert.equal(niches.has("practice"), false);
+  assert.equal(niches.has("counsel"), false);
+  assert.equal(REGIONAL_VERTICALS.some((row) => /clinic|practice|advisor|counsel/i.test(row.category)), false);
+  assert.ok(niches.has("firewood"));
   assert.equal(classifyTrade("HVAC").tradeType, "contractor");
   assert.equal(classifyTrade("Plumbing").tradeType, "contractor");
   assert.equal(classifyTrade("Electrical").tradeType, "contractor");
@@ -86,7 +90,7 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("Plumbing").heroVideoUrl, "/media/heroes/plumbers-hero.mp4.mp4");
   assert.equal(heroFor("Hunting guide").heroImageUrl, "");
   assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
-  assert.equal(heroFor("Physical therapy").heroVideoUrl, "/media/heroes/universal-fallback.mp4.mp4");
+  assert.equal(heroFor("Physical therapy").heroVideoUrl, "/media/heroes/wellness.mp4");
   assert.equal(classifyTrade("Physical therapy").tradeType, "therapy");
   assert.equal(classifyTrade("Hunting guide").tradeType, "hunting");
   assert.equal(classifyTrade("Custom bow technician").tradeType, "bowtech");
@@ -100,4 +104,5 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
   assert.equal(heroFor("Dog walking").heroVideoUrl, "/media/heroes/dogwalking.mp4");
   assert.equal(heroFor("Auto detailing").heroVideoUrl, "/media/heroes/mobile-detailer.mp4");
   assert.equal(heroFor("Mobile mechanic").heroVideoUrl, "/media/heroes/auto-repair.mp4");
+  assert.equal(heroFor("Firewood").heroVideoUrl, "/media/heroes/firewood-hero.mp4");
 });

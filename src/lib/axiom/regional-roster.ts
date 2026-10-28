@@ -49,8 +49,6 @@ export const REGIONAL_VERTICALS: readonly { category: string; craft: string }[] 
   { category: "Field service", craft: "Curb Call" },
   { category: "Mobile locksmith", craft: "Keys" },
   { category: "Private security", craft: "Watch" },
-  { category: "Practice", craft: "Visit Room" },
-  { category: "Advisor", craft: "Consult" },
   { category: "Barber", craft: "Fades" },
   { category: "Studio", craft: "Daylight" },
   { category: "Retail / Merchandise", craft: "Counter" },

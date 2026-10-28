@@ -1,10 +1,8 @@
 import { notFound } from "next/navigation";
-import { AxiomParticleStudio } from "@/components/axiom-particle-studio";
-import { GlassyMountainLake } from "@/components/glassy-mountain-lake";
+import { DemoLeadInlay } from "@/components/DemoLeadInlay";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
 import { flatSearch } from "../../search";
-import { PreviewFrame } from "../../preview-frame";
 
 export const dynamic = "force-dynamic";
 
@@ -19,16 +17,5 @@ export default async function DemoPage({
   const niche = resolveDemoNiche(requested);
   if (!niche) notFound();
   const search = parseFunnelSearch(flatSearch(await searchParams));
-  const branded = {
-    ...search,
-    preview: true as const,
-    business: search.business || search.biz || undefined,
-  };
-  return (
-    <>
-      <AxiomParticleStudio niche={niche} business={branded.business} />
-      <GlassyMountainLake title={branded.business} />
-      <PreviewFrame niche={niche} search={branded} />
-    </>
-  );
+  return <DemoLeadInlay niche={niche} search={search} />;
 }

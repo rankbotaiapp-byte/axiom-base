@@ -19,14 +19,22 @@ export function isHomePreviewCounty(county: string): boolean {
  * `auto-repair` resolve to the shop niche that plays that film. Unknown
  * segments stay unmatched so the route can 404.
  */
+const RETIRED_DEMO_SLUGS = new Set(["clinic", "practice", "advisor", "counsel", "consulting"]);
+
+function isRetiredDemo(value: string): boolean {
+  return RETIRED_DEMO_SLUGS.has(value.trim().toLowerCase());
+}
+
 export function resolveDemoNiche(slug: string): ShopNiche | null {
   const key = slug.trim().toLowerCase().replace(/(\.mp4)+$/g, "").replace(/_/g, "-");
-  if (!key) return null;
+  if (!key || isRetiredDemo(key)) return null;
   if (isShopNiche(key)) return key;
   for (const candidate of [key, key.replace(/-/g, " ")]) {
     try {
       const classified = classifyTrade(candidate);
-      if (classified.known && isShopNiche(classified.tradeType)) return classified.tradeType;
+      if (classified.known && isShopNiche(classified.tradeType) && !isRetiredDemo(classified.tradeType)) {
+        return classified.tradeType;
+      }
     } catch {
       // A blank or generic phrase is not a demo.
     }
@@ -37,6 +45,7 @@ export function resolveDemoNiche(slug: string): ShopNiche | null {
 /** Public and internal shop niches both open on `/demo`. Unknown phrases use the open trade template. */
 export function previewNicheSlug(tradeType: string, tradeLabel = ""): string {
   const niche = nicheForLead(tradeType, tradeLabel);
+  if (isRetiredDemo(niche) || isRetiredDemo(tradeType)) return "trade";
   return isShopNiche(niche) ? niche : "trade";
 }
 
@@ -46,6 +55,7 @@ export type PreviewLead = {
   tradeLabel?: string;
   county: string;
   leadSlug?: string;
+  leadId?: string;
   city?: string;
   stopToken?: string;
   greet?: boolean;
@@ -66,6 +76,8 @@ export function tenantPreviewUrl(origin: string, lead: PreviewLead): string | nu
   url.searchParams.set("preview", "true");
   url.searchParams.set("business", business);
   if (lead.leadSlug) url.searchParams.set("b", lead.leadSlug);
+  const leadId = (lead.leadId ?? "").trim();
+  if (leadId) url.searchParams.set("lead", leadId);
   const county = lead.county.trim();
   if (county) url.searchParams.set("county", county);
   const city = (lead.city ?? "").trim().slice(0, 80);
@@ -80,6 +92,7 @@ export function outreachDestination(origin: string, lead: PreviewLead & { leadSl
     tenantPreviewUrl(origin, lead) ??
     funnelUrl(origin, {
       leadSlug: lead.leadSlug,
+      leadId: lead.leadId,
       county: lead.county,
       stopToken: lead.stopToken,
       greet: lead.greet,
