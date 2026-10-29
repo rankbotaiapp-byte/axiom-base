@@ -2,7 +2,7 @@ import { auth, authConfigured } from "@/lib/auth/server";
 import { gateIdentityEnabled } from "@/lib/auth/gate-identity.server";
 import { DEV_USER_ID, UnauthorizedError } from "@/lib/auth/verify.server";
 import { getSql } from "@/lib/db";
-import { HERO_VIDEO_MAX_BYTES, isMp4, shopHeroVideoPath } from "./hero-video";
+import { HERO_VIDEO_MAX_BYTES, heroClipMime, isHeroClip, shopHeroVideoPath } from "./hero-video";
 
 function isOn(value: unknown) {
   return value === true || value === 1 || value === "t" || value === "true";
@@ -43,7 +43,7 @@ export async function readHeroVideo(shopId: string): Promise<Uint8Array | null> 
 export function heroVideoResponse(bytes: Uint8Array, request: Request): Response {
   const total = bytes.byteLength;
   const base = {
-    "content-type": "video/mp4",
+    "content-type": heroClipMime(bytes),
     "accept-ranges": "bytes",
     "cache-control": "public, max-age=31536000, immutable",
   };
@@ -75,7 +75,8 @@ export function heroVideoResponse(bytes: Uint8Array, request: Request): Response
 }
 
 export async function storeHeroVideo(userId: string, shopId: string, bytes: Uint8Array): Promise<string> {
-  if (!isMp4(bytes)) throw new Error("Upload an .mp4 video, 12 MB or smaller");
+  if (!isHeroClip(bytes)) throw new Error("Upload an .mp4 or .webm video, 12 MB or smaller");
+  const mime = heroClipMime(bytes);
   const sql = await getSql();
   const shops = await sql<{
     id: string;
@@ -96,10 +97,10 @@ export async function storeHeroVideo(userId: string, shopId: string, bytes: Uint
 
   await sql.query(
     `insert into shop_hero_videos (shop_id, mime, data, updated_at)
-     values ($1, 'video/mp4', $2, now())
+     values ($1, $2, $3, now())
      on conflict (shop_id) do update
-       set mime = 'video/mp4', data = excluded.data, updated_at = now()`,
-    [shopId, Buffer.from(bytes)],
+       set mime = excluded.mime, data = excluded.data, updated_at = now()`,
+    [shopId, mime, Buffer.from(bytes)],
   );
   const version = Date.now();
   const path = shopHeroVideoPath(shopId, version);

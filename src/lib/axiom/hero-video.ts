@@ -12,6 +12,20 @@ export function isMp4(bytes: Uint8Array): boolean {
   return bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70;
 }
 
+/** WebM starts with the EBML magic. */
+export function isWebm(bytes: Uint8Array): boolean {
+  if (bytes.byteLength < 4 || bytes.byteLength > HERO_VIDEO_MAX_BYTES) return false;
+  return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3;
+}
+
+export function isHeroClip(bytes: Uint8Array): boolean {
+  return isMp4(bytes) || isWebm(bytes);
+}
+
+export function heroClipMime(bytes: Uint8Array): "video/mp4" | "video/webm" {
+  return isWebm(bytes) ? "video/webm" : "video/mp4";
+}
+
 export function isCustomHeroVideo(url: string | null | undefined): boolean {
   return typeof url === "string" && url.startsWith("/api/hero-video/");
 }

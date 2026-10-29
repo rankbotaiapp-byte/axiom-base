@@ -336,24 +336,26 @@ export function NicheStorefront({
         </div>
       ) : (
       <CinematicHero
-        imageUrl={heroImageUrl}
+        imageUrl={playedVideo ? "" : heroImageUrl}
         videoUrl={playedVideo}
         blendPercent={blendPercent}
         introPreset={introPreset}
         introSpeed={introSpeed}
         introIntensity={introIntensity}
         tone={tone ?? null}
-        fallbackImageUrl={fallbackImageUrl}
+        fallbackImageUrl=""
         fallbackVideoUrl={fallbackVideoUrl}
         brand={brand}
         telemetry={telemetry}
-        {...cinematicBrand}
+        effect={null}
+        brandTagline=""
+        brandSticker=""
       >
         {renderChrome()}
-        <div className="relative z-10 flex min-h-[18rem] flex-1 flex-col px-5 pb-24 pt-6 sm:px-10">
-          <p className="pointer-events-none min-h-4 text-[11px] uppercase tracking-[0.22em] text-muted">{kicker || "\u00a0"}</p>
-          <p className="pointer-events-none mt-2 min-h-5 text-sm text-muted sm:hidden">{contact || "\u00a0"}</p>
-          <div className="relative mt-4 min-h-[16rem] flex-1">
+        <div className="pointer-events-none relative z-10 flex min-h-[18rem] flex-1 flex-col px-5 pb-24 pt-6 sm:px-10">
+          <p className="font-mono min-h-4 text-[11px] uppercase tracking-[0.22em] text-accent/90">{kicker || "\u00a0"}</p>
+          <p className="mt-2 min-h-5 text-sm text-fg/75 sm:hidden">{contact || "\u00a0"}</p>
+          <div className="relative mt-4 min-h-[16rem] flex-1 pointer-events-auto">
             <HeroTextCanvas
               layers={hud.layers}
               fallbacks={{

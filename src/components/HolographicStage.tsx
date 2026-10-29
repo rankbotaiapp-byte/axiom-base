@@ -23,7 +23,7 @@ export type HolographicStageProps = {
 export function HolographicStage({
   businessName = "Axiom desk",
   customer = false,
-  filmUrl = "/media/axiom-orb-response.mp4",
+  filmUrl = "/media/orb-explosion-hero-animation.mp4",
   posterUrl = "/media/goopy-orb-base.jpg",
 }: HolographicStageProps) {
   const reduce = useReducedMotion();

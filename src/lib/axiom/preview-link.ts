@@ -45,8 +45,8 @@ export function resolveDemoNiche(slug: string): ShopNiche | null {
 /** Public and internal shop niches both open on `/demo`. Unknown phrases use the open trade template. */
 export function previewNicheSlug(tradeType: string, tradeLabel = ""): string {
   const niche = nicheForLead(tradeType, tradeLabel);
-  if (isRetiredDemo(niche) || isRetiredDemo(tradeType)) return "trade";
-  return isShopNiche(niche) ? niche : "trade";
+  if (isRetiredDemo(niche) || isRetiredDemo(tradeType)) return "contractor";
+  return isShopNiche(niche) ? niche : "contractor";
 }
 
 export type PreviewLead = {

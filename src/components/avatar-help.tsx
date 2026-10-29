@@ -1,56 +1,38 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { X } from "lucide-react";
+import { avatarHelpFor, screenFromPath } from "@/config/avatarHelpContent";
 import {
-  avatarHelpFor,
-  screenFromPath,
-  type AvatarScreenId,
-} from "@/config/avatarHelpContent";
-
-let override: AvatarScreenId | null = null;
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const listener of listeners) listener();
-}
-
-/** The desk can name the tab the owner is on. Leaving the page clears it. */
-export function setAvatarScreen(screen: AvatarScreenId | null) {
-  override = screen;
-  emit();
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function readOverride() {
-  return override;
-}
+  readAvatarHelpOpen,
+  readAvatarScreen,
+  setAvatarHelpOpen,
+  subscribeAvatarHelpOpen,
+  subscribeAvatarScreen,
+} from "@/components/avatar-help-state";
 
 /**
  * Help for the screen in front of the owner.
  * The words are already written. Tapping the button does not call an assistant.
+ * Screen pinning lives in avatar-help-state so this file only exports the button.
  */
 export function AvatarHelpButton() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const pinned = useSyncExternalStore(subscribe, readOverride, () => null);
+  const pinned = useSyncExternalStore(subscribeAvatarScreen, readAvatarScreen, () => null);
   const screen = pinned ?? screenFromPath(pathname);
   const entry = avatarHelpFor(screen);
-  const open = useSyncExternalStore(subscribeOpen, readOpen, () => false);
+  const open = useSyncExternalStore(subscribeAvatarHelpOpen, readAvatarHelpOpen, () => false);
 
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") setAvatarHelpOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
   return (
-    <div className="fixed bottom-36 left-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col items-start gap-3 sm:bottom-4">
+    <div className="avatar-help fixed bottom-36 left-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col items-start gap-3 sm:bottom-4">
       {open ? (
         <section
           role="dialog"
@@ -69,7 +51,7 @@ export function AvatarHelpButton() {
             </div>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => setAvatarHelpOpen(false)}
               className="grid size-11 place-items-center rounded-full text-muted hover:text-fg"
               aria-label="Close help"
             >
@@ -89,7 +71,7 @@ export function AvatarHelpButton() {
       ) : null}
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => setAvatarHelpOpen(!open)}
         className="inline-flex h-12 items-center gap-2 rounded-full bg-surface px-4 text-sm font-medium text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.12)]"
         aria-expanded={open}
         aria-controls="avatar-help-title"
@@ -101,26 +83,4 @@ export function AvatarHelpButton() {
       </button>
     </div>
   );
-}
-
-let openState = false;
-
-function emitOpen() {
-  for (const listener of openListeners) listener();
-}
-
-const openListeners = new Set<() => void>();
-
-function subscribeOpen(listener: () => void) {
-  openListeners.add(listener);
-  return () => openListeners.delete(listener);
-}
-
-function readOpen() {
-  return openState;
-}
-
-function setOpen(next: boolean) {
-  openState = next;
-  emitOpen();
 }

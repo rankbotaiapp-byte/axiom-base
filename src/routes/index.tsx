@@ -1,25 +1,23 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppWindow, ArrowUpRight, CalendarRange, Radio } from "lucide-react";
-import { nicheIcon } from "@/components/niche-icon";
+import { AxiomCatalogHub } from "@/components/AxiomCatalogHub";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { CATALOG } from "@/config/catalog";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
+import { NICHE_MEDIA } from "@/lib/axiom/media";
 import { ensureFunnelSession, masterGate, recordFunnelHit } from "@/lib/axiom/master";
 import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
-import { isShopNiche, type Shop, type ShopNiche } from "@/lib/axiom/types";
-import { NICHE_MEDIA } from "@/lib/axiom/media";
+import { isShopNiche, type Shop } from "@/lib/axiom/types";
 import { PreviewStudio, FaqAccordion } from "@/components/preview-studio";
 import { DEFAULT_HUD, hudVars, paintHero, setHeroLayer, type HeroLayerId, type StorefrontHud } from "@/lib/axiom/hud";
 import { HeroTextCanvas } from "@/components/hero-text-canvas";
-import { NICHES, PUBLIC_NICHE_ORDER } from "@/lib/axiom/niches";
 import { TERRITORY_PLANS } from "@/lib/axiom/pricing";
-import { LoopVideo } from "@/components/cinematic-hero";
 import { CursorSpotlight } from "@/components/cursor-spotlight";
 import { DataFlow } from "@/components/data-flow";
-import { LandingAtmosphere } from "@/components/landing-atmosphere";
 import { HoloCard } from "@/components/holo-card";
-import { MagneticCard } from "@/components/magnetic-card";
+import { LandingAtmosphere } from "@/components/landing-atmosphere";
 import { Reveal } from "@/components/reveal";
 import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
 import { LandingBookingLoop } from "@/components/landing-loop";
@@ -116,7 +114,7 @@ function Home() {
   }
 
   return (
-    <main className="min-h-dvh bg-transparent">
+    <main className="neon-shell bg-transparent">
       <LandingBookingLoop />
       <header className="glass-panel sticky top-3 z-30 mx-3 flex items-center justify-between rounded-2xl px-4 py-3 sm:mx-6 sm:px-5">
         <Wordmark />
@@ -126,7 +124,7 @@ function Home() {
           ) : (
             <>
               <SignedOut>
-                <Link to="/login" className="text-sm text-muted hover:text-fg">
+                <Link to="/login" className="font-mono text-sm text-muted hover:text-fg">
                   Sign in
                 </Link>
               </SignedOut>
@@ -180,23 +178,7 @@ function Home() {
           </a>
         </div>
 
-        <div className="mt-14 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
-          {PUBLIC_NICHE_ORDER.map((key) => {
-            const n = NICHES[key];
-            const Icon = nicheIcon(key);
-            return (
-              <NicheCard
-                key={key}
-                niche={key}
-                icon={<Icon className="size-4" />}
-                title={n.label}
-                copy={n.blurb}
-                videoUrl={NICHE_MEDIA[key].heroVideoUrl}
-                imageUrl={NICHE_MEDIA[key].heroImageUrl}
-              />
-            );
-          })}
-        </div>
+        <AxiomCatalogHub view="strip" linkTo="onboard" className="mt-14" />
       </section>
 
       <div className="relative overflow-x-clip">
@@ -295,8 +277,8 @@ function IndustryGallery() {
         <Reveal>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Explore All Industries</p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl">Sample the book for your trade.</h2>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Verified catalog</p>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl">Twenty-one loops. One book.</h2>
             </div>
             <label className="text-sm text-muted">
               Jump to a trade
@@ -305,16 +287,16 @@ function IndustryGallery() {
                 defaultValue=""
                 onChange={(event) => {
                   const niche = event.target.value;
-                  if (!isShopNiche(niche) || niche === "trade") return;
+                  if (!isShopNiche(niche)) return;
                   void navigate({ to: "/demo/$niche", params: { niche } });
                 }}
               >
                 <option value="" disabled>
                   Choose an industry
                 </option>
-                {PUBLIC_NICHE_ORDER.map((key) => (
-                  <option key={key} value={key}>
-                    {NICHES[key].label}
+                {CATALOG.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.label}
                   </option>
                 ))}
               </select>
@@ -343,62 +325,7 @@ function IndustryGallery() {
           </div>
         </Reveal>
         <CursorSpotlight className="mt-8">
-          <div key={view}>
-            {view === "cards" ? (
-              <Reveal stagger className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {PUBLIC_NICHE_ORDER.map((key, index) => {
-                  const n = NICHES[key];
-                  const Icon = nicheIcon(key);
-                  return (
-                    <div key={key} className="min-w-0">
-                      <HoloCard className="glass-panel lift-card h-full rounded-2xl">
-                        <Link
-                          to="/demo/$niche"
-                          params={{ niche: key }}
-                          className="flex min-h-24 items-start gap-3 p-4 hover:text-fg"
-                        >
-                          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-surface-2">
-                            <Icon className="size-4" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium">{n.label}</span>
-                            <span className="mt-1 block text-sm text-muted">{n.blurb}</span>
-                            <StatusPill tone={toneAt(index)} className="mt-3" />
-                          </span>
-                        </Link>
-                      </HoloCard>
-                    </div>
-                  );
-                })}
-              </Reveal>
-            ) : (
-              <Reveal stagger className="grid gap-2">
-                {PUBLIC_NICHE_ORDER.map((key) => {
-                  const n = NICHES[key];
-                  const Icon = nicheIcon(key);
-                  return (
-                    <div key={key} className="min-w-0">
-                      <MagneticCard>
-                        <Link
-                          to="/demo/$niche"
-                          params={{ niche: key }}
-                          className="glass-panel lift-card flex min-h-16 items-center gap-3 rounded-2xl px-4 py-3 hover:text-fg"
-                        >
-                          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-surface-2">
-                            <Icon className="size-4" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium">{n.label}</span>
-                            <span className="mt-1 block text-sm text-muted">{n.blurb}</span>
-                          </span>
-                        </Link>
-                      </MagneticCard>
-                    </div>
-                  );
-                })}
-              </Reveal>
-            )}
-          </div>
+          <AxiomCatalogHub key={view} view={view} linkTo="demo" />
         </CursorSpotlight>
       </div>
     </section>
@@ -470,7 +397,7 @@ function LiveBook({ showcases }: { showcases: Shop[] | null }) {
 function LandingStudio() {
   const [hud, setHud] = useState<StorefrontHud>(DEFAULT_HUD);
   const [activeLayer, setActiveLayer] = useState<HeroLayerId>("headline");
-  const media = NICHE_MEDIA.firewood;
+  const media = NICHE_MEDIA.forestry;
   const painted = paintHero(media.heroImageUrl, media.heroVideoUrl || null, hud);
   return (
     <section id="studio">
@@ -636,43 +563,3 @@ function LandingFooter() {
   );
 }
 
-function NicheCard({
-  niche,
-  icon,
-  title,
-  copy,
-  videoUrl,
-  imageUrl,
-}: {
-  niche: ShopNiche;
-  icon: ReactNode;
-  title: string;
-  copy: string;
-  videoUrl: string;
-  imageUrl: string;
-}) {
-  return (
-    <MagneticCard className="w-64 shrink-0 snap-start">
-    <Link
-      to="/demo/$niche"
-      params={{ niche }}
-      className="glass-panel lift-card block overflow-hidden rounded-2xl"
-    >
-      <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
-        {videoUrl ? (
-          <LoopVideo src={videoUrl} className="absolute inset-0" />
-        ) : imageUrl ? (
-          <img src={imageUrl} alt="" className="media-drift absolute inset-0 h-full w-full object-cover outline-none" />
-        ) : null}
-      </div>
-      <div className="p-5">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-surface-2 text-fg">
-          {icon}
-        </div>
-        <p className="mt-4 text-sm font-medium">{title}</p>
-        <p className="mt-1 text-sm text-muted">{copy}</p>
-      </div>
-    </Link>
-    </MagneticCard>
-  );
-}

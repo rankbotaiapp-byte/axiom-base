@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GlassShardMatrix } from "@/components/GlassShardMatrix";
 import { PreviewFrame } from "@/app/preview-frame";
 import type { BusinessBrandRecord } from "@/lib/axiom/business-brand";
 import type { FunnelSearch } from "@/lib/axiom/funnel";
@@ -46,26 +45,17 @@ export function DemoLeadInlay({ niche, search }: { niche: ShopNiche; search: Fun
   const triedLead = Boolean(leadId || slug);
 
   return (
-    <GlassShardMatrix
-      armed={glass.armed}
-      businessName={glass.businessName}
-      city={glass.city}
-      county={glass.county}
-      niche={glass.armed ? loaded?.nicheSlug || niche : niche}
-      hint={glass.hint}
-    >
-      <PreviewFrame
-        niche={niche}
-        search={
-          glass.armed
-            ? { ...search, preview: true, business: glass.businessName, city: glass.city || undefined }
-            : triedLead
-              ? { ...search, preview: true, business: undefined, biz: undefined, city: undefined }
-              : { ...search, preview: true }
-        }
-        loaded={glass.armed ? loaded : null}
-        lead={glass.armed ? leadId : ""}
-      />
-    </GlassShardMatrix>
+    <PreviewFrame
+      niche={niche}
+      search={
+        glass.armed
+          ? { ...search, preview: true, business: glass.businessName, city: glass.city || undefined }
+          : triedLead
+            ? { ...search, preview: true, business: undefined, biz: undefined, city: undefined }
+            : { ...search, preview: true }
+      }
+      loaded={glass.armed ? loaded : null}
+      lead={glass.armed ? leadId : ""}
+    />
   );
 }

@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { GlassShardMatrix } from "@/components/GlassShardMatrix";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { FilmStage } from "@/app/[shopSlug]/page";
+import { getNicheActions } from "@/config/niche-actions";
 import { parseBusinessId, type BusinessBrandRecord } from "@/lib/axiom/business-brand";
 import { getBusinessBrand } from "@/lib/axiom/business-lookup";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
 import { leadGlassCopy } from "@/lib/axiom/funnel-glass";
+import { LEOPARD_HERO_ANIMATION, resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
 import { recordFunnelHit } from "@/lib/axiom/master";
+import { NICHES } from "@/lib/axiom/niches";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
-import { storefrontRevealHero } from "@/components/storefront-reveal";
-import { TenantPreview } from "@/components/tenant-preview";
 import ShopAdminPage from "@/app/[shop-slug]/admin/page";
 import type { ShopNiche } from "@/lib/axiom/types";
 
@@ -45,7 +46,6 @@ function NicheDemo() {
 function NichePreview() {
   const { niche } = Route.useLoaderData();
   const search = Route.useSearch();
-  const navigate = useNavigate();
   const lookupId = search.lead || search.id || "";
   const lookupSlug = search.b || search.lead_slug || "";
   const [loaded, setLoaded] = useState<BusinessBrandRecord | null>(null);
@@ -73,7 +73,17 @@ function NichePreview() {
   }, [lookupId, lookupSlug]);
 
   const glass = leadGlassCopy(loaded);
-  const triedLead = Boolean(lookupId || lookupSlug);
+  const template = NICHES[niche];
+  const name = (glass.armed ? glass.businessName : search.business || template.defaultName).trim();
+  const city = (glass.city || search.city || "").trim();
+  const film = resolveStorefrontFilm({
+    draft: null,
+    shopVideoUrl: null,
+    niche,
+    customNiche: `${niche} ${name}`,
+    fallbackVideoUrl: LEOPARD_HERO_ANIMATION,
+    shopTagline: template.tagline,
+  });
 
   useEffect(() => {
     const leadSlug = glass.armed ? loaded?.slug || "" : "";
@@ -93,39 +103,19 @@ function NichePreview() {
   }, [glass.armed, glass.county, loaded, niche, search.county, search.t, search.utm_source]);
 
   return (
-    <GlassShardMatrix
-      armed={glass.armed}
-      businessName={glass.businessName}
-      city={glass.city}
-      county={glass.county}
-      niche={glass.armed ? loaded?.nicheSlug || niche : niche}
-      hint={glass.hint}
-    >
-      <TenantPreview
-        niche={niche}
-        search={
-          glass.armed
-            ? { ...search, business: glass.businessName, city: glass.city || search.city }
-            : triedLead
-              ? { ...search, business: undefined, biz: undefined }
-              : search
-        }
-        loaded={glass.armed ? loaded : null}
-        onNiche={(next) => {
-          void navigate({ to: "/demo/$niche", params: { niche: next }, search });
-        }}
-        revealHero={storefrontRevealHero(niche)}
-        claim={
-          <Link
-            to="/onboard"
-            search={claimSearch(niche)}
-            className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-xl bg-fg px-5 text-sm font-medium text-bg sm:w-auto"
-          >
-            Claim This Storefront for Your Business
-          </Link>
-        }
-      />
-    </GlassShardMatrix>
+    <FilmStage
+      name={name}
+      tagline={film.tagline}
+      city={city}
+      src={film.hero_video_url}
+      actions={getNicheActions(niche)}
+      bookHref={`/onboard?niche=${niche}`}
+      book={
+        <Link to="/onboard" search={claimSearch(niche)}>
+          {getNicheActions(niche)?.primaryCta ?? "Claim"}
+        </Link>
+      }
+    />
   );
 }
 

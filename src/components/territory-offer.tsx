@@ -160,7 +160,7 @@ export function LeadTerritory({
 
   const nicheKey = lead && isShopNiche(lead.tradeType) ? lead.tradeType : "trade";
   const niche = NICHES[nicheKey];
-  const hero = lead ? leadHeroFor(lead.tradeType, lead.businessName, lead.tradeLabel) : NICHE_MEDIA.trade;
+  const hero = lead ? leadHeroFor(lead.tradeType, lead.businessName, lead.tradeLabel) : NICHE_MEDIA.contractor;
   const brand = resolveProspectBrand({
     fallbackName: niche.defaultName,
     fallbackAccent: accent || niche.ringColor,
@@ -209,8 +209,8 @@ export function LeadTerritory({
       introSpeed={hero.introSpeed}
       introIntensity={hero.introIntensity}
       tone={hero.tone ?? null}
-      fallbackImageUrl={NICHE_MEDIA.trade.heroImageUrl}
-      fallbackVideoUrl={NICHE_MEDIA.trade.heroVideoUrl}
+      fallbackImageUrl={NICHE_MEDIA.contractor.heroImageUrl}
+      fallbackVideoUrl={NICHE_MEDIA.contractor.heroVideoUrl}
       bookLabel={nicheCopy(niche.niche).bookLabel}
       bookHref="#territory"
       niche={lead?.tradeLabel || niche.niche}

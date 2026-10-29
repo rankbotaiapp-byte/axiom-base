@@ -1,4 +1,5 @@
 import type { BulkLeadInput } from "./bulk-import.ts";
+import { HERO_LOOP_FILINGS } from "./hero-loop-catalog.ts";
 import {
   CALIFORNIA_MORE,
   FLORIDA_MORE,
@@ -165,55 +166,11 @@ export const CALIFORNIA_COUNTIES = appendCounties("CA", CALIFORNIA_HUB_COUNTIES,
 export const PENNSYLVANIA_COUNTIES = appendCounties("PA", PENNSYLVANIA_HUB_COUNTIES, PENNSYLVANIA_MORE);
 export const NEW_YORK_COUNTIES = appendCounties("NY", NEW_YORK_HUB_COUNTIES, NEW_YORK_MORE);
 
-/** Craft word used in the business title, and the filing phrase stored as the trade. */
-const SWEEP_FILINGS: readonly { craft: string; phrase: string }[] = [
-  { craft: "Guide", phrase: "Guide services" },
-  { craft: "Training", phrase: "Fitness coaching / Personal training" },
-  { craft: "Combat", phrase: "Combat sports" },
-  { craft: "Bodywork", phrase: "Massage and bodywork" },
-  { craft: "Lessons", phrase: "Lessons and tutoring" },
-  { craft: "Salon", phrase: "Hair salon" },
-  { craft: "Lash", phrase: "Nails, lashes, makeup" },
-  { craft: "Tattoo", phrase: "Tattoo shop" },
-  { craft: "Photo", phrase: "Photography" },
-  { craft: "Grooming", phrase: "Pet grooming" },
-  { craft: "Sessions", phrase: "Music artist / Rapper" },
-  { craft: "Creator", phrase: "Content creator" },
-  { craft: "Prompt", phrase: "AI prompt engineering and creation" },
-  { craft: "Landscaper", phrase: "Landscaper" },
-  { craft: "Foodtruck", phrase: "Mobile food truck" },
-  { craft: "Dogwalk", phrase: "Dog walking" },
-  { craft: "Detailer", phrase: "Mobile detailer" },
-  { craft: "Hunting", phrase: "Private hunting guide" },
-  { craft: "Physio", phrase: "Physical therapy" },
-  { craft: "Bowtech", phrase: "Custom bow technician" },
-  { craft: "Performer", phrase: "Entertainer" },
-  { craft: "Events", phrase: "Events" },
-  { craft: "Build", phrase: "General contractor / Home services" },
-  { craft: "Cleaning", phrase: "Home cleaning" },
-  { craft: "Field", phrase: "Field service" },
-  { craft: "Keys", phrase: "Mobile locksmith" },
-  { craft: "Firewood", phrase: "Firewood cutting" },
-  { craft: "Watch", phrase: "Private security" },
-  { craft: "Practice", phrase: "Practice" },
-  { craft: "Ledger", phrase: "Counsel" },
-  { craft: "Barber", phrase: "Barber" },
-  { craft: "Studio", phrase: "Studio" },
-  { craft: "Retail", phrase: "Retail / Merchandise" },
-  { craft: "Independent", phrase: "Sole proprietor" },
-  { craft: "Electrical", phrase: "Electrical" },
-  { craft: "Plumbing", phrase: "Plumbing" },
-  { craft: "HVAC", phrase: "HVAC" },
-  { craft: "Roofing", phrase: "Roofing" },
-  { craft: "Drywall", phrase: "Drywall" },
-  { craft: "Framing", phrase: "Framing" },
-  { craft: "Concrete", phrase: "Concrete" },
-  { craft: "Handyman", phrase: "Handyman" },
-  { craft: "Lock", phrase: "Lock Services" },
-  { craft: "Cordwood", phrase: "Firewood Services" },
-  { craft: "Construction", phrase: "Construction" },
-  { craft: "Mechanic", phrase: "Mobile mechanic" },
-];
+/** Craft word + filing phrase — locked to the 21 verified hero loops. */
+const SWEEP_FILINGS: readonly { craft: string; phrase: string }[] = HERO_LOOP_FILINGS.map((row) => ({
+  craft: row.craft,
+  phrase: row.phrase,
+}));
 
 const FIRST = ["Maren", "Cole", "Dana", "Jonah", "Elena", "Priya", "Noah", "Leah", "Nina", "Luis", "Amira", "Claire"];
 const LAST = ["Holt", "Brennan", "Okonkwo", "Hale", "Voss", "Shah", "Feldman", "Ortiz", "Brooks", "Navarro", "Nguyen", "Greene"];
@@ -306,27 +263,10 @@ export function illinoisSweepSlice(offset: number, limit: number): BulkLeadInput
 }
 
 /**
- * Niches filed after the first Oregon, Texas hub, and Florida hub pass.
- * Kept separate so the original 2,000-row county windows keep their slugs.
+ * Supplement pass reuses the verified hero-loop filings so late windows
+ * never invent crafts outside the 21-loop catalog.
  */
-const LATE_FILING_PHRASES = [
-  "Content creator",
-  "AI prompt engineering and creation",
-  "Entertainer",
-  "Landscaper",
-  "Mobile food truck",
-  "Dog walking",
-  "Mobile detailer",
-  "Private hunting guide",
-  "Physical therapy",
-  "Custom bow technician",
-] as const;
-
-const LATE_FILINGS = LATE_FILING_PHRASES.map((phrase) => {
-  const filing = SWEEP_FILINGS.find((row) => row.phrase === phrase);
-  if (!filing) throw new Error(`Missing late filing phrase: ${phrase}`);
-  return filing;
-});
+const LATE_FILINGS = SWEEP_FILINGS;
 
 /** Same density as one craft in the 2,000-row county window. */
 const SUPPLEMENT_COPIES = Math.floor(SWEEP_PER_COUNTY / SWEEP_FILINGS.length);

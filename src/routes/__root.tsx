@@ -50,13 +50,13 @@ export const Route = createRootRoute({
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@500;700&family=Montserrat:wght@500;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@500;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Fira+Code:wght@450;500;600&family=Inter:wght@400;500;600;700&display=swap",
       },
     ],
   }),
   notFoundComponent: () => (
-    <main className="grid min-h-dvh place-items-center bg-bg px-6 text-center text-fg">
-      <div>
+    <main className="neon-shell grid min-h-dvh place-items-center px-6 text-center text-fg">
+      <div className="glass-card reveal-up rounded-2xl px-8 py-10">
         <p className="font-display text-3xl">Page not found.</p>
         <a href="/" className="mt-4 inline-block text-sm text-muted">
           Back to Axiom
@@ -73,7 +73,7 @@ function RootDocument() {
       <head>
         <HeadContent />
       </head>
-      <body className="bg-transparent font-sans text-fg">
+      <body className="bg-transparent font-sans text-fg antialiased">
         <FluidField />
         <div className="relative z-10">
           <PreviewHostBridge />

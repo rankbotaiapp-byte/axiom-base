@@ -1,50 +1,26 @@
+import {
+  CATALOG_NICHES,
+  isCatalogNiche,
+  resolveCatalogNiche,
+  type CatalogNiche,
+} from "@/config/catalog";
 import type { HeroEffect } from "./hero-brand";
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";
 import type { LayoutBlock, ThemeProfile } from "./storefront";
 import type { TradeProfile } from "./trade-layout";
 
-export const SHOP_NICHES = [
-  "guide",
-  "fitness",
-  "combat",
-  "wellness",
-  "lessons",
-  "salon",
-  "beauty",
-  "tattoo",
-  "photo",
-  "pets",
-  "music",
-  "creator",
-  "prompt",
-  "entertainer",
-  "events",
-  "landscaper",
-  "foodtruck",
-  "dogwalk",
-  "detailer",
-  "hunting",
-  "therapy",
-  "bowtech",
-  "contractor",
-  "clean",
-  "field",
-  "locksmith",
-  "firewood",
-  "security",
-  "practice",
-  "counsel",
-  "location",
-  "studio",
-  "retail",
-  "trade",
-] as const;
-
-export type ShopNiche = (typeof SHOP_NICHES)[number];
+/** Public + provisionable niches — the verified 21-loop catalog only. */
+export const SHOP_NICHES = CATALOG_NICHES;
+export type ShopNiche = CatalogNiche;
 
 export function isShopNiche(value: string): value is ShopNiche {
-  return (SHOP_NICHES as readonly string[]).includes(value);
+  return isCatalogNiche(value);
+}
+
+/** Coerce legacy DB niches onto the verified catalog. */
+export function normalizeShopNiche(value: string | null | undefined): ShopNiche {
+  return resolveCatalogNiche(value);
 }
 
 /** flat is one price. person and boat are how a guide outfit charges. */

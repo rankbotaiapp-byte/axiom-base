@@ -89,150 +89,37 @@ export type NicheLayout = {
   heading: string;
 };
 
-const LAYOUTS: Record<ShopNiche, NicheLayout> = {
-  firewood: {
-    modules: ["workflow", "bulk", "species", "dropzone"],
-    fields: ["cords", "species", "cuts", "deliveryNote", "dropZones", "radiusMiles"],
-    kicker: "The cord",
-    heading: "Cut, deliver, stack.",
+const DEFAULT_LAYOUT: NicheLayout = {
+  modules: ["workflow", "radius"],
+  fields: ["radiusMiles", "note"],
+  kicker: "The book",
+  heading: "How a time is sold.",
+};
+
+const LAYOUTS: Partial<Record<ShopNiche, NicheLayout>> = {
+  auto: {
+    modules: ["callout", "radius"],
+    fields: ["emergencyCents", "radiusMiles", "responseMin"],
+    kicker: "The bay",
+    heading: "How fast the van rolls.",
   },
-  locksmith: {
-    modules: ["dispatch", "callout", "kinds", "radius"],
-    fields: ["dispatchOn", "responseMin", "emergencyCents", "radiusMiles", "kinds"],
-    kicker: "The van",
-    heading: "Lockout, rekey, or the car.",
-  },
-  landscaper: {
-    modules: ["kinds", "radius"],
-    fields: ["kinds", "radiusMiles", "note"],
-    kicker: "The yard",
-    heading: "What the visit covers.",
-  },
-  foodtruck: {
-    modules: ["kinds", "radius"],
-    fields: ["kinds", "radiusMiles", "note"],
-    kicker: "The window",
-    heading: "What the truck is booked for.",
-  },
-  dogwalk: {
-    modules: ["kinds", "radius"],
-    fields: ["kinds", "radiusMiles", "note"],
-    kicker: "The leash",
-    heading: "What the walk covers.",
-  },
-  detailer: {
-    modules: ["kinds", "radius"],
-    fields: ["kinds", "radiusMiles", "note"],
-    kicker: "The driveway",
-    heading: "What the van is booked for.",
-  },
-  hunting: {
-    modules: ["party", "workflow"],
-    fields: ["partyMax", "note"],
-    kicker: "The hunt",
-    heading: "How the day goes out.",
-  },
-  therapy: {
-    modules: ["session"],
-    fields: ["note"],
-    kicker: "The plan of care",
-    heading: "How a therapy visit is booked.",
-  },
-  bowtech: {
-    modules: ["kinds"],
-    fields: ["kinds", "note"],
-    kicker: "The bench",
-    heading: "What the bow needs.",
-  },
-  guide: {
-    modules: ["party", "workflow"],
-    fields: ["partyMax", "note"],
-    kicker: "The launch",
-    heading: "How the boat goes out.",
-  },
-  fitness: {
-    modules: ["session", "party"],
-    fields: ["partyMax", "note"],
-    kicker: "The floor",
-    heading: "How the hour is sold.",
-  },
-  combat: {
-    modules: ["rounds", "workflow"],
-    fields: ["note"],
-    kicker: "The gym",
-    heading: "How a round is booked.",
-  },
-  wellness: {
-    modules: ["session"],
-    fields: ["note"],
-    kicker: "The table",
-    heading: "How the hour is held.",
-  },
-  lessons: {
-    modules: ["session", "party"],
-    fields: ["partyMax", "note"],
-    kicker: "The lesson",
-    heading: "Who the hour is for.",
-  },
-  salon: {
+  barber: {
     modules: ["chair"],
     fields: ["note"],
     kicker: "The chair",
     heading: "What the chair is booked for.",
   },
-  beauty: {
-    modules: ["chair", "kinds"],
-    fields: ["kinds", "note"],
-    kicker: "The set",
-    heading: "What the set includes.",
-  },
-  tattoo: {
-    modules: ["chair", "workflow"],
-    fields: ["note"],
-    kicker: "The sitting",
-    heading: "How a piece is booked.",
-  },
-  photo: {
-    modules: ["session"],
-    fields: ["note"],
-    kicker: "The shoot",
-    heading: "How the hour is shot.",
-  },
-  pets: {
+  "bow-tech": {
     modules: ["kinds"],
     fields: ["kinds", "note"],
-    kicker: "The coat",
-    heading: "What the groom covers.",
+    kicker: "The bench",
+    heading: "What the bow needs.",
   },
-  creator: {
-    modules: ["session", "workflow"],
-    fields: ["note"],
-    kicker: "The edit",
-    heading: "Shoot, cut, or both.",
-  },
-  prompt: {
-    modules: ["session", "workflow"],
-    fields: ["note"],
-    kicker: "The prompt",
-    heading: "Write it, build it, or both.",
-  },
-  entertainer: {
-    modules: ["session", "coverage"],
-    fields: ["note"],
-    kicker: "The set",
-    heading: "How the night is booked.",
-  },
-  music: {
-    modules: ["session", "workflow"],
-    fields: ["note"],
-    kicker: "The room",
-    heading: "Booth, mix, or the night.",
-  },
-  events: {
-    modules: ["coverage", "workflow"],
-    fields: ["note"],
-    kicker: "The date",
-    heading: "How a date is held.",
+  canine: {
+    modules: ["kinds"],
+    fields: ["kinds", "note"],
+    kicker: "The run",
+    heading: "What the visit covers.",
   },
   contractor: {
     modules: ["radius", "workflow"],
@@ -240,17 +127,65 @@ const LAYOUTS: Record<ShopNiche, NicheLayout> = {
     kicker: "The job",
     heading: "Where the crew will go.",
   },
-  clean: {
+  electrical: {
+    modules: ["dispatch", "callout", "radius"],
+    fields: ["dispatchOn", "responseMin", "emergencyCents", "radiusMiles"],
+    kicker: "The panel",
+    heading: "How the call is covered.",
+  },
+  fabrication: {
+    modules: ["workflow"],
+    fields: ["note"],
+    kicker: "The shop",
+    heading: "Cut, fit, finish.",
+  },
+  forestry: {
+    modules: ["workflow", "bulk", "species", "dropzone"],
+    fields: ["cords", "species", "cuts", "deliveryNote", "dropZones", "radiusMiles"],
+    kicker: "The stand",
+    heading: "Cut, deliver, stack.",
+  },
+  glasswork: {
+    modules: ["session"],
+    fields: ["note"],
+    kicker: "The pane",
+    heading: "How the install is booked.",
+  },
+  hvac: {
     modules: ["kinds", "radius"],
     fields: ["kinds", "radiusMiles", "note"],
-    kicker: "The house",
-    heading: "What the clean covers.",
+    kicker: "The system",
+    heading: "What the visit covers.",
   },
-  field: {
-    modules: ["callout", "radius"],
-    fields: ["emergencyCents", "radiusMiles", "responseMin"],
-    kicker: "The curb",
-    heading: "How fast the van rolls.",
+  landscaping: {
+    modules: ["kinds", "radius"],
+    fields: ["kinds", "radiusMiles", "note"],
+    kicker: "The yard",
+    heading: "What the visit covers.",
+  },
+  machining: {
+    modules: ["workflow"],
+    fields: ["note"],
+    kicker: "The spindle",
+    heading: "How the ticket is sold.",
+  },
+  plumbing: {
+    modules: ["dispatch", "callout", "radius"],
+    fields: ["dispatchOn", "responseMin", "emergencyCents", "radiusMiles"],
+    kicker: "The line",
+    heading: "How the call is covered.",
+  },
+  "power-sports": {
+    modules: ["session", "party"],
+    fields: ["partyMax", "note"],
+    kicker: "The block",
+    heading: "Who the hour is for.",
+  },
+  roofing: {
+    modules: ["radius", "workflow"],
+    fields: ["radiusMiles", "note"],
+    kicker: "The pitch",
+    heading: "Where the crew will go.",
   },
   security: {
     modules: ["coverage", "radius"],
@@ -258,41 +193,35 @@ const LAYOUTS: Record<ShopNiche, NicheLayout> = {
     kicker: "The post",
     heading: "How the door is covered.",
   },
-  practice: {
-    modules: ["session"],
-    fields: ["note"],
-    kicker: "The chart",
-    heading: "How a new patient is booked.",
-  },
-  counsel: {
-    modules: ["session"],
-    fields: ["note"],
-    kicker: "The hour",
-    heading: "How a consult is booked.",
-  },
-  location: {
-    modules: ["chair"],
-    fields: ["note"],
-    kicker: "The chair",
-    heading: "What the chair is booked for.",
-  },
-  studio: {
-    modules: ["session"],
-    fields: ["note"],
-    kicker: "The build",
-    heading: "How an engagement starts.",
-  },
-  retail: {
-    modules: ["kinds"],
-    fields: ["kinds", "note"],
-    kicker: "The shelf",
-    heading: "What is counted.",
-  },
-  trade: {
+  "stone-masonry": {
     modules: ["workflow"],
     fields: ["note"],
-    kicker: "The book",
-    heading: "How a time is sold.",
+    kicker: "The wall",
+    heading: "How the course is booked.",
+  },
+  taxidermy: {
+    modules: ["workflow"],
+    fields: ["note"],
+    kicker: "The mount",
+    heading: "How a piece is booked.",
+  },
+  "tool-repair": {
+    modules: ["kinds"],
+    fields: ["kinds", "note"],
+    kicker: "The bench",
+    heading: "What the tool needs.",
+  },
+  "water-systems": {
+    modules: ["dispatch", "radius"],
+    fields: ["radiusMiles", "note"],
+    kicker: "The system",
+    heading: "How the service is booked.",
+  },
+  woodworking: {
+    modules: ["workflow"],
+    fields: ["note"],
+    kicker: "The mill",
+    heading: "How the build is booked.",
   },
 };
 
@@ -316,22 +245,21 @@ const EMPTY: TradeProfile = {
 };
 
 const DEFAULT_KINDS: Partial<Record<ShopNiche, string[]>> = {
-  locksmith: ["Lockout", "Rekey", "Automotive"],
-  landscaper: ["Mow", "Cleanup", "Planting"],
-  foodtruck: ["Lunch stop", "Private event", "Catering tray"],
-  dogwalk: ["Solo walk", "Pack walk", "Midday"],
-  detailer: ["Exterior", "Full detail", "Interior"],
-  hunting: ["Half day", "Full day", "Scout"],
-  therapy: ["Evaluation", "Follow-up", "Return"],
-  bowtech: ["Tune", "Setup", "Repair"],
-  pets: ["Bath", "Full groom", "Nails"],
-  clean: ["Standard", "Deep clean", "Move-out"],
-  beauty: ["Nails", "Lashes", "Makeup"],
+  electrical: ["Lockout", "Rekey", "Panel"],
+  landscaping: ["Mow", "Cleanup", "Planting"],
+  "water-systems": ["Service", "Filter", "Well"],
+  canine: ["Bath", "Board", "Walk"],
+  auto: ["Exterior", "Full detail", "Interior"],
+  forestry: ["Half day", "Full day", "Scout"],
+  "tool-repair": ["Tune", "Setup", "Repair"],
+  "bow-tech": ["Tune", "Setup", "Repair"],
+  hvac: ["Standard", "Deep clean", "Move-out"],
+  barber: ["Cut", "Fade", "Beard"],
   retail: ["House cap", "Shop print", "Counter bundle"],
 };
 
 export function layoutFor(niche: ShopNiche): NicheLayout {
-  return LAYOUTS[niche];
+  return LAYOUTS[niche] ?? DEFAULT_LAYOUT;
 }
 
 export function defaultTradeProfile(niche: ShopNiche): TradeProfile {
@@ -344,11 +272,11 @@ export function defaultTradeProfile(niche: ShopNiche): TradeProfile {
     hud: applyDepthStudio({ ...EMPTY.hud, layers: cloneHeroLayout(EMPTY.hud.layers) }, niche),
     studio: { ...EMPTY.studio },
     studioIdentity: emptyStudioIdentity(),
-    partyMax: niche === "guide" ? 8 : niche === "fitness" || niche === "lessons" ? 4 : EMPTY.partyMax,
-    radiusMiles: niche === "firewood" ? 25 : EMPTY.radiusMiles,
-    deliveryNote: niche === "firewood" ? "The drop is the driveway. A tight lane needs a note." : "",
-    dropZones: niche === "firewood" ? ["New Era", "Medford", "Ashland"] : [],
-    responseMin: niche === "field" ? 45 : EMPTY.responseMin,
+    partyMax: niche === "landscaping" || niche === "power-sports" ? 8 : EMPTY.partyMax,
+    radiusMiles: niche === "forestry" ? 25 : EMPTY.radiusMiles,
+    deliveryNote: niche === "forestry" ? "The drop is the driveway. A tight lane needs a note." : "",
+    dropZones: niche === "forestry" ? ["New Era", "Medford", "Ashland"] : [],
+    responseMin: niche === "auto" ? 45 : EMPTY.responseMin,
   };
 }
 

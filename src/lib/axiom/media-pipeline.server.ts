@@ -215,7 +215,7 @@ export async function populateStorefrontFromMedia(userId: string, shopId: string
   if (placed.logoId) {
     const logoUrl = urlFor(placed.logoId);
     if (logoUrl) {
-      const niche = isShopNiche(row.niche) ? row.niche : "trade";
+      const niche = isShopNiche(row.niche) ? row.niche : "contractor";
       const profile = parseTradeProfile(niche, row.trade_profile);
       profile.logoUrl = logoUrl;
       try {
@@ -281,7 +281,7 @@ export async function draftSocialPost(
     assets.find((item) => item.isHero) ??
     assets[0];
   const city = cityFromAddress(row.address);
-  const niche = isShopNiche(row.niche) ? row.niche : "trade";
+  const niche = isShopNiche(row.niche) ? row.niche : "contractor";
   const trade = shopTradeLabel({ niche, customNiche: row.custom_niche ?? "" });
   const fallback = socialCaptionDraft({
     shopName: row.name,

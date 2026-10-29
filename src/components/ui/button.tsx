@@ -4,16 +4,17 @@ import { Magnetic } from "@/components/magnetic";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 font-medium select-none transition-[scale,background-color,color,box-shadow,opacity] duration-150 ease-out active:not-disabled:scale-[0.96] disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+  "inline-flex items-center justify-center gap-2 font-medium select-none transition-[scale,background-color,color,box-shadow,opacity] duration-150 ease-out active:not-disabled:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
   {
     variants: {
       variant: {
         primary:
-          "bg-fg text-bg shadow-[0_0_0_1px_rgba(243,241,235,0.08)] hover:bg-fg/90",
+          "bg-fg text-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-fg)_12%,transparent)] hover:bg-fg/92",
         secondary:
-          "glass-panel text-fg hover:text-fg",
+          "glass-panel text-fg hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_45%,transparent),0_0_24px_color-mix(in_srgb,var(--color-accent)_16%,transparent)]",
         ghost: "glass-panel text-fg hover:text-fg",
-        accent: "bg-accent text-bg hover:bg-accent/90",
+        accent:
+          "bg-accent text-bg shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_32%,transparent)] hover:bg-accent/90",
       },
       size: {
         sm: "h-9 rounded-[10px] px-3 text-sm",

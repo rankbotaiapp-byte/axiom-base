@@ -1,12 +1,12 @@
 /** Portal opener, then the single auto-hero film, then the live desk. */
-export const AUTO_HERO_SRC = "/media/heroes/auto-hero.mp4";
-export const AUTO_REPAIR_SRC = "/media/heroes/auto-repair.mp4";
+export const AUTO_HERO_SRC = "/media/auto-hero-animation.mp4";
+export const AUTO_REPAIR_SRC = "/media/auto-hero-animation.mp4";
 
 /** The timed reel stays on auto-hero. If that file is absent, play the auto-repair film. */
 export function swapMissingAutoHero(video: HTMLVideoElement) {
   if (video.dataset.repairFallback === "1") return;
   const src = video.currentSrc || video.src;
-  if (!src.includes("auto-hero.mp4")) return;
+  if (!/auto-hero(?:-animation)?(\.mp4)+/i.test(src)) return;
   video.dataset.repairFallback = "1";
   video.src = AUTO_REPAIR_SRC;
   void video.play().catch(() => {});

@@ -1,6 +1,8 @@
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { nicheForLead } from "./directory";
+import { assertCatalogNiche, catalogFilmUrl } from "@/config/catalog";
+import { isCatalogHeroUrl } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
 import { DEFAULT_HOURS, isPublicNiche, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
@@ -10,7 +12,7 @@ import { parseGlowEnabled, parseLayout, parseNeonAccent, parseThemeProfile, pars
 import { parseTradeProfile, type TradeProfile } from "./trade-layout";
 import { dueNowCents, isCollectionMode, isPricingType, listPriceCents, type MerchantPrice } from "./merchant-pricing";
 import { keepHeroBrand, parseHeroEffect, parseMorphDuration, readHeroBrandFallback } from "./hero-brand";
-import { isShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
+import { isShopNiche, normalizeShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {
   id: string;
   slug: string;
@@ -89,7 +91,7 @@ function finiteNumber(value: unknown, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
-  const niche = isShopNiche(r.niche) ? r.niche : "location";
+  const niche = normalizeShopNiche(r.niche);
   return {
     id: r.id,
     slug: r.slug,
@@ -724,12 +726,15 @@ export async function provisionShopFromNiche(input: {
   ownerName?: string;
   leadSlug?: string;
   customNiche?: string;
+  /** Optional pin to a verified `*-hero-animation.mp4` from the public catalog. */
+  heroFilm?: string;
 }): Promise<{
   slug: string;
   shopId: string;
   created: boolean;
 }> {
-  const template = NICHES[input.niche];
+  const niche = assertCatalogNiche(input.niche);
+  const template = NICHES[niche];
   if (!template) throw new Error("Unknown niche");
   if (!input.userId) throw new Error("Sign in before opening this shop");
   const sql = await getSql();
@@ -751,8 +756,11 @@ export async function provisionShopFromNiche(input: {
       created: false
     };
   }
-  const customNiche = input.niche === "trade" ? cleanCustomNiche(input.customNiche ?? "") : "";
-  const customFilm = customNiche ? heroForCustomNiche(customNiche) : null;
+  const customNiche = cleanCustomNiche(input.customNiche ?? "");
+  const pinnedFilm =
+    typeof input.heroFilm === "string" && isCatalogHeroUrl(input.heroFilm.trim())
+      ? input.heroFilm.trim().split("?")[0]!
+      : catalogFilmUrl(niche);
   const name = input.name.trim() || customNiche || template.defaultName;
   let slug = slugify(name);
   const taken = await sql<{
@@ -780,8 +788,8 @@ export async function provisionShopFromNiche(input: {
     token: crypto.randomUUID()
   }));
   const primary = services[template.primaryServiceIndex ?? 0] ?? services[0];
-  const heroImageUrl = customFilm?.heroImageUrl || template.heroImageUrl;
-  const heroVideoUrl = customFilm?.heroVideoUrl || template.heroVideoUrl;
+  const heroImageUrl = "";
+  const heroVideoUrl = pinnedFilm || template.heroVideoUrl;
   await sql`
       insert into shops (
         id, slug, name, niche, custom_niche, tagline, description, ring_color,
@@ -866,7 +874,8 @@ export const createShopFromNicheHandler = async ({
     solo: data.solo,
     ownerName: data.ownerName,
     leadSlug: data.leadSlug,
-    customNiche: data.customNiche
+    customNiche: data.customNiche,
+    heroFilm: data.heroFilm,
   });
 };
 /** After a verified territory payment, build that lead's shop for the paying account. */
@@ -965,15 +974,23 @@ export const updateShopBrandHandler = async ({
     if (!/neon_accent|glow_enabled|layout_json/i.test(message)) throw err;
   }
   if (typeof data.catalogFilm === "string") {
-    const { isCatalogHeroUrl } = await import("./hero-films");
+    const { isCatalogHeroUrl, isPublicMediaFilm } = await import("./hero-films");
     const next = data.catalogFilm.trim();
     if (next === "default") {
-      if (isCatalogHeroUrl(row.hero_video_url)) {
+      if (isCatalogHeroUrl(row.hero_video_url) || isPublicMediaFilm(row.hero_video_url)) {
         await sql`update shops set hero_video_url = null where id = ${row.id}`;
       }
-    } else if (isCatalogHeroUrl(next)) {
+    } else if (isPublicMediaFilm(next)) {
       await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
     }
+  }
+  if (typeof data.heroFilm === "string") {
+    const next = data.heroFilm.trim().slice(0, 400);
+    const stored =
+      isPublicMediaFilm(next) ||
+      (next.startsWith("/api/hero-video/") && !next.includes("..")) ||
+      (next.startsWith("https://") && !/\s/.test(next));
+    if (stored) await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
   }
   if (data.clearHeroVideo === true) {
     await sql`update shops set hero_video_url = null where id = ${row.id}`;
@@ -990,7 +1007,7 @@ export const saveTradeProfileHandler = async ({
   const row = await loadShopRow(data.slug);
   if (!row) throw new Error("Shop not found");
   await assertCanModifyShop(row, context.userId);
-  const niche = isShopNiche(row.niche) ? row.niche : "location";
+  const niche = normalizeShopNiche(row.niche);
   const profile = parseTradeProfile(niche, data.profile);
   const sql = await getSql();
   try {
@@ -1141,7 +1158,7 @@ export const inviteEmployeeHandler = async ({
   const sql = await getSql();
   const id = newId("emp");
   const token = crypto.randomUUID();
-  const template = NICHES[row.niche as ShopNiche] ?? NICHES.location;
+  const template = NICHES[normalizeShopNiche(row.niche)] ?? NICHES.contractor;
   const avatar = template.employees[1]?.avatarUrl || template.employees[0]?.avatarUrl || "";
   await sql`
       insert into employees (
@@ -1872,7 +1889,7 @@ export const saveShopServicesHandler = async ({
 }: any) => {
   const row = await requireOwnerShop(data.slug, context.userId);
   if (data.services.length < 1 || data.services.length > 24) throw new Error("Add at least one service");
-  const niche = isShopNiche(row.niche) ? row.niche : "location";
+  const niche = normalizeShopNiche(row.niche);
   const allowed = priceUnitsFor(niche);
   const sql = await getSql();
   const kept: string[] = [];

@@ -41,6 +41,7 @@ import { Route as ApiHeroBrandRouteImport } from './routes/api/hero/brand'
 import { Route as ApiMasterAutopilotRouteImport } from './routes/api/master.autopilot'
 import { Route as ApiOutreachCronRouteImport } from './routes/api/outreach.cron'
 import { Route as ApiShopMediaAssetIdRouteImport } from './routes/api/shop-media.$assetId'
+import { Route as ApiShopsCreateRouteImport } from './routes/api/shops.create'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe.webhook'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
 import { Route as ApiAdminHeroStudioGenerateRouteImport } from './routes/api/admin/hero-studio/generate'
@@ -207,6 +208,11 @@ const ApiShopMediaAssetIdRoute = ApiShopMediaAssetIdRouteImport.update({
   path: '/api/shop-media/$assetId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShopsCreateRoute = ApiShopsCreateRouteImport.update({
+  id: '/api/shops/create',
+  path: '/api/shops/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
@@ -267,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/shop-media/$assetId': typeof ApiShopMediaAssetIdRoute
+  '/api/shops/create': typeof ApiShopsCreateRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/shop-media/$assetId': typeof ApiShopMediaAssetIdRoute
+  '/api/shops/create': typeof ApiShopsCreateRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
   '/api/shop-media/$assetId': typeof ApiShopMediaAssetIdRoute
+  '/api/shops/create': typeof ApiShopsCreateRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/shop-media/$assetId'
+    | '/api/shops/create'
     | '/api/stripe/webhook'
     | '/api/webhooks/stripe'
     | '/api/admin/hero-studio/generate'
@@ -424,6 +434,7 @@ export interface FileRouteTypes {
     | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/shop-media/$assetId'
+    | '/api/shops/create'
     | '/api/stripe/webhook'
     | '/api/webhooks/stripe'
     | '/api/admin/hero-studio/generate'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/api/master/autopilot'
     | '/api/outreach/cron'
     | '/api/shop-media/$assetId'
+    | '/api/shops/create'
     | '/api/stripe/webhook'
     | '/api/webhooks/stripe'
     | '/api/admin/hero-studio/generate'
@@ -496,6 +508,7 @@ export interface RootRouteChildren {
   ApiMasterAutopilotRoute: typeof ApiMasterAutopilotRoute
   ApiOutreachCronRoute: typeof ApiOutreachCronRoute
   ApiShopMediaAssetIdRoute: typeof ApiShopMediaAssetIdRoute
+  ApiShopsCreateRoute: typeof ApiShopsCreateRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   ApiAdminHeroStudioGenerateRoute: typeof ApiAdminHeroStudioGenerateRoute
@@ -728,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiShopMediaAssetIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shops/create': {
+      id: '/api/shops/create'
+      path: '/api/shops/create'
+      fullPath: '/api/shops/create'
+      preLoaderRoute: typeof ApiShopsCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
       path: '/api/stripe/webhook'
@@ -838,6 +858,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMasterAutopilotRoute: ApiMasterAutopilotRoute,
   ApiOutreachCronRoute: ApiOutreachCronRoute,
   ApiShopMediaAssetIdRoute: ApiShopMediaAssetIdRoute,
+  ApiShopsCreateRoute: ApiShopsCreateRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   ApiAdminHeroStudioGenerateRoute: ApiAdminHeroStudioGenerateRoute,

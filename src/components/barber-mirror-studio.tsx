@@ -4,7 +4,7 @@ import { useBiokineticEngine } from "@/hooks/use-biokinetic-engine";
 import { UNIVERSAL_FALLBACK } from "@/lib/axiom/hero-films";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
 
-const BARBER_FILM = NICHE_MEDIA.location.heroVideoUrl;
+const BARBER_FILM = NICHE_MEDIA.barber.heroVideoUrl;
 
 function barberFilm(url?: string | null) {
   if (!url || url === UNIVERSAL_FALLBACK) return BARBER_FILM;
@@ -28,7 +28,7 @@ const BARBER = /\b(barbers?|barbershops?|haircuts?)\b/i;
 /** The mirror replaces the cinematic hero for the barber book. */
 export function usesBarberMirror(niche: string, text = ""): boolean {
   if (BARBER.test(`${niche} ${text}`)) return true;
-  return niche === "location";
+  return niche === "barber";
 }
 
 export function BarberMirrorStudio({

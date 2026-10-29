@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -19,7 +19,7 @@ import {
 } from "@/lib/axiom/server";
 import { readOutreachDesk } from "@/lib/axiom/master";
 import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
-import { NICHES, PUBLIC_NICHE_ORDER, isPublicNiche, nicheCopy, shopTradeLabel } from "@/lib/axiom/niches";
+import { NICHES, PUBLIC_NICHE_ORDER, isPublicNiche, shopTradeLabel } from "@/lib/axiom/niches";
 import { resolveHeroMedia, NICHE_MEDIA } from "@/lib/axiom/media";
 import { catalogChoices, isCatalogHeroUrl, readMasterTelemetry } from "@/lib/axiom/hero-films";
 import { PreviewStudio } from "@/components/preview-studio";
@@ -33,18 +33,14 @@ import { LAYOUT_BLOCKS, type LayoutBlock } from "@/lib/axiom/storefront";
 import { BrandStudio } from "@/components/brand-studio";
 import { BrandedHeroStudio } from "@/components/branded-hero-studio";
 import { HeroMotionDesk } from "@/components/hero-motion-desk";
-import { HolographicStage } from "@/components/HolographicStage";
-import { ShopDeskSettings } from "@/components/ShopDeskSettings";
 import { compileBrandMark, parseBrandStudio, rippleTheme, themeSurface, type RippleThemeId } from "@/lib/axiom/brand-studio";
 import { brandPlate, heroAtmosphereActive } from "@/lib/axiom/hero-brand";
-import { ShopDashboardPanel } from "@/components/dashboard-controls";
 import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
 import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
 import { DesignCopilot } from "@/components/design-copilot";
-import { setAvatarScreen } from "@/components/avatar-help";
+import { setAvatarScreen } from "@/components/avatar-help-state";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
-import { TradeDesk } from "@/components/trade-desk";
 import { ProspectScan } from "@/components/prospect-scan";
 import { TodayPost } from "@/components/today-post";
 import { useAxiomRing } from "@/components/axiom-ring";
@@ -54,11 +50,16 @@ import { Wordmark } from "@/components/shop-chrome";
 import { formatMoney } from "@/lib/utils";
 import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service, Shop, ShopNotice } from "@/lib/axiom/types";
 import { CinematicHero } from "@/components/cinematic-hero";
-import { ProofGalleryManager } from "@/components/proof-gallery";
 import { PaymentGate } from "@/components/payment-gate";
 import { PricingSettings } from "@/components/pricing-settings";
-import { OwnerLaunchDesk } from "@/components/owner-launch-desk";
 import { AxiomStudio } from "@/components/axiom-studio";
+import {
+  AutopilotDesk,
+  CatalogFilmDesk,
+  MISSION_TABS,
+  MissionFrame,
+  type MissionTab,
+} from "@/components/mission-desk";
 
 export const Route = createFileRoute("/$shopSlug/admin")({
   validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master" } => {
@@ -91,6 +92,8 @@ function AdminPage() {
   const { shopSlug } = Route.useParams();
   const { stripe, desk } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const heroStudio = pathname.endsWith("/admin/hero-studio");
   const [data, setData] = useState<OpData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,19 +134,35 @@ function AdminPage() {
     return () => window.clearInterval(id);
   }, [desk, isPending, shopSlug, userId]);
 
-  if (isPending || (user && !data && !error)) {
+  if (isPending) {
     return (
       <main className="grid min-h-dvh place-items-center">
         <div className="h-10 w-48 animate-pulse rounded-full bg-fg/8" />
       </main>
     );
   }
-  if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/admin`} />;
+  if (!user) {
+    return (
+      <RedirectToSignIn
+        to="/login"
+        next={heroStudio ? `/${shopSlug}/admin/hero-studio` : `/${shopSlug}/admin`}
+      />
+    );
+  }
+  if (heroStudio) return <Outlet />;
+  if (!data && !error) {
+    return (
+      <main className="grid min-h-dvh place-items-center">
+        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/8" />
+      </main>
+    );
+  }
   if (error || !data) {
     return (
-      <main className="grid min-h-dvh place-items-center px-6 text-center">
-        <div>
-          <p className="font-display text-3xl">This console is locked.</p>
+      <main className="neon-shell grid min-h-dvh place-items-center px-6 text-center">
+        <div className="glass-card rounded-2xl px-8 py-10">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">Operator</p>
+          <p className="mt-3 font-display text-3xl">This console is locked.</p>
           <p className="mt-2 text-sm text-muted">Create your own shop to get the operator view.</p>
           <Link to="/onboard" className="mt-4 inline-block text-sm underline-offset-4 hover:underline">
             Start onboarding
@@ -170,68 +189,38 @@ export function AdminShell({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [tab, setTab] = useState<
-    | "overview"
-    | "launch"
-    | "settings"
-    | "services"
-    | "pricing"
-    | "brand"
-    | "studio"
-    | "hero"
-    | "assistant"
-    | "work"
-    | "team"
-    | "alerts"
-    | "billing"
-  >(!readonly && (!data.shop.onboarding.hero || !data.shop.onboarding.service) ? "launch" : "overview");
+  const [tab, setTab] = useState<MissionTab>("overview");
   const [linking, setLinking] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
   const paymentsLocked =
     !readonly && !data.platformDesk && data.payments.processorReady && !data.payments.chargesEnabled;
 
   useEffect(() => {
-    const screen = tab === "launch" || tab === "settings" || tab === "services" || tab === "brand" || tab === "studio" || tab === "hero" || tab === "assistant" || tab === "work" ? "storefront_editor" : "lead_dashboard";
+    const screen = tab === "services" || tab === "hero" ? "storefront_editor" : "lead_dashboard";
     setAvatarScreen(screen);
     return () => setAvatarScreen(null);
   }, [tab]);
-  const copy = nicheCopy(data.shop.niche);
-  const tabLabel: Record<typeof tab, string> = {
-    overview: "Overview",
-    launch: "Launch",
-    settings: "Settings",
-    services: copy.menuHeading,
-    pricing: "Pricing",
-    brand: "Look",
-    studio: "Axiom Studio",
-    hero: "Hero",
-    assistant: "Assistant",
-    work: "Work",
-    team: copy.staffStep,
-    alerts: "Alerts",
-    billing: "Billing",
-  };
   const setup = data.shop.onboarding;
   const needsSetup = !readonly && (!setup.hero || !setup.service || !setup.employee);
 
   return (
-    <main className="min-h-dvh bg-bg">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8">
+    <main className="neon-shell">
+      <header className="glass-panel mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 sm:mx-6 sm:px-6">
         <div>
           <Wordmark />
           {data.platformDesk ? (
-            <p className="mt-2 text-sm text-copper">Platform desk. Changes write onto this shop's book.</p>
+            <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-copper">Platform desk · live writes</p>
           ) : null}
           <p className="mt-2 text-sm text-muted">
-            {data.shop.name}
+            <span className="font-mono text-fg">{data.shop.name}</span>
             {readonly ? " · live demo preview" : ""}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {data.platformDesk ? (
             <Link
               to="/master-admin"
-              className="inline-flex h-11 items-center rounded-xl px-3 text-sm text-copper hover:text-fg"
+              className="glass-panel inline-flex h-11 items-center rounded-xl px-3 text-sm text-copper hover:text-fg"
             >
               Master desk
             </Link>
@@ -241,14 +230,14 @@ export function AdminShell({
             params={{ shopSlug: data.shop.slug }}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-11 items-center rounded-xl bg-fg px-4 text-sm font-medium text-bg"
+            className="inline-flex h-11 items-center rounded-xl bg-fg px-4 text-sm font-medium text-bg shadow-[0_0_20px_color-mix(in_srgb,var(--color-fg)_18%,transparent)]"
           >
             View Customer-Facing Site
           </Link>
           <Link
             to="/$shopSlug/employee"
             params={{ shopSlug: data.shop.slug }}
-            className="inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted hover:text-fg"
+            className="glass-panel inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted hover:text-fg"
           >
             Station
           </Link>
@@ -259,109 +248,85 @@ export function AdminShell({
         <SetupStrip shop={data.shop} services={data.services} readonly={readonly} onDone={onReload} />
       ) : null}
 
-      <nav className="flex gap-1 overflow-x-auto px-5 sm:px-8">
-        {(["overview", "studio", "launch", "settings", "services", "pricing", "brand", "hero", "assistant", "work", "team", "alerts", "billing"] as const).map((t) => (
+      <nav className="mission-tabs" aria-label="Mission control">
+        {MISSION_TABS.map((item) => (
           <button
-            key={t}
+            key={item.id}
             type="button"
-            onClick={() => setTab(t)}
-            className="h-11 shrink-0 rounded-xl px-3 text-sm"
-            style={
-              tab === t
-                ? { background: "var(--color-surface)", color: "var(--color-fg)" }
-                : { color: "var(--color-muted)" }
-            }
+            onClick={() => setTab(item.id)}
+            className={tab === item.id ? "is-on" : undefined}
           >
-            {tabLabel[t]}
+            {item.label}
           </button>
         ))}
       </nav>
 
-      <div className="relative px-5 py-8 sm:px-8">
+      <MissionFrame>
         {tab === "overview" ? (
-          <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
-        ) : null}
-        {tab === "launch" ? (
-          <OwnerLaunchDesk shop={data.shop} readonly={readonly} onReload={onReload} />
-        ) : null}
-        {tab === "settings" ? (
-          <div className="grid gap-6">
-            <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
-            <StorefrontPanel
+          <div className="grid gap-8">
+            <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
+            <PaymentsPanel
               shop={data.shop}
-              notifyEmail={data.notifyEmail}
-              notifyPhone={data.notifyPhone}
+              billing={data.billing}
+              payments={data.payments}
+              appointments={data.appointments}
               readonly={readonly}
-              platformDesk={Boolean(data.platformDesk)}
               onReload={onReload}
             />
-            <TradeDesk shop={data.shop} readonly={readonly} onReload={onReload} />
-            <ShopDashboardPanel
-              shop={data.shop}
-              employees={data.employees}
-              disabled={readonly && !data.shop.isShowcase}
-              onReload={onReload}
-            />
-            <ShopDeskSettings />
           </div>
         ) : null}
         {tab === "services" ? (
-          <ServicesPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
-        ) : null}
-        {tab === "pricing" ? <PricingSettings slug={data.shop.slug} readonly={readonly} /> : null}
-        {tab === "brand" ? (
-          <BrandPanel
-            shop={data.shop}
-            services={data.services}
-            readonly={readonly}
-            onReload={onReload}
-          />
-        ) : null}
-        {tab === "studio" ? <AxiomStudio shop={data.shop} readonly={readonly} onReload={onReload} /> : null}
-        {tab === "hero" ? (
-          <div className="grid gap-6">
-            <Link
-              to="/$shopSlug/admin/hero-studio"
-              params={{ shopSlug: data.shop.slug }}
-              className="hero-studio-back"
-            >
-              Open the branding studio
-            </Link>
-            <HeroMotionDesk shop={data.shop} readonly={readonly} onReload={onReload} />
-            <BrandedHeroStudio shop={data.shop} readonly={readonly} onReload={onReload} />
+          <div className="grid gap-8">
+            <ServicesPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
+            <PricingSettings slug={data.shop.slug} readonly={readonly} />
+            <TeamPanel shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
           </div>
         ) : null}
-        {tab === "assistant" ? <HolographicStage businessName={data.shop.name} /> : null}
-        {tab === "work" ? (
-          <ProofGalleryManager
-            slug={data.shop.slug}
-            niche={data.shop.niche}
-            heading={copy.gallery}
-            readonly={readonly}
-          />
+        {tab === "hero" ? (
+          <div className="grid gap-6">
+            <CatalogFilmDesk shop={data.shop} readonly={readonly} onReload={onReload} />
+            <details className="mission-more">
+              <summary>Branding tools</summary>
+              <div className="grid gap-8 pt-4">
+                <BrandPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
+                <HeroMotionDesk shop={data.shop} readonly={readonly} onReload={onReload} />
+                <BrandedHeroStudio shop={data.shop} readonly={readonly} onReload={onReload} />
+                <AxiomStudio shop={data.shop} readonly={readonly} onReload={onReload} />
+              </div>
+            </details>
+          </div>
         ) : null}
-        {tab === "team" ? (
-          <TeamPanel shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
-        ) : null}
-        {tab === "alerts" ? (
-          <AlertsPanel
-            shop={data.shop}
-            notifyEmail={data.notifyEmail}
-            notifyPhone={data.notifyPhone}
-            notices={data.notices}
-            readonly={readonly}
-            onReload={onReload}
-          />
-        ) : null}
-        {tab === "billing" ? (
-          <PaymentsPanel
-            shop={data.shop}
-            billing={data.billing}
-            payments={data.payments}
-            appointments={data.appointments}
-            readonly={readonly}
-            onReload={onReload}
-          />
+        {tab === "autopilot" ? (
+          <div className="grid gap-6">
+            <AutopilotDesk
+              slug={data.shop.slug}
+              appointments={data.appointments}
+              notices={data.notices}
+              disabled={readonly && !data.shop.isShowcase}
+            />
+            <details className="mission-more">
+              <summary>Channels and the shop card</summary>
+              <div className="grid gap-8 pt-4">
+                <AlertsPanel
+                  shop={data.shop}
+                  notifyEmail={data.notifyEmail}
+                  notifyPhone={data.notifyPhone}
+                  notices={data.notices}
+                  readonly={readonly}
+                  onReload={onReload}
+                />
+                <SettingsPanel shop={data.shop} readonly={readonly} onReload={onReload} />
+                <StorefrontPanel
+                  shop={data.shop}
+                  notifyEmail={data.notifyEmail}
+                  notifyPhone={data.notifyPhone}
+                  readonly={readonly}
+                  platformDesk={Boolean(data.platformDesk)}
+                  onReload={onReload}
+                />
+              </div>
+            </details>
+          </div>
         ) : null}
         {paymentsLocked && tab === "overview" ? (
           <PaymentGate
@@ -382,7 +347,7 @@ export function AdminShell({
             }}
           />
         ) : null}
-      </div>
+      </MissionFrame>
       <AdminWelcomeTour
         shopSlug={data.shop.slug}
         shopName={data.shop.name}
@@ -412,7 +377,7 @@ function SetupStrip({
 }) {
   const flags = shop.onboarding;
   return (
-    <div className="mx-5 mb-4 rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] sm:mx-8">
+    <div className="mx-5 mb-4 glass-card rounded-2xl p-4 sm:mx-8">
       <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Guided loop · admin setup</p>
       <p className="mt-1 font-display text-2xl">Three moves, then book yourself.</p>
       <ol className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
@@ -488,7 +453,7 @@ function Overview({
         <Stat label="Bookings" value={String(data.appointments.length)} />
         <Stat label="Left on the table" value={formatMoney(leaked)} hint={`${cancelled.length} cancelled`} />
       </div>
-        <div className="mt-4 h-48 rounded-2xl bg-surface p-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <div className="mt-4 h-48 glass-card rounded-2xl p-3">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chart}>
               <defs>
@@ -539,7 +504,7 @@ function Overview({
               .filter((notice) => notice.channel === "inbox" && notice.subject.startsWith("Audit"))
               .slice(0, 6)
               .map((notice) => (
-                <li key={notice.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <li key={notice.id} className="glass-card rounded-2xl p-4">
                   <p className="font-medium">{notice.subject.replace(/^Audit · /, "")}</p>
                   <p className="mt-1 whitespace-pre-line text-sm text-muted">{notice.body}</p>
                 </li>
@@ -560,7 +525,7 @@ function Overview({
         ) : (
           <ul className="mt-3 grid gap-2">
             {pending.map((a) => (
-              <li key={a.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+              <li key={a.id} className="glass-card rounded-2xl p-4">
                 <p className="font-medium">{a.customerName}</p>
                 <p className="text-sm text-muted">
                   {a.serviceName} with {a.employeeName}
@@ -603,10 +568,10 @@ function Overview({
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="lift-card rounded-2xl bg-surface/80 p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)] backdrop-blur-md">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 font-display text-3xl tabular">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-faint">{hint}</p> : null}
+    <div className="glass-card lift-card rounded-2xl p-4">
+      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">{label}</p>
+      <p className="mt-1 font-mono text-3xl tabular-nums tracking-tight">{value}</p>
+      {hint ? <p className="mt-1 font-mono text-[11px] text-faint">{hint}</p> : null}
     </div>
   );
 }
@@ -643,7 +608,7 @@ function BrandPanel({
   const [localVideo, setLocalVideo] = useState<string | null>(null);
   const nicheFilm = NICHE_MEDIA[shop.niche]?.heroVideoUrl ?? "";
   const storedPin =
-    isCatalogHeroUrl(shop.heroVideoUrl) && shop.heroVideoUrl !== nicheFilm && shop.heroVideoUrl !== NICHE_MEDIA.trade.heroVideoUrl
+    isCatalogHeroUrl(shop.heroVideoUrl) && shop.heroVideoUrl !== nicheFilm
       ? shop.heroVideoUrl
       : "";
   const [catalog, setCatalog] = useState(storedPin);
@@ -818,7 +783,7 @@ function BrandPanel({
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div
-        className="overflow-hidden rounded-[28px]"
+        className="relative min-h-[100dvh] overflow-hidden lg:min-h-[36rem]"
         style={{
           ["--neon" as string]: neon,
           ["--glow" as string]: glow ? "0.7" : "0",
@@ -826,7 +791,7 @@ function BrandPanel({
         }}
       >
         <CinematicHero
-          imageUrl={hero.imageUrl}
+          imageUrl=""
           videoUrl={previewVideo}
           blendPercent={blend}
           introPreset={preset}
@@ -842,20 +807,20 @@ function BrandPanel({
             city: cityFromAddress(shop.address),
             trade: shopTradeLabel(shop),
           }}
-          effect={heroAtmosphereActive(shop.heroImageUrl, shop.heroBrandingTagline) ? shop.heroEffectType : null}
-          brandTagline={shop.heroBrandingTagline}
-          brandSticker={brandPlate({
-            name: shop.name,
-            niche: shop.niche,
-            trade: shopTradeLabel(shop),
-            tagline: shop.heroBrandingTagline,
-          }).sticker}
+          effect={null}
+          brandTagline=""
+          brandSticker=""
           telemetry={readMasterTelemetry()}
-          className="min-h-[420px]"
+          className="absolute inset-0 min-h-full"
         >
-          <div className="mt-auto p-6">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Live preview</p>
-            <p className="font-display text-4xl">{shop.name}</p>
+          <div className="pointer-events-none mt-auto p-6 sm:p-8">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">Live preview</p>
+            <p className="mt-2 font-display text-4xl text-fg drop-shadow-[0_8px_24px_rgba(0,0,0,0.65)]">{shop.name}</p>
+            {shop.tagline || cityFromAddress(shop.address) ? (
+              <p className="mt-2 max-w-md text-sm text-fg/80 drop-shadow-[0_6px_16px_rgba(0,0,0,0.55)]">
+                {[shop.tagline, cityFromAddress(shop.address)].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
           </div>
         </CinematicHero>
       </div>
@@ -923,7 +888,7 @@ function BrandPanel({
               ))}
             </select>
             <p className="mt-2 text-xs text-muted">
-              The matcher picks the film from the niche name. Choose another file from the hero folder to pin it on this shop.
+              The matcher picks a `*-hero-animation.mp4` loop from the niche. Pin another active animation from this list.
             </p>
           </div>
           <div className="mt-4">
@@ -1428,7 +1393,7 @@ function TeamPanel({
         ))}
       </ul>
       <form
-        className="rounded-2xl bg-surface p-4"
+        className="glass-card rounded-2xl p-4"
         onSubmit={(ev) => {
           ev.preventDefault();
           if (readonly) return;
@@ -1506,7 +1471,7 @@ function StaffRow({
   }, [employee.bio, employee.displayName, employee.phone, employee.title]);
 
   return (
-    <li className="rounded-2xl bg-surface p-4">
+    <li className="glass-card rounded-2xl p-4">
       <p className="text-xs uppercase tracking-wider text-faint">{employee.inviteStatus}</p>
       <div className="mt-3 grid gap-3">
         <div>

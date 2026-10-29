@@ -1,4 +1,4 @@
-import { isShopNiche, type ShopNiche } from "./types.ts";
+import { resolveCatalogNiche, type CatalogNiche } from "../../config/catalog.ts";
 
 export type FunnelShard = {
   id: string;
@@ -10,24 +10,24 @@ function clip(value: string, max = 48): string {
   return value.trim().replace(/\s+/g, " ").slice(0, max);
 }
 
-const TRADE_LINE: Partial<Record<ShopNiche, string>> = {
-  landscaper: "Yard and tree work",
+const TRADE_LINE: Partial<Record<CatalogNiche, string>> = {
+  landscaping: "Yard and tree work",
   contractor: "Home work",
-  firewood: "Cord and drop",
-  counsel: "The books",
-  practice: "The visit",
-  studio: "The build",
-  photo: "The session",
-  field: "The bay",
+  forestry: "Cord and drop",
+  woodworking: "The mill",
+  "tool-repair": "The bench",
+  glasswork: "The session",
+  auto: "The bay",
 };
 
 /** Campaign extras that sit next to the trade's own services. */
-export function funnelOfferings(niche: ShopNiche): string[] {
+export function funnelOfferings(niche: string): string[] {
+  const key = resolveCatalogNiche(niche);
   const extras = ["AI lead capture"];
-  if (niche === "landscaper" || niche === "contractor" || niche === "firewood") {
+  if (key === "landscaping" || key === "contractor" || key === "forestry") {
     extras.unshift("Defensible space");
   }
-  if (niche === "counsel" || niche === "practice" || niche === "studio") extras.push("Billing pipelines");
+  if (key === "woodworking" || key === "tool-repair" || key === "glasswork") extras.push("Billing pipelines");
   else extras.push("Booking pipeline");
   return extras;
 }
@@ -49,12 +49,15 @@ export function isVerifiedLeadRecord(row: LeadGlassRecord | null | undefined): r
   return Boolean(row.id.trim() && row.slug.trim() && row.businessName.trim());
 }
 
-/** Glass stays off for missing, junk, or unmatched `?lead=` values. */
+export function funnelTradeLine(niche: string): string {
+  return TRADE_LINE[resolveCatalogNiche(niche)] ?? "The book";
+}
+
 export function glassArmedForLead(row: LeadGlassRecord | null | undefined): boolean {
   return isVerifiedLeadRecord(row);
 }
 
-/** Overlay copy comes from the verified row, or stays blank on the public template. */
+/** Verified lead copy for a demo storefront. Unverified rows stay on the niche template. */
 export function leadGlassCopy(row: LeadGlassRecord | null | undefined): {
   armed: boolean;
   businessName: string;
@@ -67,30 +70,27 @@ export function leadGlassCopy(row: LeadGlassRecord | null | undefined): {
   }
   return {
     armed: true,
-    businessName: row.businessName,
+    businessName: row.businessName.trim(),
     city: (row.city ?? "").trim(),
     county: (row.county ?? "").trim(),
     hint: (row.categoryLabel || row.category || "").trim(),
   };
 }
 
-/** Shard copy for the breaking-glass landing. Empty names stay off the pane. */
 export function funnelShards(input: {
   businessName: string;
   city?: string;
   county?: string;
   niche: string;
 }): FunnelShard[] {
-  const niche = isShopNiche(input.niche) ? input.niche : "trade";
-  const shards: FunnelShard[] = [];
-  const business = clip(input.businessName, 56);
-  if (business) shards.push({ id: "name", title: business, line: TRADE_LINE[niche] || "Local book" });
-  const city = clip(input.city ?? "", 40);
-  if (city) shards.push({ id: "city", title: city, line: "Local book" });
-  const county = clip(input.county ?? "", 40);
-  if (county && county !== city) shards.push({ id: "county", title: county, line: "Territory" });
-  for (const [index, extra] of funnelOfferings(niche).entries()) {
-    shards.push({ id: `offer-${index}`, title: extra, line: TRADE_LINE[niche] || "The book" });
+  const niche = resolveCatalogNiche(input.niche);
+  const shards: FunnelShard[] = [
+    { id: "shop", title: clip(input.businessName || "This shop", 36), line: funnelTradeLine(niche) },
+  ];
+  const city = (input.city ?? "").trim();
+  if (city) shards.push({ id: "city", title: clip(city), line: (input.county ?? "").trim() || "City" });
+  for (const [index, title] of funnelOfferings(niche).entries()) {
+    shards.push({ id: `offer-${index}`, title, line: funnelTradeLine(niche) });
   }
-  return shards.slice(0, 12);
+  return shards;
 }

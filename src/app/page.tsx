@@ -30,11 +30,12 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Html, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
-import { Manrope, Syne } from "next/font/google";
+import { Fira_Code, Inter } from "next/font/google";
 import * as THREE from "three";
 
-const display = Syne({ subsets: ["latin"], weight: ["600", "800"] });
-const bodyFont = Manrope({ subsets: ["latin"], weight: ["400", "500", "700"] });
+const display = Inter({ subsets: ["latin"], weight: ["600", "700"] });
+const bodyFont = Inter({ subsets: ["latin"], weight: ["400", "500", "700"] });
+const mono = Fira_Code({ subsets: ["latin"], weight: ["500", "600"] });
 
 /* ═════════════════════════════ DATA LAYER ═════════════════════════════ */
 type Kind = "service" | "album";
@@ -610,20 +611,37 @@ function Scene({ tenant, clips, videoOn, paused, lowQ, reduced, fastIntro, inset
   );
 }
 
-/* ═════════════════════════════ UI: SHARED ═════════════════════════════ */
+/* ═════════════════════════════ UI: SHARED (Claude-code glass) ═════════════════════════════ */
 const glass: React.CSSProperties = {
-  background: "linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03))",
-  border: "1px solid rgba(255,255,255,0.14)", backdropFilter: "blur(22px) saturate(140%)", WebkitBackdropFilter: "blur(22px) saturate(140%)",
-  boxShadow: "0 30px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12)",
+  background: "linear-gradient(155deg, rgba(232,232,237,0.08), rgba(18,18,22,0.55))",
+  border: "1px solid rgba(46,230,214,0.22)",
+  backdropFilter: "blur(16px) saturate(125%)",
+  WebkitBackdropFilter: "blur(16px) saturate(125%)",
+  boxShadow: "0 16px 40px rgba(8,8,10,0.55), inset 0 1px 0 rgba(232,232,237,0.12), 0 0 28px rgba(46,230,214,0.08)",
 };
-const ghostBtn: React.CSSProperties = { background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontWeight: 600, fontSize: 14 };
-const primaryBtn = (c: string): React.CSSProperties => ({ background: c, color: "#031018", border: 0, borderRadius: 999, padding: "14px 26px", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: `0 0 34px ${c}88` });
-const chip = (on: boolean, c: string, off = false): React.CSSProperties => ({
-  background: on ? c : "rgba(255,255,255,0.06)", color: on ? "#031018" : "#fff", border: `1px solid ${on ? c : "rgba(255,255,255,0.16)"}`,
-  borderRadius: 999, padding: "8px 14px", cursor: off ? "not-allowed" : "pointer", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", minHeight: 40, display: "inline-flex", alignItems: "center",
-  opacity: off ? 0.3 : 1, textDecoration: off ? "line-through" : "none",
+const ghostBtn: React.CSSProperties = {
+  background: "rgba(18,18,22,0.72)", color: "#e8e8ed", border: "1px solid rgba(46,230,214,0.28)",
+  borderRadius: 12, padding: "9px 16px", cursor: "pointer", fontWeight: 600, fontSize: 14,
+  backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+};
+const primaryBtn = (c: string): React.CSSProperties => ({
+  background: c, color: "#08080a", border: 0, borderRadius: 12, padding: "14px 26px",
+  fontWeight: 700, fontSize: 15, cursor: "pointer", boxShadow: `0 0 28px ${c}66, 0 0 0 1px ${c}44`,
 });
-const field: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,0.06)", color: "#fff", colorScheme: "dark", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 14, padding: "13px 14px", fontSize: 15, outline: "none" };
+const chip = (on: boolean, c: string, off = false): React.CSSProperties => ({
+  background: on ? c : "rgba(18,18,22,0.7)", color: on ? "#08080a" : "#e8e8ed",
+  border: `1px solid ${on ? c : "rgba(46,230,214,0.22)"}`,
+  borderRadius: 999, padding: "8px 14px", cursor: off ? "not-allowed" : "pointer",
+  fontWeight: 600, fontSize: 12, whiteSpace: "nowrap", minHeight: 40,
+  display: "inline-flex", alignItems: "center", fontFamily: "inherit",
+  opacity: off ? 0.3 : 1, textDecoration: off ? "line-through" : "none",
+  backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+});
+const field: React.CSSProperties = {
+  width: "100%", background: "rgba(18,18,22,0.82)", color: "#e8e8ed", colorScheme: "dark",
+  border: "1px solid rgba(46,230,214,0.22)", borderRadius: 12, padding: "13px 14px",
+  fontSize: 14, outline: "none", fontFamily: "var(--font-mono, ui-monospace, monospace)",
+};
 const centerOf = (el: Element): Origin => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
 
 function Flash({ k, o, color }: { k: number; o: Origin; color: string }) {
@@ -695,7 +713,7 @@ function BookingPanel({ tenant, offering, reload, onBooked }: { tenant: Tenant; 
     <div style={{ ...glass, borderRadius: 24, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <h3 className={display.className} style={{ fontSize: 24, margin: 0 }}>Book {offering.label}</h3>
-        <span style={{ fontSize: 12, color: tenant.accent }}>Open 24/7</span>
+        <span className="ax-mono" style={{ fontSize: 11, color: tenant.accent, letterSpacing: "0.06em", textTransform: "uppercase" }}>Open 24/7</span>
       </div>
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
         {days.map((d) => <button key={d.iso} style={chip(sel?.date === d.iso, tenant.accent)} onClick={() => { const t = tenant.times.find((x) => free(d.iso, x)); if (t) setSel({ date: d.iso, time: t }); }}>{d.label}</button>)}
@@ -887,13 +905,14 @@ export default function StorefrontPage({ params }: { params: Promise<{ "shop-slu
   }
 
   return (
-    <main className={bodyFont.className} style={{ position: "fixed", inset: 0, overflow: "hidden", color: "#fff", background: "radial-gradient(ellipse at 50% 38%, #0b1a2b 0%, #04070d 55%, #020307 100%)" }}>
+    <main className={bodyFont.className} style={{ position: "fixed", inset: 0, overflow: "hidden", color: "#e8e8ed", background: "radial-gradient(ellipse at 50% 0%, #121216 0%, #08080a 58%, #050507 100%)" }}>
       <style>{`
-        @keyframes ax-edge{0%,100%{opacity:.55}50%{opacity:1}}
-        .ax-drawer{border-radius:28px 0 0 28px!important}
+        @keyframes ax-edge{0%,100%{opacity:.45}50%{opacity:1}}
+        .ax-drawer{border-radius:20px 0 0 20px!important}
         @media (max-width:640px){.ax-drawer{border-radius:0!important}.ax-live{display:none!important}}
         @media (max-height:520px){.ax-tag{display:none!important}}
         html,body{overscroll-behavior:none}
+        .ax-mono{font-family:${JSON.stringify(mono.style.fontFamily)},ui-monospace,monospace;letter-spacing:-0.02em}
       `}</style>
 
       {env && status === "ready" && (
@@ -906,21 +925,21 @@ export default function StorefrontPage({ params }: { params: Promise<{ "shop-slu
         </Canvas>
       )}
 
-      <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(180deg, rgba(2,4,9,.65) 0%, transparent 22%, transparent 55%, rgba(2,4,9,.85) 100%), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%)" }} />
-      <div aria-hidden="true" style={{ position: "absolute", inset: 10, borderRadius: 30, pointerEvents: "none", animation: env?.reduced ? undefined : "ax-edge 5s ease-in-out infinite", boxShadow: `inset 0 0 0 1px ${tenant.accent}44, inset 0 0 70px ${tenant.accent}22, 0 0 36px ${tenant.accent2}22` }} />
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(180deg, rgba(8,8,10,.7) 0%, transparent 24%, transparent 58%, rgba(8,8,10,.88) 100%), radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.5) 100%)" }} />
+      <div aria-hidden="true" style={{ position: "absolute", inset: 10, borderRadius: 22, pointerEvents: "none", animation: env?.reduced ? undefined : "ax-edge 5s ease-in-out infinite", boxShadow: `inset 0 0 0 1px ${tenant.accent}55, inset 0 0 48px ${tenant.accent}18, 0 0 28px ${tenant.accent}14` }} />
 
-      <motion.div initial={false} animate={{ opacity: introDone ? 1 : 0 }} transition={{ duration: 0.8 }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      <motion.div initial={false} animate={{ opacity: introDone ? 1 : 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
         <header ref={topRef} style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "calc(16px + env(safe-area-inset-top)) clamp(14px,4vw,48px) 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <span className={display.className} style={{ fontSize: "clamp(16px,2.4vw,20px)", letterSpacing: "-0.01em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
+          <span className={display.className} style={{ fontSize: "clamp(16px,2.4vw,20px)", letterSpacing: "-0.03em", fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
-            {env && <span className="ax-live" style={{ ...glass, borderRadius: 999, padding: "6px 12px", fontSize: 12, color: tenant.accent, boxShadow: "none" }}>{openToday > 0 ? `${openToday} openings today` : "Booking open 24/7"}</span>}
-            <button onClick={(e) => openFirstService(centerOf(e.currentTarget))} style={{ ...ghostBtn, minHeight: 40, pointerEvents: "auto", borderColor: tenant.accent, boxShadow: `0 0 22px ${tenant.accent}55` }}>Book now</button>
+            {env && <span className={`ax-live ax-mono`} style={{ ...glass, borderRadius: 999, padding: "6px 12px", fontSize: 11, color: tenant.accent, letterSpacing: "0.04em", textTransform: "uppercase" }}>{openToday > 0 ? `${openToday} openings today` : "Booking open 24/7"}</span>}
+            <button onClick={(e) => openFirstService(centerOf(e.currentTarget))} style={{ ...ghostBtn, minHeight: 40, pointerEvents: "auto", borderColor: tenant.accent, boxShadow: `0 0 22px ${tenant.accent}44` }}>Book now</button>
           </div>
         </header>
         <div ref={botRef} style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column", gap: 14, padding: "0 clamp(14px,4vw,48px) calc(14px + env(safe-area-inset-bottom))" }}>
           <section style={{ maxWidth: 540 }}>
-            <h1 className={display.className} style={{ fontSize: "clamp(28px, min(7vw, 11vh), 80px)", lineHeight: 0.96, margin: 0, letterSpacing: "-0.03em", fontWeight: 800 }}>{tenant.headline}</h1>
-            <p className="ax-tag" style={{ margin: "10px 0 0", fontSize: "clamp(14px,1.8vw,17px)", opacity: 0.78, lineHeight: 1.5 }}>{tenant.tagline}</p>
+            <h1 className={display.className} style={{ fontSize: "clamp(28px, min(7vw, 11vh), 72px)", lineHeight: 0.98, margin: 0, letterSpacing: "-0.035em", fontWeight: 700 }}>{tenant.headline}</h1>
+            <p className="ax-tag" style={{ margin: "10px 0 0", fontSize: "clamp(14px,1.8vw,16px)", opacity: 0.72, lineHeight: 1.5 }}>{tenant.tagline}</p>
           </section>
           <nav aria-label="Services and albums" style={{ display: "flex", justifyContent: "center" }}>
             <div style={{ ...glass, borderRadius: 999, padding: 6, display: "flex", gap: 6, overflowX: "auto", maxWidth: "100%", pointerEvents: "auto", scrollbarWidth: "none" }}>

@@ -265,32 +265,37 @@ export function CinematicHero({
     };
   }, [scrollYProgress, depthOn, intensity, speed, plateY, backgroundY, particleY, washY, lightY, foregroundY, sequenced]);
 
+  const filmActive = Boolean(showAutoPlayer || (videoSrc && videoOk));
+  // Still only when no loop is ready — never paint a boxed image over the film.
+  const showStill = Boolean(imageSrc) && !filmActive;
+
   return (
     <section
       ref={sectionRef}
       className={cn(
-        "relative isolate flex w-full flex-col overflow-hidden bg-transparent",
-        previewMode ? "min-h-[28rem]" : "h-screen min-h-[100dvh]",
+        "relative isolate flex w-full flex-col overflow-hidden bg-bg",
+        previewMode ? "min-h-[100dvh] h-[100dvh]" : "h-screen min-h-[100dvh]",
         sequenced && (beat === "dashboard" ? "hero-sequence is-dashboard" : "hero-sequence is-reel"),
         className,
       )}
       style={{ ["--hero-blend" as string]: `${blend}%` }}
+      data-hero-film={filmActive ? "loop" : "still"}
     >
       <div className="hero-blend absolute inset-0 h-full w-full overflow-hidden">
-        {imageSrc || (videoSrc && videoOk) ? (
+        {filmActive || showStill ? (
           <motion.div
-            className={cn("absolute -inset-[8%] origin-center", depthOn && "will-change-transform")}
+            className={cn("absolute inset-0 origin-center", depthOn && "will-change-transform")}
             style={{ y: plateY }}
-            initial={animate ? { scale: 1.16 } : { scale: 1.06 }}
-            animate={{ scale: 1.06 }}
-            transition={animate ? { duration: 2.4, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
+            initial={animate ? { scale: 1.08 } : { scale: 1 }}
+            animate={{ scale: 1 }}
+            transition={animate ? { duration: 2.2, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}
           >
-            {imageSrc ? (
+            {showStill ? (
               <img src={imageSrc} alt="" className="hero-plate pointer-events-none absolute inset-0 h-full w-full object-cover" />
             ) : (
               <video
                 className="hero-plate pointer-events-none absolute inset-0 h-full w-full object-cover"
-                src={videoSrc}
+                src={showAutoPlayer ? AUTO_HERO_SRC : videoSrc}
                 autoPlay
                 loop={!cycling}
                 muted
@@ -300,7 +305,7 @@ export function CinematicHero({
             )}
           </motion.div>
         ) : null}
-        {/* Sharp film covers the viewport. The plate stays behind it as the ambient blur. */}
+        {/* Sharp film — edge-to-edge, no inset crop, no card frame. */}
         <motion.div
           className={cn("hero-sharp absolute inset-0 origin-center", depthOn && "will-change-transform")}
           style={{ y: backgroundY }}
@@ -320,11 +325,11 @@ export function CinematicHero({
             }
           >
             <div className="hero-subject absolute inset-0">
-            {imageSrc ? (
+            {showStill ? (
               <img
                 src={imageSrc}
                 alt=""
-                className="hero-frame pointer-events-none absolute inset-0 h-full w-full object-cover outline-none"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover outline-none"
                 onError={() => {
                   if (fallbackImageUrl && imageSrc !== fallbackImageUrl) {
                     setImageSrc(fallbackImageUrl);
@@ -339,14 +344,13 @@ export function CinematicHero({
                 <video
                   ref={videoRef}
                   data-film="auto-hero"
-                  className="hero-frame pointer-events-none absolute inset-0 h-full w-full object-cover"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                   src={AUTO_HERO_SRC}
                   autoPlay
                   muted
                   loop
                   playsInline
                   preload="auto"
-                  poster={imageSrc || undefined}
                   onError={(event) => swapMissingAutoHero(event.currentTarget)}
                   onTimeUpdate={(event) => {
                     if (!sequenced) return;
@@ -359,13 +363,12 @@ export function CinematicHero({
               <video
                 ref={videoRef}
                 key={`${videoSrc}-${replayKey ?? "0"}`}
-                className="hero-frame pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover"
+                className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover"
                 src={videoSrc}
                 autoPlay
                 loop={!cycling}
                 muted
                 playsInline
-                poster={imageSrc || undefined}
                 onEnded={advanceReel}
                 onError={missReel}
               />
@@ -548,15 +551,14 @@ function HeroMotes() {
 
 export function InsetFilm({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: string }) {
   if (!videoUrl && !imageUrl) return null;
+  // Edge-to-edge film surface — no card chrome around the loop.
   return (
-    <figure className="overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-      <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
-        {videoUrl ? (
-          <LoopVideo src={videoUrl} className="absolute inset-0" />
-        ) : (
-          <img src={imageUrl} alt="" className="h-full w-full object-cover outline-none" />
-        )}
-      </div>
+    <figure className="relative aspect-[16/10] w-full overflow-hidden bg-bg">
+      {videoUrl ? (
+        <LoopVideo src={videoUrl} className="absolute inset-0" />
+      ) : (
+        <img src={imageUrl} alt="" className="h-full w-full object-cover outline-none" />
+      )}
     </figure>
   );
 }

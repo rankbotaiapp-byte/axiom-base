@@ -4,7 +4,7 @@ import { CorePresenceBar } from "@/components/core-presence-bar";
 import { CoreSphere } from "@/components/CoreSphere";
 import type { CoreStateId } from "@/lib/axiom/core-presence";
 
-const ORB_FILM = "/media/axiom-orb-response.mp4";
+const ORB_FILM = "/media/orb-explosion-hero-animation.mp4";
 const ORB_POSTER = "/media/goopy-orb-base.jpg";
 
 export function storefrontFilm(

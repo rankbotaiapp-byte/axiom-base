@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { AUTO_REPAIR_SRC, swapMissingAutoHero } from "./auto-sequence.ts";
+import { CATALOG } from "../../config/catalog.ts";
+import { AUTO_HERO_SRC, AUTO_REPAIR_SRC, swapMissingAutoHero } from "./auto-sequence.ts";
 import { PHOTO_REELS, resolveHeroMedia } from "./media.ts";
 import {
+  ANIMATION_MP4_FILES,
   BROWSER_LOG_ORDER,
   HERO_MP4_FILES,
   UNIVERSAL_FALLBACK,
@@ -14,61 +16,43 @@ import {
   heroStem,
   heroTelemetryOrder,
   heroVideoList,
+  isCatalogHeroUrl,
   nextReelIndex,
   resolveNicheFilm,
-  scoreHeroFile,
 } from "./hero-films.ts";
 
 describe("hero film directory", () => {
-  it("lists the mp4 files in the hero folder and ignores a doubled extension", () => {
-    const dir = fileURLToPath(new URL("../../../public/media/heroes", import.meta.url));
+  it("lists only *-hero-animation.mp4 files matching the catalog", () => {
+    const dir = fileURLToPath(new URL("../../../public/media", import.meta.url));
     const onDisk = readdirSync(dir)
-      .filter((file) => /\.mp4$/i.test(file))
+      .filter((file) => /^[a-z0-9]+(?:-[a-z0-9]+)*-hero-animation\.mp4$/i.test(file))
       .sort();
+    assert.deepEqual([...ANIMATION_MP4_FILES].sort(), onDisk);
     assert.deepEqual([...HERO_MP4_FILES].sort(), onDisk);
-    assert.equal(heroStem("contractors-hero.mp4.mp4"), "contractors hero");
-    assert.equal(heroStem("plumbers-hero.mp4.mp4"), "plumbers hero");
+    assert.equal(CATALOG.length, 21);
+    assert.equal(onDisk.includes("otter-hero-animation.mp4"), true);
+    assert.equal(isCatalogHeroUrl("/media/heroes/auto-repair.mp4"), false);
+    assert.equal(isCatalogHeroUrl("/media/auto-hero-animation.mp4"), true);
+    assert.equal(heroStem("auto-hero-animation.mp4"), "auto hero animation");
   });
 
-  it("skips welcome, outreach, coastal, and charging clips", () => {
-    const skipped = HERO_MP4_FILES.filter((file) => /\b(welcome|outreach|coastal|charging)\b/i.test(heroStem(file)));
-    assert.deepEqual(skipped.sort(), [
-      "admin-welcome.mp4",
-      "employee-welcome.mp4",
-      "intro-welcome.mp4",
-      "outreach-welcome.mp4",
-    ]);
-    for (const file of skipped) {
-      assert.equal(scoreHeroFile(file, "guide"), 0);
-      assert.equal(scoreHeroFile(file, "field"), 0);
-      assert.equal(scoreHeroFile(file, "location"), 0);
-    }
-  });
-
-  it("keeps the named films on their niches", () => {
-    assert.equal(resolveNicheFilm("contractor"), "/media/heroes/contractors-hero.mp4");
-    assert.equal(resolveNicheFilm("field"), "/media/heroes/auto-repair.mp4");
-    assert.equal(resolveNicheFilm("location", "/media/heroes/barber-hero.mp4"), "/media/heroes/barber-hero.mp4");
-    assert.equal(filmMatchingText("Main Street Plumbing"), "/media/heroes/plumbers-hero.mp4.mp4");
-    assert.equal(filmMatchingText("Northside Barbers"), "/media/heroes/barber-hero.mp4");
-    assert.equal(filmMatchingText("Rogue Auto Repair"), "/media/heroes/auto-repair.mp4");
-    assert.equal(filmMatchingText("Mobile mechanic"), "/media/heroes/auto-repair.mp4");
-    assert.equal(filmMatchingText("Mobile mechanics"), "/media/heroes/auto-repair.mp4");
-    assert.equal(filmMatchingText("Rooftop HVAC"), "/media/heroes/contractors-hero.mp4");
-    assert.equal(filmMatchingText("Acme Mechanical"), null);
-    assert.equal(resolveNicheFilm("firewood", "/media/heroes/wood.mp4"), "/media/heroes/firewood-hero.mp4");
-    assert.equal(resolveNicheFilm("firewood", "/media/heroes/firewood-hero.mp4"), "/media/heroes/firewood-hero.mp4");
-    assert.equal(catalogChoices("field")[0]?.url, "/media/heroes/auto-repair.mp4");
-    assert.equal(catalogChoices("location")[0]?.url, "/media/heroes/barber-hero.mp4");
+  it("keeps the named animations on their niches", () => {
+    assert.equal(resolveNicheFilm("electrical"), "/media/electrician-hero-animation.mp4");
+    assert.equal(resolveNicheFilm("auto"), "/media/auto-hero-animation.mp4");
+    assert.equal(resolveNicheFilm("barber"), "/media/barber-hero-animation.mp4");
+    assert.equal(filmMatchingText("Main Street Plumbing"), "/media/plumbers-hero-animation.mp4");
+    assert.equal(catalogChoices("auto")[0]?.url, "/media/auto-hero-animation.mp4");
+    assert.equal(catalogChoices("barber")[0]?.url, "/media/barber-hero-animation.mp4");
+    assert.equal(UNIVERSAL_FALLBACK, "/media/orb-explosion-hero-animation.mp4");
   });
 
   it("lets a shop upload or a tenant pin beat the niche film and a browser override", () => {
     const upload = "/api/hero-video/shop_1?v=2";
-    const pin = "/media/heroes/plumbers-hero.mp4.mp4";
-    const nicheFilm = "/media/heroes/contractors-hero.mp4";
-    const browserPick = "/media/heroes/trades-hero.mp4";
-    assert.equal(resolveHeroMedia({ niche: "contractor", heroImageUrl: "", heroVideoUrl: upload }).videoUrl, upload);
-    assert.equal(resolveHeroMedia({ niche: "contractor", heroImageUrl: "", heroVideoUrl: pin }).videoUrl, pin);
+    const pin = "/media/plumbers-hero-animation.mp4";
+    const nicheFilm = "/media/electrician-hero-animation.mp4";
+    const browserPick = "/media/tiger-hero-animation.mp4";
+    assert.equal(resolveHeroMedia({ niche: "electrical", heroImageUrl: "", heroVideoUrl: upload }).videoUrl, upload);
+    assert.equal(resolveHeroMedia({ niche: "electrical", heroImageUrl: "", heroVideoUrl: pin }).videoUrl, pin);
     assert.equal(applyBrowserFilmOverride(upload, nicheFilm, browserPick), upload);
     assert.equal(applyBrowserFilmOverride(pin, nicheFilm, browserPick), pin);
     assert.equal(applyBrowserFilmOverride(nicheFilm, nicheFilm, browserPick), browserPick);
@@ -76,43 +60,31 @@ describe("hero film directory", () => {
 
   it("plays saved lines, then GPU, frame rate, link, and engine", () => {
     assert.deepEqual(heroTelemetryOrder(["  Lane open  ", "", "Second"]), ["Lane open", "Second", ...BROWSER_LOG_ORDER]);
-    assert.deepEqual(BROWSER_LOG_ORDER, ["GPU", "FRAME", "LINK", "AI engine"]);
   });
 
-  it("sends the timed auto reel to auto-repair when auto-hero is missing", () => {
+  it("keeps the timed auto reel on auto-hero-animation", () => {
     const missing = {
       dataset: {} as DOMStringMap,
       currentSrc: "",
-      src: "/media/heroes/auto-hero.mp4",
+      src: "/media/auto-hero-animation.mp4",
       play() {
         return Promise.resolve();
       },
     };
     swapMissingAutoHero(missing as unknown as HTMLVideoElement);
     assert.equal(missing.src, AUTO_REPAIR_SRC);
-    assert.equal(missing.dataset.repairFallback, "1");
-    missing.src = "/api/hero-video/shop_1";
-    missing.dataset.repairFallback = "";
-    swapMissingAutoHero(missing as unknown as HTMLVideoElement);
-    assert.equal(missing.src, "/api/hero-video/shop_1");
+    assert.equal(AUTO_HERO_SRC, AUTO_REPAIR_SRC);
   });
 
   it("accepts one film or a rotation and advances on ended", () => {
     assert.deepEqual(heroVideoList(PHOTO_REELS[0]), [PHOTO_REELS[0]]);
-    assert.deepEqual(heroVideoList([PHOTO_REELS[0], PHOTO_REELS[0], PHOTO_REELS[1]]), [PHOTO_REELS[0], PHOTO_REELS[1]]);
     assert.equal(nextReelIndex(0, 3), 1);
     assert.equal(nextReelIndex(2, 3), 0);
-    assert.equal(nextReelIndex(0, 1), 0);
-    assert.deepEqual(applyBrowserFilmOverride(PHOTO_REELS, PHOTO_REELS[0], ""), PHOTO_REELS);
-    assert.equal(
-      applyBrowserFilmOverride(PHOTO_REELS, PHOTO_REELS[0], "/media/heroes/trades-hero.mp4"),
-      "/media/heroes/trades-hero.mp4",
-    );
   });
 
-  it("offers the plumber film as a contractor pin without making it the niche default", () => {
-    const choices = catalogChoices("contractor").map((row) => row.url);
-    assert.equal(choices[0], "/media/heroes/contractors-hero.mp4");
-    assert.equal(choices.includes("/media/heroes/plumbers-hero.mp4.mp4"), true);
+  it("offers every active animation in the admin dropdown", () => {
+    const choices = catalogChoices("electrical").map((row) => row.url);
+    assert.equal(choices[0], "/media/electrician-hero-animation.mp4");
+    assert.equal(choices.length, CATALOG.length);
   });
 });

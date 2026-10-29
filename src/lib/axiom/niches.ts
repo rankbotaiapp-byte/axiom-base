@@ -1,7 +1,14 @@
+import {
+  CATALOG,
+  CATALOG_NICHES,
+  catalogFilmUrl,
+  isCatalogNiche,
+  type CatalogNiche,
+} from "@/config/catalog";
 import type { IntroPreset } from "./intro";
-import { defaultUnit, unitsForTemplate } from "./menu";
+import { unitsForTemplate } from "./menu";
 import { NICHE_MEDIA, SHARED_STAFF } from "./media";
-import { SHOP_NICHES, type PriceUnit, type Service, type ShopNiche } from "./types";
+import { SHOP_NICHES, type PriceUnit, type ShopNiche } from "./types";
 import { formatMoney } from "@/lib/utils";
 
 export type NicheTemplate = {
@@ -22,9 +29,7 @@ export type NicheTemplate = {
   introIntensity?: number;
   hours?: Record<string, string>;
   primaryServiceIndex?: number;
-  /** Title used when onboarding chooses a one-person book. */
   soloTitle?: string;
-  /** Charge units this trade may use. Omitted trades stay a flat fee. */
   priceUnits?: PriceUnit[];
   services: {
     name: string;
@@ -54,1176 +59,21 @@ export const RING_PRESETS = [
   { name: "Violet", value: "#B388FF" },
 ] as const;
 
-/** Every built-in key, including the open `trade` template custom titles are stored on. */
-export const NICHE_ORDER: ShopNiche[] = [...SHOP_NICHES];
+/** Verified 21-loop catalog — sole public and master-hub order. */
+export const PUBLIC_NICHE_ORDER: ShopNiche[] = [...CATALOG_NICHES];
+export const NICHE_ORDER: ShopNiche[] = [...CATALOG_NICHES];
+export type PublicNiche = CatalogNiche;
+export const isPublicNiche = isCatalogNiche;
 
-/**
- * Public catalog: local businesses that book appointments, capture clients, or dispatch a visit.
- * Legacy keys stay on `SHOP_NICHES` so existing shops still load. They render the trade film.
- */
-export const PUBLIC_NICHE_ORDER: ShopNiche[] = [
-  "fitness",
-  "wellness",
-  "lessons",
-  "salon",
-  "beauty",
-  "tattoo",
-  "photo",
-  "pets",
-  "landscaper",
-  "dogwalk",
-  "detailer",
-  "therapy",
-  "contractor",
-  "clean",
-  "field",
-  "locksmith",
-  "firewood",
-  "security",
-  "events",
-  "location",
-  "hunting",
-  "creator",
-];
-
-export type PublicNiche = (typeof PUBLIC_NICHE_ORDER)[number];
-
-export function isPublicNiche(value: string): value is PublicNiche {
-  return (PUBLIC_NICHE_ORDER as readonly string[]).includes(value);
-}
-
-export const NICHES: Record<ShopNiche, NicheTemplate> = {
-  guide: {
-    niche: "guide",
-    label: "Guide services",
-    kicker: "They book the boat",
-    blurb: "A shared seat or a private boat — the put-in on a calendar.",
-    defaultName: "Glass Eddy",
-    tagline: "The boat leaves when you do.",
-    description:
-      "Shared seats and private boats on the same stretch. The price covers the guide, the gear, and the shuttle back.",
-    address: "New Era · put-in at the bridge",
-    ringColor: "#7EC8E3",
-    heroImageUrl: NICHE_MEDIA.guide.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.guide.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.guide.heroBlendPercent,
-    introPreset: NICHE_MEDIA.guide.introPreset,
-    introSpeed: NICHE_MEDIA.guide.introSpeed,
-    introIntensity: NICHE_MEDIA.guide.introIntensity,
-    primaryServiceIndex: 0,
-    priceUnits: ["flat", "person", "boat"],
-    hours: {
-      mon: "closed",
-      tue: "07:00-16:00",
-      wed: "07:00-16:00",
-      thu: "07:00-16:00",
-      fri: "07:00-16:00",
-      sat: "07:00-16:00",
-      sun: "07:00-15:00",
-    },
-    services: [
-      {
-        group: "Shared",
-        name: "Morning half-day",
-        description: "Class II. Paddle, vest, and the shuttle back. Six seats on the boat.",
-        durationMin: 240,
-        priceCents: 9500,
-        priceUnit: "person",
-      },
-      {
-        group: "Shared",
-        name: "Full-day canyon",
-        description: "The long line. Lunch on the gravel. Gear included.",
-        durationMin: 480,
-        priceCents: 16500,
-        priceUnit: "person",
-      },
-      {
-        group: "Private",
-        name: "Private half-day",
-        description: "Your group only. Up to six. Same water, no other boat.",
-        durationMin: 240,
-        priceCents: 52000,
-        priceUnit: "boat",
-      },
-      {
-        group: "Private",
-        name: "Private full-day",
-        description: "The canyon for one group. Lunch, gear, and the shuttle.",
-        durationMin: 480,
-        priceCents: 88000,
-        priceUnit: "boat",
-      },
-    ],
-    employees: [
-      {
-        displayName: "Willa Grant",
-        title: "Lead guide",
-        bio: "Reads the line before the boat does. Shared mornings and the private days.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1, 2, 3],
-      },
-      {
-        displayName: "Theo Marsh",
-        title: "Guide",
-        bio: "The early put-in. He runs the half-day and the boats that want a quiet canyon.",
-        avatarUrl: "",
-        serviceIndexes: [0, 2],
-      },
-    ],
-    portfolio: [],
-  },
-  fitness: {
-    niche: "fitness",
-    label: "Fitness coaching / Personal training",
-    kicker: "They book the session",
-    blurb: "An assessment, a one-to-one hour, or a small group — the floor on a calendar.",
-    defaultName: "Form Room",
-    tagline: "Show up. We count the rest.",
-    description: "Personal training and small groups in New Era. Book the hour, not a guess.",
-    address: "New Era · the floor opens at six",
-    ringColor: "#E07A73",
-    heroImageUrl: NICHE_MEDIA.fitness.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.fitness.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.fitness.heroBlendPercent,
-    introPreset: NICHE_MEDIA.fitness.introPreset,
-    introSpeed: NICHE_MEDIA.fitness.introSpeed,
-    introIntensity: NICHE_MEDIA.fitness.introIntensity,
-    primaryServiceIndex: 1,
-    hours: {
-      mon: "06:00-19:00",
-      tue: "06:00-19:00",
-      wed: "06:00-19:00",
-      thu: "06:00-19:00",
-      fri: "06:00-19:00",
-      sat: "07:00-13:00",
-      sun: "closed",
-    },
-    services: [
-      {
-        group: "Assess",
-        name: "Intro assessment",
-        description: "How you move, what hurts, and the first block of work.",
-        durationMin: 45,
-        priceCents: 8000,
-      },
-      {
-        group: "Train",
-        name: "Personal training",
-        description: "One coach, one hour, the program you are actually on.",
-        durationMin: 60,
-        priceCents: 12000,
-      },
-      {
-        group: "Train",
-        name: "Small group",
-        description: "Four people. The same hour, a shared floor.",
-        durationMin: 50,
-        priceCents: 4000,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Nina Voss",
-        title: "Head coach",
-        bio: "Strength first. She writes the block and stays for the ugly reps.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1],
-      },
-      {
-        displayName: "Calvin Brooks",
-        title: "Coach",
-        bio: "Small groups and the people who would rather not train alone.",
-        avatarUrl: "",
-        serviceIndexes: [1, 2],
-      },
-    ],
-    portfolio: [],
-  },
-  music: {
-    niche: "music",
-    label: "Music artist / Rapper",
-    kicker: "They book the night",
-    blurb: "A release, a session, or the show itself — the booth and the room on one calendar.",
-    defaultName: "Lowlight",
-    tagline: "The record, then the room.",
-    description:
-      "Studio time and live sets out of New Era. Book the booth, the mix, or the night.",
-    address: "New Era · books after two",
-    ringColor: "#B388FF",
-    heroImageUrl: NICHE_MEDIA.music.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.music.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.music.heroBlendPercent,
-    introPreset: NICHE_MEDIA.music.introPreset,
-    introSpeed: NICHE_MEDIA.music.introSpeed,
-    introIntensity: NICHE_MEDIA.music.introIntensity,
-    primaryServiceIndex: 2,
-    hours: {
-      mon: "closed",
-      tue: "14:00-22:00",
-      wed: "14:00-22:00",
-      thu: "14:00-22:00",
-      fri: "14:00-22:00",
-      sat: "12:00-20:00",
-      sun: "closed",
-    },
-    services: [
-      {
-        group: "Release",
-        name: "Single rollout",
-        description: "Artwork, the date, and the posts that go with the drop.",
-        durationMin: 60,
-        priceCents: 35000,
-      },
-      {
-        group: "Release",
-        name: "Mix + master",
-        description: "One song. Notes back in the same sitting.",
-        durationMin: 90,
-        priceCents: 28000,
-      },
-      {
-        group: "Booth",
-        name: "Studio session",
-        description: "Booth time with an engineer. Two songs, or one until it sits right.",
-        durationMin: 120,
-        priceCents: 40000,
-      },
-      {
-        group: "Booth",
-        name: "Feature verse",
-        description: "Write and record a verse on your record.",
-        durationMin: 75,
-        priceCents: 50000,
-      },
-      {
-        group: "Stage",
-        name: "Live set",
-        description: "Book the show. A room, a set length, and the night.",
-        durationMin: 45,
-        priceCents: 80000,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Mara Quinn",
-        title: "Artist",
-        bio: "Writes in the booth and holds the room when the lights drop.",
-        avatarUrl: "",
-        serviceIndexes: [0, 2, 3, 4],
-      },
-      {
-        displayName: "Ellis Ward",
-        title: "Engineer",
-        bio: "Runs the desk. The mix comes back before you leave the block.",
-        avatarUrl: "",
-        serviceIndexes: [1, 2],
-      },
-    ],
-    portfolio: [],
-  },
-  contractor: {
-    niche: "contractor",
-    label: "General contractor / Home services",
-    kicker: "They book the job",
-    blurb: "A consult, a measure, or the start day — home work with a scope you can read.",
-    defaultName: "Hearth Line",
-    tagline: "Walk the house. Then we build.",
-    description:
-      "Kitchens, repairs, and the rooms that need a real start day. New Era, and about twenty miles out.",
-    address: "New Era · jobs within 20 miles",
-    ringColor: "#C9A227",
-    heroImageUrl: NICHE_MEDIA.contractor.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.contractor.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.contractor.heroBlendPercent,
-    introPreset: NICHE_MEDIA.contractor.introPreset,
-    introSpeed: NICHE_MEDIA.contractor.introSpeed,
-    introIntensity: NICHE_MEDIA.contractor.introIntensity,
-    primaryServiceIndex: 0,
-    hours: {
-      mon: "07:30-16:30",
-      tue: "07:30-16:30",
-      wed: "07:30-16:30",
-      thu: "07:30-16:30",
-      fri: "07:30-16:30",
-      sat: "08:00-13:00",
-      sun: "closed",
-    },
-    services: [
-      {
-        group: "Consult",
-        name: "Project consultation",
-        description: "Walk the house. Leave with a scope and a number.",
-        durationMin: 60,
-        priceCents: 15000,
-      },
-      {
-        group: "Consult",
-        name: "Site measure",
-        description: "Rooms, openings, and the list the crew actually builds from.",
-        durationMin: 90,
-        priceCents: 20000,
-      },
-      {
-        group: "Build",
-        name: "Repair call",
-        description: "One problem. A leak, a door, a stair that moves.",
-        durationMin: 120,
-        priceCents: 28000,
-      },
-      {
-        group: "Build",
-        name: "Start day",
-        description: "The first day on a room. The rest of the job is quoted from the consult.",
-        durationMin: 240,
-        priceCents: 65000,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Lena Cho",
-        title: "General contractor",
-        bio: "Scopes the job in plain language, then stays on it until the punch list is short.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1, 3],
-      },
-      {
-        displayName: "Owen Briggs",
-        title: "Lead carpenter",
-        bio: "Cabinets, stairs, and the repairs that should have been done last year.",
-        avatarUrl: "",
-        serviceIndexes: [2, 3],
-      },
-    ],
-    portfolio: [],
-  },
-  tattoo: {
-    niche: "tattoo",
-    label: "Tattoo shop",
-    kicker: "They book the chair",
-    blurb: "A consult, a small piece, or a session — the book instead of a walk-in.",
-    defaultName: "Iron Ledger",
-    tagline: "Draw it. Then sit for it.",
-    description: "A two-artist shop. Book the consult, then the session. Flash and custom, on the calendar.",
-    address: "New Era · walk in only if the book is open",
-    ringColor: "#E07A73",
-    heroImageUrl: NICHE_MEDIA.tattoo.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.tattoo.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.tattoo.heroBlendPercent,
-    introPreset: NICHE_MEDIA.tattoo.introPreset,
-    introSpeed: NICHE_MEDIA.tattoo.introSpeed,
-    introIntensity: NICHE_MEDIA.tattoo.introIntensity,
-    services: [
-      {
-        group: "Consult",
-        name: "Consult",
-        description: "Placement, size, and a date for the work.",
-        durationMin: 30,
-        priceCents: 4000,
-      },
-      {
-        group: "Chair",
-        name: "Small piece",
-        description: "One sitting. Flash or a simple custom.",
-        durationMin: 90,
-        priceCents: 18000,
-      },
-      {
-        group: "Chair",
-        name: "Session",
-        description: "A longer sitting on a piece already drawn.",
-        durationMin: 180,
-        priceCents: 45000,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Rio Hale",
-        title: "Lead artist",
-        bio: "Linework and the pieces that take more than one afternoon.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1, 2],
-      },
-      {
-        displayName: "Sam Ortega",
-        title: "Artist",
-        bio: "Small work, flash, and the consult that turns into a drawing.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1],
-      },
-    ],
-    portfolio: [],
-  },
-  location: {
-    niche: "location",
-    label: "Barber",
-    kicker: "They come to you",
-    blurb: "A chair, a fade, a line out the door.",
-    defaultName: "Atlas Cuts",
-    tagline: "Precision cuts. No waiting around.",
-    description:
-      "A quiet two-chair shop. Book a chair, skip the walk-in list, leave looking finished.",
-    address: "12 Main Street, New Era",
-    ringColor: "#E7B48A",
-    heroImageUrl: NICHE_MEDIA.location.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.location.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.location.heroBlendPercent,
-    introPreset: NICHE_MEDIA.location.introPreset,
-    introSpeed: NICHE_MEDIA.location.introSpeed,
-    introIntensity: NICHE_MEDIA.location.introIntensity,
-    services: [
-      {
-        group: "Cut",
-        name: "Signature cut",
-        description: "Consultation, cut, finish.",
-        durationMin: 45,
-        priceCents: 4800,
-      },
-      {
-        group: "Cut",
-        name: "Skin fade",
-        description: "Tight blend, razor line.",
-        durationMin: 50,
-        priceCents: 5400,
-      },
-      {
-        group: "Beard",
-        name: "Beard sculpt",
-        description: "Shape, line-up, oil.",
-        durationMin: 25,
-        priceCents: 2800,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Jordan Hale",
-        title: "Lead barber",
-        bio: "Fades and classic tapers. Calm chair, sharp lines.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1, 2],
-      },
-      {
-        displayName: "Reese Quinn",
-        title: "Barber",
-        bio: "Texture and finishes. The haircut you forget you have — in a good way.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1],
-      },
-    ],
-    portfolio: [],
-  },
-  field: {
-    niche: "field",
-    label: "Field service",
-    kicker: "You go to them",
-    blurb: "A driveway diagnostic, a no-start, or the bay. The van comes to the curb.",
-    defaultName: "Northline Repair",
-    tagline: "The van rolls when the call is booked.",
-    description:
-      "Mobile auto service. Scan it in the driveway, or put it on the hoist when the job needs a bay.",
-    address: "New Era · 15-mile service radius",
-    ringColor: "#7EC8E3",
-    heroImageUrl: NICHE_MEDIA.field.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.field.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.field.heroBlendPercent,
-    introPreset: NICHE_MEDIA.field.introPreset,
-    introSpeed: NICHE_MEDIA.field.introSpeed,
-    introIntensity: NICHE_MEDIA.field.introIntensity,
-    services: [
-      {
-        group: "At the curb",
-        name: "Driveway diagnostic",
-        description: "Scan and a plain-language report.",
-        durationMin: 60,
-        priceCents: 12900,
-      },
-      {
-        group: "At the curb",
-        name: "Mobile rescue",
-        description: "Battery, jump, no-start triage.",
-        durationMin: 50,
-        priceCents: 14900,
-      },
-      {
-        group: "In the bay",
-        name: "Oil + filter",
-        description: "On the hoist. Includes the inspection.",
-        durationMin: 45,
-        priceCents: 8900,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Chris Dalton",
-        title: "Lead technician",
-        bio: "Drivability and brakes. Listens to the engine — and to you.",
-        avatarUrl: "",
-        serviceIndexes: [0, 2],
-      },
-      {
-        displayName: "Avery Knox",
-        title: "Mobile tech",
-        bio: "The van is a rolling bay. Fast on the jobs that should not need a tow.",
-        avatarUrl: "",
-        serviceIndexes: [0, 1],
-      },
-    ],
-    portfolio: [],
-  },
-  studio: {
-    niche: "studio",
-    label: "App studio",
-    kicker: "They book the scope",
-    blurb: "A scope call, a site launch, and the desk the staff actually uses.",
-    defaultName: "Forge Studio",
-    tagline: "Scope it, then launch the book.",
-    description:
-      "We stand up the booking site, the operator console, and the staff station — then light the edge of the phone when the first appointment lands.",
-    address: "New Era",
-    ringColor: "#2EE6D6",
-    heroImageUrl: NICHE_MEDIA.studio.heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA.studio.heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA.studio.heroBlendPercent,
-    introPreset: NICHE_MEDIA.studio.introPreset,
-    introSpeed: NICHE_MEDIA.studio.introSpeed,
-    introIntensity: NICHE_MEDIA.studio.introIntensity,
-    services: [
-      {
-        group: "Start",
-        name: "Discovery call",
-        description: "What you run. What the ring should say.",
-        durationMin: 45,
-        priceCents: 15000,
-      },
-      {
-        group: "Build",
-        name: "Site launch session",
-        description: "Live booking page, services, and staff.",
-        durationMin: 90,
-        priceCents: 48000,
-      },
-      {
-        group: "Build",
-        name: "Console + station",
-        description: "Admin, employee board, incoming book.",
-        durationMin: 60,
-        priceCents: 32000,
-      },
-      {
-        group: "Build",
-        name: "Custom ring + brand",
-        description: "Perimeter glow, color, confirmation language.",
-        durationMin: 50,
-        priceCents: 22000,
-      },
-    ],
-    employees: [
-      {
-        displayName: "Eric",
-        title: "Founder",
-        bio: "Builds the shop you can book. New Era Apps, powered by Axiom.",
-        avatarUrl: "",
-        phone: "5418908126",
-        serviceIndexes: [0, 1, 2, 3],
-      },
-    ],
-    portfolio: [],
-  },
-  salon: bookable({
-    niche: "salon",
-    label: "Hair salon",
-    kicker: "They book the style",
-    blurb: "A cut, a color, or a gloss. The stylist holds the block.",
-    defaultName: "Halo Room",
-    tagline: "Color and the cut that holds it.",
-    description: "Color and cuts by appointment. The chair is yours for the block you booked.",
-    address: "New Era · chairs by appointment",
-    ringColor: "#E7B48A",
-    soloTitle: "Stylist",
-    services: [
-      { group: "Cut", name: "Cut + style", description: "Consultation, cut, and the finish.", durationMin: 60, priceCents: 8500 },
-      { group: "Color", name: "Color consult", description: "The formula, the time, and a date for the work.", durationMin: 30, priceCents: 4000 },
-      { group: "Color", name: "Gloss + style", description: "Tone and a blowout. One sitting.", durationMin: 90, priceCents: 16000 },
-    ],
-    employees: [
-      { displayName: "Noor Ellis", title: "Lead stylist", bio: "Color first, then the cut that holds it.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Jules Park", title: "Stylist", bio: "Cuts and the gloss that should not take all afternoon.", avatarUrl: "", serviceIndexes: [0, 2] },
-    ],
-  }),
-  beauty: bookable({
-    niche: "beauty",
-    label: "Nails, lashes, makeup",
-    kicker: "They book the set",
-    blurb: "A set, a fill, a face — booked, not a walk-in.",
-    defaultName: "Set Apart",
-    tagline: "The set, then you leave.",
-    description: "Nails, lashes, and makeup on a clock. You book the set. We hold the chair.",
-    address: "New Era · sets by appointment",
-    ringColor: "#E07A73",
-    soloTitle: "Artist",
-    services: [
-      { group: "Nails", name: "Gel set", description: "Shape, color, and a finish that lasts.", durationMin: 75, priceCents: 6500 },
-      { group: "Lashes", name: "Lash fill", description: "A fill on a set you already wear.", durationMin: 60, priceCents: 8500 },
-      { group: "Face", name: "Makeup", description: "The face for the event. You leave ready.", durationMin: 50, priceCents: 9500 },
-    ],
-    employees: [
-      { displayName: "Imani Cole", title: "Lead artist", bio: "Sets and the face that has to last all night.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Remy Sol", title: "Artist", bio: "Nails and the fills that stay on schedule.", avatarUrl: "", serviceIndexes: [0, 1] },
-    ],
-  }),
-  wellness: bookable({
-    niche: "wellness",
-    label: "Massage and bodywork",
-    kicker: "They book the hour",
-    blurb: "A table, a pressure, a block of quiet.",
-    defaultName: "Still Water",
-    tagline: "The hour is yours.",
-    description: "Bodywork by appointment. Tell us the pressure. We keep the room.",
-    address: "New Era · tables on the hour",
-    ringColor: "#7EC8E3",
-    soloTitle: "Practitioner",
-    services: [
-      { group: "Table", name: "Relaxation", description: "Sixty minutes. Even pressure. You set the quiet.", durationMin: 60, priceCents: 11000 },
-      { group: "Table", name: "Deep work", description: "Ninety minutes on the places that actually hurt.", durationMin: 90, priceCents: 15000 },
-      { group: "Start", name: "First session", description: "What hurts, what helps, and the first hour.", durationMin: 75, priceCents: 13000 },
-    ],
-    employees: [
-      { displayName: "Sasha Nguyen", title: "Lead practitioner", bio: "Listens first. The pressure follows what you actually said.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Eden Walsh", title: "Practitioner", bio: "The longer sessions and the first visits.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  lessons: bookable({
-    niche: "lessons",
-    label: "Lessons and tutoring",
-    kicker: "They book the lesson",
-    blurb: "One student, or a small group, on a repeating hour.",
-    defaultName: "Second Chair",
-    tagline: "Show up. We work the hour.",
-    description: "Lessons and tutoring by the block. The same hour, every week, if you want it.",
-    address: "New Era · lessons after school",
-    ringColor: "#C9A227",
-    soloTitle: "Teacher",
-    services: [
-      { group: "One to one", name: "Private lesson", description: "One student. The work you are actually on.", durationMin: 50, priceCents: 7000 },
-      { group: "One to one", name: "Placement", description: "Where you are, and the plan for the next month.", durationMin: 40, priceCents: 5000 },
-      { group: "Group", name: "Small group", description: "Up to four. The same lesson, shared.", durationMin: 60, priceCents: 3500 },
-    ],
-    employees: [
-      { displayName: "Priya Shah", title: "Lead teacher", bio: "Writes the plan and stays for the hard problem.", avatarUrl: "", serviceIndexes: [0, 1] },
-      { displayName: "Jonah Reed", title: "Teacher", bio: "Small groups and the students who would rather not study alone.", avatarUrl: "", serviceIndexes: [0, 2] },
-    ],
-  }),
-  photo: bookable({
-    niche: "photo",
-    label: "Photography",
-    kicker: "They book the session",
-    blurb: "A portrait, a mini, or the plan for the event.",
-    defaultName: "North Light",
-    tagline: "We shoot the hour you booked.",
-    description: "Sessions by appointment. You get the time, the place, and the edit that follows.",
-    address: "New Era · studio and on location",
-    ringColor: "#B388FF",
-    soloTitle: "Photographer",
-    services: [
-      { group: "Session", name: "Portrait hour", description: "One hour. One person or a pair. The edit included.", durationMin: 60, priceCents: 25000 },
-      { group: "Session", name: "Mini", description: "Twenty directed frames. A short block.", durationMin: 30, priceCents: 15000 },
-      { group: "Plan", name: "Event consult", description: "The timeline, the light, and the date.", durationMin: 45, priceCents: 10000 },
-    ],
-    employees: [
-      { displayName: "Ada Morales", title: "Photographer", bio: "Portraits and the events that need a timeline.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Kit Romero", title: "Photographer", bio: "Minis and the second camera.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  pets: bookable({
-    niche: "pets",
-    label: "Pet grooming",
-    kicker: "They book the groom",
-    blurb: "A bath, a full groom, or just the nails.",
-    defaultName: "Good Coat",
-    tagline: "In clean. Out finished.",
-    description: "Grooms by appointment so the dog is not waiting in a crate all afternoon.",
-    address: "New Era · grooms by appointment",
-    ringColor: "#E7B48A",
-    soloTitle: "Groomer",
-    services: [
-      { group: "Groom", name: "Full groom", description: "Bath, cut, ears, and nails. Breed cut or your notes.", durationMin: 90, priceCents: 8500 },
-      { group: "Groom", name: "Bath + brush", description: "A clean coat. No haircut.", durationMin: 45, priceCents: 4500 },
-      { group: "Quick", name: "Nail trim", description: "Nails only. In and out.", durationMin: 20, priceCents: 1800 },
-    ],
-    employees: [
-      { displayName: "Harper Lin", title: "Lead groomer", bio: "Full grooms and the dogs that need a calm room.", avatarUrl: "", serviceIndexes: [0, 1] },
-      { displayName: "Casey Dunn", title: "Groomer", bio: "Baths, nails, and the short appointments.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  clean: bookable({
-    niche: "clean",
-    label: "Home cleaning",
-    kicker: "They book the visit",
-    blurb: "A standard clean, a deep clean, or the move-out.",
-    defaultName: "Clear House",
-    tagline: "We arrive when the book says.",
-    description: "Home cleans on a clock. You book the visit. We bring the kit.",
-    address: "New Era · visits within 15 miles",
-    ringColor: "#2EE6D6",
-    soloTitle: "Cleaner",
-    services: [
-      { group: "Visit", name: "Standard clean", description: "Kitchen, baths, floors. A home that is already lived in.", durationMin: 120, priceCents: 16000 },
-      { group: "Visit", name: "Deep clean", description: "The corners the weekly clean skips.", durationMin: 240, priceCents: 28000 },
-      { group: "Move", name: "Move-out", description: "Empty rooms. The handoff clean.", durationMin: 240, priceCents: 32000 },
-    ],
-    employees: [
-      { displayName: "Rosa Alvarez", title: "Lead", bio: "Walks the house first, then the crew follows her list.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Ben Cho", title: "Cleaner", bio: "Standard visits and the deep cleans.", avatarUrl: "", serviceIndexes: [0, 1] },
-    ],
-  }),
-  practice: bookable({
-    niche: "practice",
-    label: "Clinic",
-    kicker: "They book the chart",
-    blurb: "A new-patient visit, a follow-up, or a consult. The room is charted before you arrive.",
-    defaultName: "Lane Practice",
-    tagline: "New patients and follow-ups, on the book.",
-    description: "A clinic book. New-patient visits, follow-ups, and consults. Not a therapy plan of care.",
-    address: "New Era · visits by appointment",
-    ringColor: "#7EC8E3",
-    soloTitle: "Practitioner",
-    services: [
-      { group: "Visit", name: "New patient", description: "History, exam, and the chart. The first time in the room.", durationMin: 60, priceCents: 18000 },
-      { group: "Visit", name: "Follow-up", description: "A return on a chart that already exists.", durationMin: 30, priceCents: 9000 },
-      { group: "Visit", name: "Consult", description: "A question and a recommendation. No procedure that day.", durationMin: 30, priceCents: 7500 },
-    ],
-    employees: [
-      { displayName: "Dr. Leah Okonkwo", title: "Practitioner", bio: "New visits and the plan that follows.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Micah Berg", title: "Practitioner", bio: "Follow-ups and consults.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  counsel: bookable({
-    niche: "counsel",
-    label: "Advisor",
-    kicker: "They book the consult",
-    blurb: "An intro call, a working hour on the books, or a review of what is already filed.",
-    defaultName: "Plain Counsel",
-    tagline: "The hour has an agenda and notes you keep.",
-    description: "Advisory work by the hour. Intro, a working session, or a review of the file.",
-    address: "New Era · calls and the office",
-    ringColor: "#C9A227",
-    soloTitle: "Advisor",
-    services: [
-      { group: "Consult", name: "Intro consult", description: "What you need, and whether we are the right hour.", durationMin: 30, priceCents: 0 },
-      { group: "Consult", name: "Working session", description: "One file, one hour, notes you can act on after.", durationMin: 60, priceCents: 20000 },
-      { group: "Review", name: "File review", description: "A read of the work already done, and what to do next.", durationMin: 45, priceCents: 15000 },
-    ],
-    employees: [
-      { displayName: "Helen Park", title: "Advisor", bio: "Starts with the question, ends with a next step.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Omar Aziz", title: "Advisor", bio: "Working sessions and reviews.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  events: bookable({
-    niche: "events",
-    label: "Events",
-    kicker: "They book the date",
-    blurb: "A walkthrough, the day-of lead, or the reception block.",
-    defaultName: "Hold the Date",
-    tagline: "The date is held when the timeline is booked.",
-    description: "Event planning by the block. Walk the venue, then run the day.",
-    address: "New Era · and the venue",
-    ringColor: "#B388FF",
-    soloTitle: "Lead",
-    services: [
-      { group: "Plan", name: "Venue walkthrough", description: "The room, the load-in, and whether the date is open.", durationMin: 45, priceCents: 0 },
-      { group: "Day", name: "Day-of lead", description: "The timeline in the room. You have the lead for that block.", durationMin: 90, priceCents: 80000 },
-      { group: "Day", name: "Reception block", description: "The longer hold. Room, vendors, and the close.", durationMin: 240, priceCents: 150000 },
-    ],
-    employees: [
-      { displayName: "Vera Lang", title: "Lead", bio: "Holds the timeline and the room.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Chris Adeyemi", title: "Operator", bio: "The set and the second half of the night.", avatarUrl: "", serviceIndexes: [2] },
-    ],
-  }),
-  security: bookable({
-    niche: "security",
-    label: "Private security",
-    kicker: "They book the post",
-    blurb: "A consult, a standing post, or the night of an event.",
-    defaultName: "Night Watch",
-    tagline: "The door is covered when you book it.",
-    description: "Private posts and event details. Book the shift, not a maybe.",
-    address: "New Era · and the site",
-    ringColor: "#7EC8E3",
-    soloTitle: "Lead",
-    services: [
-      { group: "Start", name: "Site consult", description: "Walk the door, the lot, and what the post actually needs.", durationMin: 45, priceCents: 0 },
-      { group: "Post", name: "Standing post", description: "One officer, one shift, the site you named.", durationMin: 240, priceCents: 32000 },
-      { group: "Post", name: "Event detail", description: "The night of the event. Door, floor, and the close.", durationMin: 300, priceCents: 48000 },
-    ],
-    employees: [
-      { displayName: "Reed Calder", title: "Lead", bio: "Walks the site first. The post follows his list.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Imani Brooks", title: "Officer", bio: "Event nights and the shifts that run late.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  retail: bookable({
-    niche: "retail",
-    label: "Retail / Merchandise",
-    kicker: "They order the item",
-    blurb: "A cap, a print, or the bundle. Counted stock, no calendar.",
-    defaultName: "Counter Goods",
-    tagline: "The item is yours when you order it.",
-    description: "Merchandise with a price, an attribute, and a count on the shelf.",
-    address: "New Era · the counter",
-    ringColor: "#E7B48A",
-    soloTitle: "Counter",
-    services: [
-      { group: "Apparel", name: "House cap", description: "Embroidered mark. One size.", durationMin: 0, priceCents: 3200 },
-      { group: "Print", name: "Shop print", description: "18×24 poster of the mark.", durationMin: 0, priceCents: 2400 },
-      { group: "Bundle", name: "Counter bundle", description: "The cap and the print together.", durationMin: 0, priceCents: 4800 },
-    ],
-    employees: [
-      { displayName: "June Hale", title: "Counter", bio: "Packs the order and keeps the count honest.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-    ],
-  }),
-  combat: bookable({
-    niche: "combat",
-    label: "Combat sports",
-    kicker: "They book the round",
-    blurb: "A first class, a private hour, or the camp before a fight.",
-    defaultName: "Iron Round",
-    tagline: "The round starts when you book it.",
-    description: "Striking and grappling. Book the intro, the private, or the camp block.",
-    address: "New Era · the gym",
-    ringColor: "#E25B3A",
-    soloTitle: "Coach",
-    services: [
-      { group: "Start", name: "Intro class", description: "One class. Gloves on, the basics, no sparring.", durationMin: 60, priceCents: 4000 },
-      { group: "Train", name: "Private hour", description: "One coach, one pad round, the thing you came to fix.", durationMin: 60, priceCents: 12000 },
-      { group: "Camp", name: "Camp block", description: "Four sessions in the weeks before a fight.", durationMin: 75, priceCents: 36000 },
-    ],
-    employees: [
-      { displayName: "Dani Ruiz", title: "Head coach", bio: "Holds the pads and calls the round.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Jordan Hale", title: "Coach", bio: "Intro classes and the people still learning the stance.", avatarUrl: "", serviceIndexes: [0, 1] },
-    ],
-  }),
-  locksmith: bookable({
-    niche: "locksmith",
-    label: "Mobile locksmith",
-    kicker: "They book the van",
-    blurb: "A lockout, a rekey, or a new lock. The van comes to the door.",
-    defaultName: "Night Key",
-    tagline: "The van is already on the way.",
-    description: "Mobile lock work. Book the lockout, the rekey, or the install.",
-    address: "New Era · we come to you",
-    ringColor: "#C6A15B",
-    soloTitle: "Locksmith",
-    services: [
-      { group: "Now", name: "Lockout", description: "Emergency open. House, car, or the shop door.", durationMin: 45, priceCents: 12500 },
-      { group: "Door", name: "Rekey", description: "Same lock, new keys. The old ones stop working.", durationMin: 60, priceCents: 9500 },
-      { group: "Door", name: "Lock install", description: "A new deadbolt, fitted and tested.", durationMin: 75, priceCents: 18000 },
-    ],
-    employees: [
-      { displayName: "Sam Ortega", title: "Locksmith", bio: "Takes the night calls and the rekeys that should have happened yesterday.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Riley Chen", title: "Tech", bio: "Installs and the jobs that need a second set of hands.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  landscaper: bookable({
-    niche: "landscaper",
-    label: "Landscaper",
-    kicker: "They book the yard",
-    blurb: "A mow, a cleanup, or the planting. The crew comes to the house.",
-    defaultName: "Green Line",
-    tagline: "The yard is booked before the truck leaves.",
-    description: "Lawn and landscape work. Book the mow, the cleanup, or the planting.",
-    address: "New Era · we come to the yard",
-    ringColor: "#6FA86A",
-    soloTitle: "Landscaper",
-    services: [
-      { group: "Yard", name: "Mow and edge", description: "The lawn, the edges, and the blow-off.", durationMin: 60, priceCents: 8500 },
-      { group: "Yard", name: "Cleanup", description: "Beds, leaves, and the haul-away.", durationMin: 120, priceCents: 18000 },
-      { group: "Plant", name: "Planting visit", description: "A bed or a row, planted and watered in.", durationMin: 150, priceCents: 24000 },
-    ],
-    employees: [
-      { displayName: "Chris Adeyemi", title: "Landscaper", bio: "Runs the mow and the beds that need a real edge.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Pat Nguyen", title: "Crew", bio: "The cleanup days and the planting.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  dogwalk: bookable({
-    niche: "dogwalk",
-    label: "Dog walking",
-    kicker: "They book the walk",
-    blurb: "A solo walk, a pack walk, or a midday check. The leash comes to the door.",
-    defaultName: "Leash Line",
-    tagline: "The walk is booked before the leash is clipped.",
-    description: "Dog walking. Book the solo walk, the pack walk, or the midday visit.",
-    address: "New Era · we come to the dog",
-    ringColor: "#C4A15A",
-    soloTitle: "Walker",
-    services: [
-      { group: "Walk", name: "Solo walk", description: "One dog, one loop, back at the door.", durationMin: 30, priceCents: 2500 },
-      { group: "Walk", name: "Pack walk", description: "Two or three dogs from the same house.", durationMin: 45, priceCents: 4000 },
-      { group: "Visit", name: "Midday visit", description: "A short walk and a water check while you're out.", durationMin: 20, priceCents: 2000 },
-    ],
-    employees: [
-      { displayName: "Nora Ellis", title: "Walker", bio: "Takes the morning loop and the dogs that pull.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Sam Ortega", title: "Walker", bio: "The midday visits and the pack walks.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  detailer: bookable({
-    niche: "detailer",
-    label: "Mobile detailer",
-    kicker: "They book the van",
-    blurb: "An exterior wash, a full detail, or the interior. The van comes to the driveway.",
-    defaultName: "Curb Shine",
-    tagline: "The van is booked before it leaves the curb.",
-    description: "Mobile auto detailing. Book the wash, the interior, or the full detail.",
-    address: "New Era · we come to the car",
-    ringColor: "#7EC8E3",
-    soloTitle: "Detailer",
-    services: [
-      { group: "Wash", name: "Exterior wash", description: "Rinse, wash, and dry in the driveway.", durationMin: 60, priceCents: 8000 },
-      { group: "Inside", name: "Interior reset", description: "Vacuum, wipe-down, and the windows.", durationMin: 90, priceCents: 14000 },
-      { group: "Full", name: "Full detail", description: "Outside and inside, including the wheels.", durationMin: 180, priceCents: 25000 },
-    ],
-    employees: [
-      { displayName: "Luis Ortega", title: "Detailer", bio: "Runs the driveway jobs and the full details.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Riley Chen", title: "Tech", bio: "Interiors and the cars that need a second pass.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  hunting: bookable({
-    niche: "hunting",
-    label: "Rugged Backcountry Services",
-    kicker: "They book the hunt",
-    blurb: "A private day, a half day, or a scouting walk. The gate opens when you book it.",
-    defaultName: "Ridge Line",
-    tagline: "The hunt is booked before the gate opens.",
-    description: "Private hunting trips. Book the half day, the full day, or the scout.",
-    address: "New Era · private ground",
-    ringColor: "#8B7355",
-    soloTitle: "Guide",
-    services: [
-      { group: "Day", name: "Half day", description: "A morning or an evening on private ground.", durationMin: 240, priceCents: 35000 },
-      { group: "Day", name: "Full day", description: "Dawn to dark. The guide, the ground, and the plan.", durationMin: 600, priceCents: 65000 },
-      { group: "Scout", name: "Scouting walk", description: "A look at the ground before the hunt day.", durationMin: 120, priceCents: 18000 },
-    ],
-    employees: [
-      { displayName: "Cole Brennan", title: "Guide", bio: "Runs the private days and the scouting walks.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Jonah Hale", title: "Guide", bio: "The half days and the evening sits.", avatarUrl: "", serviceIndexes: [0, 2] },
-    ],
-  }),
-  therapy: bookable({
-    niche: "therapy",
-    label: "Physical therapy",
-    kicker: "They book the session",
-    blurb: "An evaluation, a follow-up, or a return visit. The room is ready when you arrive.",
-    defaultName: "Motion Room",
-    tagline: "The session starts on time.",
-    description: "Physical therapy. Book the evaluation, the follow-up, or the return visit.",
-    address: "New Era · visits by appointment",
-    ringColor: "#6FA8C9",
-    soloTitle: "Therapist",
-    services: [
-      { group: "Visit", name: "Evaluation", description: "Initial eval. Range, strength, and the plan of care.", durationMin: 60, priceCents: 15000 },
-      { group: "Visit", name: "Follow-up", description: "A treatment visit on the plan of care you already have.", durationMin: 45, priceCents: 9500 },
-      { group: "Visit", name: "Return visit", description: "A longer treatment block when the plan calls for it.", durationMin: 60, priceCents: 12000 },
-    ],
-    employees: [
-      { displayName: "Leah Okonkwo", title: "Therapist", bio: "Evaluations and the plan that follows.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Micah Berg", title: "Therapist", bio: "Follow-ups and the return visits.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  bowtech: bookable({
-    niche: "bowtech",
-    label: "Custom bow technician",
-    kicker: "They book the bench",
-    blurb: "A tune, a setup, or a repair. The bow is ready when you pick it up.",
-    defaultName: "String Bench",
-    tagline: "The bow is booked before it hits the bench.",
-    description: "Custom bow work. Book the tune, the setup, or the repair.",
-    address: "New Era · the bench",
-    ringColor: "#C4A15A",
-    soloTitle: "Technician",
-    services: [
-      { group: "Bench", name: "Tune", description: "Paper tune and a walk-back. You leave with it sighted.", durationMin: 60, priceCents: 7500 },
-      { group: "Bench", name: "Setup", description: "A new bow, built and set to you.", durationMin: 90, priceCents: 15000 },
-      { group: "Bench", name: "Repair", description: "Strings, cams, or the thing that let go.", durationMin: 45, priceCents: 6000 },
-    ],
-    employees: [
-      { displayName: "Cole Brennan", title: "Technician", bio: "Tunes and the full setups.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Jonah Hale", title: "Technician", bio: "Repairs and the quick tunes.", avatarUrl: "", serviceIndexes: [0, 2] },
-    ],
-  }),
-  foodtruck: bookable({
-    niche: "foodtruck",
-    label: "Mobile food truck",
-    kicker: "They book the window",
-    blurb: "A lunch stop, a private event, or a tray from the truck.",
-    defaultName: "Window Line",
-    tagline: "The truck is booked before the window opens.",
-    description: "A mobile food truck. Book the stop, the private event, or the tray.",
-    address: "New Era · the truck comes to you",
-    ringColor: "#E07A3D",
-    soloTitle: "Operator",
-    services: [
-      { group: "Stop", name: "Lunch stop", description: "The truck on site for a lunch window.", durationMin: 120, priceCents: 45000 },
-      { group: "Event", name: "Private event", description: "A booked window for a party or a crew.", durationMin: 180, priceCents: 75000 },
-      { group: "Tray", name: "Catering tray", description: "Food from the truck, dropped without the full stop.", durationMin: 45, priceCents: 18000 },
-    ],
-    employees: [
-      { displayName: "Rosa Vega", title: "Operator", bio: "Runs the window and the private bookings.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Eli Brooks", title: "Cook", bio: "The line and the trays that leave the truck.", avatarUrl: "", serviceIndexes: [0, 2] },
-    ],
-  }),
-  prompt: bookable({
-    niche: "prompt",
-    label: "AI prompt engineering and creation",
-    kicker: "They book the prompt",
-    blurb: "A prompt session, a custom pack, or a piece built from the brief.",
-    defaultName: "Prompt Desk",
-    tagline: "The prompt is written before the piece is made.",
-    description: "AI prompt engineering and creation. Book the session, the pack, or the build.",
-    address: "New Era · the desk",
-    ringColor: "#3D7EFF",
-    soloTitle: "Engineer",
-    services: [
-      { group: "Session", name: "Prompt session", description: "An hour on the brief. You leave with prompts that work.", durationMin: 60, priceCents: 15000 },
-      { group: "Pack", name: "Prompt pack", description: "A written set for the work you already named.", durationMin: 90, priceCents: 28000 },
-      { group: "Build", name: "Creation block", description: "The prompts plus the finished piece.", durationMin: 180, priceCents: 48000 },
-    ],
-    employees: [
-      { displayName: "Ava Lind", title: "Engineer", bio: "Writes the prompts and builds the piece.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Noah Peck", title: "Engineer", bio: "Sessions and the packs that follow.", avatarUrl: "", serviceIndexes: [0, 1] },
-    ],
-  }),
-  creator: bookable({
-    niche: "creator",
-    label: "Cinematic Video and Content Creator",
-    kicker: "They book the edit",
-    blurb: "A shoot, a cut, or a video that is ready to post.",
-    defaultName: "Frame Desk",
-    tagline: "Shot, cut, and ready when you book it.",
-    description: "Content and video editing. Book the shoot, the cut, or the package.",
-    address: "New Era · the desk",
-    ringColor: "#7C6BF2",
-    soloTitle: "Editor",
-    services: [
-      { group: "Shoot", name: "Content day", description: "A half day on camera. The clips are yours.", durationMin: 180, priceCents: 45000 },
-      { group: "Edit", name: "Video edit", description: "One finished piece from footage you already have.", durationMin: 90, priceCents: 18000 },
-      { group: "Package", name: "Shoot and cut", description: "The day plus the edit, delivered ready to post.", durationMin: 240, priceCents: 72000 },
-    ],
-    employees: [
-      { displayName: "Mina Cho", title: "Editor", bio: "Cuts the piece and sends it back ready to post.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Owen Blake", title: "Shooter", bio: "Runs the camera on content days.", avatarUrl: "", serviceIndexes: [0, 2] },
-    ],
-  }),
-  entertainer: bookable({
-    niche: "entertainer",
-    label: "Entertainer",
-    kicker: "They book the set",
-    blurb: "A short set, a private show, or the night.",
-    defaultName: "House Act",
-    tagline: "The set starts when you book it.",
-    description: "Live entertainment. Book the short set, the private show, or the night.",
-    address: "New Era · the room",
-    ringColor: "#E23D8C",
-    soloTitle: "Performer",
-    services: [
-      { group: "Set", name: "Short set", description: "Twenty minutes. One room, one act.", durationMin: 20, priceCents: 15000 },
-      { group: "Show", name: "Private show", description: "A booked hour for a party or a room.", durationMin: 60, priceCents: 40000 },
-      { group: "Night", name: "Full night", description: "The evening. Sets, breaks, and the close.", durationMin: 180, priceCents: 90000 },
-    ],
-    employees: [
-      { displayName: "Jules Marin", title: "Performer", bio: "Takes the short sets and the private rooms.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Casey Quinn", title: "Host", bio: "Holds the night and the longer bookings.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  firewood: bookable({
-    niche: "firewood",
-    label: "Firewood cutting",
-    kicker: "They book the cord",
-    blurb: "A cut, a split, or a cord dropped at the house.",
-    defaultName: "Cord Line",
-    tagline: "Cut, split, and stacked when you book it.",
-    description: "Firewood cutting and delivery. Book the cord, the split, or the stack.",
-    address: "New Era · we come to the pile",
-    ringColor: "#C4783A",
-    soloTitle: "Cutter",
-    services: [
-      { group: "Cut", name: "Cut and split", description: "One cord, cut and split on site.", durationMin: 180, priceCents: 28000 },
-      { group: "Deliver", name: "Cord delivery", description: "A cord dropped where you want the pile.", durationMin: 60, priceCents: 32000 },
-      { group: "Stack", name: "Stack the cord", description: "The delivered wood, stacked and covered.", durationMin: 90, priceCents: 8000 },
-    ],
-    employees: [
-      { displayName: "Hank Briggs", title: "Cutter", bio: "Runs the saw and keeps the lengths even.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-      { displayName: "Luis Ortega", title: "Driver", bio: "The truck, the drop, and the stack at the house.", avatarUrl: "", serviceIndexes: [1, 2] },
-    ],
-  }),
-  trade: bookable({
-    niche: "trade",
-    label: "Your trade",
-    kicker: "They book a time",
-    blurb: "The open book for a trade the list does not name.",
-    defaultName: "Open Book",
-    tagline: "A time on the book, with a price you can read.",
-    description: "A booking page for a trade that is not on the list. The lines start general. You can rename them after.",
-    address: "New Era",
-    ringColor: "#2EE6D6",
-    soloTitle: "Owner",
-    services: [
-      { group: "Start", name: "First look", description: "A short first meeting so the job is named before the work starts.", durationMin: 30, priceCents: 0 },
-      { group: "Book", name: "Standard visit", description: "The usual block of work, with a price and a length.", durationMin: 60, priceCents: 10000 },
-      { group: "Book", name: "Extended visit", description: "A longer block when the job will not fit in an hour.", durationMin: 120, priceCents: 18000 },
-    ],
-    employees: [
-      { displayName: "Alex Morgan", title: "Owner", bio: "Takes the book until you rename this to yourself.", avatarUrl: "", serviceIndexes: [0, 1, 2] },
-    ],
-  }),
-};
-
-function bookable(input: {
-  niche: ShopNiche;
-  label: string;
-  kicker: string;
-  blurb: string;
-  defaultName: string;
-  tagline: string;
-  description: string;
-  address: string;
-  ringColor: string;
-  soloTitle: string;
-  services: NicheTemplate["services"];
-  employees: NicheTemplate["employees"];
-}): NicheTemplate {
-  return {
-    ...input,
-    heroImageUrl: NICHE_MEDIA[input.niche].heroImageUrl,
-    heroVideoUrl: NICHE_MEDIA[input.niche].heroVideoUrl,
-    heroBlendPercent: NICHE_MEDIA[input.niche].heroBlendPercent,
-    introPreset: NICHE_MEDIA[input.niche].introPreset,
-    introSpeed: NICHE_MEDIA[input.niche].introSpeed,
-    introIntensity: NICHE_MEDIA[input.niche].introIntensity,
-    employees: withSharedStaff(input.employees),
-    portfolio: [],
-  };
-}
-
-function withSharedStaff(employees: NicheTemplate["employees"]): NicheTemplate["employees"] {
-  const next = employees.slice(0, 2).map((person, index) => ({
-    ...person,
-    avatarUrl: SHARED_STAFF[index] ?? SHARED_STAFF[0],
-  }));
-  while (next.length < 2) {
-    const index = next.length;
-    next.push({
-      displayName: index === 0 ? "Alex Morgan" : "Willa Grant",
-      title: index === 0 ? "Lead" : "Crew",
-      bio: "On the book for this shop.",
-      avatarUrl: SHARED_STAFF[index] ?? SHARED_STAFF[0],
-      serviceIndexes: employees[0]?.serviceIndexes ?? [0],
-    });
-  }
-  return next;
-}
-
-for (const key of NICHE_ORDER) {
-  NICHES[key].employees = withSharedStaff(NICHES[key].employees);
-  NICHES[key].portfolio = [];
-}
+/** @deprecated Use PUBLIC_NICHE_ORDER / CATALOG — kept for import compatibility. */
+export const HERO_LOOP_CATALOG = CATALOG.map((row) => ({
+  id: row.id,
+  file: row.file,
+  url: catalogFilmUrl(row.id),
+  niche: row.id,
+  label: row.label,
+  blurb: row.blurb,
+}));
 
 export const DEFAULT_HOURS: Record<string, string> = {
   mon: "09:00-18:00",
@@ -1245,6 +95,78 @@ export const WEEKDAYS = [
   ["sun", "Sun"],
 ] as const;
 
+const RING_CYCLE = RING_PRESETS.map((row) => row.value);
+
+function defaultServices(label: string): NicheTemplate["services"] {
+  return [
+    {
+      name: "Site visit",
+      description: `Walk the job for ${label.toLowerCase()}. Scope, quote, and next steps.`,
+      durationMin: 60,
+      priceCents: 8900,
+    },
+    {
+      name: "Standard service",
+      description: `The usual ${label.toLowerCase()} ticket. Labor and the book stay clear.`,
+      durationMin: 120,
+      priceCents: 18900,
+    },
+    {
+      name: "Full day",
+      description: `A full crew day for ${label.toLowerCase()}.`,
+      durationMin: 480,
+      priceCents: 68000,
+    },
+  ];
+}
+
+function buildTemplate(niche: ShopNiche, index: number): NicheTemplate {
+  const entry = CATALOG.find((row) => row.id === niche)!;
+  const media = NICHE_MEDIA[niche];
+  return {
+    niche,
+    label: entry.label,
+    kicker: entry.kicker,
+    blurb: entry.blurb,
+    defaultName: entry.defaultName,
+    tagline: entry.tagline,
+    description: `${entry.blurb} Book the time. The shop confirms.`,
+    address: "Southern Oregon · on the book",
+    ringColor: RING_CYCLE[index % RING_CYCLE.length]!,
+    heroImageUrl: "",
+    heroVideoUrl: catalogFilmUrl(niche),
+    heroBlendPercent: media.heroBlendPercent,
+    introPreset: media.introPreset,
+    introSpeed: media.introSpeed,
+    introIntensity: media.introIntensity,
+    primaryServiceIndex: 1,
+    soloTitle: "Owner",
+    hours: { ...DEFAULT_HOURS },
+    services: defaultServices(entry.label),
+    employees: [
+      {
+        displayName: "Alex Morgan",
+        title: "Lead",
+        bio: "Owns the book and the first visit.",
+        avatarUrl: SHARED_STAFF[0],
+        serviceIndexes: [0, 1, 2],
+      },
+      {
+        displayName: "Willa Grant",
+        title: "Crew",
+        bio: "On the ticket when the day needs a second hand.",
+        avatarUrl: SHARED_STAFF[1],
+        serviceIndexes: [0, 1, 2],
+      },
+    ],
+    portfolio: [],
+  };
+}
+
+export const NICHES: Record<ShopNiche, NicheTemplate> = Object.fromEntries(
+  SHOP_NICHES.map((niche, index) => [niche, buildTemplate(niche, index)]),
+) as Record<ShopNiche, NicheTemplate>;
+
 export type NicheVoice = {
   bench: string;
   heading: string;
@@ -1260,538 +182,67 @@ export type NicheVoice = {
   gallery: string;
 };
 
-const VOICE: Record<ShopNiche, NicheVoice> = {
-  guide: {
-    bench: "The crew",
-    heading: "Who rows with you.",
-    menuKicker: "Departures",
-    menuHeading: "Trips",
-    bookLabel: "Book a trip",
-    inquiry: "Ask the outfit",
-    offerStep: "Trip",
-    staffStep: "Guide",
-    timeStep: "Launch",
-    timeHint: "Pick a launch",
-    requestLabel: "Request this launch",
-    gallery: "On the water",
-  },
-  fitness: {
-    bench: "The floor",
-    heading: "Who coaches the hour.",
-    menuKicker: "The book",
-    menuHeading: "Training",
-    bookLabel: "Book a training",
-    inquiry: "Ask the gym",
-    offerStep: "Session",
-    staffStep: "Coach",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this session",
-    gallery: "The floor",
-  },
-  combat: {
-    bench: "The gym",
-    heading: "Who calls the round.",
-    menuKicker: "The book",
-    menuHeading: "Sessions",
-    bookLabel: "Book a round",
-    inquiry: "Ask the gym",
-    offerStep: "Session",
-    staffStep: "Coach",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this round",
-    gallery: "The gym",
-  },
-  tattoo: {
-    bench: "The chair",
-    heading: "Who holds the machine.",
-    menuKicker: "The book",
-    menuHeading: "Work",
-    bookLabel: "Book the chair",
-    inquiry: "Ask the shop",
-    offerStep: "Piece",
-    staffStep: "Artist",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this sitting",
-    gallery: "The work",
-  },
-  landscaper: {
-    bench: "The crew",
-    heading: "Who works the yard.",
-    menuKicker: "The book",
-    menuHeading: "Visits",
-    bookLabel: "Book the yard",
-    inquiry: "Ask the crew",
-    offerStep: "Visit",
-    staffStep: "Who comes",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this visit",
-    gallery: "The yards",
-  },
-  dogwalk: {
-    bench: "The leash",
-    heading: "Who takes the walk.",
-    menuKicker: "The book",
-    menuHeading: "Walks",
-    bookLabel: "Book the walk",
-    inquiry: "Ask the walker",
-    offerStep: "Walk",
-    staffStep: "Who comes",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this walk",
-    gallery: "The walks",
-  },
-  hunting: {
-    bench: "The field",
-    heading: "Who guides the day.",
-    menuKicker: "The book",
-    menuHeading: "Days",
-    bookLabel: "Book the hunt",
-    inquiry: "Ask the guide",
-    offerStep: "Day",
-    staffStep: "Guide",
-    timeStep: "Start",
-    timeHint: "Pick a start",
-    requestLabel: "Request this day",
-    gallery: "The ground",
-  },
-  bowtech: {
-    bench: "The bench",
-    heading: "Who works the bow.",
-    menuKicker: "The book",
-    menuHeading: "Jobs",
-    bookLabel: "Book the bench",
-    inquiry: "Ask the bench",
-    offerStep: "Job",
-    staffStep: "Technician",
-    timeStep: "Drop-off",
-    timeHint: "Pick a drop-off",
-    requestLabel: "Request this job",
-    gallery: "The bench",
-  },
-  therapy: {
-    bench: "The room",
-    heading: "Who runs the session.",
-    menuKicker: "The book",
-    menuHeading: "Visits",
-    bookLabel: "Book a treatment",
-    inquiry: "Ask the therapist",
-    offerStep: "Visit",
-    staffStep: "Therapist",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this visit",
-    gallery: "The room",
-  },
-  detailer: {
-    bench: "The van",
-    heading: "Who details the car.",
-    menuKicker: "The book",
-    menuHeading: "Visits",
-    bookLabel: "Book the detail",
-    inquiry: "Ask the van",
-    offerStep: "Visit",
-    staffStep: "Who comes",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this visit",
-    gallery: "The driveway",
-  },
-  foodtruck: {
-    bench: "The truck",
-    heading: "Who runs the window.",
-    menuKicker: "The book",
-    menuHeading: "Stops",
-    bookLabel: "Book the truck",
-    inquiry: "Ask the truck",
-    offerStep: "Stop",
-    staffStep: "Who comes",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this stop",
-    gallery: "The window",
-  },
-  prompt: {
-    bench: "The desk",
-    heading: "Who writes the prompt.",
-    menuKicker: "The book",
-    menuHeading: "Sessions",
-    bookLabel: "Book a session",
-    inquiry: "Ask the desk",
-    offerStep: "Session",
-    staffStep: "Engineer",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this session",
-    gallery: "The work",
-  },
-  creator: {
-    bench: "The desk",
-    heading: "Who cuts the piece.",
-    menuKicker: "The book",
-    menuHeading: "Edits",
-    bookLabel: "Book the edit",
-    inquiry: "Ask the desk",
-    offerStep: "Session",
-    staffStep: "Editor",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this session",
-    gallery: "The work",
-  },
-  entertainer: {
-    bench: "The room",
-    heading: "Who takes the stage.",
-    menuKicker: "The book",
-    menuHeading: "Sets",
-    bookLabel: "Book a set",
-    inquiry: "Ask the act",
-    offerStep: "Set",
-    staffStep: "Performer",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this set",
-    gallery: "The stage",
-  },
-  music: {
-    bench: "The room",
-    heading: "Who's on the record.",
-    menuKicker: "The book",
-    menuHeading: "Sessions",
-    bookLabel: "Book the room",
-    inquiry: "Ask the studio",
-    offerStep: "Session",
-    staffStep: "Artist",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this session",
-    gallery: "The room",
-  },
-  contractor: {
-    bench: "The crew",
-    heading: "Who walks the job.",
-    menuKicker: "The book",
-    menuHeading: "Work",
-    bookLabel: "Book a site visit",
-    inquiry: "Ask the crew",
-    offerStep: "Estimate",
-    staffStep: "Who walks it",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this site visit",
-    gallery: "The jobs",
-  },
-  location: {
-    bench: "The chairs",
-    heading: "Who you'll sit with.",
-    menuKicker: "The book",
-    menuHeading: "Cuts",
-    bookLabel: "Book a chair",
-    inquiry: "Ask the shop",
-    offerStep: "Cut",
-    staffStep: "Barber",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this chair",
-    gallery: "The chair",
-  },
-  field: {
-    bench: "The crew",
-    heading: "Who rolls up.",
-    menuKicker: "The book",
-    menuHeading: "Calls",
-    bookLabel: "Book a service call",
-    inquiry: "Ask the shop",
-    offerStep: "Call",
-    staffStep: "Tech",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this call",
-    gallery: "The jobs",
-  },
-  firewood: {
-    bench: "The crew",
-    heading: "Who runs the saw.",
-    menuKicker: "The book",
-    menuHeading: "Cords",
-    bookLabel: "Book a cord",
-    inquiry: "Ask the crew",
-    offerStep: "Job",
-    staffStep: "Who comes",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this cord",
-    gallery: "The pile",
-  },
-  locksmith: {
-    bench: "The van",
-    heading: "Who comes to the door.",
-    menuKicker: "The book",
-    menuHeading: "Calls",
-    bookLabel: "Book a locksmith",
-    inquiry: "Ask the locksmith",
-    offerStep: "Call",
-    staffStep: "Locksmith",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this call",
-    gallery: "The jobs",
-  },
-  studio: {
-    bench: "The studio",
-    heading: "Who you'll work with.",
-    menuKicker: "The book",
-    menuHeading: "Engagements",
-    bookLabel: "Book a scope",
-    inquiry: "Ask the studio",
-    offerStep: "Engagement",
-    staffStep: "Who builds it",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this call",
-    gallery: "The work",
-  },
-  salon: {
-    bench: "The chairs",
-    heading: "Who styles you.",
-    menuKicker: "The book",
-    menuHeading: "Styles",
-    bookLabel: "Book a style",
-    inquiry: "Ask the salon",
-    offerStep: "Style",
-    staffStep: "Stylist",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this chair",
-    gallery: "The work",
-  },
-  beauty: {
-    bench: "The artists",
-    heading: "Who does the set.",
-    menuKicker: "The book",
-    menuHeading: "Sets",
-    bookLabel: "Book a set",
-    inquiry: "Ask the studio",
-    offerStep: "Set",
-    staffStep: "Artist",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this set",
-    gallery: "The work",
-  },
-  wellness: {
-    bench: "The room",
-    heading: "Who holds the hour.",
-    menuKicker: "The book",
-    menuHeading: "Hours",
-    bookLabel: "Book the table",
-    inquiry: "Ask the studio",
-    offerStep: "Session",
-    staffStep: "Practitioner",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this session",
-    gallery: "The room",
-  },
-  lessons: {
-    bench: "The teachers",
-    heading: "Who teaches the hour.",
-    menuKicker: "The book",
-    menuHeading: "Lessons",
-    bookLabel: "Book a lesson",
-    inquiry: "Ask the teacher",
-    offerStep: "Lesson",
-    staffStep: "Teacher",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this lesson",
-    gallery: "The work",
-  },
-  photo: {
-    bench: "The photographers",
-    heading: "Who shoots the hour.",
-    menuKicker: "The book",
-    menuHeading: "Shoots",
-    bookLabel: "Book a shoot",
-    inquiry: "Ask the studio",
-    offerStep: "Shoot",
-    staffStep: "Photographer",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this session",
-    gallery: "The work",
-  },
-  pets: {
-    bench: "The groomers",
-    heading: "Who finishes the coat.",
-    menuKicker: "The book",
-    menuHeading: "Grooms",
-    bookLabel: "Book a groom",
-    inquiry: "Ask the shop",
-    offerStep: "Groom",
-    staffStep: "Groomer",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this groom",
-    gallery: "The work",
-  },
-  clean: {
-    bench: "The crew",
-    heading: "Who comes to the house.",
-    menuKicker: "The book",
-    menuHeading: "Cleans",
-    bookLabel: "Book a clean",
-    inquiry: "Ask the crew",
-    offerStep: "Clean",
-    staffStep: "Who comes",
-    timeStep: "Arrival",
-    timeHint: "Pick an arrival",
-    requestLabel: "Request this clean",
-    gallery: "The jobs",
-  },
-  practice: {
-    bench: "The clinic",
-    heading: "Who takes the chart.",
-    menuKicker: "The book",
-    menuHeading: "Visits",
-    bookLabel: "Book a visit",
-    inquiry: "Ask the clinic",
-    offerStep: "Visit",
-    staffStep: "Practitioner",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this visit",
-    gallery: "The practice",
-  },
-  counsel: {
-    bench: "The advisors",
-    heading: "Who takes the hour.",
-    menuKicker: "The book",
-    menuHeading: "Consults",
-    bookLabel: "Book a consult",
-    inquiry: "Ask the office",
-    offerStep: "Consult",
-    staffStep: "Advisor",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this consult",
-    gallery: "The work",
-  },
-  events: {
-    bench: "The crew",
-    heading: "Who holds the date.",
-    menuKicker: "The book",
-    menuHeading: "Dates",
-    bookLabel: "Book the date",
-    inquiry: "Ask the lead",
-    offerStep: "Date",
-    staffStep: "Who works it",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this date",
-    gallery: "The dates",
-  },
-  security: {
-    bench: "The post",
-    heading: "Who covers the door.",
-    menuKicker: "The book",
-    menuHeading: "Posts",
-    bookLabel: "Book a post",
-    inquiry: "Ask the lead",
-    offerStep: "Post",
-    staffStep: "Officer",
-    timeStep: "Shift",
-    timeHint: "Pick a start",
-    requestLabel: "Request this post",
-    gallery: "The sites",
-  },
-  retail: {
-    bench: "The counter",
-    heading: "What is on the shelf.",
-    menuKicker: "The shelf",
-    menuHeading: "Items",
-    bookLabel: "Order product",
-    inquiry: "Ask the counter",
-    offerStep: "Item",
-    staffStep: "Counter",
-    timeStep: "Pickup",
-    timeHint: "When you want it",
-    requestLabel: "Order product",
-    gallery: "The goods",
-  },
-  trade: {
-    bench: "The book",
-    heading: "Who takes the time.",
-    menuKicker: "The book",
-    menuHeading: "Offerings",
-    bookLabel: "Book a time",
-    inquiry: "Ask",
-    offerStep: "Booking",
-    staffStep: "Who",
-    timeStep: "Time",
-    timeHint: "Pick a time",
-    requestLabel: "Request this time",
-    gallery: "The work",
-  },
+const DEFAULT_VOICE: NicheVoice = {
+  bench: "The crew",
+  heading: "Who takes the ticket.",
+  menuKicker: "Offers",
+  menuHeading: "Services",
+  bookLabel: "Book a visit",
+  inquiry: "Ask the shop",
+  offerStep: "Service",
+  staffStep: "Who",
+  timeStep: "When",
+  timeHint: "Pick a time",
+  requestLabel: "Request this time",
+  gallery: "On the job",
 };
 
-export function nicheCopy(niche: ShopNiche): NicheVoice {
-  return VOICE[niche] ?? VOICE.location;
+export function nicheVoice(niche: ShopNiche): NicheVoice {
+  const label = NICHES[niche]?.label ?? "Shop";
+  return {
+    ...DEFAULT_VOICE,
+    bench: `The ${label.toLowerCase()} crew`,
+    bookLabel: `Book ${label.toLowerCase()}`,
+  };
+}
+
+export function nicheCopy(niche: ShopNiche) {
+  return nicheVoice(niche);
 }
 
 export function shopTradeLabel(shop: { niche: ShopNiche; customNiche?: string }): string {
-  const custom = shop.customNiche?.trim();
+  const custom = (shop.customNiche ?? "").trim();
   if (custom) return custom;
-  return NICHES[shop.niche].label;
+  return NICHES[shop.niche]?.label ?? shop.niche;
+}
+
+export function formatOffer(service: {
+  name: string;
+  priceCents: number;
+  durationMin: number;
+  priceUnit?: PriceUnit;
+}): string {
+  const money = formatMoney(service.priceCents);
+  const unit =
+    service.priceUnit === "person" ? " / person" : service.priceUnit === "boat" ? " / boat" : "";
+  return `${service.name} · ${money}${unit} · ${service.durationMin}m`;
+}
+
+export function priceUnitsForNiche(niche: ShopNiche): PriceUnit[] {
+  return unitsForTemplate(NICHES[niche]?.priceUnits);
+}
+
+/** @deprecated Prefer priceUnitsForNiche. */
+export function priceUnitsFor(niche: ShopNiche): PriceUnit[] {
+  return priceUnitsForNiche(niche);
 }
 
 export const PRICE_UNIT_LABEL: Record<PriceUnit, string> = {
-  flat: "Flat fee",
+  flat: "Flat",
   person: "Per person",
   boat: "Per boat",
 };
 
-/** Units the admin may assign, taken from that trade's template. */
-export function priceUnitsFor(niche: ShopNiche): PriceUnit[] {
-  return unitsForTemplate(NICHES[niche]?.priceUnits);
-}
-
 export function defaultPriceUnit(niche: ShopNiche): PriceUnit {
-  return defaultUnit(priceUnitsFor(niche));
-}
-
-export function formatDuration(minutes: number) {
-  const min = Math.max(0, Math.round(minutes));
-  if (min < 60) return `${min} min`;
-  const hours = Math.floor(min / 60);
-  const rest = min % 60;
-  const hourLabel = hours === 1 ? "1 hr" : `${hours} hr`;
-  return rest === 0 ? hourLabel : `${hourLabel} ${rest} min`;
-}
-
-export function formatPrice(service: { priceCents: number; priceUnit?: PriceUnit }) {
-  const money = formatMoney(service.priceCents);
-  if (service.priceUnit === "person") return `${money} / person`;
-  if (service.priceUnit === "boat") return `${money} / boat`;
-  return money;
-}
-
-export function formatOffer(service: { priceCents: number; priceUnit?: PriceUnit; durationMin: number }) {
-  if (service.durationMin <= 0) return formatPrice(service);
-  return `${formatPrice(service)} · ${formatDuration(service.durationMin)}`;
-}
-
-export function serviceGroups(services: Service[] | null | undefined): { label: string; items: Service[] }[] {
-  const groups: { label: string; items: Service[] }[] = [];
-  for (const service of services ?? []) {
-    const label = typeof service.group === "string" ? service.group : "";
-    const last = groups[groups.length - 1];
-    if (last && last.label === label) last.items.push(service);
-    else groups.push({ label, items: [service] });
-  }
-  return groups;
+  return priceUnitsForNiche(niche)[0] ?? "flat";
 }

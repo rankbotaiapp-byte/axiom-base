@@ -29,8 +29,42 @@ function lineFor(snap: Snapshot, index: number) {
   return "AI  engine standby";
 }
 
-/** Saved master-desk lines, then GPU, frame rate, link, and engine. */
-export function TelemetryLog({ dataset = [] }: { dataset?: readonly string[] }) {
+/** Readable desk feed: bookings and operator actions, newest first. */
+export function TelemetryLog({
+  dataset = [],
+  variant = "ticker",
+}: {
+  dataset?: readonly string[];
+  variant?: "ticker" | "desk";
+}) {
+  if (variant === "desk") return <TelemetryDesk lines={dataset} />;
+  return <TelemetryTicker dataset={dataset} />;
+}
+
+function TelemetryDesk({ lines }: { lines: readonly string[] }) {
+  const shown = lines.map((line) => line.trim()).filter(Boolean).slice(0, 12);
+  return (
+    <section className="mission-log" aria-label="Activity log">
+      <header className="flex items-center gap-2">
+        <span className="telemetry-live" aria-hidden />
+        <p className="font-mono text-xs uppercase tracking-widest text-muted">Activity</p>
+      </header>
+      {shown.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">Quiet book. Confirmations land here.</p>
+      ) : (
+        <ol className="mt-3 grid gap-2">
+          {shown.map((line, index) => (
+            <li key={`${index}-${line}`} className="mission-log-line">
+              {line}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function TelemetryTicker({ dataset }: { dataset: readonly string[] }) {
   const extra = dataset.map((line) => line.trim()).filter(Boolean).slice(0, 3);
   const total = BROWSER_LOG_ORDER.length + extra.length;
   const [snap, setSnap] = useState<Snapshot>({ webgl: true, fps: 0, secure: true, online: true });

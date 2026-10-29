@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertCatalogNiche, catalogFilmUrl } from "@/config/catalog";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { isCatalogHeroUrl } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
 import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
@@ -123,13 +125,20 @@ export const createShopFromNiche = createServerFn({
   ownerName?: string;
   leadSlug?: string;
   customNiche?: string;
+  heroFilm?: string;
 }) => {
+  const niche = assertCatalogNiche(d.niche);
   const customNiche = cleanCustomNiche(typeof d.customNiche === "string" ? d.customNiche : "");
-  if (customNiche && d.niche !== "trade") throw new Error("A custom niche uses the open trade");
   if ((d.customNiche ?? "").trim() && customNiche.length < 2) throw new Error("Name the niche");
+  const heroFilm =
+    typeof d.heroFilm === "string" && isCatalogHeroUrl(d.heroFilm.trim())
+      ? d.heroFilm.trim().split("?")[0]
+      : catalogFilmUrl(niche);
   return {
     ...d,
-    customNiche
+    niche,
+    customNiche,
+    heroFilm,
   };
 }).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
@@ -158,10 +167,37 @@ export const updateShopBrand = createServerFn({
   glowEnabled?: boolean;
   layout?: LayoutBlock[];
   catalogFilm?: string;
+  heroFilm?: string;
   clearHeroVideo?: boolean;
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.updateShopBrandHandler(ctx);
+});
+
+/** Drops the Next cache for this shop. The client also invalidates the live router cache. */
+export const revalidateStorefront = createServerFn({
+  method: "POST"
+}).validator((slug: string) => {
+  const value = String(slug ?? "").trim().toLowerCase();
+  if (!value || value.length > 120 || value.includes("/") || value.includes("..")) throw new Error("Shop not found");
+  return value;
+}).handler(async (ctx: { data: string }) => {
+  const paths = [`/${ctx.data}`, `/${ctx.data}/admin/hero-studio`];
+  try {
+    const { revalidatePath } = await import("next/cache");
+    for (const path of paths) revalidatePath(path);
+  } catch {
+    /* TanStack serves the live storefront. router.invalidate() covers that cache. */
+  }
+  return { ok: true as const, paths };
+});
+
+/** `public/media/*-hero-animation.mp4` only. */
+export const listHeroAnimations = createServerFn({
+  method: "GET"
+}).handler(async () => {
+  const { readHeroAnimationPresets } = await import("./hero-animation-scan.server");
+  return readHeroAnimationPresets();
 });
 export const saveTradeProfile = createServerFn({
   method: "POST"

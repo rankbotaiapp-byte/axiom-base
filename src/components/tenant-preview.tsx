@@ -134,8 +134,8 @@ export function TenantPreview({
         introSpeed={template.introSpeed}
         introIntensity={template.introIntensity}
         tone={media.tone ?? null}
-        fallbackImageUrl={NICHE_MEDIA.trade.heroImageUrl}
-        fallbackVideoUrl={NICHE_MEDIA.trade.heroVideoUrl}
+        fallbackImageUrl={NICHE_MEDIA.contractor.heroImageUrl}
+        fallbackVideoUrl={NICHE_MEDIA.contractor.heroVideoUrl}
         bookLabel={bookLabel}
         bookHref="#book"
         niche={niche}

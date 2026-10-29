@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { createFileRoute, isNotFound, Link, Outlet, notFound } from "@tanstack/react-router";
+import { createFileRoute, isNotFound, Link, Outlet, notFound, useRouterState } from "@tanstack/react-router";
 import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-ring";
 import { rippleTheme } from "@/lib/axiom/brand-studio";
+import { localStorefront } from "@/lib/axiom/autopilot";
+import { materializeDatasetShop } from "@/lib/axiom/autopilot-shop";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
 import { isDatabaseUnavailable } from "../../../scripts/db-availability.mjs";
 import { isClientAbort } from "@/lib/client-abort";
@@ -54,41 +56,51 @@ function useLiveShop(initial: ShopPublic) {
   return data;
 }
 
+function presentShop(data: ShopPublic): ShopPublic {
+  return {
+    ...data,
+    services: data.services ?? [],
+    employees: data.employees ?? [],
+    shop: {
+      ...data.shop,
+      hours: data.shop.hours && typeof data.shop.hours === "object" ? data.shop.hours : {},
+      heroImageUrl: data.shop.heroImageUrl || "",
+      heroBlendPercent: Number.isFinite(data.shop.heroBlendPercent) ? data.shop.heroBlendPercent : 60,
+      introSpeed: Number.isFinite(data.shop.introSpeed) ? data.shop.introSpeed : 40,
+      introIntensity: Number.isFinite(data.shop.introIntensity) ? data.shop.introIntensity : 45,
+    },
+  };
+}
+
+function datasetShop(slug: string): ShopPublic | null {
+  const dataset = localStorefront(slug);
+  if (!dataset) return null;
+  return presentShop(materializeDatasetShop(dataset));
+}
+
 export const Route = createFileRoute("/$shopSlug")({
   loader: async ({ params, abortController }) => {
     try {
       const data = await getPublicShop({ data: params.shopSlug });
-      if (abortController.signal.aborted || !data) throw notFound();
-      return {
-        ...data,
-        services: data.services ?? [],
-        employees: data.employees ?? [],
-        shop: {
-          ...data.shop,
-          hours: data.shop.hours && typeof data.shop.hours === "object" ? data.shop.hours : {},
-          heroImageUrl: data.shop.heroImageUrl || "",
-          heroBlendPercent: Number.isFinite(data.shop.heroBlendPercent) ? data.shop.heroBlendPercent : 60,
-          introSpeed: Number.isFinite(data.shop.introSpeed) ? data.shop.introSpeed : 40,
-          introIntensity: Number.isFinite(data.shop.introIntensity) ? data.shop.introIntensity : 45,
-        },
-      };
+      if (abortController.signal.aborted) throw notFound();
+      if (data) return presentShop(data);
     } catch (error) {
       if (isNotFound(error)) throw error;
       if (abortController.signal.aborted || isClientAbort(error)) throw notFound();
-      if (isDatabaseUnavailable(error)) {
-        console.warn(
-          `[shop] hosted database is paused; /${params.shopSlug} stays closed until it accepts connections`,
-        );
-        throw notFound();
+      if (!isDatabaseUnavailable(error)) {
+        console.error(`[shop] failed to load /${params.shopSlug}`, error);
+        const message = error instanceof Error && error.message ? error.message : "Shop data is temporarily unavailable";
+        throw new Error(message);
       }
-      console.error(`[shop] failed to load /${params.shopSlug}`, error);
-      const message = error instanceof Error && error.message ? error.message : "Shop data is temporarily unavailable";
-      throw new Error(message);
+      console.warn(`[shop] hosted database is paused; /${params.shopSlug} is using the local storefront dataset`);
     }
+    const fallback = datasetShop(params.shopSlug);
+    if (!fallback) throw notFound();
+    return fallback;
   },
   component: ShopLayout,
   notFoundComponent: () => (
-    <main className="grid min-h-dvh place-items-center px-6 text-center">
+    <main className="grid min-h-dvh place-items-center bg-obsidian px-6 text-center text-fg">
       <div>
         <p className="font-display text-3xl">No shop at this address.</p>
         <Link to="/" className="mt-4 inline-block text-sm text-muted hover:text-fg">
@@ -124,6 +136,9 @@ function ShopLayout() {
       });
   }, [data.shop.slug, isPending, user]);
 
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const onFilm = pathname === `/${data.shop.slug}` || pathname === `/${data.shop.slug}/`;
+
   return (
     <LiveShopContext.Provider value={data}>
       <AxiomRingProvider
@@ -133,7 +148,7 @@ function ShopLayout() {
         mode={mode}
         watchEmployeeId={employeeId}
       >
-        <AxiomRing />
+        {onFilm ? null : <AxiomRing />}
         <AcceptBar mode={mode} />
         <Outlet />
       </AxiomRingProvider>

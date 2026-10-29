@@ -40,6 +40,7 @@ import { HOME_REGION_COUNTIES, HOME_REGION_LABEL } from "@/lib/axiom/regional-ro
 import { isShopNiche, type ShopNiche } from "@/lib/axiom/types";
 import { AutopilotCard } from "@/components/master/AutopilotCard";
 import { Button } from "@/components/ui/button";
+import { GlassReveal } from "@/components/ui/glass-reveal";
 import { Input, Label } from "@/components/ui/input";
 import { FeedbackToggles } from "@/components/feedback-toggles";
 import { Wordmark } from "@/components/shop-chrome";
@@ -73,8 +74,9 @@ function HeroFilmPanel() {
   }, []);
 
   return (
-    <section className="mt-8 rounded-[28px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-      <h2 className="font-display text-2xl">Hero films</h2>
+    <GlassReveal className="mt-8 rounded-[20px] p-5" delay={0.08}>
+      <p className="badge-mono">Media map</p>
+      <h2 className="mt-3 font-display text-2xl">Hero films</h2>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Each niche plays the film matched from the hero folder. Contractors, plumbing, auto repair, and barbers keep their named films. A shop pins a different file from its brand panel. These lines are saved in this browser and drawn on every hero opened here.
       </p>
@@ -115,7 +117,7 @@ function HeroFilmPanel() {
               setLines(next);
               setSaved(false);
             }}
-            className="h-11 rounded-xl bg-bg px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            className="h-11 rounded-xl bg-bg px-3 text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]"
           />
         ))}
         <button
@@ -129,7 +131,7 @@ function HeroFilmPanel() {
           {saved ? "Telemetry saved" : "Save telemetry"}
         </button>
       </div>
-    </section>
+    </GlassReveal>
   );
 }
 
@@ -159,7 +161,7 @@ export function MasterAdminPage() {
           void navigate({ to: stay, search: {}, replace: true });
           return;
         } catch (err: unknown) {
-          if (!cancelled) setKeyError(err instanceof Error ? err.message : "That key does not open the desk.");
+          if (!cancelled) setKeyError(masterAuthErrorMessage(err));
         }
       }
       try {
@@ -263,8 +265,8 @@ export function MasterAdminPage() {
 function Locked({ message, extra }: { message: string; extra?: ReactNode }) {
   const unconfigured = message === "Master admin is not configured";
   return (
-    <main className="grid min-h-dvh place-items-center bg-bg px-6 py-16 text-center">
-      <div className="w-full max-w-md">
+    <main className="neon-shell grid min-h-dvh place-items-center px-6 py-16 text-center">
+      <div className="glass-card w-full max-w-md rounded-2xl px-6 py-10">
         <Wordmark />
         <h1 className="mt-8 font-display text-4xl">This desk is locked.</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -279,6 +281,16 @@ function Locked({ message, extra }: { message: string; extra?: ReactNode }) {
       </div>
     </main>
   );
+}
+
+function masterAuthErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "";
+  // Browser TypeError when the Vite app is down or the /_serverFn hop cannot complete.
+  if (/failed to fetch|networkerror|load failed|fetch failed/i.test(raw)) {
+    return "The desk server is not reachable. Keep the local app running, then try the key again.";
+  }
+  if (raw.trim()) return raw;
+  return "That key does not open the desk.";
 }
 
 function BypassGate({
@@ -304,7 +316,7 @@ function BypassGate({
         void claimMasterBypass({ data: { key: key.trim() } })
           .then(() => onUnlock())
           .catch((err: unknown) => {
-            setLocalError(err instanceof Error ? err.message : "That key does not open the desk.");
+            setLocalError(masterAuthErrorMessage(err));
           })
           .finally(() => setBusy(false));
       }}
@@ -330,17 +342,17 @@ function BypassGate({
   );
   if (embedded) return form;
   return (
-    <main className="grid min-h-dvh place-items-center bg-bg px-6 py-16">
-      <div className="w-full max-w-md">
+    <main className="neon-shell grid min-h-dvh place-items-center px-6 py-16">
+      <div className="glass-card w-full max-w-md rounded-2xl px-6 py-10 reveal-up">
         <Wordmark />
-        <p className="mt-8 text-xs uppercase tracking-[0.22em] text-muted">Master desk</p>
-        <h1 className="mt-2 font-display text-4xl leading-none">Open the owner desk.</h1>
+        <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.22em] text-accent">Master desk</p>
+        <h1 className="mt-2 font-mono text-4xl leading-none tabular-nums">Open the owner desk.</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           Enter the owner key once. This browser keeps the desk open for a year, and each visit renews that session.
         </p>
         {form}
-        <div className="mt-8 rounded-[24px] bg-surface px-4 py-4 text-sm leading-relaxed text-muted shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-          <p className="text-xs uppercase tracking-[0.18em] text-fg">Pin it to your phone</p>
+        <div className="glass-card mt-8 rounded-xl px-4 py-4 text-sm leading-relaxed text-muted">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg">Pin it to your phone</p>
           <p className="mt-2">
             Open <span className="text-fg">/master</span> in Safari or Chrome, then Add to Home Screen. The icon opens
             this desk. <span className="text-fg">/admin</span> opens it too.
@@ -381,12 +393,12 @@ function DeskView({
   }, [desk.shops, needle]);
 
   return (
-    <main className="min-h-dvh bg-bg px-5 py-6 sm:px-8">
+    <main className="neon-shell px-5 py-6 sm:px-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Wordmark />
-          <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted">Master desk</p>
-          <h1 className="mt-2 font-display text-4xl leading-none sm:text-5xl">Every shop, one wire.</h1>
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.22em] text-accent">Master desk</p>
+          <h1 className="mt-2 font-mono text-4xl leading-none tabular-nums sm:text-5xl">Every shop, one wire.</h1>
           {persistent ? (
             <p className="mt-3 max-w-md text-sm text-muted">
               Owner session on this device. It stays signed in across refreshes. Add <span className="text-fg">/master</span> to
@@ -415,7 +427,7 @@ function DeskView({
         <p className="mt-2 max-w-xl text-sm text-muted">
           A finished checkout leaves simulation and is logged here as live.
         </p>
-        <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <ul className="mt-4 divide-y divide-line overflow-hidden glass-card rounded-2xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
           {desk.activations.length === 0 ? (
             <li className="px-4 py-6 text-sm text-muted">No territory has gone live yet.</li>
           ) : (
@@ -447,7 +459,7 @@ function DeskView({
               className="w-full sm:max-w-xs"
             />
           </div>
-          <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <ul className="mt-4 divide-y divide-line overflow-hidden glass-card rounded-2xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
             {shops.length === 0 ? (
               <li className="px-4 py-6 text-sm text-muted">No shops match.</li>
             ) : (
@@ -494,7 +506,7 @@ function DeskView({
               <li className="text-sm text-muted">No shop events yet.</li>
             ) : (
               desk.events.map((event) => (
-                <li key={event.id} className="rounded-xl bg-surface px-3 py-3 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <li key={event.id} className="glass-card rounded-xl px-3 py-3 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
                   <p className="text-sm">{event.shopName}</p>
                   <p className="text-sm text-muted">
                     {event.type.split("_").join(" ")} · {when(event.createdAt)}
@@ -536,7 +548,7 @@ function DeskView({
           className="mt-4 max-w-sm"
         />
         <div className="mt-4 grid gap-6 lg:grid-cols-2">
-          <ul className="divide-y divide-line rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <ul className="divide-y divide-line glass-card rounded-2xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
             {regions.length === 0 ? (
               <li className="px-4 py-6 text-sm text-muted">No regional lists yet.</li>
             ) : (
@@ -557,7 +569,7 @@ function DeskView({
               <li className="text-sm text-muted">No visits yet.</li>
             ) : (
               desk.hits.map((hit) => (
-                <li key={hit.id} className="rounded-xl bg-surface px-3 py-3 text-sm shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <li key={hit.id} className="glass-card rounded-xl px-3 py-3 text-sm shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
                   <p>{hit.leadSlug || "unscoped visit"}</p>
                   <p className="text-muted">
                     {hit.county || "no county"} · {hit.utmSource || "no source"}
@@ -609,7 +621,7 @@ function TradeSelect({
       <select
         value={selected}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl bg-surface px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+        className="h-11 w-full glass-card rounded-xl px-3 text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]"
         aria-label="Trade"
       >
         {allowAll ? <option value="all">All trades</option> : null}
@@ -627,10 +639,10 @@ function TradeSelect({
 }
 
 const draftClass =
-  "w-full rounded-xl bg-surface px-3 py-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)] outline-none focus:shadow-[0_0_0_2px_var(--color-accent)]";
+  "w-full rounded-xl bg-surface-2/80 px-3 py-3 font-mono text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] outline-none backdrop-blur-md focus:shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_55%,transparent),0_0_18px_color-mix(in_srgb,var(--color-accent)_16%,transparent)]";
 
 const selectClass =
-  "h-11 w-full rounded-xl bg-surface px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]";
+  "h-11 w-full rounded-xl bg-surface-2/80 px-3 font-mono text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] backdrop-blur-md";
 
 function OutreachEngine({
   onLaunched,
@@ -647,7 +659,7 @@ function OutreachEngine({
 }) {
   const opening = outreachStrategy("done-for-you");
   const [county, setCounty] = useState("");
-  const [trade, setTrade] = useState("location");
+  const [trade, setTrade] = useState("barber");
   const [leadQuery, setLeadQuery] = useState("");
   const [sort, setSort] = useState<LeadSort>("name");
   const [strategy, setStrategy] = useState<OutreachStrategyId>(opening.id);
@@ -855,7 +867,7 @@ function OutreachEngine({
         </select>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <div className="mt-4 overflow-hidden glass-card rounded-2xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
         <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.4fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 text-xs uppercase tracking-[0.16em] text-muted md:grid">
           <span>Business</span>
           <span>City</span>
@@ -949,9 +961,9 @@ function OutreachEngine({
               type="button"
               aria-pressed={on}
               onClick={() => applyStrategy(item.id)}
-              className="rounded-2xl bg-surface px-4 py-3 text-left"
+              className="glass-card rounded-2xl px-4 py-3 text-left"
               style={{
-                boxShadow: on ? "inset 0 0 0 2px var(--color-accent)" : "0 0 0 1px rgba(243,241,235,0.08)",
+                boxShadow: on ? "inset 0 0 0 2px var(--color-accent)" : "0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent)",
               }}
             >
               <p className="text-sm font-medium">{item.label}</p>
@@ -988,19 +1000,19 @@ function OutreachEngine({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <article className="rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <article className="glass-card rounded-2xl px-4 py-4 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">SMS-ready</p>
-          <p className="mt-2 font-display text-4xl leading-none">{preview ? smsReady : "—"}</p>
+          <p className="mt-2 font-mono text-4xl leading-none tabular-nums">{preview ? smsReady : "—"}</p>
           <p className="mt-2 text-sm text-muted">Unclaimed mobile lines</p>
         </article>
-        <article className="rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <article className="glass-card rounded-2xl px-4 py-4 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Email-ready</p>
-          <p className="mt-2 font-display text-4xl leading-none">{preview ? emailReady : "—"}</p>
+          <p className="mt-2 font-mono text-4xl leading-none tabular-nums">{preview ? emailReady : "—"}</p>
           <p className="mt-2 text-sm text-muted">Unclaimed addresses that parse</p>
         </article>
-        <article className="rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <article className="glass-card rounded-2xl px-4 py-4 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Active loops</p>
-          <p className="mt-2 font-display text-4xl leading-none">{preview ? activeLoops : "—"}</p>
+          <p className="mt-2 font-mono text-4xl leading-none tabular-nums">{preview ? activeLoops : "—"}</p>
           <p className="mt-2 text-sm text-muted">Day 0 leaves with its chunk</p>
         </article>
       </div>
@@ -1008,9 +1020,9 @@ function OutreachEngine({
         type="button"
         aria-pressed={smartTiming}
         onClick={() => setSmartTiming((on) => !on)}
-        className="mt-4 w-full rounded-2xl bg-surface px-4 py-4 text-left"
+        className="mt-4 w-full glass-card rounded-2xl px-4 py-4 text-left"
         style={{
-          boxShadow: smartTiming ? "inset 0 0 0 2px var(--color-accent)" : "0 0 0 1px rgba(243,241,235,0.08)",
+          boxShadow: smartTiming ? "inset 0 0 0 2px var(--color-accent)" : "0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent)",
         }}
       >
         <p className="text-xs uppercase tracking-[0.16em] text-muted">Smart Timing Mode</p>
@@ -1063,7 +1075,7 @@ function DraftPreview({ label, body }: { label: string; body: string }) {
   return (
     <div>
       <p className="mb-1.5 text-xs font-medium tracking-wide text-muted">{label}</p>
-      <pre className="min-h-28 whitespace-pre-wrap rounded-xl bg-surface px-3 py-3 font-sans text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <pre className="min-h-28 whitespace-pre-wrap glass-card rounded-xl px-3 py-3 font-mono text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
         {body}
       </pre>
     </div>
@@ -1269,7 +1281,7 @@ function BulkIngest() {
             rows={10}
             spellCheck={false}
             placeholder={"Business,City,County,Niche,Email,Phone,Website"}
-            className="min-h-56 w-full resize-y rounded-xl bg-surface px-3 py-3 text-base text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)] placeholder:text-muted"
+            className="min-h-56 w-full resize-y glass-card rounded-xl px-3 py-3 text-base text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] placeholder:text-muted"
             aria-label="CSV text"
           />
         </Field>
@@ -1297,7 +1309,7 @@ function BulkIngest() {
               {result.merged.toLocaleString()} repeated {result.merged === 1 ? "business was" : "businesses were"} folded into one row.
             </p>
           ) : null}
-          <div className="mt-4 rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <div className="mt-4 glass-card rounded-2xl px-4 py-4 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Invalid rows</p>
             {invalidCount === 0 ? (
               <p className="mt-3 text-sm text-muted">Every row was usable.</p>
@@ -1384,7 +1396,7 @@ function StrategicFunnel() {
           <select
             value={niche}
             onChange={(event) => setNiche(event.target.value)}
-            className="h-10 rounded-xl bg-surface px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            className="h-10 glass-card rounded-xl px-3 text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]"
             aria-label="Niche"
           >
             {PUBLIC_NICHE_ORDER.map((id) => (
@@ -1622,7 +1634,7 @@ function FunnelTool() {
               {copied ? "Copied" : "Copy links"}
             </button>
           </div>
-          <ul className="divide-y divide-line rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+          <ul className="divide-y divide-line glass-card rounded-2xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
             {links.links.map((link) => (
               <li key={link.leadSlug} className="px-4 py-3">
                 <p className="text-sm font-medium">
@@ -1697,7 +1709,7 @@ function PlatformWire() {
       <div className="mt-4 max-w-xl">
         <FeedbackToggles scope="master" />
       </div>
-      <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+      <ul className="mt-4 divide-y divide-line overflow-hidden glass-card rounded-2xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]">
         {rows.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted">No live events yet.</li>
         ) : (
@@ -1729,20 +1741,20 @@ function CommandStrip({ desk }: { desk: Desk }) {
   const splits = [...queues.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   return (
     <section className="mt-6 grid gap-3 lg:grid-cols-3">
-      <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted">Jackson County</p>
-        <p className="mt-2 font-display text-3xl tabular">{jacksonLeads.toLocaleString()}</p>
+      <div className="glass-card lift-card rounded-2xl p-4">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Jackson County</p>
+        <p className="mt-2 font-mono text-3xl tabular-nums">{jacksonLeads.toLocaleString()}</p>
         <p className="mt-1 text-sm text-muted">{jackson.length} trade queues on the regional list</p>
       </div>
-      <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted">Trickle worker</p>
-        <p className="mt-2 font-display text-3xl capitalize">{desk.outreach.mode}</p>
+      <div className="glass-card lift-card rounded-2xl p-4">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Trickle worker</p>
+        <p className="mt-2 font-mono text-3xl capitalize">{desk.outreach.mode}</p>
         <p className="mt-1 text-sm text-muted">
           {desk.outreach.chunkSize} leads every {desk.outreach.intervalSeconds}s · database {desk.database}
         </p>
       </div>
-      <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted">Niche queues</p>
+      <div className="glass-card lift-card rounded-2xl p-4">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Niche queues</p>
         <ul className="mt-3 space-y-1 text-sm">
           {splits.length === 0 ? (
             <li className="text-muted">No regional lists yet.</li>
@@ -1762,10 +1774,10 @@ function CommandStrip({ desk }: { desk: Desk }) {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted">{label}</p>
-      <p className="mt-2 font-display text-3xl">{value}</p>
-    </div>
+    <GlassReveal className="rounded-2xl px-4 py-4" delay={0.04}>
+      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-2 font-mono text-3xl tabular-nums tracking-tight text-fg">{value}</p>
+    </GlassReveal>
   );
 }
 
