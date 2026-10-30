@@ -200,8 +200,8 @@ export const EXTRA_HERO_LOOPS = [
   {
     id: "otter",
     file: "otter-hero-animation.mp4",
-    label: "Otter",
-    blurb: "River otter on a looping clip.",
+    label: "Underwater Otter",
+    blurb: "An underwater river otter on a looping clip.",
   },
   {
     id: "shark",

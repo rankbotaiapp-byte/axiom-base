@@ -138,6 +138,13 @@ export function isPublicMediaFilm(url: string | null | undefined): boolean {
   return isCatalogHeroUrl(url);
 }
 
+/** The underwater river otter loop, including a cache-busted picker URL. */
+export function isOtterHeroFilm(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const path = url.split("?")[0] ?? "";
+  return path.endsWith("/otter-hero-animation.mp4");
+}
+
 export type CatalogChoice = { url: string; label: string; score: number };
 
 /** Admin studio dropdown — every verified loop, niche match first. */

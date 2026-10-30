@@ -31,6 +31,12 @@ describe("hero film directory", () => {
     assert.deepEqual([...HERO_MP4_FILES].sort(), onDisk);
     assert.equal(CATALOG.length, 21);
     assert.equal(onDisk.includes("otter-hero-animation.mp4"), true);
+    assert.equal(
+      catalogChoices("auto").some(
+        (row) => row.url.endsWith("/otter-hero-animation.mp4") && row.label === "Underwater Otter",
+      ),
+      true,
+    );
     assert.equal(isCatalogHeroUrl("/media/heroes/auto-repair.mp4"), false);
     assert.equal(isCatalogHeroUrl("/media/auto-hero-animation.mp4"), true);
     assert.equal(heroStem("auto-hero-animation.mp4"), "auto hero animation");
