@@ -215,6 +215,24 @@ export const EXTRA_HERO_LOOPS = [
     label: "Polar bear",
     blurb: "Ice field, white bear, and a slow loop.",
   },
+  {
+    id: "snow-leopard",
+    file: "snowleapard-hero-animation.mp4",
+    label: "Snow leopard",
+    blurb: "Snow leopard on a looping clip.",
+  },
+  {
+    id: "underwater-leopard",
+    file: "underwater-leapord-hero-animation.mp4",
+    label: "Underwater leopard",
+    blurb: "Leopard underwater on a looping clip.",
+  },
+  {
+    id: "eye",
+    file: "eye-hero-animation.mp4",
+    label: "Eye",
+    blurb: "A close eye on a looping clip.",
+  },
 ] as const;
 
 export type CatalogEntry = (typeof CATALOG)[number];

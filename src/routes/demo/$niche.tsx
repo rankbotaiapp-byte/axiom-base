@@ -109,6 +109,7 @@ function NichePreview() {
       city={city}
       src={film.hero_video_url}
       actions={getNicheActions(niche)}
+      niche={niche}
       bookHref={`/onboard?niche=${niche}`}
       book={
         <Link to="/onboard" search={claimSearch(niche)}>

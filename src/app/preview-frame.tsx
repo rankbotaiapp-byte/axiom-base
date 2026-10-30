@@ -34,6 +34,7 @@ export function PreviewFrame({
       city={city}
       src={film.hero_video_url}
       actions={getNicheActions(niche)}
+      niche={niche}
       bookHref={`/onboard?niche=${niche}`}
       book={
         <a href={`/onboard?niche=${niche}`}>

@@ -78,6 +78,13 @@ export type Shop = {
   themeProfile: ThemeProfile;
   neonAccent: string;
   glowEnabled: boolean;
+  /** Corner brackets, edge ring, and type plate on the public film. */
+  heroLook?: {
+    brackets: boolean;
+    glow: boolean;
+    overlay: boolean;
+  };
+  heroHud?: import("./hero-hud").HeroHudConfig | null;
   layout: LayoutBlock[];
   tradeProfile: TradeProfile;
   createdAt: string;

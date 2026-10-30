@@ -12,6 +12,9 @@ import { parseGlowEnabled, parseLayout, parseNeonAccent, parseThemeProfile, pars
 import { parseTradeProfile, type TradeProfile } from "./trade-layout";
 import { dueNowCents, isCollectionMode, isPricingType, listPriceCents, type MerchantPrice } from "./merchant-pricing";
 import { keepHeroBrand, parseHeroEffect, parseMorphDuration, readHeroBrandFallback } from "./hero-brand";
+import { publicShopSlug } from "./shop-slug";
+import { heroLookFromProfile, parseHeroLook } from "./hero-look";
+import { heroHudFromProfile, parseHeroHud } from "./hero-hud";
 import { isShopNiche, normalizeShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {
   id: string;
@@ -122,6 +125,8 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     themeProfile: parseThemeProfile(r.theme_profile, niche),
     neonAccent: parseNeonAccent(r.neon_accent),
     glowEnabled: parseGlowEnabled(r.glow_enabled),
+    heroLook: heroLookFromProfile(r.trade_profile),
+    heroHud: heroHudFromProfile(r.trade_profile),
     layout: parseLayout(r.layout_json),
     tradeProfile: parseTradeProfile(niche, r.trade_profile),
     createdAt: String(r.created_at)
@@ -175,8 +180,10 @@ const OPEN_BOOKING_SQL = `
   )
 `;
 async function loadShopRow(slug: string): Promise<ShopRow | null> {
+  const safe = publicShopSlug(slug);
+  if (!safe) return null;
   const sql = await getSql();
-  const rows = await sql<ShopRow>`select * from shops where slug = ${slug} limit 1`;
+  const rows = await sql<ShopRow>`select * from shops where slug = ${safe} limit 1`;
   return rows[0] ?? null;
 }
 async function employeeServiceMap(shopId: string): Promise<Map<string, string[]>> {
@@ -994,6 +1001,62 @@ export const updateShopBrandHandler = async ({
   }
   if (data.clearHeroVideo === true) {
     await sql`update shops set hero_video_url = null where id = ${row.id}`;
+  }
+  if (data.heroLook && typeof data.heroLook === "object") {
+    const look = parseHeroLook(data.heroLook);
+    let profile: Record<string, unknown> = {};
+    try {
+      const parsed = typeof row.trade_profile === "string" ? JSON.parse(row.trade_profile) : row.trade_profile;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = { ...(parsed as Record<string, unknown>) };
+    } catch {
+      profile = {};
+    }
+    const brand =
+      profile.heroBrand && typeof profile.heroBrand === "object" && !Array.isArray(profile.heroBrand)
+        ? { ...(profile.heroBrand as Record<string, unknown>) }
+        : {};
+    profile.heroBrand = { ...brand, look };
+    try {
+      await sql`
+        update shops set trade_profile = ${JSON.stringify(profile)}, glow_enabled = ${look.glow}
+        where id = ${row.id}
+      `;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (!/trade_profile|glow_enabled/i.test(message)) throw err;
+    }
+  }
+  if (data.heroHud && typeof data.heroHud === "object") {
+    const hud = parseHeroHud(data.heroHud);
+    if (hud) {
+      let profile: Record<string, unknown> = {};
+      try {
+        const parsed = typeof row.trade_profile === "string" ? JSON.parse(row.trade_profile) : row.trade_profile;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = { ...(parsed as Record<string, unknown>) };
+      } catch {
+        profile = {};
+      }
+      if (profile.heroBrand && data.heroLook) {
+        /* heroLook block above already wrote the latest profile when both arrive together */
+      }
+      profile.heroHud = hud;
+      try {
+        await sql`update shops set trade_profile = ${JSON.stringify(profile)} where id = ${row.id}`;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (!/trade_profile/i.test(message)) throw err;
+      }
+      try {
+        await sql`
+          insert into shop_hero_config (shop_id, config, updated_at)
+          values (${row.id}, ${JSON.stringify(hud)}, now())
+          on conflict (shop_id) do update set config = excluded.config, updated_at = now()
+        `;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (!/shop_hero_config/i.test(message)) throw err;
+      }
+    }
   }
   return {
     ok: true as const,

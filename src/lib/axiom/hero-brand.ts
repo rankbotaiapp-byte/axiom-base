@@ -1,3 +1,5 @@
+import { parseHeroLook, type HeroLook } from "./hero-look";
+
 /** Environmental overlays and the branding plate drawn onto a shop hero. */
 
 export const HERO_EFFECTS = ["smoke", "rain", "water", "snow", "orb_genesis_transform"] as const;
@@ -125,6 +127,7 @@ export type HeroBrandRecord = {
   tagline: string;
   prompt: string;
   morphDurationSec: number;
+  look?: HeroLook;
 };
 
 const DATA_STILL = /^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i;
@@ -160,6 +163,7 @@ export function readHeroBrandFallback(raw: unknown): HeroBrandRecord {
     tagline,
     prompt,
     morphDurationSec: parseMorphDuration(brand?.morphDurationSec),
+    ...(brand && typeof brand.look === "object" ? { look: parseHeroLook(brand.look) } : {}),
   };
 }
 
@@ -177,16 +181,20 @@ export function withHeroBrandFallback(raw: unknown, brand: HeroBrandRecord): str
       tagline: brand.tagline.trim().slice(0, 80),
       prompt: (brand.prompt ?? "").trim().slice(0, 180),
       morphDurationSec: parseMorphDuration(brand.morphDurationSec),
+      ...(brand.look ? { look: parseHeroLook(brand.look) } : {}),
     },
   });
 }
 
 /** Keep a previously saved hero brand when another save rewrites the trade profile. */
 export function keepHeroBrand(profile: unknown, previous: unknown): string {
+  const prev = asRecord(previous);
+  const base = asRecord(profile) ?? {};
+  const next = prev && "heroHud" in prev && !("heroHud" in base) ? { ...base, heroHud: prev.heroHud } : base;
   if (!heroBrandFallbackPresent(previous)) {
-    return JSON.stringify(profile ?? {});
+    return JSON.stringify(Object.keys(next).length > 0 ? next : (profile ?? {}));
   }
-  return withHeroBrandFallback(profile, readHeroBrandFallback(previous));
+  return withHeroBrandFallback(next, readHeroBrandFallback(previous));
 }
 
 export function shopHeroStillPath(shopId: string, version: number): string {

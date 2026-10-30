@@ -81,6 +81,7 @@ async function sendEmail(to: string, subject: string, body: string): Promise<Sen
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ from, to: [to], subject, text: body }),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return { status: "failed", detail: "Email provider rejected the message" };
     return { status: "sent", detail: "" };
@@ -127,6 +128,7 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({ To: to, From: from, Body: body.slice(0, 640) }),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return { status: "failed", detail: "SMS provider rejected the message" };
     return { status: "sent", detail: "" };

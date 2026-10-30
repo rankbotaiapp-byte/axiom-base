@@ -4,6 +4,7 @@ import { requireUserId } from "@/lib/auth/verify.server";
 import { isCatalogHeroUrl } from "@/lib/axiom/hero-films";
 import { cleanCustomNiche } from "@/lib/axiom/media";
 import { provisionShopFromNiche } from "@/lib/axiom/shop-server.server";
+import { isDatabaseUnavailable } from "../../../scripts/db-availability.mjs";
 
 /**
  * POST /api/shops/create
@@ -43,8 +44,12 @@ export const Route = createFileRoute("/api/shops/create")({
           });
           return Response.json({ ...result, heroFilm, niche });
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Could not create shop";
-          const status = /unknown catalog niche/i.test(message) ? 400 : 500;
+          if (isDatabaseUnavailable(err)) {
+            return Response.json({ error: "The book is offline. Try again shortly." }, { status: 503 });
+          }
+          const raw = err instanceof Error ? err.message : "Could not create shop";
+          const message = /postgres:\/\/|sk_(live|test)_|password/i.test(raw) ? "Could not create shop" : raw;
+          const status = /unknown catalog niche|shop not found|invalid/i.test(message) ? 400 : 500;
           return Response.json({ error: message }, { status });
         }
       },

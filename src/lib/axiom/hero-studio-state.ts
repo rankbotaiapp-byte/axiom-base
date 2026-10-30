@@ -1,12 +1,18 @@
 import { catalogFilmUrl, resolveCatalogNiche } from "../../config/catalog.ts";
 import { ANIMATION_MP4_FILES, isCatalogHeroUrl, isPublicMediaFilm } from "./hero-films.ts";
+import { parseHeroLook, type HeroLook } from "./hero-look.ts";
+
+export { DEFAULT_HERO_LOOK, heroLookFromProfile, parseHeroLook } from "./hero-look.ts";
+export type { HeroLook } from "./hero-look.ts";
 
 export const HERO_STUDIO_KEY = "axiom-hero-studio";
 export const HERO_STUDIO_EVENT = "axiom-hero-studio";
 
 export type HeroDraft = {
   hero_video_url: string;
+  hero_image_url?: string;
   tagline: string;
+  look?: HeroLook;
   updatedAt: string;
 };
 
@@ -39,6 +45,25 @@ export function heroAnimationLabel(name: string): string {
 export function isHeroAnimationUrl(url: string | null | undefined): boolean {
   if (!url || !url.startsWith("/media/") || url.includes("..") || url.slice("/media/".length).includes("/")) return false;
   return isHeroAnimationFile(url.slice("/media/".length).split("?")[0] ?? "");
+}
+
+/** Catalog loops, this shop's uploaded clip, or a public storage URL. */
+export function isPlayableHeroFilm(url: string | null | undefined): boolean {
+  if (!url || url.includes("..") || /\s/.test(url)) return false;
+  if (isHeroAnimationUrl(url)) return true;
+  if (url.startsWith("/api/hero-video/")) return true;
+  return url.startsWith("https://");
+}
+
+/** A shop still served from this app, or a public image URL. */
+export function cleanStillUrl(value: string | null | undefined): string {
+  if (typeof value !== "string") return "";
+  const url = value.trim();
+  if ((url.startsWith("/api/shop-media/") || url.startsWith("/api/hero/brand/")) && !url.includes("..")) {
+    return url.slice(0, 240);
+  }
+  if (url.startsWith("https://") && !url.includes(" ")) return url.slice(0, 400);
+  return "";
 }
 
 /** Turns a directory listing into picker rows. Anything else in public/media is ignored. */
@@ -80,12 +105,12 @@ export function resolveStorefrontFilm(input: {
   fallbackVideoUrl: string;
   shopTagline: string;
 }): HeroSelection {
-  const draftUrl = isHeroAnimationUrl(input.draft?.hero_video_url) ? input.draft?.hero_video_url ?? "" : "";
-  if (draftUrl) {
+  const draftUrl = cleanHeroUrl(input.draft?.hero_video_url);
+  if (draftUrl && isPlayableHeroFilm(draftUrl)) {
     return { hero_video_url: draftUrl, tagline: input.draft?.tagline ?? "", source: "studio" };
   }
   const shop = cleanHeroUrl(input.shopVideoUrl);
-  if (shop && isHeroAnimationUrl(shop)) {
+  if (shop && isPlayableHeroFilm(shop)) {
     return { hero_video_url: shop, tagline: input.shopTagline, source: "shop" };
   }
   const catalog = catalogFilmUrl(resolveCatalogNiche(input.niche));
@@ -124,12 +149,22 @@ function readMap(): Record<string, HeroDraft> {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
     const out: Record<string, HeroDraft> = {};
     for (const [slug, value] of Object.entries(raw)) {
-      const row = value as { hero_video_url?: unknown; heroVideoUrl?: unknown; tagline?: unknown; updatedAt?: unknown };
+      const row = value as {
+        hero_video_url?: unknown;
+        heroVideoUrl?: unknown;
+        hero_image_url?: unknown;
+        tagline?: unknown;
+        look?: unknown;
+        updatedAt?: unknown;
+      };
       const hero_video_url = cleanHeroUrl(typeof row.hero_video_url === "string" ? row.hero_video_url : typeof row.heroVideoUrl === "string" ? row.heroVideoUrl : "");
       if (!hero_video_url) continue;
+      const still = cleanStillUrl(typeof row.hero_image_url === "string" ? row.hero_image_url : "");
       out[slug] = {
         hero_video_url,
+        ...(still ? { hero_image_url: still } : {}),
         tagline: cleanTagline(typeof row.tagline === "string" ? row.tagline : ""),
+        ...(row.look ? { look: parseHeroLook(row.look) } : {}),
         updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : "",
       };
     }
@@ -143,13 +178,19 @@ export function readHeroDraft(slug: string): HeroDraft | null {
   return readMap()[slug.trim().toLowerCase()] ?? null;
 }
 
-export function writeHeroDraft(slug: string, input: { hero_video_url: string; tagline: string }): HeroDraft {
+export function writeHeroDraft(
+  slug: string,
+  input: { hero_video_url: string; tagline: string; hero_image_url?: string; look?: HeroLook },
+): HeroDraft {
   const key = slug.trim().toLowerCase();
   const hero_video_url = cleanHeroUrl(input.hero_video_url);
   if (!key || !hero_video_url) throw new Error("Choose an mp4 loop");
+  const still = cleanStillUrl(input.hero_image_url);
   const draft: HeroDraft = {
     hero_video_url,
+    ...(still ? { hero_image_url: still } : {}),
     tagline: cleanTagline(input.tagline),
+    ...(input.look ? { look: parseHeroLook(input.look) } : {}),
     updatedAt: new Date().toISOString(),
   };
   if (typeof localStorage === "undefined") return draft;
@@ -216,7 +257,16 @@ export function heroStoragePath(slug: string, fileName: string, now = Date.now()
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  const ext = fileName.toLowerCase().endsWith(".webm") ? "webm" : "mp4";
+  const lower = fileName.toLowerCase();
+  const ext = lower.endsWith(".webm")
+    ? "webm"
+    : lower.endsWith(".png")
+      ? "png"
+      : lower.endsWith(".webp")
+        ? "webp"
+        : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+          ? "jpg"
+          : "mp4";
   return `${key || "shop"}/${now}.${ext}`;
 }
 
@@ -234,7 +284,11 @@ export async function uploadHeroToStorage(slug: string, file: File): Promise<str
   const { url, key } = supabaseEnv();
   if (!url || !key) return null;
   const objectPath = heroStoragePath(slug, file.name);
-  const mime = objectPath.endsWith(".webm") ? "video/webm" : "video/mp4";
+  const mime = file.type.startsWith("image/")
+    ? file.type
+    : objectPath.endsWith(".webm")
+      ? "video/webm"
+      : "video/mp4";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
   try {
@@ -258,7 +312,14 @@ export async function persistHeroToSupabase(slug: string, draft: HeroDraft): Pro
   const { url, key } = supabaseEnv();
   const shopSlug = slug.trim().toLowerCase();
   if (!url || !key || !shopSlug) return "skipped";
-  const payload = { shop_slug: shopSlug, hero_video_url: draft.hero_video_url, tagline: draft.tagline };
+  const payload: Record<string, unknown> = {
+    shop_slug: shopSlug,
+    hero_video_url: draft.hero_video_url,
+    background_video_url: draft.hero_video_url,
+    tagline: draft.tagline,
+  };
+  if (draft.hero_image_url) payload.hero_image_url = draft.hero_image_url;
+  if (draft.look) payload.hero_look = draft.look;
   const headers = {
     apikey: key,
     authorization: `Bearer ${key}`,
@@ -275,13 +336,25 @@ export async function persistHeroToSupabase(slug: string, draft: HeroDraft): Pro
       body: JSON.stringify(payload),
     });
     if (upsert.ok) return "saved";
+    const loop = {
+      hero_video_url: draft.hero_video_url,
+      background_video_url: draft.hero_video_url,
+      tagline: draft.tagline,
+    };
     const patch = await fetch(`${url}/rest/v1/client_storefronts?shop_slug=eq.${encodeURIComponent(shopSlug)}`, {
+      method: "PATCH",
+      signal: controller.signal,
+      headers: { ...headers, prefer: "return=minimal" },
+      body: JSON.stringify(loop),
+    });
+    if (patch.ok) return "saved";
+    const plain = await fetch(`${url}/rest/v1/client_storefronts?shop_slug=eq.${encodeURIComponent(shopSlug)}`, {
       method: "PATCH",
       signal: controller.signal,
       headers: { ...headers, prefer: "return=minimal" },
       body: JSON.stringify({ hero_video_url: draft.hero_video_url, tagline: draft.tagline }),
     });
-    return patch.ok ? "saved" : "skipped";
+    return plain.ok ? "saved" : "skipped";
   } catch {
     return "skipped";
   } finally {

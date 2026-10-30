@@ -169,6 +169,12 @@ export const updateShopBrand = createServerFn({
   catalogFilm?: string;
   heroFilm?: string;
   clearHeroVideo?: boolean;
+  heroLook?: { brackets: boolean; glow: boolean; overlay: boolean };
+  heroHud?: {
+    title: string;
+    buttons: { id: string; label: string; icon: string; action: string; x: number; y: number; phone: string; href: string; variant?: string; clickAnimation?: string; successMessage?: string; response?: string }[];
+    plates: { id: string; x: number; y: number; lines: { id: string; text: string; href: string }[] }[];
+  };
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.updateShopBrandHandler(ctx);

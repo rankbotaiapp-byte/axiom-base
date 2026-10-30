@@ -23,6 +23,8 @@ import type { HeroTone } from "@/lib/axiom/media";
 import type { HeroEffect } from "@/lib/axiom/hero-brand";
 import { HeroBrandFrame } from "@/components/hero-weather";
 import { TelemetryLog } from "@/components/telemetry-log";
+import { HeroHud } from "@/components/hero-hud";
+import type { HeroHudConfig } from "@/lib/axiom/hero-hud";
 
 export function CinematicHero({
   imageUrl,
@@ -38,6 +40,10 @@ export function CinematicHero({
   fallbackVideoUrl = "",
   brand = null,
   telemetry = [],
+  hud = null,
+  hudEditable = false,
+  onHudChange,
+  bookHref,
   effect = null,
   brandTagline = "",
   brandSticker = "",
@@ -62,6 +68,11 @@ export function CinematicHero({
   fallbackVideoUrl?: string;
   brand?: { name: string; accent?: string; logoUrl?: string; city?: string; trade?: string } | null;
   telemetry?: readonly string[];
+  hud?: HeroHudConfig | null;
+  /** Owner preview: click and drag the perimeter controls. */
+  hudEditable?: boolean;
+  onHudChange?: (next: HeroHudConfig, commit?: boolean) => void;
+  bookHref?: string;
   effect?: HeroEffect | null;
   brandTagline?: string;
   brandSticker?: string;
@@ -499,6 +510,15 @@ export function CinematicHero({
             : ""}
       </p>
       <TelemetryLog dataset={telemetry} />
+      {hud ? (
+        <HeroHud
+          hud={hud}
+          telemetry={telemetry}
+          bookHref={bookHref}
+          editable={hudEditable}
+          onChange={onHudChange}
+        />
+      ) : null}
       <motion.div
         className={cn(
           "hero-foreground relative z-20 flex min-h-0 flex-1 flex-col",
@@ -565,10 +585,27 @@ export function InsetFilm({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?
 
 export function LoopVideo({ src, className }: { src: string; className?: string }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [near, setNear] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el || !src) return;
+    const watch = new IntersectionObserver(
+      (entries) => {
+        setNear(entries.some((entry) => entry.isIntersecting));
+      },
+      { rootMargin: "160px" },
+    );
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [src]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !near) {
+      ref.current?.pause();
+      return;
+    }
     el.muted = true;
     const play = () => {
       void el.play().catch(() => undefined);
@@ -576,7 +613,7 @@ export function LoopVideo({ src, className }: { src: string; className?: string 
     play();
     el.addEventListener("canplay", play);
     return () => el.removeEventListener("canplay", play);
-  }, [src]);
+  }, [near]);
 
   if (!src) return null;
 
@@ -584,12 +621,12 @@ export function LoopVideo({ src, className }: { src: string; className?: string 
     <video
       ref={ref}
       className={cn("h-full w-full object-cover", className)}
-      src={src}
+      src={near ? src : undefined}
       autoPlay
       loop
       muted
       playsInline
-      preload="auto"
+      preload={near ? "metadata" : "none"}
     />
   );
 }

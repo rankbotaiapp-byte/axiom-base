@@ -15,9 +15,13 @@ import {
   setShopNiche,
   updateEmployee,
   updateNotifyChannels,
+  revalidateStorefront,
   updateShopBrand,
 } from "@/lib/axiom/server";
-import { readOutreachDesk } from "@/lib/axiom/master";
+import { getNicheActions } from "@/config/niche-actions";
+import { HeroStudioMobile } from "@/components/admin/hero-studio-mobile";
+import { nicheHeroButtons } from "@/config/niche-button-presets";
+import { seedFilmPlates, type HeroHudConfig } from "@/lib/axiom/hero-hud";
 import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
 import { NICHES, PUBLIC_NICHE_ORDER, isPublicNiche, shopTradeLabel } from "@/lib/axiom/niches";
 import { resolveHeroMedia, NICHE_MEDIA } from "@/lib/axiom/media";
@@ -284,6 +288,7 @@ export function AdminShell({
         ) : null}
         {tab === "hero" ? (
           <div className="grid gap-6">
+            <HeroStudioMobile shop={data.shop} readonly={readonly} onReload={onReload} />
             <CatalogFilmDesk shop={data.shop} readonly={readonly} onReload={onReload} />
             <details className="mission-more">
               <summary>Branding tools</summary>
@@ -616,6 +621,40 @@ function BrandPanel({
   const hero = resolveHeroMedia(shop);
   const previewVideo = localVideo ?? (catalog || hero.videoUrl);
   const films = catalogChoices(shop.niche);
+  const nicheActions = getNicheActions(shop.niche);
+  const [liveHud, setLiveHud] = useState<HeroHudConfig>(() =>
+    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: nicheHeroButtons(shop.niche), plates: [] }, {
+      name: shop.name,
+      tagline: shop.tagline,
+      city: cityFromAddress(shop.address),
+      badge: nicheActions?.badge ?? "",
+      bookHref: `/${shop.slug}/book`,
+      services: nicheActions?.services ?? [],
+    }),
+  );
+  const liveHudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function onLiveHud(next: HeroHudConfig, commit = false) {
+    setLiveHud(next);
+    if (readonly || !commit) return;
+    if (liveHudTimer.current) clearTimeout(liveHudTimer.current);
+    liveHudTimer.current = setTimeout(() => {
+      const identity = next.plates.find((plate) => plate.id === "plate_identity");
+      const name = identity?.lines.find((line) => line.id === "line_name")?.text.trim();
+      const tagline = identity?.lines.find((line) => line.id === "line_tag")?.text.trim();
+      void updateShopBrand({
+        data: {
+          slug: shop.slug,
+          heroHud: next,
+          markHero: true,
+          ...(name ? { name } : {}),
+          ...(tagline ? { tagline } : {}),
+        },
+      })
+        .then(() => revalidateStorefront({ data: shop.slug }))
+        .catch(() => undefined);
+    }, 320);
+  }
 
   useEffect(() => {
     setLocalVideo((current) => {
@@ -811,17 +850,15 @@ function BrandPanel({
           brandTagline=""
           brandSticker=""
           telemetry={readMasterTelemetry()}
+          hud={liveHud}
+          hudEditable={!readonly}
+          onHudChange={onLiveHud}
+          bookHref={`/${shop.slug}/book`}
           className="absolute inset-0 min-h-full"
         >
-          <div className="pointer-events-none mt-auto p-6 sm:p-8">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">Live preview</p>
-            <p className="mt-2 font-display text-4xl text-fg drop-shadow-[0_8px_24px_rgba(0,0,0,0.65)]">{shop.name}</p>
-            {shop.tagline || cityFromAddress(shop.address) ? (
-              <p className="mt-2 max-w-md text-sm text-fg/80 drop-shadow-[0_6px_16px_rgba(0,0,0,0.55)]">
-                {[shop.tagline, cityFromAddress(shop.address)].filter(Boolean).join(" · ")}
-              </p>
-            ) : null}
-          </div>
+          <p className="pointer-events-none absolute bottom-4 left-4 max-w-[12rem] font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+            Live preview
+          </p>
         </CinematicHero>
       </div>
       <div>

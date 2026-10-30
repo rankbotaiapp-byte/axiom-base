@@ -92,6 +92,19 @@ test("auto and wildlife niches use the new animation loops", () => {
     shopTagline: "Water",
   });
   assert.equal(unbound.hero_video_url, "/media/guide-service-hero-animation.mp4");
+  const uploaded = resolveStorefrontFilm({
+    draft: {
+      hero_video_url: "/api/hero-video/shop_demo?v=4",
+      tagline: "Night yard",
+      updatedAt: "2026-10-28T00:00:00.000Z",
+    },
+    shopVideoUrl: "/media/leopard-hero-animation.mp4",
+    niche: "landscaping",
+    fallbackVideoUrl: "/media/orb-explosion-hero-animation.mp4",
+    shopTagline: "Grounds",
+  });
+  assert.equal(uploaded.source, "studio");
+  assert.equal(uploaded.hero_video_url, "/api/hero-video/shop_demo?v=4");
   const scanned = heroAnimationsFromNames([
     "auto-hero-animation.mp4",
     "leopard-hero-animation.mp4",

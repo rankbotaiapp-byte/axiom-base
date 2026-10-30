@@ -16,9 +16,18 @@ export async function GET(request: Request): Promise<Response> {
   }
 }
 
-/** Queue the proposed batch. This route never calls an email or SMS provider. */
+function dryRunRequested(request: Request): boolean {
+  const url = new URL(request.url);
+  return url.searchParams.get("dry") === "1" || request.headers.get("x-autopilot-dry-run") === "1";
+}
+
+/** Queue the proposed batch. A dry run only reads and writes a simulation log. */
 export async function POST(request: Request): Promise<Response> {
   try {
+    if (dryRunRequested(request)) {
+      const { simulateAutopilot } = await import("@/lib/axiom/autopilot.server");
+      return Response.json(await simulateAutopilot(request));
+    }
     const { dispatchAutopilot } = await import("@/lib/axiom/autopilot.server");
     return Response.json(await dispatchAutopilot(request));
   } catch (err) {

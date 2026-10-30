@@ -5,6 +5,7 @@ import { rippleTheme } from "@/lib/axiom/brand-studio";
 import { localStorefront } from "@/lib/axiom/autopilot";
 import { materializeDatasetShop } from "@/lib/axiom/autopilot-shop";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
+import { publicShopSlug } from "@/lib/axiom/shop-slug";
 import { isDatabaseUnavailable } from "../../../scripts/db-availability.mjs";
 import { isClientAbort } from "@/lib/client-abort";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -80,21 +81,23 @@ function datasetShop(slug: string): ShopPublic | null {
 
 export const Route = createFileRoute("/$shopSlug")({
   loader: async ({ params, abortController }) => {
+    const slug = publicShopSlug(params.shopSlug);
+    if (!slug) throw notFound();
     try {
-      const data = await getPublicShop({ data: params.shopSlug });
+      const data = await getPublicShop({ data: slug });
       if (abortController.signal.aborted) throw notFound();
       if (data) return presentShop(data);
     } catch (error) {
       if (isNotFound(error)) throw error;
       if (abortController.signal.aborted || isClientAbort(error)) throw notFound();
       if (!isDatabaseUnavailable(error)) {
-        console.error(`[shop] failed to load /${params.shopSlug}`, error);
+        console.error(`[shop] failed to load /${slug}`, error);
         const message = error instanceof Error && error.message ? error.message : "Shop data is temporarily unavailable";
         throw new Error(message);
       }
-      console.warn(`[shop] hosted database is paused; /${params.shopSlug} is using the local storefront dataset`);
+      console.warn(`[shop] hosted database is paused; /${slug} is using the local storefront dataset`);
     }
-    const fallback = datasetShop(params.shopSlug);
+    const fallback = datasetShop(slug);
     if (!fallback) throw notFound();
     return fallback;
   },

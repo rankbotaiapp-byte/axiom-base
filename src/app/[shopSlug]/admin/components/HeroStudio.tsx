@@ -1,30 +1,57 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "@tanstack/react-router";
-import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
+import { Link, useRouter } from "@tanstack/react-router";
+import { HeroButtonStudio } from "@/components/admin/hero-button-studio";
+import { getBearerToken } from "@/lib/auth/client";
+import { HERO_CLIP_MAX_SECONDS, HERO_VIDEO_MAX_BYTES, heroClipTooLong } from "@/lib/axiom/hero-video";
+import { MEDIA_FILE_MAX_BYTES } from "@/lib/axiom/media-slots";
 import {
+  DEFAULT_HERO_LOOK,
   boundHeroAnimation,
   cleanHeroUrl,
-  heroAnimationLabel,
+  cleanStillUrl,
   heroPresets,
-  isHeroAnimationFile,
   isHeroAnimationUrl,
+  isPlayableHeroFilm,
   persistHeroToSupabase,
   readHeroDraft,
+  uploadHeroToStorage,
   writeHeroDraft,
+  type HeroLook,
   type HeroPreset,
 } from "@/lib/axiom/hero-studio-state";
-import { listHeroAnimations, revalidateStorefront, updateShopBrand, updateShopProfile } from "@/lib/axiom/server";
+import { listHeroAnimations, revalidateStorefront, updateShopBrand } from "@/lib/axiom/server";
 import type { Shop } from "@/lib/axiom/types";
 
-const SAVED = "Hero animation updated and live cache revalidated.";
 const MAX_MB = Math.round(HERO_VIDEO_MAX_BYTES / (1024 * 1024));
+const STILL_MB = Math.round(MEDIA_FILE_MAX_BYTES / (1024 * 1024));
+
+const PRESETS: { key: keyof HeroLook; label: string; detail: string }[] = [
+  { key: "brackets", label: "Corner brackets", detail: "Cinematic frame marks on the film." },
+  { key: "glow", label: "Edge ring", detail: "A glowing ring around the storefront." },
+  { key: "overlay", label: "Text overlay", detail: "Shop name, line, and city on the film." },
+];
 
 function startingFilm(shop: Shop, storedUrl: string | undefined): string {
-  if (isHeroAnimationUrl(storedUrl) && cleanHeroUrl(storedUrl) === storedUrl) return storedUrl ?? "";
-  if (isHeroAnimationUrl(shop.heroVideoUrl) && cleanHeroUrl(shop.heroVideoUrl) === shop.heroVideoUrl) {
-    return shop.heroVideoUrl ?? "";
-  }
+  const stored = cleanHeroUrl(storedUrl);
+  if (stored && isPlayableHeroFilm(stored)) return stored;
+  const live = cleanHeroUrl(shop.heroVideoUrl);
+  if (live && isPlayableHeroFilm(live)) return live;
   return boundHeroAnimation(shop.niche, shop.customNiche) || heroPresets()[0]?.url || "";
+}
+
+function clipSeconds(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    const done = (seconds: number) => {
+      URL.revokeObjectURL(url);
+      resolve(seconds);
+    };
+    video.preload = "metadata";
+    video.onloadedmetadata = () => done(video.duration);
+    video.onerror = () => done(Number.NaN);
+    video.src = url;
+  });
 }
 
 export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }) {
@@ -33,18 +60,19 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
   const [library, setLibrary] = useState<HeroPreset[]>(heroPresets());
   const [tagline, setTagline] = useState(stored?.tagline ?? shop.tagline);
   const [video, setVideo] = useState(startingFilm(shop, stored?.hero_video_url));
+  const [still, setStill] = useState(stored?.hero_image_url || cleanStillUrl(shop.heroImageUrl));
+  const [look, setLook] = useState<HeroLook>(stored?.look ?? shop.heroLook ?? { ...DEFAULT_HERO_LOOK, glow: shop.glowEnabled });
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const fileName = video.split("/").pop() || "";
 
   useEffect(() => {
     let cancelled = false;
     void listHeroAnimations()
       .then((rows) => {
         if (cancelled || !rows?.length) return;
-        setLibrary(rows.filter((row) => isHeroAnimationUrl(row.url) && cleanHeroUrl(row.url) === row.url));
+        setLibrary(rows.filter((row) => isHeroAnimationUrl(row.url)));
       })
       .catch(() => undefined);
     return () => {
@@ -52,35 +80,50 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
     };
   }, []);
 
-  async function handleSave(url: string, nextTagline = tagline) {
-    const file = url.split("/").pop() ?? "";
-    if (!isHeroAnimationFile(file) || !isHeroAnimationUrl(url) || cleanHeroUrl(url) !== url) {
-      setError("Choose a single .mp4 named like auto-hero-animation.mp4.");
+  async function publish(next: { video?: string; still?: string; look?: HeroLook; tagline?: string }) {
+    const loop = cleanHeroUrl(next.video ?? video);
+    const plate = cleanStillUrl(next.still ?? still);
+    const frame = next.look ?? look;
+    const line = next.tagline ?? tagline;
+    if (!loop || !isPlayableHeroFilm(loop)) {
+      setError("Choose a background loop before publishing.");
       return;
     }
-    setVideo(url);
     setBusy(true);
     setError(null);
     setStatus("");
     try {
-      const draft = writeHeroDraft(shop.slug, { hero_video_url: url, tagline: nextTagline });
+      const draft = writeHeroDraft(shop.slug, {
+        hero_video_url: loop,
+        hero_image_url: plate,
+        tagline: line,
+        look: frame,
+      });
+      setVideo(draft.hero_video_url);
+      setStill(draft.hero_image_url ?? "");
       setTagline(draft.tagline);
+      if (draft.look) setLook(draft.look);
       if (!readonly) {
-        await updateShopProfile({
+        await updateShopBrand({
           data: {
             slug: shop.slug,
-            name: shop.name,
             tagline: draft.tagline,
-            description: shop.description,
-            address: shop.address,
+            ...(plate ? { heroImageUrl: plate } : {}),
+            heroFilm: draft.hero_video_url,
+            glowEnabled: frame.glow,
+            heroLook: frame,
+            markHero: true,
           },
         });
-        await updateShopBrand({ data: { slug: shop.slug, catalogFilm: draft.hero_video_url } });
       }
-      await persistHeroToSupabase(shop.slug, draft);
+      const book = await persistHeroToSupabase(shop.slug, draft);
       await revalidateStorefront({ data: shop.slug });
       await router.invalidate();
-      setStatus(SAVED);
+      setStatus(
+        book === "saved"
+          ? "Hero and background loop are live."
+          : "Hero is on this desk. The hosted book did not take the pin.",
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not publish");
     } finally {
@@ -88,107 +131,189 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
     }
   }
 
-  function takeFile(next: File | undefined) {
-    if (!next) return;
+  async function takeFile(next: File | undefined) {
+    if (!next || readonly || busy) return;
     const name = next.name.toLowerCase();
-    if (!isHeroAnimationFile(name)) {
-      setError("New loops must be named prefix-hero-animation.mp4. Doubled .mp4.mp4 files are not accepted.");
+    const image = next.type.startsWith("image/") || /\.(jpe?g|png|webp)$/.test(name);
+    const videoFile = next.type === "video/mp4" || name.endsWith(".mp4");
+    if (!image && !videoFile) {
+      setError("Drop a JPEG, PNG, WebP, or a short MP4.");
       return;
     }
-    if (next.size > HERO_VIDEO_MAX_BYTES) {
+    if (image && next.size > MEDIA_FILE_MAX_BYTES) {
+      setError(`Images must be ${STILL_MB} MB or smaller.`);
+      return;
+    }
+    if (videoFile && next.size > HERO_VIDEO_MAX_BYTES) {
       setError(`Video must be ${MAX_MB} MB or smaller.`);
       return;
     }
-    const match = library.find((item) => item.url.endsWith(`/${name}`));
-    if (!match) {
-      setError("That name matches the convention, but the file is not in public/media yet.");
-      return;
+    if (videoFile) {
+      const seconds = await clipSeconds(next);
+      if (heroClipTooLong(seconds)) {
+        setError(`Keep the clip under ${HERO_CLIP_MAX_SECONDS} seconds.`);
+        return;
+      }
     }
-    void handleSave(match.url);
+    setBusy(true);
+    setError(null);
+    setStatus("");
+    try {
+      const token = getBearerToken();
+      const auth = token ? { authorization: `Bearer ${token}` } : {};
+      if (image) {
+        const body = new FormData();
+        body.set("shopId", shop.id);
+        body.set("image", next);
+        body.set("slot", "hero");
+        body.set("isHero", "1");
+        body.set("purpose", "Hero still");
+        const res = await fetch("/api/admin/media/upload", { method: "POST", credentials: "include", headers: auth, body });
+        const json = (await res.json()) as { asset?: { url?: string }; error?: string };
+        const hosted = await uploadHeroToStorage(shop.slug, next);
+        const url = cleanStillUrl(hosted) || cleanStillUrl(json.asset?.url);
+        if (!url) throw new Error(json.error || "That image could not be saved");
+        setStill(url);
+        setStatus("Still is ready. Publish to put it on the storefront.");
+      } else {
+        const res = await fetch(`/api/hero-video/${shop.id}`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "video/mp4", ...auth },
+          body: next,
+        });
+        const json = (await res.json()) as { heroVideoUrl?: string; error?: string };
+        const hosted = await uploadHeroToStorage(shop.slug, next);
+        const url = cleanHeroUrl(hosted) || cleanHeroUrl(json.heroVideoUrl);
+        if (!url) throw new Error(json.error || "That clip could not be saved");
+        setVideo(url);
+        setStatus("Loop is ready. Publish to put it on the storefront.");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <main className="motion-studio">
       <section className="motion-frame">
         <span className="motion-tick" aria-hidden />
-        <p className="motion-kicker">// HERO MOTION STUDIO</p>
+        <p className="motion-kicker">Hero studio</p>
         <p className="motion-help">
-          {`Upload, tag, and publish a *-hero-animation.mp4 loop. New loops must use that name and a single .mp4, up to ${MAX_MB} MB.`}
+          Drop a still or a short MP4. The still sits on the film. The MP4 becomes the background loop.
         </p>
+        <Link to="/$shopSlug/admin" params={{ shopSlug: shop.slug }} className="studio-back">
+          Back to the desk
+        </Link>
 
-        <div className="motion-preview">
+        <div className={`motion-preview${look.glow ? " is-ring" : ""}`}>
           {video ? <video key={video} src={video} autoPlay muted loop playsInline /> : null}
+          {still ? <img src={still} alt="" /> : null}
+          {look.brackets ? (
+            <>
+              <span className="film-bracket film-bracket-nw" aria-hidden />
+              <span className="film-bracket film-bracket-ne" aria-hidden />
+              <span className="film-bracket film-bracket-sw" aria-hidden />
+              <span className="film-bracket film-bracket-se" aria-hidden />
+            </>
+          ) : null}
+          {look.overlay ? (
+            <p className="studio-plate">
+              <strong>{shop.name}</strong>
+              {tagline ? <span>{tagline}</span> : null}
+            </p>
+          ) : null}
         </div>
-        <p className="motion-caption">{fileName ? `PREVIEW: ${fileName}` : "PREVIEW: PENDING"}</p>
+
+        <div
+          className={drag ? "studio-drop is-hot" : "studio-drop"}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            if (!readonly) setDrag(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            if (!readonly) setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDrag(false);
+            void takeFile(event.dataTransfer.files?.[0]);
+          }}
+        >
+          <p>Drop an image or a short MP4</p>
+          <p className="motion-help">{`JPEG, PNG, or WebP up to ${STILL_MB} MB. MP4 up to ${MAX_MB} MB and ${HERO_CLIP_MAX_SECONDS} seconds.`}</p>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,video/mp4,.mp4"
+            disabled={readonly || busy}
+            onChange={(event) => {
+              void takeFile(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
+        </div>
 
         <label className="motion-label" htmlFor="hero-library">
-          Designated hero loops
+          Background loop
         </label>
         <select
           id="hero-library"
           className="film-select"
-          disabled={busy}
+          disabled={busy || readonly}
           value={library.some((item) => item.url === video) ? video : ""}
           onChange={(event) => {
-            const url = event.target.value;
-            if (!url) return;
-            void handleSave(url);
+            if (event.target.value) setVideo(event.target.value);
           }}
         >
-          <option value="">Select a loop</option>
-          {library.map((item) => {
-            const name = item.url.split("/").pop() ?? item.label;
-            return (
-              <option key={item.id} value={item.url}>
-                {`${item.label} — ${name}`}
-              </option>
-            );
-          })}
+          <option value="">{video && !library.some((item) => item.url === video) ? "Uploaded loop" : "Select a loop"}</option>
+          {library.map((item) => (
+            <option key={item.id} value={item.url}>
+              {item.label}
+            </option>
+          ))}
         </select>
 
         <label className="motion-label" htmlFor="hero-tagline">
-          Tag
+          Overlay line
         </label>
         <input
           id="hero-tagline"
           className="motion-tag"
           value={tagline}
           maxLength={160}
+          disabled={readonly}
           onChange={(event) => setTagline(event.target.value)}
-          onBlur={() => {
-            if (isHeroAnimationUrl(video)) void handleSave(video, tagline);
-          }}
         />
 
-        <div
-          className={drag ? "hero-drop is-hot" : "hero-drop"}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            setDrag(true);
-          }}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDrag(true);
-          }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(event) => {
-            event.preventDefault();
-            setDrag(false);
-            takeFile(event.dataTransfer.files?.[0]);
-          }}
-        >
-          <p className="motion-help">Drop a named hero animation to select it.</p>
-          <input
-            type="file"
-            accept=".mp4,video/mp4"
-            className="motion-file"
-            onChange={(event) => {
-              takeFile(event.target.files?.[0]);
-              event.target.value = "";
-            }}
-          />
+        <div className="studio-presets" role="group" aria-label="Frame presets">
+          {PRESETS.map((preset) => {
+            const on = look[preset.key];
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                className={on ? "studio-switch is-on" : "studio-switch"}
+                aria-pressed={on}
+                disabled={readonly}
+                onClick={() => setLook((current) => ({ ...current, [preset.key]: !current[preset.key] }))}
+              >
+                <span>{preset.label}</span>
+                <small>{preset.detail}</small>
+              </button>
+            );
+          })}
         </div>
 
+        <HeroButtonStudio shop={shop} readonly={readonly} film={video} />
+
+        <button type="button" className="studio-save" disabled={readonly || busy} onClick={() => void publish({})}>
+          {busy ? "Publishing" : "Publish hero"}
+        </button>
+        {readonly ? <p className="motion-help">This desk can preview the frame. It cannot publish.</p> : null}
         {error ? <p className="motion-error">{error}</p> : null}
         {status ? <p className="motion-status">{status}</p> : null}
       </section>

@@ -40,7 +40,12 @@ check("21 catalog niches each resolve a unique hero mp4 on disk", () => {
   }
   const onDisk = readdirSync(join(root, "public/media")).filter((name) => name.endsWith(".mp4"));
   assert.equal(onDisk.length, CATALOG.length + EXTRA_HERO_LOOPS.length);
+  for (const extra of EXTRA_HERO_LOOPS) {
+    assert.equal(existsSync(join(root, "public/media", extra.file)), true, extra.file);
+  }
   assert.equal(onDisk.includes("otter-hero-animation.mp4"), true);
+  assert.equal(onDisk.includes("shark-hero-animation.mp4"), true);
+  assert.equal(onDisk.includes("polar-bear-hero-animation.mp4"), true);
   for (const name of onDisk) {
     assert.match(name, /-hero-animation\.mp4$/);
     assert.equal(name.endsWith(".mp4.mp4"), false);
@@ -88,6 +93,18 @@ check("storefront reads niche actions and does not invent a Book fallback", () =
   assert.match(page, /actions\.badge/);
   assert.match(page, /actions\.services/);
   assert.doesNotMatch(page, />Book</);
+});
+
+check("malformed shop slugs never reach SQL", () => {
+  const slug = read("src/lib/axiom/shop-slug.ts");
+  assert.match(slug, /export function publicShopSlug/);
+  const route = read("src/routes/$shopSlug/route.tsx");
+  assert.match(route, /if \(!slug\) throw notFound\(\)/);
+  const server = read("src/lib/axiom/shop-server.server.ts");
+  assert.match(server, /const safe = publicShopSlug\(slug\)/);
+  const create = read("src/routes/api/shops.create.ts");
+  assert.match(create, /isDatabaseUnavailable/);
+  assert.match(create, /status: 503/);
 });
 
 check("shop create validates the catalog and pins the matching film", () => {

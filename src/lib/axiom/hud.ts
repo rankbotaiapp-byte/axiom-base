@@ -85,7 +85,7 @@ function layerDefaults(id: HeroLayerId): HeroTextLayer {
   if (id === "headline") {
     return {
       text: "",
-      position: { x: 5, y: 46 },
+      position: { x: 4, y: 82 },
       fontFamily: "Instrument Serif",
       colorMode: "solid",
       solidColor: "#F3F1EB",
@@ -96,7 +96,7 @@ function layerDefaults(id: HeroLayerId): HeroTextLayer {
   if (id === "subheadline") {
     return {
       text: "",
-      position: { x: 5, y: 68 },
+      position: { x: 4, y: 90 },
       fontFamily: "Outfit",
       colorMode: "solid",
       solidColor: "#F3F1EB",
@@ -106,7 +106,7 @@ function layerDefaults(id: HeroLayerId): HeroTextLayer {
   }
   return {
     text: "",
-    position: { x: 5, y: 74 },
+    position: { x: 78, y: 90 },
     fontFamily: "Outfit",
     colorMode: "solid",
     solidColor: "#F3F1EB",
@@ -239,12 +239,13 @@ function parseLayer(id: HeroLayerId, raw: unknown, legacyText = ""): HeroTextLay
   const text = record
     ? sanitizeContactLine(record.text, LAYER_TEXT_LIMIT[id])
     : sanitizeContactLine(legacyText, LAYER_TEXT_LIMIT[id]);
+  const x = percent(position.x, base.position.x);
+  const y = percent(position.y, base.position.y);
+  const previousCenter = id === "headline" ? y === 46 : id === "subheadline" ? y === 68 : y === 74;
+  const parked = x === 5 && previousCenter;
   return {
     text,
-    position: {
-      x: percent(position.x, base.position.x),
-      y: percent(position.y, base.position.y),
-    },
+    position: parked ? base.position : { x, y },
     fontFamily: font,
     colorMode: mode,
     solidColor: sanitizeAccent(record?.solidColor) || base.solidColor,

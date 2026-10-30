@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { getNicheActions, type NicheActions } from "@/config/niche-actions";
 import { fetchClientStorefront, type ClientStorefront } from "@/lib/axiom/autopilot";
@@ -6,15 +6,21 @@ import {
   HERO_STUDIO_EVENT,
   HERO_STUDIO_KEY,
   LEOPARD_HERO_ANIMATION,
-  isHeroAnimationUrl,
+  cleanStillUrl,
+  isPlayableHeroFilm,
   readHeroDraft,
   resolveStorefrontFilm,
   type HeroDraft,
+  type HeroLook,
 } from "@/lib/axiom/hero-studio-state";
-import { getShopAccess } from "@/lib/axiom/server";
+import { getShopAccess, revalidateStorefront, updateShopBrand } from "@/lib/axiom/server";
 import type { AccessMode } from "@/lib/axiom/types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useShopPageData } from "@/routes/$shopSlug/route";
+import { FilmStudioDock } from "@/components/admin/film-studio-dock";
+import { HeroHud, InlineLabel } from "@/components/hero-hud";
+import { nicheHeroButtons } from "@/config/niche-button-presets";
+import { seedFilmPlates, type FilmPlateSeed, type HeroHudConfig } from "@/lib/axiom/hero-hud";
 
 function useHeroDraft(slug: string) {
   const [draft, setDraft] = useState<HeroDraft | null>(null);
@@ -52,7 +58,15 @@ function useTenant(slug: string) {
   return tenant;
 }
 
-/** Full-bleed loop with the shop name, tagline, and city. No cards. */
+function storefrontHud(saved: HeroHudConfig | null | undefined, niche: string): HeroHudConfig {
+  if (saved && saved.buttons.length > 0) return { ...saved, plates: saved.plates ?? [] };
+  return { title: "", buttons: nicheHeroButtons(niche), plates: [] };
+}
+
+function presentHud(saved: HeroHudConfig | null | undefined, niche: string, seed: FilmPlateSeed): HeroHudConfig {
+  return seedFilmPlates(storefrontHud(saved, niche), seed);
+}
+
 export function FilmStage({
   name,
   tagline,
@@ -60,7 +74,14 @@ export function FilmStage({
   src,
   book,
   actions,
+  niche = "",
   bookHref,
+  still,
+  look,
+  hud,
+  editable = false,
+  onChange,
+  studio,
 }: {
   name: string;
   tagline: string;
@@ -69,10 +90,41 @@ export function FilmStage({
   book?: ReactNode;
   /** Niche CTAs and service cards. Omitted only when the niche is not in the catalog. */
   actions?: NicheActions;
+  niche?: string;
   bookHref?: string;
+  still?: string;
+  look?: HeroLook;
+  hud?: HeroHudConfig | null;
+  editable?: boolean;
+  onChange?: (next: HeroHudConfig, commit?: boolean) => void;
+  studio?: ReactNode;
 }) {
   const [broken, setBroken] = useState(false);
-  const film = broken || !isHeroAnimationUrl(src) ? LEOPARD_HERO_ANIMATION : src;
+  const chosen = src.startsWith("blob:") || isPlayableHeroFilm(src);
+  const film = broken || !chosen ? LEOPARD_HERO_ANIMATION : src;
+  const plate = cleanStillUrl(still);
+  const frame = look ?? { brackets: false, glow: false, overlay: true };
+  const stageHud = presentHud(hud, niche, {
+    name,
+    tagline,
+    city,
+    badge: actions?.badge ?? "",
+    bookHref: bookHref ?? "",
+    services: actions?.services ?? [],
+  });
+  const visibleHud = frame.overlay ? stageHud : { ...stageHud, plates: stageHud.plates.filter((item) => item.id !== "plate_identity") };
+  const liveName = visibleHud.plates.find((item) => item.id === "plate_identity")?.lines.find((line) => line.id === "line_name")?.text || name;
+
+  function writeName(text: string, commit: boolean) {
+    onChange?.({
+      ...visibleHud,
+      plates: visibleHud.plates.map((item) =>
+        item.id === "plate_identity"
+          ? { ...item, lines: item.lines.map((line) => (line.id === "line_name" ? { ...line, text } : line)) }
+          : item,
+      ),
+    }, commit);
+  }
 
   useEffect(() => {
     setBroken(false);
@@ -99,41 +151,44 @@ export function FilmStage({
         aria-hidden
         onError={() => setBroken(true)}
       />
+      {plate ? <img className="film-hero-still" src={plate} alt="" /> : null}
+      {frame.brackets ? (
+        <>
+          <span className="film-bracket film-bracket-nw" aria-hidden />
+          <span className="film-bracket film-bracket-ne" aria-hidden />
+          <span className="film-bracket film-bracket-sw" aria-hidden />
+          <span className="film-bracket film-bracket-se" aria-hidden />
+        </>
+      ) : null}
+      {frame.glow ? <span className="film-glow-ring" aria-hidden /> : null}
+      {hud ? (
+        <HeroHud
+          hud={visibleHud}
+          bookHref={bookHref}
+          editable={editable}
+          onChange={onChange}
+          chrome={!frame.brackets}
+        />
+      ) : null}
       <header className="film-nav">
-        <p className="film-nav-mark">{name}</p>
+        {editable ? (
+          <InlineLabel
+            value={liveName}
+            maxLength={42}
+            className="film-nav-mark"
+            onType={(text) => writeName(text, false)}
+            onCommit={(text) => writeName(text, true)}
+          />
+        ) : (
+          <p className="film-nav-mark">{liveName}</p>
+        )}
         {book ? (
           <nav className="film-nav-links" aria-label="Shop">
             {book}
           </nav>
         ) : null}
       </header>
-      <div className="film-type">
-        {actions ? <p className="film-badge">{actions.badge}</p> : null}
-        <h1>{name}</h1>
-        {tagline ? <p>{tagline}</p> : null}
-        {city ? <p className="film-city">{city}</p> : null}
-        {actions && bookHref ? (
-          <div className="film-cta-row">
-            <a href={bookHref} className="film-cta film-cta-primary">
-              {actions.primaryCta}
-            </a>
-            <a href={bookHref} className="film-cta">
-              {actions.secondaryCta}
-            </a>
-          </div>
-        ) : null}
-      </div>
-      {actions ? (
-        <ul className="film-services" aria-label="Services">
-          {actions.services.map((service) => (
-            <li key={service.title} className="film-service">
-              <p className="film-service-title">{service.title}</p>
-              <p className="film-service-detail">{service.detail}</p>
-              <p className="film-service-price">{service.priceLabel}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {studio}
     </section>
   );
 }
@@ -145,7 +200,7 @@ export function ShopFilmPage() {
   const [mode, setMode] = useState<AccessMode>("customer");
   const draft = useHeroDraft(data.shop.slug);
   const tenant = useTenant(data.shop.slug);
-  const remoteFilm = isHeroAnimationUrl(tenant?.heroVideoUrl) ? tenant?.heroVideoUrl : data.shop.heroVideoUrl;
+  const remoteFilm = isPlayableHeroFilm(tenant?.heroVideoUrl) ? (tenant?.heroVideoUrl ?? null) : data.shop.heroVideoUrl;
   const selection = resolveStorefrontFilm({
     draft,
     shopVideoUrl: remoteFilm,
@@ -156,6 +211,8 @@ export function ShopFilmPage() {
   });
   const name = tenant?.name || data.shop.name;
   const city = (tenant?.address || data.shop.address || "").trim();
+  const look = draft?.look ?? data.shop.heroLook ?? { brackets: false, glow: data.shop.glowEnabled, overlay: true };
+  const still = draft?.hero_image_url || cleanStillUrl(data.shop.heroImageUrl);
 
   useEffect(() => {
     if (isPending || !user) return;
@@ -165,16 +222,59 @@ export function ShopFilmPage() {
   }, [data.shop.slug, isPending, user]);
 
   const desk = mode === "owner" || mode === "preview";
+  const canEdit = (mode === "owner" || mode === "preview") && !data.shop.isShowcase;
   const actions = getNicheActions(data.shop.niche);
   const bookPath = `/${data.shop.slug}/book`;
+  const seed: FilmPlateSeed = {
+    name,
+    tagline: selection.tagline,
+    city,
+    badge: actions?.badge ?? "",
+    bookHref: actions ? bookPath : "",
+    services: actions?.services ?? [],
+  };
+  const [hud, setHud] = useState(() => presentHud(data.shop.heroHud, data.shop.niche, seed));
+  const [filmOverride, setFilmOverride] = useState<string | null>(null);
+  const dirty = useRef(false);
+  const filmSrc = filmOverride || selection.hero_video_url;
+
+  useEffect(() => {
+    if (dirty.current) return;
+    setHud(presentHud(data.shop.heroHud, data.shop.niche, seed));
+  }, [data.shop.heroHud, data.shop.niche, actions, name, selection.tagline, city, seed.bookHref, seed.badge]);
+
+  function commitHud(next: HeroHudConfig, commit = false) {
+    dirty.current = true;
+    setHud(next);
+    if (!canEdit || !commit) return;
+    const nameLine = next.plates.find((plate) => plate.id === "plate_identity")?.lines.find((line) => line.id === "line_name")?.text.trim();
+    const tagLine = next.plates.find((plate) => plate.id === "plate_identity")?.lines.find((line) => line.id === "line_tag")?.text.trim();
+    void updateShopBrand({
+      data: {
+        slug: data.shop.slug,
+        heroHud: next,
+        markHero: true,
+        ...(nameLine ? { name: nameLine } : {}),
+        ...(tagLine ? { tagline: tagLine } : {}),
+      },
+    })
+      .then(() => revalidateStorefront({ data: data.shop.slug }))
+      .catch(() => undefined);
+  }
 
   return (
     <FilmStage
       name={name}
       tagline={selection.tagline}
       city={city}
-      src={selection.hero_video_url}
+      src={filmSrc}
+      still={still}
+      look={look}
+      hud={hud}
+      editable={canEdit}
+      onChange={commitHud}
       actions={actions}
+      niche={data.shop.niche}
       bookHref={actions ? bookPath : undefined}
       book={
         <>
@@ -187,6 +287,18 @@ export function ShopFilmPage() {
             </Link>
           ) : null}
         </>
+      }
+      studio={
+        canEdit ? (
+          <FilmStudioDock
+            shopId={data.shop.id}
+            slug={data.shop.slug}
+            niche={data.shop.niche}
+            current={filmSrc}
+            tagline={selection.tagline}
+            onFilm={setFilmOverride}
+          />
+        ) : null
       }
     />
   );

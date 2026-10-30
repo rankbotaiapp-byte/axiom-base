@@ -166,7 +166,7 @@ function HeroLayerNode({
       }}
       className={cn(
         "hero-type absolute max-w-[min(40rem,88%)] outline-none",
-        id === "headline" && "text-[clamp(2.5rem,8vw,5.4rem)] leading-[0.92]",
+        id === "headline" && "max-w-[min(16rem,42vw)] text-[clamp(1.2rem,2.4vw,1.7rem)] leading-[1.05]",
         id === "subheadline" && "max-w-[min(28rem,80%)] text-base leading-snug sm:text-lg",
         id === "cta_button" && "max-w-[16rem]",
         editable && "pointer-events-auto cursor-grab touch-none active:cursor-grabbing",
@@ -251,7 +251,7 @@ function LayerFace({
   if (!editing) {
     return (
       <span
-        onDoubleClick={onEditStart}
+        onClick={onEditStart}
         className="hero-type-ink block"
         style={ink}
         data-effect={effect}
