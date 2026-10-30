@@ -102,6 +102,15 @@ function withSpecificFilm(base: NicheFilm, text: string): NicheFilm {
   };
 }
 
+/** One-line niche label. Control characters are dropped and the result is capped. */
+export function cleanCustomNiche(value: string): string {
+  return value
+    .replace(/[\u0000-\u001f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
 export function heroForCustomNiche(label: string): NicheFilm {
   if (label.length < 2) return NICHE_MEDIA.contractor;
   try {

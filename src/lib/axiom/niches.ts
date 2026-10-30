@@ -210,6 +210,20 @@ export function nicheCopy(niche: ShopNiche) {
   return nicheVoice(niche);
 }
 
+/** Consecutive menu rows that share a section name. A blank group stays an open list. */
+export function serviceGroups<T extends { group?: string }>(
+  services: readonly T[],
+): { label: string; items: T[] }[] {
+  const groups: { label: string; items: T[] }[] = [];
+  for (const service of services) {
+    const label = service.group?.trim() ?? "";
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(service);
+    else groups.push({ label, items: [service] });
+  }
+  return groups;
+}
+
 export function shopTradeLabel(shop: { niche: ShopNiche; customNiche?: string }): string {
   const custom = (shop.customNiche ?? "").trim();
   if (custom) return custom;
