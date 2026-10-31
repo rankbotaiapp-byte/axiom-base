@@ -1,4 +1,5 @@
 import { FilmStage } from "@/app/[shopSlug]/page";
+import { catalogCardStill, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";
 import type { BusinessBrandRecord } from "@/lib/axiom/business-brand";
 import { LEOPARD_HERO_ANIMATION, resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
@@ -27,12 +28,14 @@ export function PreviewFrame({
     fallbackVideoUrl: LEOPARD_HERO_ANIMATION,
     shopTagline: template.tagline,
   });
+  const plate = isCatalogNiche(niche) ? catalogCardStill(niche) : "";
   return (
     <FilmStage
       name={name}
       tagline={film.tagline}
       city={city}
       src={film.hero_video_url}
+      still={plate}
       actions={getNicheActions(niche)}
       niche={niche}
       bookHref={`/onboard?niche=${niche}`}

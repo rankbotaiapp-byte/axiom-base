@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
+import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
 import { HeroButtonStudio } from "@/components/admin/hero-button-studio";
+import { HeroMotionStudio } from "@/components/admin/hero-motion-studio";
+import { HeroOtterInteractive } from "@/components/HeroOtterInteractive";
+import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
+import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
 import { getBearerToken } from "@/lib/auth/client";
 import { HERO_CLIP_MAX_SECONDS, HERO_VIDEO_MAX_BYTES, heroClipTooLong } from "@/lib/axiom/hero-video";
 import { MEDIA_FILE_MAX_BYTES } from "@/lib/axiom/media-slots";
@@ -207,9 +212,18 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         <Link to="/$shopSlug/admin" params={{ shopSlug: shop.slug }} className="studio-back">
           Back to the desk
         </Link>
+        <AiContentAutopilotToggle shop={shop} readonly={readonly} />
 
         <div className={`motion-preview${look.glow ? " is-ring" : ""}`}>
-          {video ? <video key={video} src={video} autoPlay muted loop playsInline /> : null}
+          {isSharkHeroFilm(video) ? (
+            <HeroSharkInteractive active src={video}>
+              {video ? <video key={video} src={video} autoPlay muted loop playsInline /> : null}
+            </HeroSharkInteractive>
+          ) : (
+            <HeroOtterInteractive active={isOtterHeroFilm(video) || !video} src={video || "/media/otter-hero-animation.mp4"}>
+              {video ? <video key={video} src={video} autoPlay muted loop playsInline /> : null}
+            </HeroOtterInteractive>
+          )}
           {still ? <img src={still} alt="" /> : null}
           {look.brackets ? (
             <>
@@ -307,6 +321,19 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
             );
           })}
         </div>
+
+        <HeroMotionStudio
+          shop={shop}
+          readonly={readonly}
+          onStill={(url) => {
+            setStill(url);
+            setStatus("Branded still is on the canvas.");
+          }}
+          onFilm={(url) => {
+            setVideo(url);
+            setStatus("Cinematic loop is on the canvas and the storefront.");
+          }}
+        />
 
         <HeroButtonStudio shop={shop} readonly={readonly} film={video} />
 

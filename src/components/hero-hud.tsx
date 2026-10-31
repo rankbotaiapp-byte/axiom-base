@@ -64,10 +64,12 @@ export function HeroHud({
   showPlates = true,
   editable = false,
   chrome = true,
+  buoyant = false,
   previewId = "",
   onMove,
   onChange,
   onSelect,
+  beforeAction,
 }: {
   hud: HeroHudConfig;
   title?: string;
@@ -78,12 +80,16 @@ export function HeroHud({
   showPlates?: boolean;
   editable?: boolean;
   chrome?: boolean;
+  /** Visitor buttons can be nudged around the otter loop like floating debris. */
+  buoyant?: boolean;
   /** Plays one button's click animation without running its action. */
   previewId?: string;
   onMove?: (id: string, x: number, y: number) => void;
   /** Live typing passes false. Blur, Enter, and a finished drag pass true so the shop can persist. */
   onChange?: (next: HeroHudConfig, commit?: boolean) => void;
   onSelect?: (id: string) => void;
+  /** Plays a transition, then runs the saved response. */
+  beforeAction?: (button: HeroHudButton, proceed: () => void) => void;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const dragged = useRef(false);
@@ -111,8 +117,7 @@ export function HeroHud({
     if (playTimer.current) window.clearTimeout(playTimer.current);
   }, []);
 
-  function run(button: HeroHudButton) {
-    if (!interactive || editable) return;
+  function execute(button: HeroHudButton) {
     if (button.action === "help" || button.action === "chat") {
       setAvatarHelpOpen(true);
       return;
@@ -140,6 +145,15 @@ export function HeroHud({
     setSheet(button);
   }
 
+  function run(button: HeroHudButton) {
+    if (!interactive || editable) return;
+    if (beforeAction) {
+      beforeAction(button, () => execute(button));
+      return;
+    }
+    execute(button);
+  }
+
   function place(id: string, target: HTMLElement, kind: "button" | "plate") {
     const next = percent(target);
     if (!next) return;
@@ -163,7 +177,7 @@ export function HeroHud({
       setPlaying(button.id);
       if (playTimer.current) window.clearTimeout(playTimer.current);
       playTimer.current = window.setTimeout(() => {
-        setPlaying(null);
+        setPlaying("");
         run(button);
       }, reduce ? 0 : 680);
       return;
@@ -309,6 +323,8 @@ export function HeroHud({
                 <HeroInteractiveButton
                   button={button}
                   className={buttonFace(button, "", previewId === button.id)}
+                  buoyant={buoyant}
+                  constraints={frame}
                   onActivate={run}
                 >
                   {mark}
@@ -435,7 +451,12 @@ function Plate({
   if (!editable) {
     return (
       <div className="film-plate-anchor" style={{ left: `${plate.x}%`, top: `${plate.y}%` }}>
-        <div className={identity ? "film-plate is-identity" : "film-plate is-services"}>{body}</div>
+        <div
+          id={identity ? "identity" : plate.id === "plate_services" ? "services" : plate.id.replace(/^plate_/, "")}
+          className={identity ? "film-plate is-identity" : "film-plate is-services"}
+        >
+          {body}
+        </div>
       </div>
     );
   }
@@ -455,7 +476,12 @@ function Plate({
       }}
       onDragEnd={(event) => onDrop(event.currentTarget as HTMLElement)}
     >
-      <div className={identity ? "film-plate is-identity" : "film-plate is-services"}>{body}</div>
+      <div
+        id={identity ? "identity" : plate.id === "plate_services" ? "services" : plate.id.replace(/^plate_/, "")}
+        className={identity ? "film-plate is-identity" : "film-plate is-services"}
+      >
+        {body}
+      </div>
     </motion.div>
   );
 }

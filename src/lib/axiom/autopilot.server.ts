@@ -373,6 +373,9 @@ export async function dispatchAutopilot(request: Request): Promise<AutopilotProp
     await drainOutreachQueue(sql).catch(() => undefined);
   }
   const confirmed = toProposal(mode, proposal, proposal.county, proposal.tradeType, split.email.length, split.sms.length);
+  await import("./hero-motion-studio.server")
+    .then((mod) => mod.tickArmedAiHeroes())
+    .catch(() => 0);
   return { ...confirmed, queued };
 }
 

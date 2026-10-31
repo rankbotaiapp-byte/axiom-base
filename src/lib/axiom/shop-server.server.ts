@@ -14,6 +14,7 @@ import { dueNowCents, isCollectionMode, isPricingType, listPriceCents, type Merc
 import { keepHeroBrand, parseHeroEffect, parseMorphDuration, readHeroBrandFallback } from "./hero-brand";
 import { publicShopSlug } from "./shop-slug";
 import { heroLookFromProfile, parseHeroLook } from "./hero-look";
+import { defaultShopHeroHud } from "@/config/niche-button-presets";
 import { heroHudFromProfile, parseHeroHud } from "./hero-hud";
 import { isShopNiche, normalizeShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {
@@ -52,6 +53,8 @@ type ShopRow = {
   glow_enabled?: boolean | number | string | null;
   layout_json?: string;
   trade_profile?: string;
+  hero_config_json?: string | null;
+  ai_content_autopilot?: boolean | number | string | null;
   created_at: string;
 };
 function parseOnboarding(raw: unknown): Shop["onboarding"] {
@@ -126,7 +129,8 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     neonAccent: parseNeonAccent(r.neon_accent),
     glowEnabled: parseGlowEnabled(r.glow_enabled),
     heroLook: heroLookFromProfile(r.trade_profile),
-    heroHud: heroHudFromProfile(r.trade_profile),
+    heroHud: parseHeroHud(r.hero_config_json) ?? heroHudFromProfile(r.trade_profile),
+    aiContentAutopilot: isOn(r.ai_content_autopilot),
     layout: parseLayout(r.layout_json),
     tradeProfile: parseTradeProfile(niche, r.trade_profile),
     createdAt: String(r.created_at)
@@ -184,8 +188,53 @@ async function loadShopRow(slug: string): Promise<ShopRow | null> {
   if (!safe) return null;
   const sql = await getSql();
   const rows = await sql<ShopRow>`select * from shops where slug = ${safe} limit 1`;
-  return rows[0] ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  try {
+    const config = await sql<{ config: string }>`
+      select config from shop_hero_config where shop_id = ${row.id} limit 1
+    `;
+    if (config[0]?.config) row.hero_config_json = config[0].config;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/shop_hero_config/i.test(message)) throw err;
+  }
+  return row;
 }
+
+async function persistSeededHeroHud(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  shop: { id: string; slug: string; niche: string; film?: string },
+) {
+  const hud = parseHeroHud(defaultShopHeroHud(shop.niche, shop.slug, shop.film ?? ""));
+  if (!hud) return;
+  try {
+    await sql`
+      insert into shop_hero_config (shop_id, config, updated_at)
+      values (${shop.id}, ${JSON.stringify(hud)}, now())
+      on conflict (shop_id) do update set config = excluded.config, updated_at = now()
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/shop_hero_config/i.test(message)) throw err;
+  }
+  try {
+    const rows = await sql<{ trade_profile: string | null }>`select trade_profile from shops where id = ${shop.id} limit 1`;
+    let profile: Record<string, unknown> = {};
+    try {
+      const parsed = rows[0]?.trade_profile ? JSON.parse(rows[0].trade_profile) : {};
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = parsed as Record<string, unknown>;
+    } catch {
+      profile = {};
+    }
+    profile.heroHud = hud;
+    await sql`update shops set trade_profile = ${JSON.stringify(profile)} where id = ${shop.id}`;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/trade_profile/i.test(message)) throw err;
+  }
+}
+
 async function employeeServiceMap(shopId: string): Promise<Map<string, string[]>> {
   const sql = await getSql();
   const rows = await sql<{
@@ -856,6 +905,7 @@ export async function provisionShopFromNiche(input: {
         values (${newId("pf")}, ${shopId}, ${emp.id}, ${p.imageUrl}, ${p.caption})
       `;
   }
+  await persistSeededHeroHud(sql, { id: shopId, slug, niche, film: heroVideoUrl });
   await claimPreloadedLead(sql, leadSlug, shopId);
   if (customNiche) {
     await sql`
@@ -1026,6 +1076,14 @@ export const updateShopBrandHandler = async ({
       if (!/trade_profile|glow_enabled/i.test(message)) throw err;
     }
   }
+  if (typeof data.aiContentAutopilot === "boolean") {
+    try {
+      await sql`update shops set ai_content_autopilot = ${data.aiContentAutopilot} where id = ${row.id}`;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (!/ai_content_autopilot/i.test(message)) throw err;
+    }
+  }
   if (data.heroHud && typeof data.heroHud === "object") {
     const hud = parseHeroHud(data.heroHud);
     if (hud) {
@@ -1058,9 +1116,22 @@ export const updateShopBrandHandler = async ({
       }
     }
   }
+  let aiHero: { detail: string } | undefined;
+  if (data.aiContentAutopilot === true) {
+    try {
+      const { generateArmedHeroForShop } = await import("./hero-motion-studio.server");
+      const result = await generateArmedHeroForShop(row.id, context.userId);
+      aiHero = { detail: result.detail };
+    } catch (err) {
+      aiHero = { detail: err instanceof Error ? err.message : "Autopilot is armed. Generation will retry." };
+    }
+  } else if (data.aiContentAutopilot === false) {
+    aiHero = { detail: "Autopilot is paused." };
+  }
   return {
     ok: true as const,
-    onboarding: flags
+    onboarding: flags,
+    aiHero,
   };
 };
 export const saveTradeProfileHandler = async ({
@@ -1169,6 +1240,12 @@ export const setShopNicheHandler = async ({
   if (!isPublicNiche(data.niche)) throw new Error("Pick a listed trade");
   const sql = await getSql();
   await sql`update shops set niche = ${data.niche} where id = ${row.id}`;
+  await persistSeededHeroHud(sql, {
+    id: row.id,
+    slug: row.slug,
+    niche: data.niche,
+    film: row.hero_video_url || "",
+  });
   return { ok: true as const, niche: data.niche as ShopNiche };
 };
 export const updateEmployeeHandler = async ({
@@ -1577,11 +1654,12 @@ export const getOperatorDataHandler = async ({
   if (asMaster && !shop.isShowcase) mode = "owner";
   if (mode === "none") throw new Error("Forbidden");
   const hidePii = mode === "preview";
+  const employeeScope = mode === "employee" ? mem?.employee_id || "__none__" : null;
   const appointments = hidePii ? (await mapAppointments(shop.id)).map(a => ({
     ...a,
     customerName: a.status === "completed" ? a.customerName : "Guest",
     customerPhone: ""
-  })) : await mapAppointments(shop.id, mode === "employee" ? mem?.employee_id : null);
+  })) : await mapAppointments(shop.id, employeeScope);
   let billing: Billing | null = null;
   if (mode === "owner" || mode === "preview") {
     const sql = await getSql();

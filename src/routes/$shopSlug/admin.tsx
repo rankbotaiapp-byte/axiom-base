@@ -19,8 +19,9 @@ import {
   updateShopBrand,
 } from "@/lib/axiom/server";
 import { getNicheActions } from "@/config/niche-actions";
+import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
 import { HeroStudioMobile } from "@/components/admin/hero-studio-mobile";
-import { nicheHeroButtons } from "@/config/niche-button-presets";
+import { studioDefaultButtons } from "@/config/niche-button-presets";
 import { seedFilmPlates, type HeroHudConfig } from "@/lib/axiom/hero-hud";
 import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
 import { NICHES, PUBLIC_NICHE_ORDER, isPublicNiche, shopTradeLabel } from "@/lib/axiom/niches";
@@ -268,6 +269,7 @@ export function AdminShell({
       <MissionFrame>
         {tab === "overview" ? (
           <div className="grid gap-8">
+            <AiContentAutopilotToggle shop={data.shop} readonly={readonly} />
             <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
             <PaymentsPanel
               shop={data.shop}
@@ -303,6 +305,7 @@ export function AdminShell({
         ) : null}
         {tab === "autopilot" ? (
           <div className="grid gap-6">
+            <AiContentAutopilotToggle shop={data.shop} readonly={readonly && !data.shop.isShowcase} />
             <AutopilotDesk
               slug={data.shop.slug}
               appointments={data.appointments}
@@ -623,7 +626,7 @@ function BrandPanel({
   const films = catalogChoices(shop.niche);
   const nicheActions = getNicheActions(shop.niche);
   const [liveHud, setLiveHud] = useState<HeroHudConfig>(() =>
-    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: nicheHeroButtons(shop.niche), plates: [] }, {
+    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: studioDefaultButtons(shop.niche, previewVideo, `/${shop.slug}/book`), plates: [] }, {
       name: shop.name,
       tagline: shop.tagline,
       city: cityFromAddress(shop.address),

@@ -28,7 +28,7 @@ export const HERO_ANIMATION_LABEL: Record<HeroClickAnimation, string> = {
 };
 
 export const HERO_RESPONSE_LABEL: Record<HeroResponseAction, string> = {
-  modal: "Open a message",
+  modal: "Open a popup",
   scrollTo: "Scroll to a section",
   externalUrl: "Open a link",
   apiTrigger: "Open checkout",
@@ -130,6 +130,34 @@ export function seedFilmPlates(hud: HeroHudConfig, seed: FilmPlateSeed): HeroHud
         { id: `line_svc${index}_detail`, text: service.detail.slice(0, 80), href: "" },
         { id: `line_svc${index}_price`, text: service.priceLabel.slice(0, 16), href: "" },
       ]),
+    });
+  }
+  return { ...hud, plates };
+}
+
+/** Proof and review plates for the deep-sea gateway. */
+export function seedSeaPlates(hud: HeroHudConfig, seed: FilmPlateSeed): HeroHudConfig {
+  const plates = hud.plates.slice();
+  if (!plates.some((plate) => plate.id === "plate_proof")) {
+    plates.push({
+      id: "plate_proof",
+      x: 8,
+      y: 72,
+      lines: [
+        { id: "line_proof_title", text: "Proof of work", href: seed.bookHref },
+        { id: "line_proof_copy", text: "Albums from the last jobs.", href: "" },
+      ],
+    });
+  }
+  if (!plates.some((plate) => plate.id === "plate_reviews")) {
+    plates.push({
+      id: "plate_reviews",
+      x: 92,
+      y: 72,
+      lines: [
+        { id: "line_review_title", text: "Client reviews", href: "" },
+        { id: "line_review_copy", text: "Notes from people who booked.", href: "" },
+      ],
     });
   }
   return { ...hud, plates };

@@ -2,11 +2,17 @@
 -- Customers and missing rows are not allowed to read preloaded leads.
 -- Shop membership stays in sync, and an admin role is not downgraded.
 
-create table if not exists profiles (
-  user_id    text primary key,
-  role       text not null check (role in ('owner', 'employee', 'admin', 'platform_admin', 'customer')),
-  updated_at timestamptz not null default now()
-);
+do $$
+begin
+  create table if not exists profiles (
+    user_id    text primary key,
+    role       text not null check (role in ('owner', 'employee', 'admin', 'platform_admin', 'customer')),
+    updated_at timestamptz not null default now()
+  );
+exception
+  when duplicate_table then null;
+  when duplicate_object then null;
+end $$;
 
 alter table profiles enable row level security;
 

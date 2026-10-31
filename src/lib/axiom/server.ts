@@ -175,6 +175,7 @@ export const updateShopBrand = createServerFn({
     buttons: { id: string; label: string; icon: string; action: string; x: number; y: number; phone: string; href: string; variant?: string; clickAnimation?: string; successMessage?: string; response?: string }[];
     plates: { id: string; x: number; y: number; lines: { id: string; text: string; href: string }[] }[];
   };
+  aiContentAutopilot?: boolean;
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.updateShopBrandHandler(ctx);
@@ -570,3 +571,63 @@ export const refreshStripeConnect = createServerFn({
   const loaded = await import("./shop-server.server");
   return loaded.refreshStripeConnectHandler(ctx);
 });
+
+export const readMotionStudio = createServerFn({
+  method: "GET",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.readMotionStudioHandler(ctx);
+  });
+
+export const saveBrandDna = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; dna: { logoDataUrl: string; primary: string; secondary: string; font: string; tagline: string } }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.saveBrandDnaHandler(ctx);
+  });
+
+export const enhanceHeroStill = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; imageDataUrl: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.enhanceHeroStillHandler(ctx);
+  });
+
+export const startCinematicHero = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; imageDataUrl: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.startCinematicHeroHandler(ctx);
+  });
+
+export const finishCinematicHero = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; requestId: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.finishCinematicHeroHandler(ctx);
+  });
+
+export const startAiCreditPack = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.startAiCreditPackHandler(ctx);
+  });

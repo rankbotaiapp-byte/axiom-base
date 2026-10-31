@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { FilmStage } from "@/app/[shopSlug]/page";
+import { catalogCardStill, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";
 import { parseBusinessId, type BusinessBrandRecord } from "@/lib/axiom/business-brand";
 import { getBusinessBrand } from "@/lib/axiom/business-lookup";
@@ -108,6 +109,7 @@ function NichePreview() {
       tagline={film.tagline}
       city={city}
       src={film.hero_video_url}
+      still={isCatalogNiche(niche) ? catalogCardStill(niche) : ""}
       actions={getNicheActions(niche)}
       niche={niche}
       bookHref={`/onboard?niche=${niche}`}

@@ -7,6 +7,7 @@ export const CATALOG = [
   {
     id: "auto",
     file: "auto-hero-animation.mp4",
+    card: "/media/heroes/auto-repair.png",
     label: "Auto",
     blurb: "Repair, detail, and the bay on a calendar.",
     defaultName: "Night Circuit",
@@ -25,6 +26,7 @@ export const CATALOG = [
   {
     id: "bow-tech",
     file: "bow-tech-hero-animation.mp4",
+    card: "/media/heroes/custom-bow-tech.jpg",
     label: "Bow tech",
     blurb: "Custom bows, strings, and the workbench.",
     defaultName: "Ridge Bow Works",
@@ -34,6 +36,7 @@ export const CATALOG = [
   {
     id: "canine",
     file: "bear-charge-hero-animation.mp4",
+    card: "/media/heroes/pets.jpg",
     label: "Canine",
     blurb: "Grooming, boarding, and outdoor animal work.",
     defaultName: "Charge Kennel",
@@ -43,6 +46,7 @@ export const CATALOG = [
   {
     id: "contractor",
     file: "orb-explosion-hero-animation.mp4",
+    card: "/media/heroes/contractor.jpg",
     label: "Contractor",
     blurb: "General build, site visits, and the job book.",
     defaultName: "Rogue Contractor",
@@ -52,6 +56,7 @@ export const CATALOG = [
   {
     id: "electrical",
     file: "electrician-hero-animation.mp4",
+    card: "/media/heroes/electrical.jpg",
     label: "Electrical",
     blurb: "Panels, runs, and service calls.",
     defaultName: "Cascade Electric",
@@ -79,6 +84,7 @@ export const CATALOG = [
   {
     id: "glasswork",
     file: "photogaphy-hero-animation.mp4",
+    card: "/media/heroes/photographer-1.jpg",
     label: "Glasswork",
     blurb: "Glass, light, and precision installs.",
     defaultName: "North Frame Glass",
@@ -88,6 +94,7 @@ export const CATALOG = [
   {
     id: "hvac",
     file: "cleaner-hero-animation.mp4",
+    card: "/media/heroes/hvac.jpg",
     label: "HVAC",
     blurb: "Heat, cool, and indoor air service.",
     defaultName: "Valley Air",
@@ -97,6 +104,7 @@ export const CATALOG = [
   {
     id: "landscaping",
     file: "guide-service-hero-animation.mp4",
+    card: "/media/heroes/landscaper.jpg",
     label: "Landscaping",
     blurb: "Grounds, irrigation, and outdoor builds.",
     defaultName: "Creek Line Landscapes",
@@ -115,6 +123,7 @@ export const CATALOG = [
   {
     id: "plumbing",
     file: "plumbers-hero-animation.mp4",
+    card: "/media/heroes/plumbing.jpg",
     label: "Plumbing",
     blurb: "Lines, fixtures, and emergency calls.",
     defaultName: "Main Street Plumbing",
@@ -124,6 +133,7 @@ export const CATALOG = [
   {
     id: "power-sports",
     file: "boarding-lessons-hero-animation.mp4",
+    card: "/media/heroes/snow-sports-lessons.jpg",
     label: "Power sports",
     blurb: "Boards, sleds, and lesson blocks.",
     defaultName: "Board Line",
@@ -133,6 +143,7 @@ export const CATALOG = [
   {
     id: "roofing",
     file: "tiger-hero-animation.mp4",
+    card: "/media/heroes/roofing.jpg",
     label: "Roofing",
     blurb: "Shingles, metal, and roof inspections.",
     defaultName: "Ridge Line Roofing",
@@ -206,8 +217,8 @@ export const EXTRA_HERO_LOOPS = [
   {
     id: "shark",
     file: "shark-hero-animation.mp4",
-    label: "Shark",
-    blurb: "Open water and a shark on a loop.",
+    label: "Deep-sea reef",
+    blurb: "Great white, barracuda, eel, and octopus on a looping clip.",
   },
   {
     id: "polar-bear",
@@ -254,6 +265,25 @@ export function catalogFilmPath(file: string): string {
 
 export function catalogFilmUrl(niche: CatalogNiche): string {
   return catalogFilmPath(CATALOG_BY_ID[niche].file);
+}
+
+/**
+ * Public-card media from the same catalog row as the title (never by array offset).
+ * Shop films stay on `file`; cards use `card` when the trade still exists.
+ */
+export function catalogCardSrc(niche: CatalogNiche): string {
+  const row = CATALOG_BY_ID[niche];
+  return "card" in row && row.card ? row.card : catalogFilmUrl(niche);
+}
+
+export function catalogCardIsVideo(src: string): boolean {
+  return /\.mp4(?:$|\?)/i.test(src);
+}
+
+/** Opaque trade still for public cards / demo plates, or empty when the card is the loop. */
+export function catalogCardStill(niche: CatalogNiche): string {
+  const src = catalogCardSrc(niche);
+  return catalogCardIsVideo(src) ? "" : src;
 }
 
 export function isCatalogNiche(value: string): value is CatalogNiche {

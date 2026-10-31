@@ -14,15 +14,20 @@ export function HeroInteractiveButton({
   button,
   className,
   children,
+  buoyant = false,
+  constraints,
   onActivate,
 }: {
   button: HeroHudButton;
   className: string;
   children: ReactNode;
+  buoyant?: boolean;
+  constraints?: RefObject<HTMLElement | null>;
   onActivate: (button: HeroHudButton) => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const timer = useRef<number | null>(null);
+  const moved = useRef(false);
   const [live, setLive] = useState(false);
   const [ripple, setRipple] = useState<{ x: number; y: number } | null>(null);
   const morph = live && button.clickAnimation === "morph-success";
@@ -31,11 +36,11 @@ export function HeroInteractiveButton({
     if (timer.current) window.clearTimeout(timer.current);
   }, []);
 
-  function activate(event: React.MouseEvent<HTMLButtonElement>) {
+  function activate(clientX: number, clientY: number) {
     if (live) return;
     const box = ref.current?.getBoundingClientRect();
     if (box && button.clickAnimation === "ripple-shockwave") {
-      setRipple({ x: event.clientX - box.left, y: event.clientY - box.top });
+      setRipple({ x: clientX - box.left, y: clientY - box.top });
     }
     setLive(true);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -53,9 +58,25 @@ export function HeroInteractiveButton({
       type="button"
       className={`${className}${live ? ` is-anim-${button.clickAnimation || "pulse-glow"}` : ""}`}
       style={{ left: `${button.x}%`, top: `${button.y}%` }}
+      drag={buoyant}
+      dragConstraints={constraints}
+      dragElastic={0.38}
+      dragMomentum
       whileHover={live ? undefined : { scale: 1.05 }}
       whileTap={live ? undefined : { scale: 0.95 }}
-      onClick={activate}
+      onDragStart={() => {
+        moved.current = false;
+      }}
+      onDrag={(_event, info) => {
+        if (Math.hypot(info.offset.x, info.offset.y) > 8) moved.current = true;
+      }}
+      onClick={(event) => {
+        if (moved.current) {
+          moved.current = false;
+          return;
+        }
+        activate(event.clientX, event.clientY);
+      }}
     >
       {morph ? (
         <>

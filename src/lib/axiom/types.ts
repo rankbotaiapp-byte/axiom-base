@@ -85,6 +85,8 @@ export type Shop = {
     overlay: boolean;
   };
   heroHud?: import("./hero-hud").HeroHudConfig | null;
+  /** When true, Autopilot spends shop_ai_credits on branded stills and loops. */
+  aiContentAutopilot?: boolean;
   layout: LayoutBlock[];
   tradeProfile: TradeProfile;
   createdAt: string;

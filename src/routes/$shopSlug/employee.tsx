@@ -44,8 +44,7 @@ function EmployeePage() {
         setNotices(d.notices);
         const emp =
           d.employees.find((e) => e.id === d.employeeId) ??
-          d.employees[0] ??
-          null;
+          (d.mode === "owner" ? d.employees[0] : null);
         setEmployee(emp);
         if (emp) setGallery(await getPortfolio({ data: emp.id }));
       })

@@ -17,6 +17,8 @@ import {
   heroTelemetryOrder,
   heroVideoList,
   isCatalogHeroUrl,
+  isOtterHeroFilm,
+  isSharkHeroFilm,
   nextReelIndex,
   resolveNicheFilm,
 } from "./hero-films.ts";
@@ -31,6 +33,10 @@ describe("hero film directory", () => {
     assert.deepEqual([...HERO_MP4_FILES].sort(), onDisk);
     assert.equal(CATALOG.length, 21);
     assert.equal(onDisk.includes("otter-hero-animation.mp4"), true);
+    assert.equal(onDisk.includes("shark-hero-animation.mp4"), true);
+    assert.equal(isOtterHeroFilm("/media/otter-hero-animation.mp4"), true);
+    assert.equal(isSharkHeroFilm("/media/shark-hero-animation.mp4?v=2"), true);
+    assert.equal(isSharkHeroFilm("/media/otter-hero-animation.mp4"), false);
     assert.equal(
       catalogChoices("auto").some(
         (row) => row.url.endsWith("/otter-hero-animation.mp4") && row.label === "Underwater Otter",

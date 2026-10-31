@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { CATALOG, catalogFilmUrl, type CatalogNiche } from "@/config/catalog";
-import { LoopVideo } from "@/components/cinematic-hero";
+import { CATALOG, type CatalogNiche } from "@/config/catalog";
+import { CatalogCardMedia } from "@/components/catalog-card-media";
 import { HoloCard } from "@/components/holo-card";
 import { MagneticCard } from "@/components/magnetic-card";
 import { Reveal } from "@/components/reveal";
@@ -64,10 +64,7 @@ export function AxiomCatalogHub({
             <HoloCard className="glass-panel lift-card h-full overflow-hidden rounded-2xl">
               <CatalogLink niche={entry.id} linkTo={linkTo} className="block hover:text-fg">
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg">
-                  <LoopVideo
-                    src={catalogFilmUrl(entry.id)}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
+                  <CatalogCardMedia niche={entry.id} />
                   <div className="absolute inset-0 bg-gradient-to-t from-bg/90 via-bg/20 to-transparent" />
                   <span className="absolute bottom-3 left-3 grid size-10 place-items-center rounded-xl bg-bg/70 backdrop-blur">
                     <Icon className="size-4" />
@@ -103,7 +100,7 @@ function CatalogStripCard({
       className="relative w-72 shrink-0 snap-start overflow-hidden rounded-[24px] bg-surface text-left shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden">
-        <LoopVideo src={catalogFilmUrl(niche)} className="absolute inset-0 h-full w-full object-cover" />
+        <CatalogCardMedia niche={niche} />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/30 to-transparent" />
       </div>
       <div className="relative -mt-10 space-y-2 px-4 pb-4 pt-2">
@@ -121,7 +118,7 @@ function CatalogStripCard({
 function FilmThumb({ niche, className }: { niche: CatalogNiche; className?: string }) {
   return (
     <span className={cn("relative overflow-hidden bg-bg", className)}>
-      <LoopVideo src={catalogFilmUrl(niche)} className="absolute inset-0 h-full w-full object-cover" />
+      <CatalogCardMedia niche={niche} />
     </span>
   );
 }

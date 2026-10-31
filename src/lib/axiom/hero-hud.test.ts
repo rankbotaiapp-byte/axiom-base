@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defaultHeroHud, heroHudFromProfile, parseHeroHud } from "./hero-hud.ts";
+import { defaultHeroHud, heroHudFromProfile, parseHeroHud, seedSeaPlates } from "./hero-hud.ts";
 
 test("hud buttons keep a place, an icon, and an action", () => {
   const saved = parseHeroHud({
@@ -61,4 +61,14 @@ test("hud buttons keep a place, an icon, and an action", () => {
   assert.equal(burst?.buttons[0]?.href, "#services");
   assert.equal(burst?.buttons[0]?.successMessage, "Booked");
   assert.equal(burst?.buttons[0]?.action, "booking");
+  const sea = seedSeaPlates({ title: "", buttons: [], plates: [] }, {
+    name: "Reef",
+    tagline: "Quiet work",
+    city: "Portland",
+    badge: "",
+    bookHref: "/reef/book",
+    services: [],
+  });
+  assert.equal(sea.plates.some((plate) => plate.id === "plate_proof"), true);
+  assert.equal(sea.plates.some((plate) => plate.id === "plate_reviews"), true);
 });

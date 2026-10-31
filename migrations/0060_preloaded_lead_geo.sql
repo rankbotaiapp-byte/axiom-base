@@ -27,5 +27,3 @@ create index if not exists preloaded_leads_zip_code_idx
 create index if not exists preloaded_leads_niche_active_idx
   on preloaded_leads (niche, created_at desc)
   where active and not claimed;
-
-analyze preloaded_leads;

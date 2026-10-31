@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { HeroHud } from "@/components/hero-hud";
-import { nicheHeroButtons } from "@/config/niche-button-presets";
+import { studioDefaultButtons } from "@/config/niche-button-presets";
 import { getNicheActions } from "@/config/niche-actions";
 import {
   HERO_ANIMATION_LABEL,
@@ -19,6 +19,9 @@ import {
   type HeroResponseAction,
   type HeroButtonVariant,
 } from "@/lib/axiom/hero-hud";
+import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
+import { InteractiveOtterHero } from "@/components/interactive-otter-hero";
+import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
 import { revalidateStorefront, updateShopBrand } from "@/lib/axiom/server";
 import type { Shop } from "@/lib/axiom/types";
 
@@ -57,7 +60,7 @@ export function HeroButtonStudio({
 }) {
   const actions = getNicheActions(shop.niche);
   const [hud, setHud] = useState<HeroHudConfig>(() =>
-    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: nicheHeroButtons(shop.niche), plates: [] }, {
+    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: studioDefaultButtons(shop.niche, film, `/${shop.slug}/book`), plates: [] }, {
       name: shop.name,
       tagline: shop.tagline,
       city: shop.address,
@@ -70,18 +73,23 @@ export function HeroButtonStudio({
   const [preview, setPreview] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const current = hud.buttons.find((button) => button.id === selected) ?? hud.buttons[0];
 
   function publish(next: HeroHudConfig, immediate = false) {
     setHud(next);
-    if (readonly || !immediate) return;
+    if (readonly) return;
     const clean = parseHeroHud(next);
     if (!clean) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    const write = () =>
+      updateShopBrand({ data: { slug: shop.slug, heroHud: clean, markHero: true } })
+        .then(() => revalidateStorefront({ data: shop.slug }))
+        .then(() => setNote("Button layout saved."))
+        .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not save the buttons"));
     setError("");
-    void updateShopBrand({ data: { slug: shop.slug, heroHud: clean, markHero: true } })
-      .then(() => revalidateStorefront({ data: shop.slug }))
-      .then(() => setNote("Button layout saved."))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not save the buttons"));
+    if (immediate) void write();
+    else saveTimer.current = setTimeout(() => void write(), 420);
   }
 
   function tune(id: string, patch: Partial<HeroHudButton>, commit = true) {
@@ -99,7 +107,7 @@ export function HeroButtonStudio({
 
   function play(id: string) {
     setPreview(id);
-    window.setTimeout(() => setPreview(""), 700);
+    window.setTimeout(() => setPreview(""), 2000);
   }
 
   return (
@@ -116,16 +124,24 @@ export function HeroButtonStudio({
           className="studio-switch"
           disabled={readonly}
           onClick={() => {
-            const buttons = nicheHeroButtons(shop.niche);
+            const buttons = studioDefaultButtons(shop.niche, film, `/${shop.slug}/book`);
             setSelected(buttons[0]?.id ?? "");
             publish({ ...hud, buttons }, true);
           }}
         >
-          Load niche defaults
+          {isSharkHeroFilm(film) ? "Load deep-sea defaults" : "Load niche defaults"}
         </button>
       </div>
       <div className="hud-stage">
-        {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+        {isSharkHeroFilm(film) ? (
+          <HeroSharkInteractive active>
+            {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+          </HeroSharkInteractive>
+        ) : (
+          <InteractiveOtterHero active={isOtterHeroFilm(film)}>
+            {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+          </InteractiveOtterHero>
+        )}
         <HeroHud
           hud={hud}
           bookHref={`/${shop.slug}/book`}
@@ -140,16 +156,51 @@ export function HeroButtonStudio({
       </div>
 
       <div className="hero-choice-row" role="group" aria-label="Buttons">
-        {hud.buttons.map((button) => (
-          <button
-            key={button.id}
-            type="button"
-            className={current?.id === button.id ? "studio-switch is-on" : "studio-switch"}
-            aria-pressed={current?.id === button.id}
-            onClick={() => setSelected(button.id)}
-          >
-            {button.label}
-          </button>
+        {hud.buttons.map((button, index) => (
+          <span key={button.id} className="hero-btn-chip">
+            <button
+              type="button"
+              className={current?.id === button.id ? "studio-switch is-on" : "studio-switch"}
+              aria-pressed={current?.id === button.id}
+              onClick={() => setSelected(button.id)}
+            >
+              {button.label}
+            </button>
+            <button
+              type="button"
+              className="studio-switch"
+              aria-label={`Move ${button.label} earlier`}
+              disabled={readonly || index === 0}
+              onClick={() => {
+                const buttons = hud.buttons.slice();
+                const swap = buttons[index - 1];
+                const row = buttons[index];
+                if (!swap || !row) return;
+                buttons[index - 1] = row;
+                buttons[index] = swap;
+                publish({ ...hud, buttons }, true);
+              }}
+            >
+              Up
+            </button>
+            <button
+              type="button"
+              className="studio-switch"
+              aria-label={`Move ${button.label} later`}
+              disabled={readonly || index === hud.buttons.length - 1}
+              onClick={() => {
+                const buttons = hud.buttons.slice();
+                const swap = buttons[index + 1];
+                const row = buttons[index];
+                if (!swap || !row) return;
+                buttons[index + 1] = row;
+                buttons[index] = swap;
+                publish({ ...hud, buttons }, true);
+              }}
+            >
+              Down
+            </button>
+          </span>
         ))}
         <button
           type="button"

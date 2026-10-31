@@ -4,10 +4,10 @@ import { RedirectToSignIn } from "@/lib/auth/gates";
 import { AxiomCatalogHub } from "@/components/AxiomCatalogHub";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { CATALOG, catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "@/config/catalog";
+import { CatalogCardMedia } from "@/components/catalog-card-media";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
 import { NICHES } from "@/lib/axiom/niches";
-import { LoopVideo } from "@/components/cinematic-hero";
 import { type Shop, type ShopNiche } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -160,10 +160,7 @@ function Onboard() {
                 )}
               >
                 <span className="relative block aspect-[16/10] overflow-hidden bg-bg">
-                  <LoopVideo
-                    src={catalogFilmUrl(entry.id)}
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-                  />
+                  <CatalogCardMedia niche={entry.id} className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
                 </span>
                 <span className="block p-4">
                   <span className="block text-[11px] uppercase tracking-[0.18em] text-muted">{entry.kicker}</span>
@@ -178,10 +175,7 @@ function Onboard() {
         {niche && selected ? (
           <div className="mt-8 max-w-md">
             <div className="relative mb-6 aspect-[16/10] overflow-hidden rounded-[24px] bg-bg">
-              <LoopVideo
-                src={catalogFilmUrl(niche)}
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-              />
+              <CatalogCardMedia niche={niche} className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
             </div>
             <Label htmlFor="shop-name">Shop name</Label>
             <Input

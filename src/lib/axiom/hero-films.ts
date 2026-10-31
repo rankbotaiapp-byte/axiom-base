@@ -145,6 +145,13 @@ export function isOtterHeroFilm(url: string | null | undefined): boolean {
   return path.endsWith("/otter-hero-animation.mp4");
 }
 
+/** Deep-sea reef loop with shark, barracuda, eel, and octopus. */
+export function isSharkHeroFilm(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const path = url.split("?")[0] ?? "";
+  return path.endsWith("/shark-hero-animation.mp4");
+}
+
 export type CatalogChoice = { url: string; label: string; score: number };
 
 /** Admin studio dropdown — every verified loop, niche match first. */

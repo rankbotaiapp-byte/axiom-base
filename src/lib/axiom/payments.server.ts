@@ -497,6 +497,9 @@ export async function handleStripeWebhook(request: Request) {
       if (territory && (status === "paid" || status === "no_payment_required")) {
         // Re-fetches the session from Stripe, marks the territory live, then opens the shop.
         await settleTerritorySession(object.id);
+      } else if (meta.kind === "ai_credits" && (status === "paid" || status === "no_payment_required")) {
+        const { settleAiCreditSession } = await import("./hero-motion-studio.server");
+        await settleAiCreditSession(object.id);
       } else if (!territory && status === "paid" && meta.appointment_id && meta.shop_id) {
         await settlePaidSession(object.id);
       }

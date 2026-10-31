@@ -19,8 +19,11 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useShopPageData } from "@/routes/$shopSlug/route";
 import { FilmStudioDock } from "@/components/admin/film-studio-dock";
 import { HeroHud, InlineLabel } from "@/components/hero-hud";
-import { nicheHeroButtons } from "@/config/niche-button-presets";
-import { seedFilmPlates, type FilmPlateSeed, type HeroHudConfig } from "@/lib/axiom/hero-hud";
+import { InteractiveOtterHero } from "@/components/interactive-otter-hero";
+import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
+import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
+import { deepSeaHeroButtons, nicheHeroButtons } from "@/config/niche-button-presets";
+import { seedFilmPlates, seedSeaPlates, type FilmPlateSeed, type HeroHudConfig } from "@/lib/axiom/hero-hud";
 
 function useHeroDraft(slug: string) {
   const [draft, setDraft] = useState<HeroDraft | null>(null);
@@ -58,13 +61,14 @@ function useTenant(slug: string) {
   return tenant;
 }
 
-function storefrontHud(saved: HeroHudConfig | null | undefined, niche: string): HeroHudConfig {
+function storefrontHud(saved: HeroHudConfig | null | undefined, niche: string, shark = false, bookHref = ""): HeroHudConfig {
   if (saved && saved.buttons.length > 0) return { ...saved, plates: saved.plates ?? [] };
-  return { title: "", buttons: nicheHeroButtons(niche), plates: [] };
+  return { title: "", buttons: shark ? deepSeaHeroButtons(bookHref) : nicheHeroButtons(niche), plates: [] };
 }
 
-function presentHud(saved: HeroHudConfig | null | undefined, niche: string, seed: FilmPlateSeed): HeroHudConfig {
-  return seedFilmPlates(storefrontHud(saved, niche), seed);
+function presentHud(saved: HeroHudConfig | null | undefined, niche: string, seed: FilmPlateSeed, shark = false): HeroHudConfig {
+  const hud = seedFilmPlates(storefrontHud(saved, niche, shark, seed.bookHref), seed);
+  return shark ? seedSeaPlates(hud, seed) : hud;
 }
 
 export function FilmStage({
@@ -111,9 +115,27 @@ export function FilmStage({
     badge: actions?.badge ?? "",
     bookHref: bookHref ?? "",
     services: actions?.services ?? [],
-  });
+  }, isSharkHeroFilm(src));
   const visibleHud = frame.overlay ? stageHud : { ...stageHud, plates: stageHud.plates.filter((item) => item.id !== "plate_identity") };
   const liveName = visibleHud.plates.find((item) => item.id === "plate_identity")?.lines.find((line) => line.id === "line_name")?.text || name;
+  const otter = isOtterHeroFilm(film);
+  const shark = isSharkHeroFilm(film);
+  const [splash, setSplash] = useState(false);
+
+  const filmNode = (
+    <video
+      key={film}
+      className="film-hero-media"
+      src={film}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden
+      onError={() => setBroken(true)}
+    />
+  );
 
   function writeName(text: string, commit: boolean) {
     onChange?.({
@@ -139,18 +161,14 @@ export function FilmStage({
 
   return (
     <section className="film-hero" aria-label={`${name} storefront`}>
-      <video
-        key={film}
-        className="film-hero-media"
-        src={film}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden
-        onError={() => setBroken(true)}
-      />
+      {shark ? (
+        <HeroSharkInteractive active src={film}>
+          {filmNode}
+        </HeroSharkInteractive>
+      ) : (
+        <InteractiveOtterHero active={otter}>{filmNode}</InteractiveOtterHero>
+      )}
+      {splash ? <div className="sea-splash" aria-hidden /> : null}
       {plate ? <img className="film-hero-still" src={plate} alt="" /> : null}
       {frame.brackets ? (
         <>
@@ -166,8 +184,21 @@ export function FilmStage({
           hud={visibleHud}
           bookHref={bookHref}
           editable={editable}
+          buoyant={(otter || shark) && !editable}
           onChange={onChange}
           chrome={!frame.brackets}
+          beforeAction={
+            shark && !editable
+              ? (_button, proceed) => {
+                  setSplash(true);
+                  const wait = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 720;
+                  window.setTimeout(() => {
+                    setSplash(false);
+                    proceed();
+                  }, wait);
+                }
+              : undefined
+          }
         />
       ) : null}
       <header className="film-nav">
@@ -233,14 +264,14 @@ export function ShopFilmPage() {
     bookHref: actions ? bookPath : "",
     services: actions?.services ?? [],
   };
-  const [hud, setHud] = useState(() => presentHud(data.shop.heroHud, data.shop.niche, seed));
+  const [hud, setHud] = useState(() => presentHud(data.shop.heroHud, data.shop.niche, seed, isSharkHeroFilm(selection.hero_video_url)));
   const [filmOverride, setFilmOverride] = useState<string | null>(null);
   const dirty = useRef(false);
   const filmSrc = filmOverride || selection.hero_video_url;
 
   useEffect(() => {
     if (dirty.current) return;
-    setHud(presentHud(data.shop.heroHud, data.shop.niche, seed));
+    setHud(presentHud(data.shop.heroHud, data.shop.niche, seed, isSharkHeroFilm(filmSrc)));
   }, [data.shop.heroHud, data.shop.niche, actions, name, selection.tagline, city, seed.bookHref, seed.badge]);
 
   function commitHud(next: HeroHudConfig, commit = false) {
