@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { HoloCard } from "@/components/holo-card";
 import { Reveal } from "@/components/reveal";
 import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
-import { defaultProof, GALLERY_LIMIT, isCustomProof, type ProofFrame } from "@/lib/axiom/gallery";
+import { DefaultAssetPlaceholder } from "@/components/default-asset-placeholder";
+import { defaultProof, GALLERY_LIMIT, isCustomProof, padProofFrames, type ProofFrame } from "@/lib/axiom/gallery";
 import { addPortfolioItem, listShopPortfolio, removePortfolioItem } from "@/lib/axiom/server";
 import type { ShopNiche } from "@/lib/axiom/types";
 import { Input, Label } from "@/components/ui/input";
@@ -78,15 +79,25 @@ export function ProofGallery({
 
   if (!signal || embedded) {
     return (
-      <section className={embedded ? "py-2" : "mx-auto max-w-5xl px-5 py-16 sm:px-10"}>
-        {header}
-        {grid}
+      <section id={embedded ? undefined : "proof"} className={embedded ? "py-2" : "storefront-proof"}>
+        {embedded ? (
+          <>
+            {header}
+            {grid}
+          </>
+        ) : (
+          <div className="mx-auto max-w-5xl px-5 py-16 sm:px-10">
+            {header}
+            {grid}
+          </div>
+        )}
       </section>
     );
   }
 
   return (
-    <section className="mx-auto max-w-5xl px-5 py-16 sm:px-10">
+    <section id="proof" className="storefront-proof">
+      <div className="mx-auto max-w-5xl px-5 py-16 sm:px-10">
       <Reveal>{header}</Reveal>
       <Reveal stagger className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {frames.map((frame, index) => (
@@ -103,11 +114,15 @@ export function ProofGallery({
           </div>
         ))}
       </Reveal>
+      </div>
     </section>
   );
 }
 
 function FrameMedia({ frame }: { frame: ProofFrame }) {
+  if (frame.placeholder || !frame.src) {
+    return <DefaultAssetPlaceholder />;
+  }
   if (frame.kind === "video") {
     return (
       <video
@@ -144,9 +159,9 @@ export function ShopProofGallery({
           if (stop) return;
           const custom = items.filter((item) => isCustomProof(item.imageUrl));
           setFrames(
-            custom.length > 0
-              ? custom.map((item) => ({ src: item.imageUrl, caption: item.caption, kind: "image" as const }))
-              : defaultProof(niche),
+            padProofFrames(
+              custom.map((item) => ({ src: item.imageUrl, caption: item.caption, kind: "image" as const })),
+            ),
           );
         })
         .catch(() => {
@@ -239,7 +254,7 @@ export function ProofGalleryManager({
     <div>
       <ProofGallery
         heading={heading}
-        frames={showingDefaults ? defaultProof(niche) : custom}
+        frames={padProofFrames(custom)}
         note={
           showingDefaults
             ? "The public page is showing this trade’s sample album. Upload your own photos and they replace it."

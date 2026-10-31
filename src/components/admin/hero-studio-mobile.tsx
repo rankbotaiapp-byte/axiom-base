@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { DefaultAssetStudioPanel } from "@/components/admin/default-asset-studio";
 import { FilmStudioDock } from "@/components/admin/film-studio-dock";
 import { HeroHud } from "@/components/hero-hud";
 import { getNicheActions } from "@/config/niche-actions";
@@ -94,6 +95,7 @@ export function HeroStudioMobile({
     <section className="hud-studio">
       <p className="motion-kicker">Perimeter studio</p>
       <p className="motion-help">Click a heading or a button label and type. Leave the field, or press Enter, and it saves. Pick an action on the button, or upload a loop and it replaces the background.</p>
+      <DefaultAssetStudioPanel shop={shop} readonly={readonly} />
       <div className="hud-stage">
         {isSharkHeroFilm(film) ? (
           <HeroSharkInteractive active>

@@ -3,6 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
 import { HeroButtonStudio } from "@/components/admin/hero-button-studio";
 import { HeroMotionStudio } from "@/components/admin/hero-motion-studio";
+import { DefaultAssetStudioPanel } from "@/components/admin/default-asset-studio";
 import { HeroOtterInteractive } from "@/components/HeroOtterInteractive";
 import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
 import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
@@ -213,6 +214,7 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
           Back to the desk
         </Link>
         <AiContentAutopilotToggle shop={shop} readonly={readonly} />
+        <DefaultAssetStudioPanel shop={shop} readonly={readonly} />
 
         <div className={`motion-preview${look.glow ? " is-ring" : ""}`}>
           {isSharkHeroFilm(video) ? (

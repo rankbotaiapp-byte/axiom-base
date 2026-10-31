@@ -20,11 +20,14 @@ import { useShopPageData } from "@/routes/$shopSlug/route";
 import { FilmStudioDock } from "@/components/admin/film-studio-dock";
 import { FounderWelcomeStage } from "@/components/founder-welcome-stage";
 import { HeroHud, InlineLabel } from "@/components/hero-hud";
+import { ShopProofGallery } from "@/components/proof-gallery";
 import { InteractiveOtterHero } from "@/components/interactive-otter-hero";
 import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
 import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
 import { deepSeaHeroButtons, nicheHeroButtons } from "@/config/niche-button-presets";
 import { seedFilmPlates, seedSeaPlates, type FilmPlateSeed, type HeroHudConfig } from "@/lib/axiom/hero-hud";
+import { nicheVoice } from "@/lib/axiom/niches";
+import { isShopNiche } from "@/lib/axiom/types";
 
 function useHeroDraft(slug: string) {
   const [draft, setDraft] = useState<HeroDraft | null>(null);
@@ -87,6 +90,7 @@ export function FilmStage({
   editable = false,
   onChange,
   studio,
+  serviceThumbs = [],
 }: {
   name: string;
   tagline: string;
@@ -103,6 +107,7 @@ export function FilmStage({
   editable?: boolean;
   onChange?: (next: HeroHudConfig, commit?: boolean) => void;
   studio?: ReactNode;
+  serviceThumbs?: readonly string[];
 }) {
   const [broken, setBroken] = useState(false);
   const chosen = src.startsWith("blob:") || isPlayableHeroFilm(src);
@@ -186,6 +191,7 @@ export function FilmStage({
           bookHref={bookHref}
           editable={editable}
           buoyant={(otter || shark) && !editable}
+          serviceThumbs={serviceThumbs}
           onChange={onChange}
           chrome={!frame.brackets}
           beforeAction={
@@ -231,19 +237,27 @@ export function OutreachTenantPage({
   business,
   trade,
   place,
+  proofSlug,
+  proofNiche,
   ...film
 }: ComponentProps<typeof FilmStage> & {
   owner: string;
   business: string;
   trade: string;
   place: string;
+  proofSlug?: string;
+  proofNiche?: string;
 }) {
+  const galleryNiche = proofNiche && isShopNiche(proofNiche) ? proofNiche : null;
   return (
     <>
       <FounderWelcomeStage owner={owner} business={business} trade={trade} place={place} />
       <div id="trade-stage">
         <FilmStage {...film} />
       </div>
+      {proofSlug && galleryNiche ? (
+        <ShopProofGallery slug={proofSlug} niche={galleryNiche} heading={nicheVoice(galleryNiche).gallery} />
+      ) : null}
     </>
   );
 }
@@ -318,6 +332,7 @@ export function ShopFilmPage() {
   }
 
   return (
+    <>
     <FilmStage
       name={name}
       tagline={selection.tagline}
@@ -330,6 +345,7 @@ export function ShopFilmPage() {
       onChange={commitHud}
       actions={actions}
       niche={data.shop.niche}
+      serviceThumbs={data.shop.tradeProfile?.serviceThumbs}
       bookHref={actions ? bookPath : undefined}
       book={
         <>
@@ -356,6 +372,9 @@ export function ShopFilmPage() {
         ) : null
       }
     />
+    <div className="film-scroll-pad" aria-hidden />
+    <ShopProofGallery slug={data.shop.slug} niche={data.shop.niche} heading={nicheVoice(data.shop.niche).gallery} />
+    </>
   );
 }
 

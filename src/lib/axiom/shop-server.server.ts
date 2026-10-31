@@ -55,6 +55,7 @@ type ShopRow = {
   trade_profile?: string;
   hero_config_json?: string | null;
   ai_content_autopilot?: boolean | number | string | null;
+  autopilot_active?: boolean | number | string | null;
   created_at: string;
 };
 function parseOnboarding(raw: unknown): Shop["onboarding"] {
@@ -96,6 +97,32 @@ function finiteNumber(value: unknown, fallback: number) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
+
+async function writeAutopilotFlags(sql: Awaited<ReturnType<typeof getSql>>, shopId: string, on: boolean) {
+  try {
+    await sql`
+      update shops
+      set autopilot_active = ${on}, ai_content_autopilot = ${on}
+      where id = ${shopId}
+    `;
+    return;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/autopilot_active|ai_content_autopilot/i.test(message)) throw err;
+  }
+  try {
+    await sql`update shops set autopilot_active = ${on} where id = ${shopId}`;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/autopilot_active/i.test(message)) throw err;
+  }
+  try {
+    await sql`update shops set ai_content_autopilot = ${on} where id = ${shopId}`;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/ai_content_autopilot/i.test(message)) throw err;
+  }
+}
 function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
   const niche = normalizeShopNiche(r.niche);
   return {
@@ -130,7 +157,8 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     glowEnabled: parseGlowEnabled(r.glow_enabled),
     heroLook: heroLookFromProfile(r.trade_profile),
     heroHud: parseHeroHud(r.hero_config_json) ?? heroHudFromProfile(r.trade_profile),
-    aiContentAutopilot: isOn(r.ai_content_autopilot),
+    aiContentAutopilot: isOn(r.ai_content_autopilot) || isOn(r.autopilot_active),
+    autopilotActive: isOn(r.autopilot_active) || isOn(r.ai_content_autopilot),
     layout: parseLayout(r.layout_json),
     tradeProfile: parseTradeProfile(niche, r.trade_profile),
     createdAt: String(r.created_at)
@@ -1077,12 +1105,7 @@ export const updateShopBrandHandler = async ({
     }
   }
   if (typeof data.aiContentAutopilot === "boolean") {
-    try {
-      await sql`update shops set ai_content_autopilot = ${data.aiContentAutopilot} where id = ${row.id}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (!/ai_content_autopilot/i.test(message)) throw err;
-    }
+    await writeAutopilotFlags(sql, row.id, data.aiContentAutopilot);
   }
   if (data.heroHud && typeof data.heroHud === "object") {
     const hud = parseHeroHud(data.heroHud);
@@ -1133,6 +1156,31 @@ export const updateShopBrandHandler = async ({
     onboarding: flags,
     aiHero,
   };
+};
+export const setAutopilotActiveHandler = async ({
+  data,
+  context
+}: {
+  data: { slug: string; active: boolean };
+  context: { userId: string };
+}) => {
+  const row = await loadShopRow(data.slug);
+  if (!row) throw new Error("Shop not found");
+  await assertCanModifyShop(row, context.userId);
+  if (row.is_showcase) throw new Error("Showcase shops are read-only");
+  const sql = await getSql();
+  await writeAutopilotFlags(sql, row.id, data.active);
+  let detail = data.active ? "Autopilot is armed." : "Autopilot is paused.";
+  if (data.active) {
+    try {
+      const { generateArmedHeroForShop } = await import("./hero-motion-studio.server");
+      const result = await generateArmedHeroForShop(row.id, context.userId);
+      detail = result.detail || detail;
+    } catch (err) {
+      detail = err instanceof Error ? err.message : "Autopilot is armed. Generation will retry.";
+    }
+  }
+  return { ok: true as const, active: data.active, detail };
 };
 export const saveTradeProfileHandler = async ({
   data,

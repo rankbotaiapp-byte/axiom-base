@@ -262,7 +262,16 @@ function isArmed(value: unknown) {
 /** Spend credits on a branded still (and a loop when funds remain) for an armed shop. */
 export async function generateArmedHeroForShop(shopId: string, userId: string): Promise<{ ok: boolean; detail: string }> {
   const sql = await getSql();
-  let shop: { id: string; slug: string; name: string; niche: string; hero_image_url: string; owner_user_id: string | null; ai_content_autopilot?: unknown } | undefined;
+  let shop: {
+    id: string;
+    slug: string;
+    name: string;
+    niche: string;
+    hero_image_url: string;
+    owner_user_id: string | null;
+    ai_content_autopilot?: unknown;
+    autopilot_active?: unknown;
+  } | undefined;
   try {
     const rows = await sql<{
       id: string;
@@ -272,14 +281,15 @@ export async function generateArmedHeroForShop(shopId: string, userId: string): 
       hero_image_url: string;
       owner_user_id: string | null;
       ai_content_autopilot?: unknown;
+      autopilot_active?: unknown;
     }>`
-      select id, slug, name, niche, hero_image_url, owner_user_id, ai_content_autopilot
+      select id, slug, name, niche, hero_image_url, owner_user_id, ai_content_autopilot, autopilot_active
       from shops where id = ${shopId} limit 1
     `;
     shop = rows[0];
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (!/ai_content_autopilot/i.test(message)) throw err;
+    if (!/ai_content_autopilot|autopilot_active/i.test(message)) throw err;
     const rows = await sql<{
       id: string;
       slug: string;
@@ -288,10 +298,12 @@ export async function generateArmedHeroForShop(shopId: string, userId: string): 
       hero_image_url: string;
       owner_user_id: string | null;
     }>`select id, slug, name, niche, hero_image_url, owner_user_id from shops where id = ${shopId} limit 1`;
-    shop = rows[0] ? { ...rows[0], ai_content_autopilot: false } : undefined;
+    shop = rows[0] ? { ...rows[0], ai_content_autopilot: false, autopilot_active: false } : undefined;
   }
   if (!shop) return { ok: false, detail: "Shop not found" };
-  if (!isArmed(shop.ai_content_autopilot)) return { ok: false, detail: "Autopilot is off" };
+  if (!isArmed(shop.autopilot_active) && !isArmed(shop.ai_content_autopilot)) {
+    return { ok: false, detail: "Autopilot is off" };
+  }
   const dna = await loadDna(shop.id);
   if (!brandDnaComplete(dna)) return { ok: false, detail: "Lock Brand DNA before Autopilot can generate." };
   const scene = await stillBytes(shop.hero_image_url);
@@ -326,14 +338,26 @@ export async function tickArmedAiHeroes(): Promise<number> {
   try {
     rows = await sql<{ id: string; owner_user_id: string | null }>`
       select id, owner_user_id from shops
-      where ai_content_autopilot = true
+      where coalesce(autopilot_active, false) = true
+         or coalesce(ai_content_autopilot, false) = true
       order by slug asc
       limit 2
     `;
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (!/ai_content_autopilot/i.test(message)) throw err;
-    return 0;
+    if (!/autopilot_active|ai_content_autopilot/i.test(message)) throw err;
+    try {
+      rows = await sql<{ id: string; owner_user_id: string | null }>`
+        select id, owner_user_id from shops
+        where coalesce(ai_content_autopilot, false) = true
+        order by slug asc
+        limit 2
+      `;
+    } catch (inner) {
+      const innerMessage = inner instanceof Error ? inner.message : "";
+      if (!/ai_content_autopilot/i.test(innerMessage)) throw inner;
+      return 0;
+    }
   }
   let ran = 0;
   for (const row of rows) {

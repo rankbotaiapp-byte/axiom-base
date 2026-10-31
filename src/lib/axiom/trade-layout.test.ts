@@ -44,6 +44,16 @@ test("a saved profile keeps owner cords and drops junk", () => {
   assert.deepEqual(profile.dropZones, ["Grants Pass"]);
   assert.equal(profile.radiusMiles, 150);
   assert.equal(profile.deliveryNote, "Stack off the porch.");
+  assert.deepEqual(profile.serviceThumbs, ["", "", ""]);
+});
+
+test("custom service thumbs survive a trade profile rewrite", () => {
+  const profile = parseTradeProfile("hvac", {
+    serviceThumbs: ["/api/shop-media/med_one", "", "/api/shop-media/med_three"],
+  });
+  assert.equal(profile.serviceThumbs[0], "/api/shop-media/med_one");
+  assert.equal(profile.serviceThumbs[1], "");
+  assert.equal(profile.serviceThumbs[2], "/api/shop-media/med_three");
 });
 
 test("cord math and the drop check", () => {

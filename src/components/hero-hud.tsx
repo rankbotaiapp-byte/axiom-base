@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { setAvatarHelpOpen } from "@/components/avatar-help-state";
 import { HeroInteractiveButton } from "@/components/hero-interactive-buttons";
+import { DefaultAssetFrame } from "@/components/default-asset-placeholder";
 import {
   HERO_HUD_ACTIONS,
   HERO_HUD_ACTION_LABEL,
@@ -66,6 +67,7 @@ export function HeroHud({
   chrome = true,
   buoyant = false,
   previewId = "",
+  serviceThumbs = [],
   onMove,
   onChange,
   onSelect,
@@ -80,6 +82,7 @@ export function HeroHud({
   showPlates?: boolean;
   editable?: boolean;
   chrome?: boolean;
+  serviceThumbs?: readonly string[];
   /** Visitor buttons can be nudged around the otter loop like floating debris. */
   buoyant?: boolean;
   /** Plays one button's click animation without running its action. */
@@ -243,6 +246,7 @@ export function HeroHud({
               editable={editable}
               activeLine={edit?.kind === "line" && edit.plateId === item.id ? edit.lineId : ""}
               dragged={dragged}
+              serviceThumbs={item.id === "plate_services" ? serviceThumbs : []}
               onOpen={(line) => openLine(item, line)}
               onText={(lineId, text, commit) => patchLine(item.id, lineId, { text }, commit)}
               onDrop={(target) => place(item.id, target, "plate")}
@@ -432,12 +436,14 @@ function Plate({
   onOpen,
   onText,
   onDrop,
+  serviceThumbs = [],
 }: {
   plate: HeroHudPlate;
   frame: { current: HTMLDivElement | null };
   editable: boolean;
   activeLine: string;
   dragged: { current: boolean };
+  serviceThumbs?: readonly string[];
   onOpen: (line: HeroHudLine) => void;
   onText: (lineId: string, text: string, commit: boolean) => void;
   onDrop: (target: HTMLElement) => void;
@@ -446,7 +452,14 @@ function Plate({
   const body = identity ? (
     <IdentityLines plate={plate} editable={editable} activeLine={activeLine} onOpen={onOpen} onText={onText} />
   ) : (
-    <ServiceLines plate={plate} editable={editable} activeLine={activeLine} onOpen={onOpen} onText={onText} />
+    <ServiceLines
+      plate={plate}
+      editable={editable}
+      activeLine={activeLine}
+      serviceThumbs={serviceThumbs}
+      onOpen={onOpen}
+      onText={onText}
+    />
   );
   if (!editable) {
     return (
@@ -526,12 +539,14 @@ function ServiceLines({
   plate,
   editable,
   activeLine,
+  serviceThumbs = [],
   onOpen,
   onText,
 }: {
   plate: HeroHudPlate;
   editable: boolean;
   activeLine: string;
+  serviceThumbs?: readonly string[];
   onOpen: (line: HeroHudLine) => void;
   onText: (lineId: string, text: string, commit: boolean) => void;
 }) {
@@ -547,21 +562,24 @@ function ServiceLines({
   if (current.length > 0) cards.push(current);
   return (
     <ul className="film-service-stack" aria-label="Services">
-      {cards.map((card) => (
+      {cards.map((card, index) => (
         <li key={card[0]?.id} className="film-service">
-          {card.map((line) =>
-            !line.text && !editable ? null : (
-              <LineButton
-                key={line.id}
-                line={line}
-                editable={editable}
-                active={activeLine === line.id}
-                className={line.id.endsWith("_title") ? "film-service-title" : line.id.endsWith("_price") ? "film-service-price" : "film-service-detail"}
-                onOpen={onOpen}
-                onText={onText}
-              />
-            ),
-          )}
+          <DefaultAssetFrame src={serviceThumbs[index]} compact alt="" />
+          <div className="film-service-copy">
+            {card.map((line) =>
+              !line.text && !editable ? null : (
+                <LineButton
+                  key={line.id}
+                  line={line}
+                  editable={editable}
+                  active={activeLine === line.id}
+                  className={line.id.endsWith("_title") ? "film-service-title" : line.id.endsWith("_price") ? "film-service-price" : "film-service-detail"}
+                  onOpen={onOpen}
+                  onText={onText}
+                />
+              ),
+            )}
+          </div>
         </li>
       ))}
     </ul>

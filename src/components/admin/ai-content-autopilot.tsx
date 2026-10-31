@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { revalidateStorefront, updateShopBrand } from "@/lib/axiom/server";
+import { revalidateStorefront, setAutopilotActive } from "@/lib/axiom/server";
 import type { Shop } from "@/lib/axiom/types";
 
 /** Master switch that arms branded still + loop generation from shop credits. */
@@ -12,7 +12,7 @@ export function AiContentAutopilotToggle({
   readonly: boolean;
   onChange?: (on: boolean) => void;
 }) {
-  const [on, setOn] = useState(Boolean(shop.aiContentAutopilot));
+  const [on, setOn] = useState(Boolean(shop.autopilotActive || shop.aiContentAutopilot));
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
@@ -23,12 +23,10 @@ export function AiContentAutopilotToggle({
     setBusy(true);
     setNote("");
     try {
-      const result = await updateShopBrand({
-        data: { slug: shop.slug, aiContentAutopilot: next, markHero: true },
-      });
+      const result = await setAutopilotActive({ data: { slug: shop.slug, active: next } });
       await revalidateStorefront({ data: shop.slug });
-      onChange?.(next);
-      setNote(result.aiHero?.detail || (next ? "Autopilot is armed." : "Autopilot is paused."));
+      onChange?.(result.active);
+      setNote(result.detail);
     } catch (err) {
       setOn(!next);
       setNote(err instanceof Error ? err.message : "Could not save Autopilot");

@@ -118,6 +118,9 @@ export function OutreachStorefront({
         hud={hud}
         actions={actions}
         niche={niche}
+        serviceThumbs={shop?.shop.tradeProfile.serviceThumbs}
+        proofSlug={shop?.shop.slug || prospect.leadSlug}
+        proofNiche={niche}
         bookHref={bookHref}
         book={
           shop ? (

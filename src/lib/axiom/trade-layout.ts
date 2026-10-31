@@ -1,4 +1,5 @@
 import { applyDepthStudio, cloneHeroLayout, DEFAULT_HUD, parseHud, type StorefrontHud } from "./hud.ts";
+import { parseServiceThumbs } from "./gallery.ts";
 import { sanitizeLogoUrl } from "./prospect-brand.ts";
 import { EMPTY_BRAND_STUDIO, parseBrandStudio, type BrandStudioState } from "./brand-studio.ts";
 import { emptyStudioIdentity, parseStudioIdentity, type StudioIdentity } from "./studio-identity.ts";
@@ -74,6 +75,8 @@ export type TradeProfile = {
   note: string;
   /** Public logo URL. Empty keeps the monogram. */
   logoUrl: string;
+  /** Custom service-card stills. Empty slots render the default preview plate. */
+  serviceThumbs: string[];
   /** Generated mark, ripple theme, and presentation choice. */
   studio: BrandStudioState;
   /** Locked Axiom Studio identity: name, trade, color, and sponsor marks. */
@@ -239,6 +242,7 @@ const EMPTY: TradeProfile = {
   partyMax: 6,
   note: "",
   logoUrl: "",
+  serviceThumbs: ["", "", ""],
   studio: { ...EMPTY_BRAND_STUDIO },
   studioIdentity: emptyStudioIdentity(),
   hud: { ...DEFAULT_HUD },
@@ -272,6 +276,7 @@ export function defaultTradeProfile(niche: ShopNiche): TradeProfile {
     hud: applyDepthStudio({ ...EMPTY.hud, layers: cloneHeroLayout(EMPTY.hud.layers) }, niche),
     studio: { ...EMPTY.studio },
     studioIdentity: emptyStudioIdentity(),
+    serviceThumbs: ["", "", ""],
     partyMax: niche === "landscaping" || niche === "power-sports" ? 8 : EMPTY.partyMax,
     radiusMiles: niche === "forestry" ? 25 : EMPTY.radiusMiles,
     deliveryNote: niche === "forestry" ? "The drop is the driveway. A tight lane needs a note." : "",
@@ -378,6 +383,7 @@ export function parseTradeProfile(niche: ShopNiche, raw: unknown): TradeProfile 
     partyMax: partyMax ?? base.partyMax,
     note: note ?? base.note,
     logoUrl: sanitizeLogoUrl(record.logoUrl),
+    serviceThumbs: parseServiceThumbs(record.serviceThumbs).map((url) => sanitizeLogoUrl(url)),
     studio: parseBrandStudio(record.studio),
     studioIdentity: parseStudioIdentity(record.studioIdentity),
     hud: parseHud(record.hud ?? base.hud),

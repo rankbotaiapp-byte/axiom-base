@@ -31,6 +31,7 @@ import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/inde
 import { Route as ShopSlugAdminHeroStudioRouteImport } from './routes/$shopSlug/admin.hero-studio'
 import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/staff.$employeeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiAutopilotCronRouteImport } from './routes/api/autopilot.cron'
 import { Route as ApiBusinessBrandRouteImport } from './routes/api/business.brand'
 import { Route as ApiBusinessBrandsRouteImport } from './routes/api/business.brands'
 import { Route as ApiBusinessPreviewLinksRouteImport } from './routes/api/business.preview-links'
@@ -158,6 +159,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutopilotCronRoute = ApiAutopilotCronRouteImport.update({
+  id: '/api/autopilot/cron',
+  path: '/api/autopilot/cron',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBusinessBrandRoute = ApiBusinessBrandRouteImport.update({
   id: '/api/business/brand',
   path: '/api/business/brand',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/autopilot/cron': typeof ApiAutopilotCronRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
   '/api/business/brands': typeof ApiBusinessBrandsRoute
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/autopilot/cron': typeof ApiAutopilotCronRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
   '/api/business/brands': typeof ApiBusinessBrandsRoute
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
   '/$shopSlug/staff/$employeeId': typeof ShopSlugStaffEmployeeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/autopilot/cron': typeof ApiAutopilotCronRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
   '/api/business/brands': typeof ApiBusinessBrandsRoute
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin/hero-studio'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
+    | '/api/autopilot/cron'
     | '/api/business/brand'
     | '/api/business/brands'
     | '/api/business/preview-links'
@@ -424,6 +434,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin/hero-studio'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
+    | '/api/autopilot/cron'
     | '/api/business/brand'
     | '/api/business/brands'
     | '/api/business/preview-links'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/admin/hero-studio'
     | '/$shopSlug/staff/$employeeId'
     | '/api/auth/$'
+    | '/api/autopilot/cron'
     | '/api/business/brand'
     | '/api/business/brands'
     | '/api/business/preview-links'
@@ -498,6 +510,7 @@ export interface RootRouteChildren {
   InviteTokenRoute: typeof InviteTokenRoute
   MasterAdminIndexRoute: typeof MasterAdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAutopilotCronRoute: typeof ApiAutopilotCronRoute
   ApiBusinessBrandRoute: typeof ApiBusinessBrandRoute
   ApiBusinessBrandsRoute: typeof ApiBusinessBrandsRoute
   ApiBusinessPreviewLinksRoute: typeof ApiBusinessPreviewLinksRoute
@@ -669,6 +682,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/autopilot/cron': {
+      id: '/api/autopilot/cron'
+      path: '/api/autopilot/cron'
+      fullPath: '/api/autopilot/cron'
+      preLoaderRoute: typeof ApiAutopilotCronRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/business/brand': {
@@ -848,6 +868,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteTokenRoute: InviteTokenRoute,
   MasterAdminIndexRoute: MasterAdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAutopilotCronRoute: ApiAutopilotCronRoute,
   ApiBusinessBrandRoute: ApiBusinessBrandRoute,
   ApiBusinessBrandsRoute: ApiBusinessBrandsRoute,
   ApiBusinessPreviewLinksRoute: ApiBusinessPreviewLinksRoute,

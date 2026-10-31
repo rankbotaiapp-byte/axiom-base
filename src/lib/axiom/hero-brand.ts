@@ -190,7 +190,11 @@ export function withHeroBrandFallback(raw: unknown, brand: HeroBrandRecord): str
 export function keepHeroBrand(profile: unknown, previous: unknown): string {
   const prev = asRecord(previous);
   const base = asRecord(profile) ?? {};
-  const next = prev && "heroHud" in prev && !("heroHud" in base) ? { ...base, heroHud: prev.heroHud } : base;
+  const withHud = prev && "heroHud" in prev && !("heroHud" in base) ? { ...base, heroHud: prev.heroHud } : base;
+  const next =
+    prev && "serviceThumbs" in prev && !("serviceThumbs" in withHud)
+      ? { ...withHud, serviceThumbs: prev.serviceThumbs }
+      : withHud;
   if (!heroBrandFallbackPresent(previous)) {
     return JSON.stringify(Object.keys(next).length > 0 ? next : (profile ?? {}));
   }

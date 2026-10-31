@@ -182,6 +182,20 @@ export const updateShopBrand = createServerFn({
 });
 
 /** Drops the Next cache for this shop. The client also invalidates the live router cache. */
+export const setAutopilotActive = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+  active: boolean;
+}) => {
+  const slug = String(d.slug ?? "").trim().toLowerCase();
+  if (!slug || slug.length > 120 || slug.includes("/") || slug.includes("..")) throw new Error("Shop not found");
+  return { slug, active: d.active === true };
+}).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.setAutopilotActiveHandler(ctx);
+});
+
 export const revalidateStorefront = createServerFn({
   method: "POST"
 }).validator((slug: string) => {

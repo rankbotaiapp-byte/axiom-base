@@ -20,6 +20,7 @@ import {
 } from "@/lib/axiom/server";
 import { getNicheActions } from "@/config/niche-actions";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
+import { MakeItMineWizard } from "@/components/admin/make-it-mine-wizard";
 import { HeroStudioMobile } from "@/components/admin/hero-studio-mobile";
 import { studioDefaultButtons } from "@/config/niche-button-presets";
 import { seedFilmPlates, type HeroHudConfig } from "@/lib/axiom/hero-hud";
@@ -269,7 +270,7 @@ export function AdminShell({
       <MissionFrame>
         {tab === "overview" ? (
           <div className="grid gap-8">
-            <AiContentAutopilotToggle shop={data.shop} readonly={readonly} />
+            <MakeItMineWizard shop={data.shop} readonly={readonly} onReload={onReload} />
             <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
             <PaymentsPanel
               shop={data.shop}

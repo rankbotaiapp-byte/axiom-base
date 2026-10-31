@@ -87,6 +87,8 @@ export type Shop = {
   heroHud?: import("./hero-hud").HeroHudConfig | null;
   /** When true, Autopilot spends shop_ai_credits on branded stills and loops. */
   aiContentAutopilot?: boolean;
+  /** Server master switch. Cron ticks content and notices while this is on. */
+  autopilotActive?: boolean;
   layout: LayoutBlock[];
   tradeProfile: TradeProfile;
   createdAt: string;

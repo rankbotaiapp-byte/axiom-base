@@ -18,5 +18,12 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
   const origin = new URL(request.url).origin;
   const batch = await drainOutreachQueue(sql, origin);
   const nurture = await drainNurtureTouches(sql, origin);
-  return Response.json({ batchReleased: batch.released, nurtureReleased: nurture.released });
+  const shops = await import("./shop-autopilot.server")
+    .then((mod) => mod.tickShopAutopilot())
+    .catch(() => ({ ran: 0, results: [] as const }));
+  return Response.json({
+    batchReleased: batch.released,
+    nurtureReleased: nurture.released,
+    shopAutopilot: shops.ran,
+  });
 }
