@@ -1,5 +1,6 @@
 -- Production hardening: Brand DNA is not world-readable, AI credit balance
--- cannot go negative, and geo indexes from 0060 exist without a blocking ANALYZE.
+-- cannot go negative, and geo columns from 0060 exist even when that file
+-- timed out (local skip rolls the whole 0060 transaction back).
 
 drop policy if exists shop_branding_public_read on shop_branding;
 
@@ -12,14 +13,23 @@ exception
   when undefined_table then null;
 end $$;
 
-create index if not exists preloaded_leads_state_county_niche_idx
-  on preloaded_leads (state, lower(county), niche)
-  where active and not claimed;
+alter table if exists shops
+  add column if not exists ai_content_autopilot boolean not null default false;
 
-create index if not exists preloaded_leads_zip_code_idx
-  on preloaded_leads (zip_code)
-  where active and not claimed;
+alter table if exists preloaded_leads add column if not exists state text not null default '';
+alter table if exists preloaded_leads add column if not exists niche text not null default '';
+alter table if exists preloaded_leads add column if not exists zip_code text not null default '';
+alter table if exists preloaded_leads add column if not exists lat double precision;
+alter table if exists preloaded_leads add column if not exists lng double precision;
+alter table if exists preloaded_leads add column if not exists active boolean not null default true;
 
-create index if not exists preloaded_leads_niche_active_idx
-  on preloaded_leads (niche, created_at desc)
-  where active and not claimed;
+do $$
+begin
+  update preloaded_leads
+  set niche = trade_type
+  where niche = ''
+    and trade_type <> '';
+exception
+  when undefined_table then null;
+  when undefined_column then null;
+end $$;

@@ -42,6 +42,13 @@ test("shop_hero_config is readable publicly, writable only by owners, and keyed 
   assert.match(page, /readonly=\{mode === "preview" \|\| shop\.isShowcase\}/);
 });
 
+test("0073 adds geo and autopilot columns instead of indexing a missing active flag", () => {
+  const sql = read("migrations/0073_production_hardening.sql");
+  assert.match(sql, /add column if not exists active boolean/);
+  assert.match(sql, /add column if not exists ai_content_autopilot boolean/);
+  assert.doesNotMatch(sql, /where active and not claimed/);
+});
+
 test("catalog niche remap drops shops_niche_check before writing auto", () => {
   const sql = read("migrations/0065_catalog_niches.sql");
   const drop = sql.indexOf("drop constraint");
