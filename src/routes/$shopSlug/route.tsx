@@ -4,6 +4,9 @@ import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-r
 import { rippleTheme } from "@/lib/axiom/brand-studio";
 import { localStorefront } from "@/lib/axiom/autopilot";
 import { materializeDatasetShop } from "@/lib/axiom/autopilot-shop";
+import { getBusinessBrand } from "@/lib/axiom/business-lookup";
+import { isProspectShopId } from "@/lib/axiom/outreach-visit";
+import { materializeProspectShop } from "@/lib/axiom/prospect-shop";
 import { getPublicShop, getShopAccess } from "@/lib/axiom/server";
 import { publicShopSlug } from "@/lib/axiom/shop-slug";
 import { isDatabaseUnavailable } from "../../../scripts/db-availability.mjs";
@@ -39,6 +42,7 @@ function useLiveShop(initial: ShopPublic) {
   }, [slug]);
 
   useEffect(() => {
+    if (isProspectShopId(initial.shop.id)) return;
     let stop = false;
     const id = window.setInterval(() => {
       void getPublicShop({ data: slug })
@@ -98,8 +102,16 @@ export const Route = createFileRoute("/$shopSlug")({
       console.warn(`[shop] hosted database is paused; /${slug} is using the local storefront dataset`);
     }
     const fallback = datasetShop(slug);
-    if (!fallback) throw notFound();
-    return fallback;
+    if (fallback) return fallback;
+    try {
+      const lead = await getBusinessBrand({ data: { slug } });
+      if (abortController.signal.aborted) throw notFound();
+      if (lead) return presentShop(materializeProspectShop(lead));
+    } catch (error) {
+      if (isNotFound(error)) throw error;
+      if (abortController.signal.aborted || isClientAbort(error)) throw notFound();
+    }
+    throw notFound();
   },
   component: ShopLayout,
   notFoundComponent: () => (

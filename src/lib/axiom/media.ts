@@ -1,4 +1,4 @@
-import { CATALOG, catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "@/config/catalog";
+import { CATALOG, catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "../../config/catalog.ts";
 import { classifyTrade } from "./directory.ts";
 import {
   animationForNiche,

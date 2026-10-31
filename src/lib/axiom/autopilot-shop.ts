@@ -1,4 +1,4 @@
-import { resolveCatalogNiche } from "@/config/catalog";
+import { resolveCatalogNiche } from "../../config/catalog.ts";
 import { DEFAULT_DASHBOARD } from "./dashboard.ts";
 import { resolveHeroMedia } from "./media.ts";
 import { parseLayout, parseThemeProfile } from "./storefront.ts";

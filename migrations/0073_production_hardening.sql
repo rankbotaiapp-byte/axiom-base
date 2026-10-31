@@ -1,6 +1,6 @@
 -- Production hardening: Brand DNA is not world-readable, AI credit balance
--- cannot go negative, and geo columns from 0060 exist even when that file
--- timed out (local skip rolls the whole 0060 transaction back).
+-- cannot go negative, Autopilot flag exists, and 0060 geo columns exist even
+-- when that file was skipped. No table-wide UPDATE and no geo indexes here.
 
 drop policy if exists shop_branding_public_read on shop_branding;
 
@@ -22,14 +22,3 @@ alter table if exists preloaded_leads add column if not exists zip_code text not
 alter table if exists preloaded_leads add column if not exists lat double precision;
 alter table if exists preloaded_leads add column if not exists lng double precision;
 alter table if exists preloaded_leads add column if not exists active boolean not null default true;
-
-do $$
-begin
-  update preloaded_leads
-  set niche = trade_type
-  where niche = ''
-    and trade_type <> '';
-exception
-  when undefined_table then null;
-  when undefined_column then null;
-end $$;

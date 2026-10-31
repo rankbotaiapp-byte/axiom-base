@@ -1,4 +1,4 @@
-/** @deprecated Import from `@/config/catalog` — kept so older imports keep resolving. */
+/** @deprecated Import from `../../config/catalog.ts` — kept so older imports keep resolving. */
 export {
   CATALOG as HERO_LOOP_CATALOG_SOURCE,
   CATALOG_FILINGS as HERO_LOOP_FILINGS,
@@ -10,9 +10,9 @@ export {
   resolveCatalogNiche,
   type CatalogEntry as HeroLoopEntry,
   type CatalogNiche as PublicNiche,
-} from "@/config/catalog";
+} from "../../config/catalog.ts";
 
-import { CATALOG, catalogFilmUrl, type CatalogNiche } from "@/config/catalog";
+import { CATALOG, catalogFilmUrl, type CatalogNiche } from "../../config/catalog.ts";
 
 export const HERO_LOOP_CATALOG = CATALOG.map((row) => ({
   id: row.id,

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { assertCatalogNiche, catalogFilmUrl } from "@/config/catalog";
+import { assertCatalogNiche, catalogFilmUrl } from "../../config/catalog.ts";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { isCatalogHeroUrl } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";

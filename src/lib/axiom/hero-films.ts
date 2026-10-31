@@ -7,7 +7,7 @@ import {
   catalogFilmUrl,
   isCatalogNiche,
   type CatalogNiche,
-} from "@/config/catalog";
+} from "../../config/catalog.ts";
 import type { ShopNiche } from "./types.ts";
 
 /** Active cinematic loops under public/media — mirrors `src/config/catalog.ts`. */

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { getNicheActions, type NicheActions } from "@/config/niche-actions";
 import { fetchClientStorefront, type ClientStorefront } from "@/lib/axiom/autopilot";
@@ -18,6 +18,7 @@ import type { AccessMode } from "@/lib/axiom/types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useShopPageData } from "@/routes/$shopSlug/route";
 import { FilmStudioDock } from "@/components/admin/film-studio-dock";
+import { FounderWelcomeStage } from "@/components/founder-welcome-stage";
 import { HeroHud, InlineLabel } from "@/components/hero-hud";
 import { InteractiveOtterHero } from "@/components/interactive-otter-hero";
 import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
@@ -221,6 +222,29 @@ export function FilmStage({
       </header>
       {studio}
     </section>
+  );
+}
+
+/** Outreach tenant reel: founder HUD first, then the prospect's trade film. No catalog. */
+export function OutreachTenantPage({
+  owner,
+  business,
+  trade,
+  place,
+  ...film
+}: ComponentProps<typeof FilmStage> & {
+  owner: string;
+  business: string;
+  trade: string;
+  place: string;
+}) {
+  return (
+    <>
+      <FounderWelcomeStage owner={owner} business={business} trade={trade} place={place} />
+      <div id="trade-stage">
+        <FilmStage {...film} />
+      </div>
+    </>
   );
 }
 

@@ -100,6 +100,27 @@ function isStatementTimeout(err: unknown) {
   return code === "57014" || /statement timeout/i.test(message);
 }
 
+function isUndefinedColumn(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "";
+  return code === "42703" || /column ".*" does not exist/i.test(message);
+}
+
+function migrationsDirectory() {
+  return join(process.cwd(), "migrations");
+}
+
+/** Hosted Postgres must read SQL from disk. Vite's glob can keep a stale copy. */
+function diskMigrationSources(): Record<string, string> {
+  const dir = migrationsDirectory();
+  const sources: Record<string, string> = {};
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith(".sql")) continue;
+    sources[`/migrations/${name}`] = readFileSync(join(dir, name), "utf8");
+  }
+  return sources;
+}
+
 function transientDbError(err: unknown) {
   const message = err instanceof Error ? err.message : "";
   const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "";
@@ -214,7 +235,7 @@ async function migratePostgresConnected(): Promise<void> {
     const applied = (await client.query<{ name: string }>("select name from _migrations")).rows.map(
       (row) => row.name,
     );
-    const migrations = migrationSources();
+    const migrations = diskMigrationSources();
     for (const { name, path } of pendingMigrations(Object.keys(migrations), applied)) {
       try {
         await client.query("BEGIN");
@@ -228,7 +249,10 @@ async function migratePostgresConnected(): Promise<void> {
         } catch {
           // Keep the original migration error if the connection already died.
         }
-        if (localDevelopment() && (isStatementTimeout(err) || transientDbError(err))) {
+        if (
+          localDevelopment() &&
+          (isStatementTimeout(err) || isUndefinedColumn(err) || transientDbError(err))
+        ) {
           const message = err instanceof Error ? err.message : String(err);
           console.warn(
             `[db] skipped ${name} this boot (${message}). Local development is staying up.`,

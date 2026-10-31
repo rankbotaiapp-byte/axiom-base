@@ -158,6 +158,7 @@ export const addPreloadedLeads = createServerFn({
   return loaded.addPreloadedLeadsHandler(ctx);
 });
 export type OutreachFunnelRow = {
+  id?: string;
   leadSlug: string;
   businessName: string;
   niche: string;
@@ -230,6 +231,7 @@ export const generateRegionalFunnel = createServerFn({
   return loaded.generateRegionalFunnelHandler(ctx);
 });
 type OutreachLead = {
+  id?: string;
   businessName: string;
   city: string;
   county: string;

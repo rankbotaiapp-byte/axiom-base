@@ -1,5 +1,5 @@
 import { getSql, withTransaction } from "@/lib/db";
-import { presetForShopNiche } from "@/config/nichePresets";
+import { presetForShopNiche } from "../../config/nichePresets.ts";
 import { cityFromAddress, placeFromCityLine } from "./avatar";
 import { campaignOutcome, consumerLeadChannel, consumerOutreachCopy } from "./consumer-outreach";
 

@@ -13,6 +13,7 @@ import {
   renderOutreachMessage,
   type OutreachStrategyId,
 } from "@/lib/axiom/funnel";
+import { prospectViewPath } from "@/lib/axiom/outreach-visit";
 import {
   addPreloadedLeads,
   createOutreachFunnel,
@@ -934,6 +935,22 @@ function OutreachEngine({
                   </button>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <a
+                      href={prospectViewPath({
+                        leadSlug: lead.leadSlug,
+                        leadId: lead.id,
+                        county: lead.county,
+                        city: lead.city,
+                        businessName: lead.businessName,
+                        trade: lead.tradeLabel || lead.tradeType,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] px-5 text-sm font-medium text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_40%,transparent)] sm:w-auto"
+                    >
+                      Preview Prospect View
+                      <ArrowUpRight className="size-4" aria-hidden />
+                    </a>
+                    <a
                       href={pitchHref(lead)}
                       target="_blank"
                       rel="noreferrer"
@@ -1444,13 +1461,14 @@ function StrategicFunnel() {
               <th className="py-2 pr-3 font-medium">Contact</th>
               <th className="py-2 pr-3 font-medium">Opened</th>
               <th className="py-2 pr-3 font-medium">Tested</th>
-              <th className="py-2 font-medium">Subscriber</th>
+              <th className="py-2 pr-3 font-medium">Subscriber</th>
+              <th className="py-2 font-medium">View</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="py-4 text-muted" colSpan={6}>
+                <td className="py-4 text-muted" colSpan={7}>
                   No desk funnels yet.
                 </td>
               </tr>
@@ -1467,7 +1485,24 @@ function StrategicFunnel() {
                   <td className="py-3 pr-3">{row.contact}</td>
                   <td className="py-3 pr-3">{row.opened ? "Yes" : "—"}</td>
                   <td className="py-3 pr-3">{row.tested ? "Yes" : "—"}</td>
-                  <td className="py-3">{row.converted ? "Yes" : "—"}</td>
+                  <td className="py-3 pr-3">{row.converted ? "Yes" : "—"}</td>
+                  <td className="py-3">
+                    <a
+                      href={prospectViewPath({
+                        leadSlug: row.leadSlug,
+                        leadId: row.id,
+                        city: row.city,
+                        businessName: row.businessName,
+                        trade: row.niche,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-11 items-center gap-1 whitespace-nowrap text-sm font-medium text-fg hover:underline"
+                    >
+                      Preview Prospect View
+                      <ArrowUpRight className="size-4" aria-hidden />
+                    </a>
+                  </td>
                 </tr>
               ))
             )}
@@ -1641,6 +1676,22 @@ function FunnelTool() {
                   {link.businessName} · {link.city}
                 </p>
                 <p className="mt-1 break-all text-sm text-muted">{link.url}</p>
+                <a
+                  href={prospectViewPath({
+                    leadSlug: link.leadSlug,
+                    leadId: link.id,
+                    county: link.county,
+                    city: link.city,
+                    businessName: link.businessName,
+                    trade: link.tradeType,
+                  })}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex h-11 items-center gap-1 text-sm font-medium text-fg hover:underline"
+                >
+                  Preview Prospect View
+                  <ArrowUpRight className="size-4" aria-hidden />
+                </a>
               </li>
             ))}
           </ul>

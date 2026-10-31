@@ -3,7 +3,7 @@ import {
   isCatalogNiche,
   resolveCatalogNiche,
   type CatalogNiche,
-} from "@/config/catalog";
+} from "../../config/catalog.ts";
 import type { HeroEffect } from "./hero-brand";
 import type { DashboardConfig } from "./dashboard";
 import type { IntroPreset } from "./intro";

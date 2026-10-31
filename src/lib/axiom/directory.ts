@@ -1,4 +1,4 @@
-import { CATALOG, CATALOG_BY_ID, resolveCatalogNiche, type CatalogNiche } from "@/config/catalog";
+import { CATALOG, CATALOG_BY_ID, resolveCatalogNiche, type CatalogNiche } from "../../config/catalog.ts";
 import { slugify } from "../utils.ts";
 import { isShopNiche, type ShopNiche } from "./types.ts";
 

@@ -4,7 +4,7 @@ import {
   catalogFilmUrl,
   isCatalogNiche,
   type CatalogNiche,
-} from "@/config/catalog";
+} from "../../config/catalog.ts";
 import type { IntroPreset } from "./intro";
 import { unitsForTemplate } from "./menu";
 import { NICHE_MEDIA, SHARED_STAFF } from "./media";

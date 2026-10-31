@@ -1,4 +1,4 @@
-import { catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "@/config/catalog";
+import { catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "../../config/catalog.ts";
 import { filmMatchingText, UNIVERSAL_FALLBACK } from "./hero-films.ts";
 import { NICHE_MEDIA } from "./media.ts";
 import type { ShopNiche } from "./types.ts";

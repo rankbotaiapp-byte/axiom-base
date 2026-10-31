@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { FilmStage } from "@/app/[shopSlug]/page";
+import { OutreachStorefront } from "@/components/outreach-storefront";
 import { catalogCardStill, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";
-import { parseBusinessId, type BusinessBrandRecord } from "@/lib/axiom/business-brand";
-import { getBusinessBrand } from "@/lib/axiom/business-lookup";
+import { parseBusinessId } from "@/lib/axiom/business-brand";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
-import { leadGlassCopy } from "@/lib/axiom/funnel-glass";
 import { LEOPARD_HERO_ANIMATION, resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
-import { recordFunnelHit } from "@/lib/axiom/master";
 import { NICHES } from "@/lib/axiom/niches";
+import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
 import ShopAdminPage from "@/app/[shop-slug]/admin/page";
 import type { ShopNiche } from "@/lib/axiom/types";
@@ -47,36 +45,12 @@ function NicheDemo() {
 function NichePreview() {
   const { niche } = Route.useLoaderData();
   const search = Route.useSearch();
-  const lookupId = search.lead || search.id || "";
-  const lookupSlug = search.b || search.lead_slug || "";
-  const [loaded, setLoaded] = useState<BusinessBrandRecord | null>(null);
-
-  useEffect(() => {
-    if (!lookupId && !lookupSlug) {
-      setLoaded(null);
-      return;
-    }
-    setLoaded(null);
-    let cancelled = false;
-    const request = lookupId
-      ? getBusinessBrand({ data: { id: lookupId } })
-      : getBusinessBrand({ data: { slug: lookupSlug } });
-    void request
-      .then((row) => {
-        if (!cancelled) setLoaded(row);
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [lookupId, lookupSlug]);
-
-  const glass = leadGlassCopy(loaded);
+  if (isOutreachVisit(search)) {
+    return <OutreachStorefront search={{ ...search, trade: search.trade || niche }} />;
+  }
   const template = NICHES[niche];
-  const name = (glass.armed ? glass.businessName : search.business || template.defaultName).trim();
-  const city = (glass.city || search.city || "").trim();
+  const name = (search.business || template.defaultName).trim();
+  const city = (search.city || "").trim();
   const film = resolveStorefrontFilm({
     draft: null,
     shopVideoUrl: null,
@@ -85,23 +59,6 @@ function NichePreview() {
     fallbackVideoUrl: LEOPARD_HERO_ANIMATION,
     shopTagline: template.tagline,
   });
-
-  useEffect(() => {
-    const leadSlug = glass.armed ? loaded?.slug || "" : "";
-    if (!leadSlug) return;
-    const seen = `axiom.demo:${leadSlug}`;
-    if (sessionStorage.getItem(seen) === "1") return;
-    sessionStorage.setItem(seen, "1");
-    void recordFunnelHit({
-      data: {
-        leadSlug,
-        utmSource: search.utm_source || "regional",
-        county: search.county || glass.county || "",
-        stopToken: search.t || "",
-        path: `/demo/${niche}`,
-      },
-    }).catch(() => undefined);
-  }, [glass.armed, glass.county, loaded, niche, search.county, search.t, search.utm_source]);
 
   return (
     <FilmStage

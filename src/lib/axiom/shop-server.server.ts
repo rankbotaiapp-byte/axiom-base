@@ -1,7 +1,7 @@
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { nicheForLead } from "./directory";
-import { assertCatalogNiche, catalogFilmUrl } from "@/config/catalog";
+import { assertCatalogNiche, catalogFilmUrl } from "../../config/catalog.ts";
 import { isCatalogHeroUrl } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
 import { DEFAULT_HOURS, isPublicNiche, NICHES, priceUnitsFor } from "./niches";
@@ -13,8 +13,8 @@ import { parseTradeProfile, type TradeProfile } from "./trade-layout";
 import { dueNowCents, isCollectionMode, isPricingType, listPriceCents, type MerchantPrice } from "./merchant-pricing";
 import { keepHeroBrand, parseHeroEffect, parseMorphDuration, readHeroBrandFallback } from "./hero-brand";
 import { publicShopSlug } from "./shop-slug";
-import { heroLookFromProfile, parseHeroLook } from "./hero-look";
-import { defaultShopHeroHud } from "@/config/niche-button-presets";
+import { heroLookFromProfile, parseHeroLook } from "./hero-look.ts";
+import { defaultShopHeroHud } from "../../config/niche-button-presets.ts";
 import { heroHudFromProfile, parseHeroHud } from "./hero-hud";
 import { isShopNiche, normalizeShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {

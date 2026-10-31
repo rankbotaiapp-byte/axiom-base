@@ -1,4 +1,4 @@
-import { parseHeroLook, type HeroLook } from "./hero-look";
+import { parseHeroLook, type HeroLook } from "./hero-look.ts";
 
 /** Environmental overlays and the branding plate drawn onto a shop hero. */
 

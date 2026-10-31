@@ -47,6 +47,22 @@ test("0073 adds geo and autopilot columns instead of indexing a missing active f
   assert.match(sql, /add column if not exists active boolean/);
   assert.match(sql, /add column if not exists ai_content_autopilot boolean/);
   assert.doesNotMatch(sql, /where active and not claimed/);
+  assert.doesNotMatch(sql, /\bupdate preloaded_leads\b/i);
+});
+
+test("0074 does not create geo indexes until preloaded_leads.active exists", () => {
+  const sql = read("migrations/0074_preloaded_lead_geo_indexes.sql");
+  const guard = sql.indexOf("column_name = 'active'");
+  const idx = sql.indexOf("create index if not exists preloaded_leads_state_county_niche_idx");
+  assert.ok(guard >= 0 && idx > guard);
+  assert.match(sql, /when undefined_column then null/);
+});
+
+test("hosted migrate reads SQL from disk so Vite cannot keep a stale 0074", () => {
+  const db = read("src/lib/db.ts");
+  assert.match(db, /diskMigrationSources/);
+  assert.match(db, /isUndefinedColumn/);
+  assert.match(db, /code === "42703"/);
 });
 
 test("catalog niche remap drops shops_niche_check before writing auto", () => {

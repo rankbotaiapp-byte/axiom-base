@@ -24,7 +24,8 @@ import { LandingBookingLoop } from "@/components/landing-loop";
 import { PoweredBy, Wordmark } from "@/components/shop-chrome";
 import { cn, formatMoney } from "@/lib/utils";
 import { LeadTerritory } from "@/components/territory-offer";
-import { OutreachWelcomeFilm } from "@/components/welcome-film";
+import { OutreachStorefront } from "@/components/outreach-storefront";
+import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => parseFunnelSearch(search),
@@ -94,6 +95,10 @@ function Home() {
   const owned = mine?.filter((s) => s.ownerUserId === user?.id) ?? [];
   const leadSlug = search.b || search.lead_slug || "";
 
+  if (isOutreachVisit(search) && !search.pitch) {
+    return <OutreachStorefront search={search} />;
+  }
+
   if (search.pitch && leadSlug) {
     return (
       <LeadTerritory
@@ -142,7 +147,6 @@ function Home() {
       </header>
 
       <section className="relative mx-auto max-w-6xl px-5 pb-16 pt-6 sm:px-10 sm:pt-16">
-        <OutreachWelcomeFilm active={Boolean(leadSlug || search.utm_source)} />
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted">Vertical SaaS · local services</p>
         <h1 className="mt-4 max-w-3xl font-display text-[clamp(2.6rem,8vw,5.6rem)] leading-[0.95] tracking-[-0.03em]">
           The 24/7 Booking & Outreach Machine.
@@ -187,25 +191,6 @@ function Home() {
           <DataFlow />
           <FeatureBand />
           <IndustryGallery />
-
-          {leadSlug ? (
-            <Reveal>
-              <LeadTerritory
-                leadSlug={leadSlug}
-                layout="page"
-                sessionId={search.session_id}
-                greet={search.greet}
-                businessName={search.biz}
-                trade={search.trade}
-                city={search.city}
-                simulate={search.utm_source === "desk"}
-                logoUrl={search.logo}
-                accent={search.accent}
-                phone={search.phone}
-                email={search.email}
-              />
-            </Reveal>
-          ) : null}
 
           <DataFlow />
           <LiveBook showcases={showcases} />

@@ -387,6 +387,7 @@ export const addPreloadedLeadsHandler = async ({
   };
 };
 export type OutreachFunnelRow = {
+  id?: string;
   leadSlug: string;
   businessName: string;
   niche: string;
@@ -467,6 +468,7 @@ export const listOutreachFunnelsHandler = async ({
       contact_phone: string;
       city: string;
       county: string;
+      id: string;
       claimed: boolean;
       account_mode: string;
       created_at: string;
@@ -475,7 +477,7 @@ export const listOutreachFunnelsHandler = async ({
       audits: number;
       subscribed: boolean;
     }>`
-        select l.lead_slug, l.business_name, l.trade_label, l.trade_type, l.contact_email, l.contact_phone,
+        select l.id, l.lead_slug, l.business_name, l.trade_label, l.trade_type, l.contact_email, l.contact_phone,
           l.city, l.county, l.claimed, l.account_mode, l.created_at,
           (select count(*)::int from funnel_visits v where v.lead_slug = l.lead_slug) as opens,
           (select count(*)::int from funnel_visits v where v.lead_slug = l.lead_slug and v.utm_source = 'snap') as trials,
@@ -487,6 +489,7 @@ export const listOutreachFunnelsHandler = async ({
         limit 40
       `;
     return rows.map(row => ({
+      id: row.id,
       leadSlug: row.lead_slug,
       businessName: row.business_name,
       niche: row.trade_label || row.trade_type,
@@ -494,6 +497,7 @@ export const listOutreachFunnelsHandler = async ({
       city: row.city,
       path: deskPreviewPath({
         leadSlug: row.lead_slug,
+        leadId: row.id,
         county: row.county,
         city: row.city,
         businessName: row.business_name,
@@ -658,13 +662,14 @@ export const generateRegionalFunnelHandler = async ({
   await assertPlatformOwner(context.userId);
   const sql = await getSql();
   const rows = await sql<{
+    id: string;
     business_name: string;
     city: string;
     county: string;
     trade_type: string;
     lead_slug: string;
   }>`
-      select business_name, city, county, trade_type, lead_slug
+      select id, business_name, city, county, trade_type, lead_slug
       from preloaded_leads
       where claimed = false
         and trade_type = ${data.tradeType}
@@ -677,6 +682,7 @@ export const generateRegionalFunnelHandler = async ({
     county: data.county,
     tradeType: data.tradeType,
     links: rows.map(row => ({
+      id: row.id,
       businessName: row.business_name,
       city: row.city,
       county: row.county,
@@ -687,12 +693,14 @@ export const generateRegionalFunnelHandler = async ({
         tradeType: row.trade_type,
         county: row.county,
         leadSlug: row.lead_slug,
+        leadId: row.id,
         city: row.city
       })
     }))
   };
 };
 type OutreachLead = {
+  id?: string;
   businessName: string;
   city: string;
   county: string;
@@ -712,6 +720,7 @@ type OutreachLead = {
 };
 async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: string, tradeType: string, origin: string): Promise<OutreachLead[]> {
   const map = (rows: {
+    id?: string;
     business_name: string;
     city: string;
     county: string;
@@ -730,6 +739,7 @@ async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: st
   }[]) => rows.map(row => {
     const facts = publicLeadFromRow(row);
     return {
+      id: row.id,
       businessName: row.business_name,
       city: row.city,
       county: row.county,
@@ -742,6 +752,7 @@ async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: st
         tradeLabel: row.trade_label ?? "",
         county: row.county,
         leadSlug: row.lead_slug,
+        leadId: row.id,
         city: row.city,
         trade: tradeLabel(row.trade_type, row.trade_label ?? ""),
         greet: true
@@ -755,6 +766,7 @@ async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: st
   });
   try {
     const rows = await sql<{
+      id: string;
       business_name: string;
       city: string;
       county: string;
@@ -771,7 +783,7 @@ async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: st
       account_mode: string;
       trade_label: string;
     }>`
-      select business_name, city, county, trade_type, trade_label, lead_slug, claimed,
+      select id, business_name, city, county, trade_type, trade_label, lead_slug, claimed,
         contact_email, contact_phone, contact_name, review_score, review_count, has_website, phone_line,
         account_mode
       from preloaded_leads
