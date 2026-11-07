@@ -1,12 +1,18 @@
+import { defaultHeroSrcForNiche } from "./NicheRegistry.ts";
+
 /**
- * Sole public Axiom inventory: 21 verified niches ↔ `*-hero-animation.mp4` loops.
- * Landing, master hub, onboard, sweep, and shop create all read from here.
+ * Verified niche copy and cards. Default films come from master categories
+ * in MasterHeroDefaults / NicheRegistry — not from per-niche `file` paths.
  */
+
+/** Canonical default loop name inside each niche folder. */
+export const NICHE_HERO_FILENAME = "hero-animation.mp4";
 
 export const CATALOG = [
   {
     id: "auto",
     file: "auto-hero-animation.mp4",
+    fallback: "auto-tuning-hero-animation.mp4",
     card: "/media/heroes/auto-repair.png",
     label: "Auto",
     blurb: "Repair, detail, and the bay on a calendar.",
@@ -24,8 +30,18 @@ export const CATALOG = [
     kicker: "They book the chair",
   },
   {
+    id: "beauty-salon",
+    file: "silver-orb-hero-animation.mp4",
+    label: "Beauty salon",
+    blurb: "Color, skin, and a suite that starts on time.",
+    defaultName: "Silver Room Beauty",
+    tagline: "The suite is ready.",
+    kicker: "They book the suite",
+  },
+  {
     id: "bow-tech",
     file: "bow-tech-hero-animation.mp4",
+    fallback: "archery-hero-animation.mp4",
     card: "/media/heroes/custom-bow-tech.jpg",
     label: "Bow tech",
     blurb: "Custom bows, strings, and the workbench.",
@@ -35,7 +51,8 @@ export const CATALOG = [
   },
   {
     id: "canine",
-    file: "bear-charge-hero-animation.mp4",
+    file: "leapard-page-hero-animation.mp4",
+    fallback: "bear-charge-hero-animation.mp4",
     card: "/media/heroes/pets.jpg",
     label: "Canine",
     blurb: "Grooming, boarding, and outdoor animal work.",
@@ -45,7 +62,8 @@ export const CATALOG = [
   },
   {
     id: "contractor",
-    file: "orb-explosion-hero-animation.mp4",
+    file: "infrastructure-hero-animation.mp4",
+    fallback: "bear-charge-hero-animation.mp4",
     card: "/media/heroes/contractor.jpg",
     label: "Contractor",
     blurb: "General build, site visits, and the job book.",
@@ -55,7 +73,8 @@ export const CATALOG = [
   },
   {
     id: "electrical",
-    file: "electrician-hero-animation.mp4",
+    file: "locksmith-hero-animation.mp4",
+    fallback: "electrician-hero-animation.mp4",
     card: "/media/heroes/electrical.jpg",
     label: "Electrical",
     blurb: "Panels, runs, and service calls.",
@@ -65,7 +84,9 @@ export const CATALOG = [
   },
   {
     id: "fabrication",
-    file: "content-cretion-hero-animation.mp4",
+    // polar-bear ships in public/media; universal-hero-animation.mp4 does not.
+    file: "polar-bear-hero-animation.mp4",
+    fallback: "master-defaults/polar-bear-loop.mp4",
     label: "Fabrication",
     blurb: "Custom make, weld, and shop builds.",
     defaultName: "Meridian Fab",
@@ -74,7 +95,8 @@ export const CATALOG = [
   },
   {
     id: "forestry",
-    file: "leopard-hero-animation.mp4",
+    file: "owl-attack-hero-animation.mp4",
+    fallback: "leopard-hero-animation.mp4",
     label: "Forestry",
     blurb: "Land, timber, and outdoor crew days.",
     defaultName: "High Desert Forestry",
@@ -83,7 +105,8 @@ export const CATALOG = [
   },
   {
     id: "glasswork",
-    file: "photogaphy-hero-animation.mp4",
+    file: "eye-hero-animation.mp4",
+    fallback: "content-cretion-hero-animation.mp4",
     card: "/media/heroes/photographer-1.jpg",
     label: "Glasswork",
     blurb: "Glass, light, and precision installs.",
@@ -113,7 +136,8 @@ export const CATALOG = [
   },
   {
     id: "machining",
-    file: "gunsmith-hero-animation.mp4",
+    file: "welding-hero-animation.mp4",
+    fallback: "snowleapard-hero-animation.mp4",
     label: "Machining",
     blurb: "Precision metal, fixtures, and bench work.",
     defaultName: "Bench Mark Machine",
@@ -122,7 +146,9 @@ export const CATALOG = [
   },
   {
     id: "plumbing",
-    file: "plumbers-hero-animation.mp4",
+    // Emergency Plumbing outreach + /demo/plumbing full-screen cinematic loop.
+    file: "axio-plumber-hero.mp4",
+    fallback: "axiom-plumber-hero.mp4",
     card: "/media/heroes/plumbing.jpg",
     label: "Plumbing",
     blurb: "Lines, fixtures, and emergency calls.",
@@ -131,11 +157,21 @@ export const CATALOG = [
     kicker: "They book the line",
   },
   {
+    id: "personal-trainer",
+    file: "physical-trainer-hero-animation.mp4",
+    label: "Personal trainer",
+    blurb: "Sessions, programs, and an hour that stays on the book.",
+    defaultName: "Form Bench Training",
+    tagline: "The hour is yours.",
+    kicker: "They book the session",
+  },
+  {
     id: "power-sports",
     file: "boarding-lessons-hero-animation.mp4",
+    fallback: "snowboard-hero-animation.mp4",
     card: "/media/heroes/snow-sports-lessons.jpg",
-    label: "Power sports",
-    blurb: "Boards, sleds, and lesson blocks.",
+    label: "Outdoor sports lessons",
+    blurb: "Boards, sleds, and outdoor lesson blocks.",
     defaultName: "Board Line",
     tagline: "Gear up. The block is yours.",
     kicker: "They book the block",
@@ -152,7 +188,8 @@ export const CATALOG = [
   },
   {
     id: "security",
-    file: "raptor-hero-animation.mp4",
+    file: "personal-protection-hero-animation.mp4",
+    fallback: "raptor-hero-animation.mp4",
     label: "Security",
     blurb: "Patrol, post, and private watch.",
     defaultName: "Raptor Watch",
@@ -161,7 +198,8 @@ export const CATALOG = [
   },
   {
     id: "stone-masonry",
-    file: "owl-attack-hero-animation.mp4",
+    file: "leopard-hero-animation.mp4",
+    fallback: "owl-attack-hero-animation.mp4",
     label: "Stone masonry",
     blurb: "Stone, mortar, and hardscape builds.",
     defaultName: "Owl Creek Stone",
@@ -170,16 +208,17 @@ export const CATALOG = [
   },
   {
     id: "taxidermy",
-    file: "leapard-page-hero-animation.mp4",
+    file: "leopard-hero-animation.mp4",
+    fallback: "raptor-hero-animation.mp4",
     label: "Taxidermy",
     blurb: "Mounts, restoration, and wildlife finish work.",
-    defaultName: "Leopard Page Taxidermy",
+    defaultName: "Ridge Mount Studio",
     tagline: "The mount is waiting.",
     kicker: "They book the mount",
   },
   {
     id: "tool-repair",
-    file: "physical-trainer-hero-animation.mp4",
+    file: "gunsmith-hero-animation.mp4",
     label: "Tool repair",
     blurb: "Sharpen, rebuild, and tool service.",
     defaultName: "Form Bench Tools",
@@ -188,16 +227,18 @@ export const CATALOG = [
   },
   {
     id: "water-systems",
-    file: "trout-fishin-hero-animation.mp4",
+    // Urgent otter loop shared with Emergency Plumbing outreach / demo inlays.
+    file: "otter-hero-animation.mp4",
+    fallback: "shark-hero-animation.mp4",
     label: "Water systems",
-    blurb: "Wells, filtration, and water service.",
-    defaultName: "Trout Line Water",
-    tagline: "Clear water on the schedule.",
+    blurb: "Wells, filtration, and deep-water service.",
+    defaultName: "Abyssal Systems",
+    tagline: "Deep-water service. Precision delivered.",
     kicker: "They book the system",
   },
   {
     id: "woodworking",
-    file: "silver-orb-hero-animation.mp4",
+    file: "orb-explosion-hero-animation.mp4",
     label: "Woodworking",
     blurb: "Custom millwork, furniture, and finish carpentry.",
     defaultName: "Silver Grain Woodworks",
@@ -205,6 +246,34 @@ export const CATALOG = [
     kicker: "They book the mill",
   },
 ] as const;
+
+/**
+ * Five master-seed niches shown on the public landing / onboard catalog.
+ * Full `CATALOG` stays intact for film resolution, hero archive, and legacy shops.
+ * Staged cinematic modules (obsidian-core, moto-elite, hyper-moto, cyber-stinger)
+ * are listed separately via `STAGED_EXPERIENCES` on the landing hub — not as niches.
+ */
+export const CORE_PUBLIC_NICHES = [
+  "auto",
+  "contractor",
+  "plumbing",
+  "barber",
+  "taxidermy",
+] as const;
+
+/** Slugs surfaced on the public landing alongside the 5 core niches. */
+export const PUBLIC_LANDING_MODULE_SLUGS = [
+  "obsidian-core",
+  "moto-elite",
+  "hyper-moto",
+  "cyber-stinger",
+] as const;
+
+export type CorePublicNiche = (typeof CORE_PUBLIC_NICHES)[number];
+
+export function isCorePublicNiche(value: string): value is CorePublicNiche {
+  return (CORE_PUBLIC_NICHES as readonly string[]).includes(value.trim().toLowerCase());
+}
 
 /** Extra loops a shop can pin. They are not tenant niches. */
 export const EXTRA_HERO_LOOPS = [
@@ -217,8 +286,14 @@ export const EXTRA_HERO_LOOPS = [
   {
     id: "shark",
     file: "shark-hero-animation.mp4",
-    label: "Deep-sea reef",
-    blurb: "Great white, barracuda, eel, and octopus on a looping clip.",
+    label: "Abyssal Systems",
+    blurb: "Deep-sea reef loop — shark, barracuda, eel, and octopus for the water-systems niche.",
+  },
+  {
+    id: "abyssal-hero",
+    file: "shark-hero-animation.mp4",
+    label: "Abyssal hero",
+    blurb: "Selectable Abyssal Systems underwater hero (same loop as shark-hero-animation).",
   },
   {
     id: "polar-bear",
@@ -254,6 +329,12 @@ export const CATALOG_NICHES = CATALOG.map((row) => row.id) as unknown as readonl
   ...CatalogNiche[],
 ];
 
+/** Public-facing niche ids (5 cores). Prefer this over `CATALOG_NICHES` on landing routes. */
+export const PUBLIC_CATALOG_NICHES = CORE_PUBLIC_NICHES;
+
+/** Public landing / onboard rows only — legacy templates are filtered out. */
+export const PUBLIC_CATALOG = CATALOG.filter((row) => isCorePublicNiche(row.id));
+
 export const CATALOG_BY_ID = Object.fromEntries(CATALOG.map((row) => [row.id, row])) as Record<
   CatalogNiche,
   CatalogEntry
@@ -263,8 +344,131 @@ export function catalogFilmPath(file: string): string {
   return `/media/${file}`;
 }
 
+/** Niches that currently have `public/media/{id}/hero-animation.mp4` on disk. */
+export const DEDICATED_NICHE_LOOPS: readonly CatalogNiche[] = [];
+
+/** Older `/media/heroes/*hero.mp4` files still on disk — last-resort fallback. */
+export const LEGACY_HERO_MP4_FILES = ["heroes/clean.mp4"] as const;
+
+/** `*-hero-animation.mp4` loops currently in `public/media` (root). */
+export const ROOT_HERO_ANIMATION_FILES = [
+  "auto-hero-animation.mp4",
+  "auto-tuning-hero-animation.mp4",
+  "apex-launch-control-hero-animation.mp4",
+  "apex-launch-hero-animation.mp4",
+  "barber-hero-animation.mp4",
+  "bear-charge-hero-animation.mp4",
+  "boarding-lessons-hero-animation.mp4",
+  "bow-tech-hero-animation.mp4",
+  "cleaner-hero-animation.mp4",
+  "content-cretion-hero-animation.mp4",
+  "electrician-hero-animation.mp4",
+  "eye-hero-animation.mp4",
+  "guide-service-hero-animation.mp4",
+  "gunsmith-hero-animation.mp4",
+  "infrastructure-hero-animation.mp4",
+  "leapard-page-hero-animation.mp4",
+  "leopard-hero-animation.mp4",
+  "locksmith-hero-animation.mp4",
+  "orb-explosion-hero-animation.mp4",
+  "otter-hero-animation.mp4",
+  "owl-attack-hero-animation.mp4",
+  "personal-protection-hero-animation.mp4",
+  "photogaphy-hero-animation.mp4",
+  "physical-trainer-hero-animation.mp4",
+  "axio-plumber-hero.mp4",
+  "axio-plumber-hero-mobile.mp4",
+  "axiom-plumber-hero.mp4.mp4",
+  "axiom-plumber-hero.mp4",
+  "axiom-plumber-hero-mobile.mp4",
+  "plumbing-emergency-hero.mp4",
+  "plumbing-emergency-hero-mobile.mp4",
+  "plumbers-hero-animation.mp4",
+  "emergency-plumbing-web-page.mp4",
+  "polar-bear-hero-animation.mp4",
+  "raptor-hero-animation.mp4",
+  "shark-hero-animation.mp4",
+  "silver-orb-hero-animation.mp4",
+  "snowleapard-hero-animation.mp4",
+  "taxidermy-hero-animation.mp4",
+  "tiger-hero-animation.mp4",
+  "trout-fishin-hero-animation.mp4",
+  "underwater-leapord-hero-animation.mp4",
+] as const;
+
+export function dedicatedHeroUrl(niche: CatalogNiche): string {
+  return `/media/${niche}/${NICHE_HERO_FILENAME}`;
+}
+
+function catalogFallbackFile(niche: CatalogNiche): string | undefined {
+  const row = CATALOG_BY_ID[niche];
+  return "fallback" in row && typeof row.fallback === "string" ? row.fallback : undefined;
+}
+
+export function legacyHeroUrl(niche: CatalogNiche): string {
+  return catalogFilmPath(catalogFallbackFile(niche) ?? CATALOG_BY_ID[niche].file);
+}
+
+/** Last-resort clip when the preferred animation and its catalog fallback are both missing. */
+export function catalogFilmFallbackUrl(niche: CatalogNiche): string {
+  const named = catalogFallbackFile(niche);
+  if (named) return catalogFilmPath(named);
+  const legacy = LEGACY_HERO_MP4_FILES[0];
+  return legacy ? catalogFilmPath(legacy) : catalogFilmPath(CATALOG_BY_ID[niche].file);
+}
+
+/**
+ * Prefer an uploaded `/media/{niche}/hero-animation.mp4`, then the catalog `file`,
+ * then `fallback` (`*-hero-animation.mp4`), then the closest on-disk loop / `*hero.mp4`.
+ */
+export function scanNicheHeroUrl(
+  niche: CatalogNiche,
+  disk: { dedicated: readonly string[]; files: readonly string[] },
+): string {
+  if (disk.dedicated.includes(niche)) return dedicatedHeroUrl(niche);
+  const preferred = CATALOG_BY_ID[niche].file;
+  if (disk.files.includes(preferred)) return catalogFilmPath(preferred);
+  const namedFallback = catalogFallbackFile(niche);
+  if (namedFallback && disk.files.includes(namedFallback)) return catalogFilmPath(namedFallback);
+  const hay = `${niche} ${CATALOG_BY_ID[niche].label}`.toLowerCase();
+  let best = "";
+  let bestScore = 0;
+  for (const file of disk.files) {
+    if (!/\.mp4$/i.test(file) || file.includes("\\")) continue;
+    const stem = file
+      .toLowerCase()
+      .replace(/^heroes\//, "")
+      .replace(/(\.mp4)+$/i, "")
+      .replace(/[^a-z0-9]+/g, " ");
+    const animation = /hero animation|hero-animation/.test(stem);
+    const legacyHero = /\bhero\b/.test(stem) && !animation;
+    let score = 0;
+    for (const token of hay.split(/[^a-z0-9]+/).filter((word) => word.length >= 3)) {
+      if (stem.includes(token)) score += 40 + token.length;
+    }
+    if (score > 0 && animation) score += 24;
+    if (score > 0 && legacyHero) score += 8;
+    if (score > bestScore) {
+      bestScore = score;
+      best = file;
+    }
+  }
+  return catalogFilmPath(best || preferred);
+}
+
+/** Landing / master-category loop. Shop and demo pages use `tradeLoopUrl`. */
 export function catalogFilmUrl(niche: CatalogNiche): string {
+  return defaultHeroSrcForNiche(niche);
+}
+
+/** Niche-specific cinematic loop from the catalog `file` (plumbing → emergency hero). */
+export function tradeLoopUrl(niche: CatalogNiche): string {
   return catalogFilmPath(CATALOG_BY_ID[niche].file);
+}
+
+/** Any stored niche string → that trade's default loop. */
+export function defaultNicheFilm(value: string | null | undefined): string {
+  return tradeLoopUrl(resolveCatalogNiche(value));
 }
 
 /**
@@ -301,26 +505,99 @@ export function catalogEntry(value: string): CatalogEntry | undefined {
   return isCatalogNiche(key) ? CATALOG_BY_ID[key] : undefined;
 }
 
+/** Alternate filenames that resolve to a catalog niche (typos, synonyms, not-yet-renamed uploads). */
+export const FILM_FILE_ALIASES: Record<string, CatalogNiche> = {
+  "charging-bear-hero-animation.mp4": "contractor",
+  "bear-charge-hero-animation.mp4": "contractor",
+  "grizzly-hud-hero-animation.mp4": "contractor",
+  "infrastructure-hero-animation.mp4": "contractor",
+  "infrastructure-hero-animatio.mp4": "contractor",
+  "universal-hero-animation.mp4": "fabrication",
+  "cyber-network-hero-animation.mp4": "fabrication",
+  "content-cretion-hero-animation.mp4": "glasswork",
+  "photogaphy-hero-animation.mp4": "glasswork",
+  "polar-bear-hero-animation.mp4": "fabrication",
+  "leopard-hero-path.mp4": "contractor",
+  "snowleopard-hero-animation.mp4": "machining",
+  "snowleapard-hero-animation.mp4": "machining",
+  "welding-hero-animation.mp4": "machining",
+  "underwater-leopard-hero-animation.mp4": "taxidermy",
+  "underwater-leapord-hero-animation.mp4": "taxidermy",
+  "archery-hero-animation.mp4": "bow-tech",
+  "electric-tech-hero-animation.mp4": "electrical",
+  "heist-hero-animation.mp4": "glasswork",
+  "snowboard-hero-animation.mp4": "power-sports",
+  "otter-hero-animation.mp4": "water-systems",
+  "axio-plumber-hero.mp4": "plumbing",
+  "axio-plumber-hero-mobile.mp4": "plumbing",
+  "axiom-plumber-hero.mp4.mp4": "plumbing",
+  "axiom-plumber-hero.mp4": "plumbing",
+  "axiom-plumber-hero-mobile.mp4": "plumbing",
+  "plumbing-emergency-hero.mp4": "plumbing",
+  "plumbing-emergency-hero-mobile.mp4": "plumbing",
+  "emergency-plumbing-web-page.mp4": "plumbing",
+  "plumbers-hero-animation.mp4": "plumbing",
+  "shark-hero-animation.mp4": "water-systems",
+  "abyssal-hero-loop.mp4": "water-systems",
+  "abyssal-hero-animation.mp4": "water-systems",
+  "hero-ocean-loop.mp4": "water-systems",
+  "eye-hero-animation.mp4": "glasswork",
+  "owl-attack-hero-animation.mp4": "forestry",
+  "raptor-hero-animation.mp4": "security",
+  "taxidermy-hero-animation.mp4": "taxidermy",
+  "taxidermy-her-animation.mp4": "taxidermy",
+  "physical-trainer-hero-animation.mp4": "personal-trainer",
+  "silver-orb-hero-animation.mp4": "beauty-salon",
+  "gunsmith-hero-animation.mp4": "tool-repair",
+  "orb-explosion-hero-animation.mp4": "woodworking",
+  "auto-hero-animation.mp4": "auto",
+  "auto-tuning-hero-animation.mp4": "auto",
+  "apex-launch-hero-animation.mp4": "auto",
+  "apex-launch-control-hero-animation.mp4": "auto",
+  "personal-protection-hero-animation.mp4": "security",
+  "personal-protectio-hero-animation.mp4": "security",
+  "electrician-hero-animation.mp4": "electrical",
+  "locksmith-hero-animation.mp4": "electrical",
+  "boarding-lessons-hero-animation.mp4": "power-sports",
+  "bow-tech-hero-animation.mp4": "bow-tech",
+};
+
 export function catalogByFilm(urlOrFile: string): CatalogEntry | undefined {
   const raw = urlOrFile.trim().split("?")[0] ?? "";
+  const nested = raw.match(/\/media\/([a-z0-9]+(?:-[a-z0-9]+)*)\/hero-animation\.mp4$/i);
+  if (nested && isCatalogNiche(nested[1]!.toLowerCase())) return CATALOG_BY_ID[nested[1]!.toLowerCase() as CatalogNiche];
   const file = raw.includes("/") ? (raw.split("/").pop() ?? "") : raw;
-  return CATALOG.find((row) => row.file === file || row.file === `${file}.mp4`);
+  const aliased = FILM_FILE_ALIASES[file] ?? FILM_FILE_ALIASES[`${file}.mp4`];
+  if (aliased) return CATALOG_BY_ID[aliased];
+  return CATALOG.find(
+    (row) =>
+      row.file === file ||
+      row.file === `${file}.mp4` ||
+      row.id === file ||
+      ("fallback" in row && (row.fallback === file || row.fallback === `${file}.mp4`)),
+  );
 }
 
 /** Older shop niches still in the DB map onto the verified inventory. */
 export const LEGACY_NICHE_ALIASES: Record<string, CatalogNiche> = {
-  guide: "landscaping",
-  fitness: "tool-repair",
+  guide: "forestry",
+  fitness: "personal-trainer",
+  trainer: "personal-trainer",
+  gym: "personal-trainer",
   combat: "roofing",
   wellness: "woodworking",
   lessons: "power-sports",
-  salon: "barber",
-  beauty: "barber",
+  "outdoor-sports-lessons": "power-sports",
+  "sports-lessons": "power-sports",
+  boarding: "power-sports",
+  salon: "beauty-salon",
+  beauty: "beauty-salon",
+  spa: "beauty-salon",
   tattoo: "taxidermy",
   photo: "glasswork",
   pets: "canine",
   music: "fabrication",
-  creator: "fabrication",
+  creator: "glasswork",
   prompt: "contractor",
   entertainer: "fabrication",
   events: "contractor",
@@ -328,19 +605,73 @@ export const LEGACY_NICHE_ALIASES: Record<string, CatalogNiche> = {
   foodtruck: "water-systems",
   dogwalk: "canine",
   detailer: "auto",
-  hunting: "stone-masonry",
-  therapy: "tool-repair",
+  hunting: "bow-tech",
+  archery: "bow-tech",
+  "bow-hunting": "bow-tech",
+  saas: "fabrication",
+  tech: "fabrication",
+  network: "fabrication",
+  cyber: "fabrication",
+  ai: "fabrication",
+  logging: "forestry",
+  construction: "contractor",
+  "junk-removal": "contractor",
+  junk: "contractor",
+  industrial: "contractor",
+  infrastructure: "contractor",
+  electrician: "electrical",
+  "smart-home": "electrical",
+  skiing: "power-sports",
+  snowboard: "power-sports",
+  winter: "power-sports",
+  adventure: "taxidermy",
+  exotic: "taxidermy",
+  entertainment: "glasswork",
+  heist: "glasswork",
+  branding: "glasswork",
+  media: "glasswork",
+  river: "water-systems",
+  rafting: "water-systems",
+  aquatic: "water-systems",
+  marine: "water-systems",
+  aquarium: "water-systems",
+  diving: "taxidermy",
+  conservation: "taxidermy",
+  marketing: "glasswork",
+  social: "glasswork",
+  "content-creation": "glasswork",
+  "water-sports": "water-systems",
+  universal: "fabrication",
+  drone: "machining",
+  automation: "machining",
+  monitoring: "machining",
+  otter: "water-systems",
+  shark: "water-systems",
+  abyssal: "water-systems",
+  "abyssal-systems": "water-systems",
+  "abyssal-hero": "water-systems",
+  "deep-sea": "water-systems",
+  underwater: "water-systems",
+  therapy: "personal-trainer",
   bowtech: "bow-tech",
   clean: "hvac",
   field: "auto",
+  tuning: "auto",
+  "auto-tuning": "auto",
+  protection: "security",
+  "personal-protection": "security",
+  bodyguard: "security",
+  guard: "security",
   locksmith: "electrical",
   firewood: "forestry",
+  wildlife: "forestry",
+  welding: "machining",
   practice: "woodworking",
   counsel: "woodworking",
   location: "barber",
   studio: "glasswork",
   retail: "fabrication",
-  trade: "machining",
+  trade: "auto",
 };
 
 /** Normalize any stored niche string to a verified catalog id. */

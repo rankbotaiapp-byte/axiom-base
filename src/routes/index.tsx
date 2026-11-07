@@ -1,47 +1,73 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AppWindow, ArrowUpRight, CalendarRange, Radio } from "lucide-react";
-import { AxiomCatalogHub } from "@/components/AxiomCatalogHub";
+import {
+  Bot,
+  CalendarCheck,
+  CreditCard,
+  Images,
+  LayoutTemplate,
+  Palette,
+  Smartphone,
+} from "lucide-react";
+import { AxiomHero } from "@/components/AxiomHero";
+import { FreezePanStage } from "@/components/cinematic/FreezePanStage";
+import { EmergencyTradeHero } from "@/components/marketing/EmergencyTradeHero";
+import { InboundSignup } from "@/components/marketing/InboundSignup";
+import { IndustryMarquee } from "@/components/marketing/IndustryMarquee";
+import { buildAutonomousContentPlan, cinematicLandingMeta } from "@/lib/axiom/cinematic-content-seo";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
-import { CATALOG } from "@/config/catalog";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
-import { NICHE_MEDIA } from "@/lib/axiom/media";
 import { ensureFunnelSession, masterGate, recordFunnelHit } from "@/lib/axiom/master";
-import { listMyShops, listShowcaseShops } from "@/lib/axiom/server";
-import { isShopNiche, type Shop } from "@/lib/axiom/types";
-import { PreviewStudio, FaqAccordion } from "@/components/preview-studio";
-import { DEFAULT_HUD, hudVars, paintHero, setHeroLayer, type HeroLayerId, type StorefrontHud } from "@/lib/axiom/hud";
-import { HeroTextCanvas } from "@/components/hero-text-canvas";
-import { TERRITORY_PLANS } from "@/lib/axiom/pricing";
-import { CursorSpotlight } from "@/components/cursor-spotlight";
-import { DataFlow } from "@/components/data-flow";
-import { HoloCard } from "@/components/holo-card";
-import { LandingAtmosphere } from "@/components/landing-atmosphere";
+import { listMyShops } from "@/lib/axiom/server";
+import type { Shop } from "@/lib/axiom/types";
+import { LOCAL_DEV_SHOP_SLUG } from "@/lib/auth/local-dev-bypass";
 import { Reveal } from "@/components/reveal";
-import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
-import { LandingBookingLoop } from "@/components/landing-loop";
 import { PoweredBy, Wordmark } from "@/components/shop-chrome";
-import { cn, formatMoney } from "@/lib/utils";
-import { LeadTerritory } from "@/components/territory-offer";
 import { OutreachStorefront } from "@/components/outreach-storefront";
 import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
+import { CATALOG, CATALOG_BY_ID } from "@/config/catalog";
+import { LeadTerritory } from "@/components/territory-offer";
+import { cn } from "@/lib/utils";
+
+/** Canonical local multi-tenant operator desk (seeded by axiom-auto). */
+const PLATFORM_DESK_SLUG = LOCAL_DEV_SHOP_SLUG;
+
+/**
+ * Corporate root landing (`/`).
+ * Outbound personalized funnels stay on `/$shopSlug` and outreach query visits.
+ * This file route always wins over `/$shopSlug` — never treats the root as a tenant named "index".
+ */
+const LANDING_SEO = buildAutonomousContentPlan({
+  niche: "contractor",
+  city: "Southern Oregon",
+  businessName: "Axiom",
+});
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => parseFunnelSearch(search),
+  head: () => ({
+    meta: [...cinematicLandingMeta(LANDING_SEO)],
+  }),
   component: Home,
 });
 
 function Home() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const [mine, setMine] = useState<Shop[] | null>(null);
-  const [showcases, setShowcases] = useState<Shop[] | null>(null);
   const [masterOpen, setMasterOpen] = useState(false);
   const [leadName, setLeadName] = useState("");
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [leavingHero, setLeavingHero] = useState(false);
 
   useEffect(() => {
-    void listShowcaseShops().then(setShowcases).catch(() => setShowcases([]));
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
@@ -95,6 +121,27 @@ function Home() {
   const owned = mine?.filter((s) => s.ownerUserId === user?.id) ?? [];
   const leadSlug = search.b || search.lead_slug || "";
 
+  async function enterMainBuild() {
+    setLeavingHero(true);
+    // Let the hero fade + WebGL/video teardown finish before swapping routes.
+    await new Promise((resolve) => window.setTimeout(resolve, reduceMotion ? 80 : 620));
+
+    const deskSlug = owned[0]?.slug || PLATFORM_DESK_SLUG;
+    const deskPath = `/${deskSlug}/admin`;
+
+    // Signed-in operators land on their (or the local axiom-auto) tenant desk.
+    if (user) {
+      await navigate({ to: "/$shopSlug/admin", params: { shopSlug: deskSlug } });
+      return;
+    }
+
+    // Local-dev auth: login with next=desk + ?dev=1 so the bypass can open the workspace.
+    await navigate({
+      to: "/login",
+      search: { next: deskPath, dev: true },
+    });
+  }
+
   if (isOutreachVisit(search) && !search.pitch) {
     return <OutreachStorefront search={search} />;
   }
@@ -118,433 +165,250 @@ function Home() {
     );
   }
 
-  return (
-    <main className="neon-shell bg-transparent">
-      <LandingBookingLoop />
-      <header className="glass-panel sticky top-3 z-30 mx-3 flex items-center justify-between rounded-2xl px-4 py-3 sm:mx-6 sm:px-5">
-        <Wordmark />
-        <div className="flex items-center gap-3">
-          {isPending ? (
-            <div className="size-8 animate-pulse rounded-full bg-fg/10" />
-          ) : (
-            <>
-              <SignedOut>
-                <Link to="/login" className="font-mono text-sm text-muted hover:text-fg">
-                  Sign in
-                </Link>
-              </SignedOut>
-              <SignedIn>
-                {masterOpen ? (
-                  <Link to="/master-admin" className="text-sm text-muted hover:text-fg">
-                    Master
-                  </Link>
-                ) : null}
-                <UserButton />
-              </SignedIn>
-            </>
-          )}
-        </div>
-      </header>
-
-      <section className="relative mx-auto max-w-6xl px-5 pb-16 pt-6 sm:px-10 sm:pt-16">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">Vertical SaaS · local services</p>
-        <h1 className="mt-4 max-w-3xl font-display text-[clamp(2.6rem,8vw,5.6rem)] leading-[0.95] tracking-[-0.03em]">
-          The 24/7 Booking & Outreach Machine.
-        </h1>
-        {leadName ? (
-          <p className="mt-6 text-sm text-copper">This link is saved for {leadName}.</p>
+  const authHeader = isPending ? (
+    <div className="size-8 animate-pulse rounded-full bg-fg/10" />
+  ) : (
+    <>
+      <SignedOut>
+        <Link to="/login" className="font-mono text-sm text-muted hover:text-fg">
+          Login
+        </Link>
+      </SignedOut>
+      <SignedIn>
+        {masterOpen ? (
+          <Link to="/master-admin" className="text-sm text-muted hover:text-fg">
+            Master
+          </Link>
         ) : null}
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-          Pick a niche. Axiom stands up a booking site, an operator console, and a staff station — then lights the edge of the screen when the first appointment lands.
-        </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          {owned[0] ? (
-            <Link
-              to="/$shopSlug"
-              params={{ shopSlug: owned[0].slug }}
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-fg px-5 text-sm font-medium text-bg"
-            >
-              Open {owned[0].name}
-            </Link>
-          ) : (
-            <Link
-              to="/onboard"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-fg px-5 text-sm font-medium text-bg"
-            >
-              Create your shop
-            </Link>
-          )}
-          <a
-            href="#live"
-            className="inline-flex h-12 items-center justify-center rounded-xl px-5 text-sm text-muted shadow-[0_0_0_1px_rgba(243,241,235,0.1)] hover:text-fg"
+        {owned[0] ? (
+          <Link
+            to="/$shopSlug/admin"
+            params={{ shopSlug: owned[0].slug }}
+            className="text-sm text-muted hover:text-fg"
           >
-            See live shops
-          </a>
-        </div>
+            Desk
+          </Link>
+        ) : null}
+        <UserButton />
+      </SignedIn>
+    </>
+  );
 
-        <AxiomCatalogHub view="strip" linkTo="onboard" className="mt-14" />
+  return (
+    <main className="neon-shell snap-y snap-mandatory overflow-y-auto bg-obsidian">
+      {/* 1 · Underwater leopard freeze-pan cinematic · half-viewport media + funnel CTAs */}
+      <FreezePanStage
+        leaving={leavingHero}
+        onEnter={enterMainBuild}
+        onboardHref="/onboard?niche=contractor"
+        niche="contractor"
+        city="Southern Oregon"
+        headerSlot={authHeader}
+      />
+
+
+      {/* 2 · Otter water hero — full-bleed + WebGL droplets/ripples + Choose Your Price CTA */}
+      <AxiomHero
+        leaving={leavingHero}
+        onEnter={enterMainBuild}
+        ctaLabel="$1 Choose Your Price Trial"
+      />
+
+      {/* 3 · Scroll stage — emergency trades / vehicles in rain (otter water world continues) */}
+      <EmergencyTradeHero
+        className="shrink-0"
+        reduceMotion={reduceMotion}
+        leaving={leavingHero}
+        onEnter={enterMainBuild}
+      />
+
+      {/* Main build entry — inbound storefront launcher under the cinematic stages */}
+      <section id="app-build" className="relative isolate snap-start bg-obsidian px-5 py-16 sm:px-10 sm:py-20">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-accent/80">Main build</p>
+            <h2 className="mt-3 font-display text-3xl text-fg sm:text-4xl">
+              Automate your service business. Zero coding required.
+            </h2>
+            {leadName ? (
+              <p className="mt-4 text-sm text-copper">This link is saved for {leadName}.</p>
+            ) : (
+              <p className="mt-4 text-base leading-relaxed text-muted sm:text-lg">
+                Type your shop name, pick any local trade, and spin up a live booking storefront in seconds.
+              </p>
+            )}
+            <IndustryMarquee className="mt-5 mb-1 sm:mt-6" />
+            <button
+              type="button"
+              onClick={() => void enterMainBuild()}
+              disabled={leavingHero}
+              className={cn(
+                "mt-6 inline-flex min-h-12 items-center gap-3 rounded-full border border-accent/40 bg-obsidian/70 px-6 py-3",
+                "font-mono text-xs uppercase tracking-[0.18em] text-accent backdrop-blur-md",
+                "transition hover:border-accent hover:bg-accent/10 disabled:opacity-60",
+              )}
+            >
+              Enter desk · $1 trial
+            </button>
+          </div>
+          <div className="w-full max-w-xl">
+            <InboundSignup />
+          </div>
+        </div>
       </section>
 
-      <div className="relative overflow-x-clip">
-        <LandingAtmosphere />
-        <div className="relative z-10">
-          <DataFlow />
-          <FeatureBand />
-          <IndustryGallery />
-
-          <DataFlow />
-          <LiveBook showcases={showcases} />
-          <LandingStudio />
-          <PricingBand />
-          <FaqAccordion />
-          <LandingFooter />
+      {/* How it works */}
+      <section id="how" className="bg-obsidian px-5 py-20 sm:px-10">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-accent/80">How it works</p>
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl">Three moves. Live book.</h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
+              Claim a niche, lock brand in Zero-Code Studio, then take bookings and Stripe payments around the clock.
+            </p>
+          </Reveal>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {[
+              {
+                step: "01",
+                title: "Claim your niche",
+                body: `Pick from ${CATALOG.length} local trades — HVAC to landscaping — and stand up a tenant in seconds.`,
+                icon: CalendarCheck,
+              },
+              {
+                step: "02",
+                title: "Lock in your brand",
+                body: "Zero-Code Studio sets hero film, palette, and copy. No engineers. No theme rabbit holes.",
+                icon: Palette,
+              },
+              {
+                step: "03",
+                title: "Launch 24/7 booking",
+                body: "Automated booking calendar plus Stripe checkout so the shop takes money while you are on the job.",
+                icon: CreditCard,
+              },
+            ].map((item) => (
+              <Reveal key={item.step}>
+                <article
+                  className={cn(
+                    "glass-card relative flex h-full flex-col rounded-2xl p-5 backdrop-blur-md",
+                    "shadow-[0_16px_40px_color-mix(in_srgb,var(--color-obsidian)_45%,transparent),0_0_28px_color-mix(in_srgb,var(--color-accent)_8%,transparent),inset_0_1px_0_color-mix(in_srgb,var(--color-fg)_12%,transparent)]",
+                    "transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_color-mix(in_srgb,var(--color-obsidian)_50%,transparent),0_0_36px_color-mix(in_srgb,var(--color-accent)_14%,transparent)]",
+                  )}
+                >
+                  <span className="film-bracket film-bracket-nw text-accent/50" aria-hidden />
+                  <span className="film-bracket film-bracket-se text-amber/45" aria-hidden />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent/80">{item.step}</span>
+                    <item.icon className="size-5 text-accent" aria-hidden />
+                  </div>
+                  <h3 className="mt-4 font-display text-xl text-fg">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted">{item.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Feature grid */}
+      <section id="features" className="bg-obsidian px-5 py-16 sm:px-10">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-accent/80">Platform</p>
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl">Built for the bay, the chair, the site.</h2>
+          </Reveal>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            {[
+              {
+                title: "AI Avatar Assistant",
+                body: "Voice and chat concierge that greets guests, answers hours, and routes booking intent.",
+                icon: Bot,
+              },
+              {
+                title: "Master Tenant Templates",
+                body: "Catalog-backed niches with verified hero loops, services, and desk defaults — not empty shells.",
+                icon: LayoutTemplate,
+              },
+              {
+                title: "Proof of Work Galleries",
+                body: "Portfolio plates and crew proof that sell the next job before the first call is returned.",
+                icon: Images,
+              },
+              {
+                title: "Instant mobile responsiveness",
+                body: "Storefront, book page, and brand studio are phone-first — the crew runs them from the truck.",
+                icon: Smartphone,
+              },
+            ].map((feature) => (
+              <Reveal key={feature.title}>
+                <article className="glass-card rounded-2xl p-5 backdrop-blur-md">
+                  <feature.icon className="size-5 text-accent" aria-hidden />
+                  <h3 className="mt-4 font-display text-xl text-fg">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{feature.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+
+          <div className="mt-10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-faint">
+              {CATALOG.length} niches live on this door
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {CATALOG.map((row) => (
+                <span
+                  key={row.id}
+                  className={cn(
+                    "rounded-full border border-line bg-obsidian/60 px-3 py-1.5 backdrop-blur-md",
+                    "font-mono text-[10px] uppercase tracking-[0.16em] text-muted",
+                  )}
+                >
+                  {row.id === "contractor" ? "Construction" : CATALOG_BY_ID[row.id].label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust footer */}
+      <footer id="footer" className="bg-obsidian px-5 pb-10 pt-6 sm:px-10">
+        <Reveal>
+          <div className="glass-panel relative mx-auto flex max-w-6xl flex-col gap-6 rounded-[28px] px-6 py-8 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+            <span className="film-bracket film-bracket-nw text-accent/55" aria-hidden />
+            <span className="film-bracket film-bracket-se text-amber/50" aria-hidden />
+            <div>
+              <Wordmark />
+              <p className="mt-3 max-w-sm text-sm text-muted">
+                Axiom · booking OS for local service businesses. Corporate inbound at the root. Personalized demos on each
+                shop slug.
+              </p>
+            </div>
+            <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm" aria-label="Corporate">
+              <Link to="/terms" className="inline-flex h-11 items-center text-muted transition-colors hover:text-fg">
+                Terms
+              </Link>
+              <Link to="/privacy" className="inline-flex h-11 items-center text-muted transition-colors hover:text-fg">
+                Privacy
+              </Link>
+              <a
+                href="mailto:hello@axiom.shop"
+                className="inline-flex h-11 items-center text-muted transition-colors hover:text-fg"
+              >
+                Contact
+              </a>
+              <Link to="/login" className="inline-flex h-11 items-center text-muted transition-colors hover:text-fg">
+                Login
+              </Link>
+              <a href="#how" className="inline-flex h-11 items-center text-muted transition-colors hover:text-fg">
+                How it works
+              </a>
+            </nav>
+          </div>
+        </Reveal>
+        <PoweredBy />
+      </footer>
     </main>
   );
 }
-
-const FEATURES = [
-  {
-    title: "Booking site",
-    copy: "A public page for the trade. Guests pick a time and the book takes the job.",
-    icon: CalendarRange,
-  },
-  {
-    title: "Operator console",
-    copy: "The desk for the owner: the calendar, the staff, and the shop.",
-    icon: AppWindow,
-  },
-  {
-    title: "Staff station",
-    copy: "A station for the people on the job, reading the same book.",
-    icon: Radio,
-  },
-] as const;
-
-function FeatureBand() {
-  return (
-    <section id="features" className="px-5 py-16 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <Reveal>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">The machine</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Three stations. One book.</h2>
-        </Reveal>
-        <CursorSpotlight className="mt-8">
-          <Reveal stagger className="grid gap-4 md:grid-cols-3">
-            {FEATURES.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <div key={feature.title} className="min-w-0">
-                  <HoloCard className="glass-panel lift-card h-full rounded-[28px] p-5">
-                    <span className="grid size-11 place-items-center rounded-xl bg-surface-2 text-accent">
-                      <Icon className="size-4" />
-                    </span>
-                    <p className="mt-5 font-display text-2xl">{feature.title}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">{feature.copy}</p>
-                  </HoloCard>
-                </div>
-              );
-            })}
-          </Reveal>
-        </CursorSpotlight>
-      </div>
-    </section>
-  );
-}
-
-function IndustryGallery() {
-  const navigate = useNavigate();
-  const [view, setView] = useState<"cards" | "list">("cards");
-  return (
-    <section id="industries" className="px-5 py-16 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <Reveal>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Verified catalog</p>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl">Twenty-one loops. One book.</h2>
-            </div>
-            <label className="text-sm text-muted">
-              Jump to a trade
-              <select
-                className="glass-field mt-2 h-12 w-full rounded-xl px-3 sm:w-72"
-                defaultValue=""
-                onChange={(event) => {
-                  const niche = event.target.value;
-                  if (!isShopNiche(niche)) return;
-                  void navigate({ to: "/demo/$niche", params: { niche } });
-                }}
-              >
-                <option value="" disabled>
-                  Choose an industry
-                </option>
-                {CATALOG.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <StatusRow />
-          <div role="tablist" aria-label="Industry layout" className="glass-panel mt-6 inline-flex rounded-full p-1">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === "cards"}
-              className={cn("pressable h-11 rounded-full px-4 text-sm", view === "cards" ? "bg-fg text-bg" : "text-muted")}
-              onClick={() => setView("cards")}
-            >
-              Cards
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === "list"}
-              className={cn("pressable h-11 rounded-full px-4 text-sm", view === "list" ? "bg-fg text-bg" : "text-muted")}
-              onClick={() => setView("list")}
-            >
-              List
-            </button>
-          </div>
-        </Reveal>
-        <CursorSpotlight className="mt-8">
-          <AxiomCatalogHub key={view} view={view} linkTo="demo" />
-        </CursorSpotlight>
-      </div>
-    </section>
-  );
-}
-
-function LiveBook({ showcases }: { showcases: Shop[] | null }) {
-  return (
-    <section id="live" className="px-5 py-16 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <Reveal>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Live tenants · Automated by Axiom</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">Already on the books.</h2>
-          <StatusRow />
-        </Reveal>
-        {showcases === null ? (
-          <div className="mt-8 grid gap-4 md:grid-cols-3" aria-hidden>
-            {[0, 1, 2].map((slot) => (
-              <div key={slot} className="landing-skeleton glass-panel overflow-hidden rounded-[28px]">
-                <div className="aspect-[16/10] bg-surface-2" />
-                <div className="space-y-3 p-5">
-                  <div className="h-3 w-28 rounded-full bg-fg/10" />
-                  <div className="h-7 w-40 rounded-full bg-fg/10" />
-                  <div className="h-3 w-full rounded-full bg-fg/10" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : showcases.length === 0 ? (
-          <div className="glass-panel mt-8 rounded-[28px] px-5 py-8 text-sm text-muted">
-            No live shops on the book yet.
-          </div>
-        ) : (
-          <CursorSpotlight className="mt-8">
-            <Reveal stagger className="grid gap-4 md:grid-cols-3">
-              {showcases.map((s, index) => (
-                <div key={s.id} className="min-w-0">
-                  <HoloCard className="glass-panel lift-card h-full overflow-hidden rounded-[28px]">
-                    <Link to="/$shopSlug" params={{ shopSlug: s.slug }} className="group block h-full">
-                      <div className="relative aspect-[16/10] overflow-hidden">
-                        <img
-                          src={s.heroImageUrl}
-                          alt=""
-                          className="media-zoom h-full w-full object-cover outline-none transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent" />
-                      </div>
-                      <div className="flex items-end justify-between gap-3 p-5">
-                        <div className="min-w-0">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-faint">Automated by Axiom</p>
-                          <p className="mt-1 font-display text-2xl">{s.name}</p>
-                          <p className="mt-1 text-sm text-muted">{s.tagline}</p>
-                          <StatusPill tone={toneAt(index)} className="mt-3" />
-                        </div>
-                        <ArrowUpRight className="size-5 shrink-0 text-muted transition-colors duration-200 group-hover:text-fg" />
-                      </div>
-                    </Link>
-                  </HoloCard>
-                </div>
-              ))}
-            </Reveal>
-          </CursorSpotlight>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function LandingStudio() {
-  const [hud, setHud] = useState<StorefrontHud>(DEFAULT_HUD);
-  const [activeLayer, setActiveLayer] = useState<HeroLayerId>("headline");
-  const media = NICHE_MEDIA.forestry;
-  const painted = paintHero(media.heroImageUrl, media.heroVideoUrl || null, hud);
-  return (
-    <section id="studio">
-      <div
-        className="storefront-stage"
-        data-wash={hud.wash}
-        data-rim={hud.rim ? "on" : "off"}
-        data-scan={hud.scan ? "on" : "off"}
-        style={hudVars(hud, "")}
-      >
-        <div className="relative mx-auto min-h-[28rem] max-w-5xl overflow-hidden">
-          <div className="hero-blend absolute inset-0">
-            {painted.imageUrl ? (
-              <>
-                <img src={painted.imageUrl} alt="" className="hero-plate absolute inset-0 h-full w-full" />
-                <img src={painted.imageUrl} alt="" className="hero-frame absolute inset-0 h-full w-full" />
-              </>
-            ) : null}
-            {painted.videoUrl ? (
-              <video className="hero-frame absolute inset-0 h-full w-full object-cover" src={painted.videoUrl} autoPlay loop muted playsInline />
-            ) : null}
-            <div className="hero-scan pointer-events-none absolute inset-0" />
-            <div className="hero-dissolve pointer-events-none absolute inset-0" />
-          </div>
-          <HeroTextCanvas
-            layers={hud.layers}
-            fallbacks={{
-              headline: "Axiom",
-              subheadline: "Feather, glow, and the line.",
-              cta_button: "Book a time",
-            }}
-            editable
-            activeLayer={activeLayer}
-            onActiveLayer={setActiveLayer}
-            onLayerChange={(id, layer) => setHud((current) => setHeroLayer(current, id, layer))}
-          />
-        </div>
-      </div>
-      <PreviewStudio
-        hud={hud}
-        onChange={setHud}
-        heroChoices={[
-          { id: "film", label: "Niche still" },
-          { id: "url", label: "Custom URL" },
-        ]}
-        activeLayer={activeLayer}
-        onActiveLayer={setActiveLayer}
-      />
-    </section>
-  );
-}
-
-function PricingBand() {
-  const [months, setMonths] = useState(3);
-  const [planId, setPlanId] = useState<(typeof TERRITORY_PLANS)[number]["id"]>("growth");
-  const plan = TERRITORY_PLANS.find((item) => item.id === planId) ?? TERRITORY_PLANS[1];
-  const total =
-    plan.cadence === "once" ? plan.amountCents : plan.cadence === "trial" ? 0 : plan.amountCents * months;
-  const note =
-    plan.cadence === "trial"
-      ? "Due today is $0. The published renewal is $497 a month starting day 31."
-      : plan.cadence === "once"
-        ? "One published charge. The month slider does not change it."
-        : `${months} × the published $497 monthly price. This is not a discount.`;
-  return (
-    <section id="pricing" className="px-5 py-16 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <Reveal>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Territory</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">The book, priced.</h2>
-        </Reveal>
-        <div className="hud-card mt-8 grid gap-4 rounded-[28px] p-5 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <p className="text-sm text-muted">Calculator</p>
-            <p className="mt-2 font-display text-4xl">{formatMoney(total)}</p>
-            <p className="mt-2 min-h-12 text-sm text-muted">{note}</p>
-            <label className="mt-4 block text-sm text-muted">
-              Months shown {months}
-              <input
-                type="range"
-                min={1}
-                max={12}
-                step={1}
-                value={months}
-                onChange={(event) => setMonths(Number(event.target.value))}
-                className="mt-2 w-full accent-accent"
-              />
-            </label>
-          </div>
-          <div className="grid gap-2 lg:col-span-7">
-            {TERRITORY_PLANS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={item.id === planId}
-                onClick={() => setPlanId(item.id)}
-                className="hud-card rounded-2xl px-4 py-3 text-left"
-              >
-                <span className="block text-sm font-medium">{item.name}</span>
-                <span className="mt-1 block text-sm text-muted">{item.summary}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <CursorSpotlight className="mt-8">
-          <Reveal stagger className="grid gap-4 md:grid-cols-3">
-            {TERRITORY_PLANS.map((planCard) => (
-              <div key={planCard.id} className="min-w-0">
-                <HoloCard
-                  className={cn(
-                    "hud-card h-full rounded-[28px]",
-                    planCard.id === "growth" && "plan-featured",
-                  )}
-                >
-                  <Link to="/onboard" className="flex h-full flex-col p-5">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-faint">
-                      {planCard.cadence === "once" ? "Once" : planCard.cadence === "trial" ? "Trial" : "Monthly"}
-                    </p>
-                    <p className="mt-3 font-display text-2xl">{planCard.name}</p>
-                    <p className="mt-3 text-sm leading-relaxed text-muted">{planCard.summary}</p>
-                    <span className="mt-6 inline-flex h-12 items-center text-sm text-fg">Create your shop</span>
-                  </Link>
-                </HoloCard>
-              </div>
-            ))}
-          </Reveal>
-        </CursorSpotlight>
-      </div>
-    </section>
-  );
-}
-
-function LandingFooter() {
-  return (
-    <footer id="footer" className="px-5 pb-8 pt-4 sm:px-10">
-      <Reveal>
-        <div className="glass-panel mx-auto flex max-w-6xl flex-col gap-6 rounded-[28px] px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
-          <Wordmark />
-          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-            <a href="#features" className="inline-flex h-11 items-center text-muted transition-colors duration-200 hover:text-fg">
-              Machine
-            </a>
-            <a href="#industries" className="inline-flex h-11 items-center text-muted transition-colors duration-200 hover:text-fg">
-              Industries
-            </a>
-            <a href="#live" className="inline-flex h-11 items-center text-muted transition-colors duration-200 hover:text-fg">
-              Live shops
-            </a>
-            <a href="#pricing" className="inline-flex h-11 items-center text-muted transition-colors duration-200 hover:text-fg">
-              Pricing
-            </a>
-            <Link to="/onboard" className="inline-flex h-11 items-center text-muted transition-colors duration-200 hover:text-fg">
-              Create a shop
-            </Link>
-            <Link to="/login" className="inline-flex h-11 items-center text-muted transition-colors duration-200 hover:text-fg">
-              Sign in
-            </Link>
-          </nav>
-        </div>
-      </Reveal>
-      <PoweredBy />
-    </footer>
-  );
-}
-
