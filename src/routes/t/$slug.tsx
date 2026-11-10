@@ -1,9 +1,11 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import TenantFrame from "@/components/axiom-landing/TenantFrame";
+import { FounderIntroHero, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { getShowcase, showcaseSrc } from "@/lib/axiom-landing/showcase";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
 import {
+  PLUMBER_OUTREACH_GREETING_VIDEO,
   PLUMBER_OUTREACH_HERO_POSTER,
   PLUMBER_OUTREACH_HERO_VIDEO,
   fillTemplate,
@@ -61,6 +63,7 @@ export const Route = createFileRoute("/t/$slug")({
         links: [
           { rel: "preload", as: "image", href: config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER, fetchPriority: "high" },
           { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
+          { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_GREETING_VIDEO },
         ],
       };
     }
@@ -80,13 +83,17 @@ function TenantSite() {
 
   if (loaded.kind === "plumber-outreach") {
     return (
-      <PlumberOutreachLive
-        initial={loaded.page.config}
-        tenant={loaded.page.tenant}
-        studio={search.studio === "1"}
-        greet={Boolean(search.greet)}
-        tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
-      />
+      <>
+        <FounderIntroHero />
+        <PlumberOutreachLive
+          initial={loaded.page.config}
+          tenant={loaded.page.tenant}
+          studio={search.studio === "1"}
+          greet={false}
+          sectionId={PLUMBING_DEMO_ANCHOR}
+          tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
+        />
+      </>
     );
   }
 

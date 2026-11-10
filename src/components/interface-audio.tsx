@@ -15,7 +15,7 @@ function interactiveTarget(event: Event) {
   if (!(node instanceof Element)) return null;
   const el = node.closest("button, a, [role='button'], .lift-card, .glass-btn");
   if (!(el instanceof HTMLElement)) return null;
-  if (el.closest("[data-audio-toggle]")) return null;
+  if (el.closest("[data-audio-toggle], .founder-intro-audio")) return null;
   if (el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") return null;
   return el;
 }

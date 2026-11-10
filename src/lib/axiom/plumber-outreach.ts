@@ -43,7 +43,8 @@ export function plumberCampaignPath(slug: string, opts?: { greet?: boolean; stud
 }
 export const PLUMBER_OUTREACH_HERO_VIDEO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
 export const PLUMBER_OUTREACH_HERO_POSTER = "/media/axio-plumber-hero.jpg";
-export const PLUMBER_OUTREACH_GREETING_VIDEO = "/media/axiom-greeting.mp4";
+export const PLUMBER_OUTREACH_GREETING_VIDEO =
+  "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
 export const PLUMBER_OUTREACH_GREETING_POSTER = "/media/axiom-greeting-poster.jpg";
 export const PLUMBER_OUTREACH_FEATURE_VIDEO = "/media/plumbing-drain-ride.mp4";
 export const PLUMBER_OUTREACH_FEATURE_POSTER = "/media/plumbing-drain-ride-poster.jpg";

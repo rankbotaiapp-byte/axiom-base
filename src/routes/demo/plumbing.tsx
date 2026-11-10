@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { FounderIntroHero, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
 import {
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/demo/plumbing")({
       links: [
         { rel: "preload", as: "image", href: loaderData.config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER },
         { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
+        { rel: "prefetch", as: "video", href: "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4" },
       ],
     };
   },
@@ -53,12 +55,16 @@ function PlumbingDemo() {
   const page = Route.useLoaderData();
   const search = Route.useSearch();
   return (
-    <PlumberOutreachLive
-      initial={page.config}
-      tenant={page.tenant}
-      studio={search.studio === "1"}
-      greet={Boolean(search.greet)}
-      tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
-    />
+    <>
+      <FounderIntroHero />
+      <PlumberOutreachLive
+        initial={page.config}
+        tenant={page.tenant}
+        studio={search.studio === "1"}
+        greet={false}
+        sectionId={PLUMBING_DEMO_ANCHOR}
+        tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
+      />
+    </>
   );
 }

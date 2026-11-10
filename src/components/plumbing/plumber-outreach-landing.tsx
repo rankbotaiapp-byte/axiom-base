@@ -15,7 +15,6 @@ import {
   Siren,
   Waves,
   Wrench,
-  X,
   Zap,
 } from "lucide-react";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
@@ -23,7 +22,6 @@ import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
 import {
   PLUMBER_OUTREACH_DRAFT_CHANNEL,
   PLUMBER_OUTREACH_DRAFT_MESSAGE,
-  PLUMBER_OUTREACH_GREETING_POSTER,
   callTarget,
   fillTemplate,
   outreachVars,
@@ -68,49 +66,6 @@ const HeroLoop = memo(function HeroLoop({ poster }: { poster: string }) {
     </div>
   );
 });
-
-function GreetingPreroll({
-  business,
-  city,
-  phone,
-  onDone,
-}: {
-  business: string;
-  city: string;
-  phone: string;
-  onDone: () => void;
-}) {
-  return (
-    <aside
-      className="po-greet fixed top-6 right-6 z-50 w-72 overflow-hidden rounded-2xl border border-cyan-500/40 bg-black/90 shadow-2xl backdrop-blur-md md:w-80"
-      role="complementary"
-      aria-label={`Intro for ${business}`}
-      data-axiom-pre-roll="avatar-greeting"
-    >
-      <button type="button" className="po-greet-close" onClick={onDone} aria-label="Close greeting">
-        <X size={18} strokeWidth={2.4} aria-hidden />
-      </button>
-      <video
-        className="po-greet-video"
-        src="/media/axiom-greeting.mp4"
-        poster={PLUMBER_OUTREACH_GREETING_POSTER}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-      />
-      <div className="po-greet-copy">
-        <p className="po-greet-kicker">A note from Eric</p>
-        <p className="po-greet-line">
-          {business}
-          {city ? ` · ${city}` : ""}
-        </p>
-        {phone ? <p className="po-greet-phone">{phone}</p> : null}
-      </div>
-    </aside>
-  );
-}
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -381,7 +336,8 @@ export function PlumberOutreachLanding({
   config,
   tenant,
   studio = false,
-  greet = false,
+  greet: _greet = false,
+  sectionId,
   tracking,
 }: {
   config: PlumberOutreachConfig;
@@ -390,14 +346,14 @@ export function PlumberOutreachLanding({
   studio?: boolean;
   /** `?greet=1` plays the founder intro before the hero loop. */
   greet?: boolean;
+  /** Anchor for the founder intro's smooth-scroll CTA. */
+  sectionId?: string;
   tracking?: { utmSource?: string; county?: string; stopToken?: string };
 }) {
   const vars = useMemo(() => outreachVars(tenant), [tenant]);
   const call = callTarget(tenant, config);
   const tel = call ? `tel:${call.dial}` : undefined;
   const root = useReveal(config);
-  const [introOpen, setIntroOpen] = useState(() => greet && !studio);
-
   const [checkout, setCheckout] = useState(false);
   const [resume, setResume] = useState<string | null>(null);
   const openCheckout = useCallback(() => setCheckout(true), []);
@@ -471,11 +427,13 @@ export function PlumberOutreachLanding({
   );
 
   return (
-    <div ref={root} className="po-root" style={{ "--po-scrim": config.hero.scrim / 100 } as CSSProperties}>
+    <div
+      ref={root}
+      id={sectionId}
+      className="po-root"
+      style={{ "--po-scrim": config.hero.scrim / 100 } as CSSProperties}
+    >
       {studio ? <div className="po-studio-flag">Studio preview · unsaved edits show here live</div> : null}
-      {introOpen ? (
-        <GreetingPreroll business={vars.business} city={vars.city} phone={vars.phone} onDone={() => setIntroOpen(false)} />
-      ) : null}
 
       {/* ------------------------------------------------------------ hero */}
       <section id="top" className="po-hero">
@@ -511,29 +469,6 @@ export function PlumberOutreachLanding({
             </p>
           ) : null}
 
-          {config.metric.enabled ? (
-            <div className="po-metric po-glass">
-              {config.metric.stats.length ? (
-                <dl className="po-metric-stats po-metric-stats-first">
-                  {config.metric.stats.map((s) => (
-                    <div key={s.id}>
-                      <dt>{s.label}</dt>
-                      <dd>{s.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : null}
-              <div className="po-metric-main">
-                <CountUp to={config.metric.count} />
-                <p>
-                  {fillTemplate(config.metric.line, { ...vars, count: String(config.metric.count) })}
-                  {config.metric.sampleLabel && !tenant.known ? <span className="po-sample">{config.metric.sampleLabel}</span> : null}
-                  {tenant.known && vars.reviews ? <span className="po-sample">{vars.reviews}</span> : null}
-                </p>
-              </div>
-            </div>
-          ) : null}
-
           <div className="po-cta-row">
             {trialButton}
             {callButton}
@@ -555,6 +490,31 @@ export function PlumberOutreachLanding({
           <ChevronDown size={18} />
         </a>
       </section>
+
+      {config.metric.enabled ? (
+        <section className="po-metric-band" aria-label="Live lead capture">
+          <div className="po-metric">
+            {config.metric.stats.length ? (
+              <dl className="po-metric-stats po-metric-stats-first po-glass">
+                {config.metric.stats.map((s) => (
+                  <div key={s.id}>
+                    <dt>{s.label}</dt>
+                    <dd>{s.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            <div className="po-metric-main po-glass">
+              <CountUp to={config.metric.count} />
+              <p>
+                {fillTemplate(config.metric.line, { ...vars, count: String(config.metric.count) })}
+                {config.metric.sampleLabel && !tenant.known ? <span className="po-sample">{config.metric.sampleLabel}</span> : null}
+                {tenant.known && vars.reviews ? <span className="po-sample">{vars.reviews}</span> : null}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* ------------------------------------------------------------ body */}
       <main className="po-body">
@@ -741,12 +701,14 @@ export function PlumberOutreachLive({
   tenant,
   studio,
   greet,
+  sectionId,
   tracking,
 }: {
   initial: PlumberOutreachConfig;
   tenant: OutreachTenant;
   studio: boolean;
   greet: boolean;
+  sectionId?: string;
   tracking?: { utmSource?: string; county?: string; stopToken?: string };
 }) {
   const [config, setConfig] = useState<PlumberOutreachConfig>(initial);
@@ -778,5 +740,14 @@ export function PlumberOutreachLive({
     };
   }, [studio]);
 
-  return <PlumberOutreachLanding config={config} tenant={tenant} studio={studio} greet={greet} tracking={tracking} />;
+  return (
+    <PlumberOutreachLanding
+      config={config}
+      tenant={tenant}
+      studio={studio}
+      greet={greet}
+      sectionId={sectionId}
+      tracking={tracking}
+    />
+  );
 }

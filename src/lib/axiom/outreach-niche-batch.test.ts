@@ -34,7 +34,7 @@ test("Emergency Plumbing locks to axio-plumber-hero", () => {
   assert.equal(outreachNicheHero("plumbing"), PLUMBING_CAMPAIGN_HERO);
   assert.equal(outreachNicheHero("plumbing"), "/media/axio-plumber-hero.mp4");
   assert.equal(outreachNicheHero("Emergency Plumbing"), "/media/axio-plumber-hero.mp4");
-  assert.equal(PLUMBING_CAMPAIGN_GREETING, "/media/axiom-greeting.mp4");
+  assert.equal(PLUMBING_CAMPAIGN_GREETING, "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4");
   assert.equal(PLUMBING_CAMPAIGN_TEMPLATE, "/t/{slug}?niche=plumbing&greet=1");
   assert.equal(plumbingStorefrontHref("rogue-pipe-co"), "/t/rogue-pipe-co?niche=plumbing&greet=1");
   assert.match(outreachNicheLabel("plumbing"), /Plumbing/);

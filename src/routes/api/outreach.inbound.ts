@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/** Twilio inbound SMS. A reply from a listed lead number stops the drip. */
+/** Twilio inbound SMS. Opt-out stops the drip; other replies go through Grok qualify/book. */
 export const Route = createFileRoute("/api/outreach/inbound")({
   server: {
     handlers: {

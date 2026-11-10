@@ -12,7 +12,8 @@ import type { ShopNiche } from "./types.ts";
 export const OUTREACH_ACTIVE_VERTICAL = "plumbing" as const satisfies ShopNiche;
 export const PLUMBING_LEAD_DATASET_SIZE = 20_330;
 export const PLUMBING_CAMPAIGN_HERO = "/media/axio-plumber-hero.mp4";
-export const PLUMBING_CAMPAIGN_GREETING = "/media/axiom-greeting.mp4";
+export const PLUMBING_CAMPAIGN_GREETING =
+  "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
 export const PLUMBING_CAMPAIGN_TEMPLATE = "/t/{slug}?niche=plumbing&greet=1";
 
 /**

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { FounderIntroHero, FOUNDER_INTRO_VIDEO, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
 import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
@@ -13,9 +14,9 @@ import { getPlumberOutreachPage } from "@/lib/axiom/plumber-outreach.functions";
 import { DEFAULT_TENANT_SLUG } from "@/lib/axiom/tenant-overlay";
 
 /**
- * Corporate root (`/`) is the industrial plumbing outreach storefront —
- * axio-plumber-hero loop + axiom-greeting pre-roll. Personalized `?b=` slugs
- * still inlay that contractor from Supabase.
+ * Corporate root (`/`) opens on Eric's intro film, then the industrial plumbing
+ * outreach storefront (axio-plumber-hero). Personalized `?b=` slugs still inlay
+ * that contractor from Supabase.
  */
 function rootSlug(search: { b?: string; lead_slug?: string }): string {
   const raw = (search.b || search.lead_slug || "").trim().toLowerCase();
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/")({
       links: [
         { rel: "preload", as: "image", href: config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER, fetchPriority: "high" },
         { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
-        { rel: "prefetch", as: "video", href: "/media/axiom-greeting.mp4" },
+        { rel: "prefetch", as: "video", href: FOUNDER_INTRO_VIDEO },
       ],
     };
   },
@@ -79,13 +80,17 @@ function Home() {
   }, [search.b, search.county, search.lead_slug, search.t, search.utm_source]);
 
   return (
-    <PlumberOutreachLive
-      key={slug}
-      initial={page.config}
-      tenant={page.tenant}
-      studio={false}
-      greet={true}
-      tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
-    />
+    <>
+      <FounderIntroHero />
+      <PlumberOutreachLive
+        key={slug}
+        initial={page.config}
+        tenant={page.tenant}
+        studio={false}
+        greet={false}
+        sectionId={PLUMBING_DEMO_ANCHOR}
+        tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
+      />
+    </>
   );
 }

@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_PLUMBER_OUTREACH,
+  PLUMBER_OUTREACH_GREETING_VIDEO,
   PLUMBER_OUTREACH_HERO_VIDEO,
   applyTenantReel,
   inlayIsClean,
@@ -28,6 +29,7 @@ test("junk input falls back to the full default page", () => {
   assert.deepEqual(parsed, DEFAULT_PLUMBER_OUTREACH);
   assert.deepEqual(parsePlumberOutreach("{not json"), parsed);
   assert.equal(parsed.hero.videoUrl, "/media/axio-plumber-hero.mp4");
+  assert.equal(PLUMBER_OUTREACH_GREETING_VIDEO, "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4");
   assert.equal(parsed.hero.mobileVideoUrl, "");
   assert.equal(parsed.hero.headline, "Never miss another emergency call in {city}.");
   assert.equal(parsed.ctas.trialLabel, "Go live for $1");
@@ -197,12 +199,51 @@ test("root route and leftover Next page both render industrial plumbing outreach
   const index = readFileSync(join(root, "routes/index.tsx"), "utf8");
   const nextPage = readFileSync(join(root, "app/page.tsx"), "utf8");
   const admin = readFileSync(join(root, "routes/axiom-auto/admin.tsx"), "utf8");
+  const demo = readFileSync(join(root, "routes/demo/plumbing.tsx"), "utf8");
+  const campaign = readFileSync(join(root, "routes/t/$slug.tsx"), "utf8");
+  assert.match(index, /FounderIntroHero/);
+  assert.match(index, /FOUNDER_INTRO_VIDEO/);
+  assert.match(demo, /FounderIntroHero/);
+  assert.match(campaign, /FounderIntroHero/);
+  assert.match(campaign, /PLUMBER_OUTREACH_GREETING_VIDEO/);
+  assert.match(demo, /Axiom_24_7 Booking for Contractors_720p_caption\.mp4/);
   assert.match(index, /PlumberOutreachLive/);
-  assert.match(index, /greet=\{true\}/);
+  assert.match(index, /sectionId=\{PLUMBING_DEMO_ANCHOR\}/);
   assert.doesNotMatch(index, /AxiomMasterLanding/);
+  assert.match(nextPage, /FounderIntroHero/);
   assert.match(nextPage, /PlumberOutreachLive/);
   assert.doesNotMatch(nextPage, /AxiomMasterLanding/);
   assert.match(admin, /PlumberOutreachStudio/);
+  const intro = readFileSync(join(root, "components/plumbing/founder-intro-hero.tsx"), "utf8");
+  assert.match(intro, /src="\/media\/Axiom_24_7 Booking for Contractors_720p_caption\.mp4"/);
+  assert.match(intro, /FOUNDER_INTRO_VIDEO = "\/media\/Axiom_24_7 Booking for Contractors_720p_caption\.mp4"/);
+  assert.doesNotMatch(intro, /axiom-greeting/);
+  assert.doesNotMatch(intro, /welcome-to-axiom\.mp4/);
+  assert.doesNotMatch(intro, /<video[\s\S]*<video/);
+  assert.match(intro, /founder-intro-audio/);
+  assert.match(intro, /scrollIntoView\(\{ behavior: "smooth"/);
+  assert.match(intro, /\/demo\/plumbing/);
+});
+
+test("intro captions step through Eric's muted pitch on the welcome film clock", async () => {
+  const { captionAtTime, INTRO_CAPTION_CUES } = await import("./intro-captions.ts");
+  assert.equal(captionAtTime(0), INTRO_CAPTION_CUES[0]?.text);
+  assert.match(captionAtTime(6), /never loses another after-hours call/);
+  assert.match(captionAtTime(20), /Watch the Medford demo below/);
+  assert.match(captionAtTime(34), /Go live for \$1 below/);
+  const hero = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../components/plumbing/founder-intro-hero.tsx"), "utf8");
+  const vtt = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../public/media/welcome-to-axiom.vtt"), "utf8");
+  assert.match(hero, /src="\/media\/Axiom_24_7 Booking for Contractors_720p_caption\.mp4"/);
+  assert.match(hero, /autoPlay/);
+  assert.match(hero, /muted=\{muted\}/);
+  assert.match(hero, /loop/);
+  assert.match(hero, /playsInline/);
+  assert.match(hero, /videoRef\.current\.muted = false/);
+  assert.doesNotMatch(hero, /axiom-greeting/);
+  assert.doesNotMatch(hero, /<audio[\s>/]/);
+  assert.doesNotMatch(hero, /new Audio\(/);
+  assert.match(vtt, /never loses another after-hours call/);
+  assert.match(vtt, /Go live for \$1 below/);
 });
 
 test("test dispatch is throttled per number", () => {
