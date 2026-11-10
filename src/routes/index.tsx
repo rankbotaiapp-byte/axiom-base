@@ -11,6 +11,7 @@ import type { Shop } from "@/lib/axiom/types";
 import { OutreachStorefront } from "@/components/outreach-storefront";
 import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
 import { LeadTerritory } from "@/components/territory-offer";
+import { getReadyShowcaseIds } from "@/lib/axiom-landing/ready.functions";
 
 /**
  * Corporate root landing (`/`).
@@ -26,9 +27,8 @@ const LANDING_SEO = buildAutonomousContentPlan({
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => parseFunnelSearch(search),
   loader: async () => {
-    const { readyShowcaseIds } = await import("@/lib/axiom-landing/ready.server");
     return {
-      readyIds: readyShowcaseIds(),
+      readyIds: await getReadyShowcaseIds(),
       showPending: import.meta.env.DEV,
     };
   },
