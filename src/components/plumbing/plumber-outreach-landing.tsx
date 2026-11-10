@@ -15,6 +15,7 @@ import {
   Siren,
   Waves,
   Wrench,
+  X,
   Zap,
 } from "lucide-react";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
@@ -80,29 +81,34 @@ function GreetingPreroll({
   onDone: () => void;
 }) {
   return (
-    <div className="po-greet" role="dialog" aria-modal="true" aria-label={`Intro for ${business}`} data-axiom-pre-roll="avatar-greeting">
+    <aside
+      className="po-greet fixed top-6 right-6 z-50 w-72 overflow-hidden rounded-2xl border border-cyan-500/40 bg-black/90 shadow-2xl backdrop-blur-md md:w-80"
+      role="complementary"
+      aria-label={`Intro for ${business}`}
+      data-axiom-pre-roll="avatar-greeting"
+    >
+      <button type="button" className="po-greet-close" onClick={onDone} aria-label="Close greeting">
+        <X size={18} strokeWidth={2.4} aria-hidden />
+      </button>
       <video
         className="po-greet-video"
         src="/media/axiom-greeting.mp4"
         poster={PLUMBER_OUTREACH_GREETING_POSTER}
         autoPlay
         muted
+        loop
         playsInline
         preload="auto"
-        onEnded={onDone}
       />
       <div className="po-greet-copy">
         <p className="po-greet-kicker">A note from Eric</p>
         <p className="po-greet-line">
           {business}
-          {city ? ` · ${city}` : ""} — missed calls already route to your desk.
+          {city ? ` · ${city}` : ""}
         </p>
         {phone ? <p className="po-greet-phone">{phone}</p> : null}
-        <button type="button" className="po-greet-skip" onClick={onDone}>
-          Skip intro
-        </button>
       </div>
-    </div>
+    </aside>
   );
 }
 

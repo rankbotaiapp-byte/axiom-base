@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_PLUMBER_OUTREACH,
   PLUMBER_OUTREACH_HERO_VIDEO,
@@ -187,6 +190,19 @@ test("industrial plumbing campaign urls never route through otter demos", () => 
   assert.equal(isPlumbingCampaign("Emergency Plumbing"), true);
   assert.equal(isPlumbingCampaign("otter"), false);
   assert.equal(plumberCampaignPath("accurate-plumbing"), "/t/accurate-plumbing?niche=plumbing&greet=1");
+});
+
+test("root route and leftover Next page both render industrial plumbing outreach", () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+  const index = readFileSync(join(root, "routes/index.tsx"), "utf8");
+  const nextPage = readFileSync(join(root, "app/page.tsx"), "utf8");
+  const admin = readFileSync(join(root, "routes/axiom-auto/admin.tsx"), "utf8");
+  assert.match(index, /PlumberOutreachLive/);
+  assert.match(index, /greet=\{true\}/);
+  assert.doesNotMatch(index, /AxiomMasterLanding/);
+  assert.match(nextPage, /PlumberOutreachLive/);
+  assert.doesNotMatch(nextPage, /AxiomMasterLanding/);
+  assert.match(admin, /PlumberOutreachStudio/);
 });
 
 test("test dispatch is throttled per number", () => {

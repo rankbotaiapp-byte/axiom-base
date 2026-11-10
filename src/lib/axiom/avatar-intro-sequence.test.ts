@@ -24,6 +24,9 @@ describe("avatar intro sequence", () => {
     const landing = readFileSync(join(root, "src/components/plumbing/plumber-outreach-landing.tsx"), "utf8");
     assert.match(landing, /src="\/media\/axiom-greeting\.mp4"/);
     assert.match(landing, /src="\/media\/axio-plumber-hero\.mp4"|HERO_FILM = "\/media\/axio-plumber-hero\.mp4"/);
+    assert.match(landing, /fixed top-6 right-6/);
+    assert.match(landing, /\bloop\b/);
+    assert.match(landing, /po-greet-close/);
   });
 
   it("keeps avatar greeting above the emergency plumbing storefront", () => {

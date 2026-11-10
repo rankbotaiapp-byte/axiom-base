@@ -1,174 +1,91 @@
-import { useEffect, useState } from "react";
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { AxiomMasterLanding } from "@/components/axiom-landing/AxiomMasterLanding";
-import { buildAutonomousContentPlan, cinematicLandingMeta } from "@/lib/axiom/cinematic-content-seo";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { useEffect } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
-import { ensureFunnelSession, masterGate, recordFunnelHit } from "@/lib/axiom/master";
-import { listMyShops } from "@/lib/axiom/server";
-import type { Shop } from "@/lib/axiom/types";
-import { OutreachStorefront } from "@/components/outreach-storefront";
-import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
-import { isPlumbingCampaign } from "@/lib/axiom/plumber-outreach";
-import { LeadTerritory } from "@/components/territory-offer";
-import { getReadyShowcaseIds } from "@/lib/axiom-landing/ready.functions";
+import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
+import {
+  PLUMBER_OUTREACH_HERO_POSTER,
+  PLUMBER_OUTREACH_HERO_VIDEO,
+  fillTemplate,
+  outreachVars,
+} from "@/lib/axiom/plumber-outreach";
+import { getPlumberOutreachPage } from "@/lib/axiom/plumber-outreach.functions";
+import { DEFAULT_TENANT_SLUG } from "@/lib/axiom/tenant-overlay";
 
 /**
- * Corporate root landing (`/`).
- * Outbound personalized funnels stay on `/$shopSlug` and outreach query visits.
- * This file route always wins over `/$shopSlug` — never treats the root as a tenant named "index".
+ * Corporate root (`/`) is the industrial plumbing outreach storefront —
+ * axio-plumber-hero loop + axiom-greeting pre-roll. Personalized `?b=` slugs
+ * still inlay that contractor from Supabase.
  */
-const LANDING_SEO = buildAutonomousContentPlan({
-  niche: "contractor",
-  city: "Southern Oregon",
-  businessName: "Axiom",
-});
+function rootSlug(search: { b?: string; lead_slug?: string }): string {
+  const raw = (search.b || search.lead_slug || "").trim().toLowerCase();
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(raw) ? raw : DEFAULT_TENANT_SLUG;
+}
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => parseFunnelSearch(search),
-  loader: async () => {
+  loaderDeps: ({ search }) => ({ slug: rootSlug(search) }),
+  loader: async ({ deps }) => {
+    const page = await getPlumberOutreachPage({ data: deps.slug });
+    return { page };
+  },
+  head: ({ loaderData }) => {
+    if (!loaderData) {
+      return { meta: [{ title: "Emergency Plumbing · Axiom" }] };
+    }
+    const { config, tenant } = loaderData.page;
+    const vars = outreachVars(tenant);
+    const title = `${vars.business} · ${fillTemplate(config.hero.headline, vars)}`;
+    const description = fillTemplate(config.hero.subhead, vars) || "24/7 emergency lead capture for local plumbers.";
     return {
-      readyIds: await getReadyShowcaseIds(),
-      showPending: import.meta.env.DEV,
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { name: "theme-color", content: "#07080C" },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:image", content: config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER },
+      ],
+      links: [
+        { rel: "preload", as: "image", href: config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER, fetchPriority: "high" },
+        { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
+        { rel: "prefetch", as: "video", href: "/media/axiom-greeting.mp4" },
+      ],
     };
   },
-  head: () => ({
-    meta: [
-      ...cinematicLandingMeta(LANDING_SEO),
-      { title: "Axiom — The Fully Automated Back Office for Contractors" },
-      {
-        name: "description",
-        content:
-          "Booking, routing & dispatch on autopilot. Pick your trade's template, edit it in minutes, and pay once — own it forever.",
-      },
-    ],
-    links: [{ rel: "preload", as: "image", href: "/media/axioms-heart-poster.jpg" }],
-  }),
   component: Home,
 });
 
 function Home() {
   const search = Route.useSearch();
-  const { readyIds, showPending } = Route.useLoaderData();
-  const { user, isPending } = useCurrentUserState();
-  const [mine, setMine] = useState<Shop[] | null>(null);
-  const [masterOpen, setMasterOpen] = useState(false);
-  const [, setLeadName] = useState("");
+  const { page } = Route.useLoaderData();
+  const slug = rootSlug(search);
 
   useEffect(() => {
     const leadSlug = search.b || search.lead_slug || "";
     const utmSource = search.utm_source || "";
     const county = search.county || "";
     const stopToken = search.t || "";
-    if (search.pitch) return;
     if (!leadSlug && !utmSource && !county) return;
     const seen = `axiom.hit:${leadSlug}|${utmSource}|${county}|${stopToken}`;
     if (sessionStorage.getItem(seen) === "1") return;
     sessionStorage.setItem(seen, "1");
     if (leadSlug) {
-      sessionStorage.setItem(
-        LEAD_STORAGE_KEY,
-        JSON.stringify({ leadSlug, utmSource, county }),
-      );
+      sessionStorage.setItem(LEAD_STORAGE_KEY, JSON.stringify({ leadSlug, utmSource, county, tradeType: "plumbing" }));
     }
     void ensureFunnelSession()
       .then(() => recordFunnelHit({ data: { leadSlug, utmSource, county, stopToken } }))
-      .then((hit) => {
-        if (!hit.businessName) return;
-        setLeadName(hit.businessName);
-        sessionStorage.setItem(
-          LEAD_STORAGE_KEY,
-          JSON.stringify({
-            leadSlug: leadSlug || undefined,
-            tradeType: hit.tradeType,
-            county: hit.county,
-            utmSource,
-          }),
-        );
-      })
       .catch(() => undefined);
-  }, [search.b, search.county, search.lead_slug, search.pitch, search.t, search.utm_source]);
+  }, [search.b, search.county, search.lead_slug, search.t, search.utm_source]);
 
-  useEffect(() => {
-    if (!user) {
-      setMine(null);
-      setMasterOpen(false);
-      return;
-    }
-    void listMyShops()
-      .then(setMine)
-      .catch(() => setMine([]));
-    void masterGate()
-      .then((gate) => setMasterOpen(gate.open))
-      .catch(() => setMasterOpen(false));
-  }, [user]);
-
-  const owned = mine?.filter((s) => s.ownerUserId === user?.id) ?? [];
-  const leadSlug = search.b || search.lead_slug || "";
-
-  if (isOutreachVisit(search) && !search.pitch) {
-    const slug = search.b || search.lead_slug || "";
-    if (slug && isPlumbingCampaign(search.trade || search.hero || "")) {
-      return (
-        <Navigate
-          to="/t/$slug"
-          params={{ slug }}
-          search={{ niche: "plumbing", greet: true, utm_source: search.utm_source, county: search.county }}
-          replace
-        />
-      );
-    }
-    return <OutreachStorefront search={search} />;
-  }
-
-  if (search.pitch && leadSlug) {
-    return (
-      <LeadTerritory
-        leadSlug={leadSlug}
-        layout="pitch"
-        sessionId={search.session_id}
-        greet={search.greet}
-        businessName={search.biz}
-        trade={search.trade}
-        city={search.city}
-        simulate={search.utm_source === "desk"}
-        logoUrl={search.logo}
-        accent={search.accent}
-        phone={search.phone}
-        email={search.email}
-      />
-    );
-  }
-
-  const authHeader = isPending ? (
-    <div className="size-8 animate-pulse rounded-full bg-fg/10" />
-  ) : (
-    <>
-      <SignedOut>
-        <Link to="/login" className="font-mono text-sm text-muted hover:text-fg">
-          Login
-        </Link>
-      </SignedOut>
-      <SignedIn>
-        {masterOpen ? (
-          <Link to="/master-admin" className="text-sm text-muted hover:text-fg">
-            Master
-          </Link>
-        ) : null}
-        {owned[0] ? (
-          <Link
-            to="/$shopSlug/admin"
-            params={{ shopSlug: owned[0].slug }}
-            className="text-sm text-muted hover:text-fg"
-          >
-            Desk
-          </Link>
-        ) : null}
-        <UserButton />
-      </SignedIn>
-    </>
+  return (
+    <PlumberOutreachLive
+      key={slug}
+      initial={page.config}
+      tenant={page.tenant}
+      studio={false}
+      greet={true}
+      tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
+    />
   );
-
-  return <AxiomMasterLanding readyIds={readyIds} showPending={showPending} headerSlot={authHeader} />;
 }

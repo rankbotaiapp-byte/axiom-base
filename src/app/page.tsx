@@ -1,13 +1,20 @@
 "use client";
 
-import { AxiomMasterLanding } from "@/components/axiom-landing/AxiomMasterLanding";
-import { SHOWCASE } from "@/lib/axiom-landing/showcase";
+import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
+import { DEFAULT_PLUMBER_OUTREACH, emptyOutreachTenant } from "@/lib/axiom/plumber-outreach";
+import { DEFAULT_TENANT_SLUG } from "@/lib/axiom/tenant-overlay";
 
 /**
  * Next.js leftover public landing. Live `/` is `src/routes/index.tsx`.
- * Both render the same master Axiom landing so this file cannot drift.
+ * Both render the industrial plumbing outreach storefront so this file cannot drift.
  */
 export default function Page() {
-  const readyIds = SHOWCASE.map((b) => b.id);
-  return <AxiomMasterLanding readyIds={readyIds} showPending />;
+  return (
+    <PlumberOutreachLive
+      initial={DEFAULT_PLUMBER_OUTREACH}
+      tenant={emptyOutreachTenant(DEFAULT_TENANT_SLUG)}
+      studio={false}
+      greet
+    />
+  );
 }
