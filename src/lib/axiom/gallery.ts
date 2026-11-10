@@ -1,3 +1,11 @@
+import {
+  DEFAULT_PROOF_SVG,
+  nicheProofPlates,
+  proofSrcCandidates,
+  resolveProofSrc,
+  type NicheProofPlate,
+} from "../../config/nicheDefaults.ts";
+import { isCatalogNiche } from "../../config/catalog.ts";
 import type { ShopNiche } from "./types.ts";
 
 /** A frame in the proof-of-work album. Custom uploads are always stills. */
@@ -6,6 +14,8 @@ export type ProofFrame = {
   caption: string;
   kind: "image" | "video";
   placeholder?: boolean;
+  /** Runtime cascade if `src` 404s (missing /media/defaults JPG, etc.). */
+  fallbacks?: readonly string[];
 };
 
 export const GALLERY_LIMIT = 12;
@@ -32,18 +42,30 @@ export function isCustomProof(imageUrl: string): boolean {
   return isCustomStorefrontAsset(imageUrl);
 }
 
-export function defaultProof(_niche?: ShopNiche): ProofFrame[] {
-  return Array.from({ length: DEFAULT_PROOF_SLOTS }, (_, index) => ({
-    src: "",
-    caption: `Job ${index + 1}`,
-    kind: "image" as const,
+function frameFromPlate(plate: NicheProofPlate): ProofFrame {
+  const candidates = proofSrcCandidates(plate);
+  const src = resolveProofSrc(plate) || candidates[0] || DEFAULT_PROOF_SVG;
+  return {
+    src,
+    caption: plate.caption,
+    kind: "image",
     placeholder: true,
-  }));
+    fallbacks: candidates.filter((url) => url !== src),
+  };
 }
 
-export function padProofFrames(custom: ProofFrame[]): ProofFrame[] {
+/**
+ * Niche sample album. Always returns displayable srcs (SVG / catalog still / stock),
+ * never empty strings that render broken `<img>` tags.
+ */
+export function defaultProof(niche?: ShopNiche): ProofFrame[] {
+  const key = niche && isCatalogNiche(niche) ? niche : "contractor";
+  return nicheProofPlates(key).map(frameFromPlate);
+}
+
+export function padProofFrames(custom: ProofFrame[], niche?: ShopNiche): ProofFrame[] {
   if (custom.length >= DEFAULT_PROOF_SLOTS) return custom.slice(0, GALLERY_LIMIT);
-  return [...custom, ...defaultProof().slice(custom.length)];
+  return [...custom, ...defaultProof(niche).slice(custom.length)];
 }
 
 export function parseServiceThumbs(value: unknown): string[] {
@@ -64,4 +86,13 @@ export function countDefaultPlaceholders(input: {
   const padded = parseServiceThumbs(services);
   const service = padded.filter((url) => isDefaultStorefrontAsset(url)).length;
   return { proof, service, total: proof + service };
+}
+
+/** Advance to the next fallback when an `<img>` fails to load. */
+export function nextProofFallback(current: string, fallbacks: readonly string[] | undefined): string | null {
+  if (!fallbacks?.length) return DEFAULT_PROOF_SVG;
+  const index = fallbacks.indexOf(current);
+  if (index >= 0 && index < fallbacks.length - 1) return fallbacks[index + 1] ?? null;
+  const unused = fallbacks.find((url) => url !== current);
+  return unused ?? DEFAULT_PROOF_SVG;
 }

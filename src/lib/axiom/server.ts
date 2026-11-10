@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { assertCatalogNiche, catalogFilmUrl } from "../../config/catalog.ts";
+import { assertCatalogNiche, tradeLoopUrl } from "../../config/catalog.ts";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { isCatalogHeroUrl } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
@@ -44,7 +44,7 @@ type ShopRow = {
   created_at: string;
 };
 export const getPublicShop = createServerFn({
-  method: "GET"
+  method: "POST"
 }).validator((slug: string) => slug).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.getPublicShopHandler(ctx);
@@ -133,7 +133,7 @@ export const createShopFromNiche = createServerFn({
   const heroFilm =
     typeof d.heroFilm === "string" && isCatalogHeroUrl(d.heroFilm.trim())
       ? d.heroFilm.trim().split("?")[0]
-      : catalogFilmUrl(niche);
+      : tradeLoopUrl(niche);
   return {
     ...d,
     niche,
@@ -168,6 +168,8 @@ export const updateShopBrand = createServerFn({
   layout?: LayoutBlock[];
   catalogFilm?: string;
   heroFilm?: string;
+  overrideHeroVideoUrl?: string;
+  selectedAutopilotLoops?: string[];
   clearHeroVideo?: boolean;
   heroLook?: { brackets: boolean; glow: boolean; overlay: boolean };
   heroHud?: {
@@ -194,6 +196,19 @@ export const setAutopilotActive = createServerFn({
 }).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.setAutopilotActiveHandler(ctx);
+});
+
+export const runShopAutopilotTick = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+}) => {
+  const slug = String(d.slug ?? "").trim().toLowerCase();
+  if (!slug || slug.length > 120 || slug.includes("/") || slug.includes("..")) throw new Error("Shop not found");
+  return { slug };
+}).handler(async (ctx: any) => {
+  const loaded = await import("./shop-autopilot.server");
+  return loaded.runOwnedAutopilotTickHandler(ctx);
 });
 
 export const revalidateStorefront = createServerFn({
@@ -399,15 +414,47 @@ export const addPortfolioItem = createServerFn({
   slug: string;
   imageUrl: string;
   caption: string;
+  tags?: string;
+  employeeId?: string;
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.addPortfolioItemHandler(ctx);
 });
 export const listShopPortfolio = createServerFn({
-  method: "GET"
+  method: "POST"
 }).validator((slug: string) => slug).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.listShopPortfolioHandler(ctx);
+});
+export const listStaffPortfolio = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: { slug: string }) => d).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.listStaffPortfolioHandler(ctx);
+});
+export const moderatePortfolioItem = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+  id: string;
+  status?: "pending" | "approved" | "rejected";
+  featured?: boolean;
+  sortOrder?: number;
+  tags?: string;
+  remove?: boolean;
+}) => d).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.moderatePortfolioItemHandler(ctx);
+});
+export const updateStaffAvatar = createServerFn({
+  method: "POST"
+}).middleware([authMiddleware]).validator((d: {
+  slug: string;
+  imageUrl: string;
+  employeeId?: string;
+}) => d).handler(async (ctx: any) => {
+  const loaded = await import("./shop-server.server");
+  return loaded.updateStaffAvatarHandler(ctx);
 });
 export const removePortfolioItem = createServerFn({
   method: "POST"
@@ -644,4 +691,70 @@ export const startAiCreditPack = createServerFn({
   .handler(async (ctx: any) => {
     const loaded = await import("./hero-motion-studio.server");
     return loaded.startAiCreditPackHandler(ctx);
+  });
+
+export const listAppointmentRequests = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./shop-server.server");
+    return loaded.listAppointmentRequestsHandler(ctx);
+  });
+
+export const reviewAppointmentRequest = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: {
+    slug: string;
+    id: string;
+    status: "reviewed" | "booked" | "closed";
+    employeeId?: string;
+    serviceId?: string;
+    startsAt?: string;
+  }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./shop-server.server");
+    return loaded.reviewAppointmentRequestHandler(ctx);
+  });
+
+export const lockTenantBrand = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: {
+    slug: string;
+    shopId: string;
+    name?: string;
+    logoDataUrl?: string;
+    logoUrl?: string;
+    primary: string;
+    font: string;
+    tagline?: string;
+  }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./zero-ui-orchestrator.server");
+    return loaded.lockTenantBrandHandler(ctx);
+  });
+
+export const generateBrandedAsset = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; prompt: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./zero-ui-orchestrator.server");
+    return loaded.generateBrandedAssetHandler(ctx);
+  });
+
+export const orchestrateFinalWebBuild = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; brandedAssetUrl: string; animate: boolean }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./zero-ui-orchestrator.server");
+    return loaded.orchestrateFinalWebBuildHandler(ctx);
   });

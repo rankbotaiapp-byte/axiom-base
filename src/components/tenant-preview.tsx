@@ -22,10 +22,13 @@ export type TenantPreviewSearch = {
   business?: string;
   biz?: string;
   city?: string;
+  county?: string;
   logo?: string;
   accent?: string;
   phone?: string;
   email?: string;
+  trade?: string;
+  greet?: string | boolean;
 };
 
 export function TenantPreview({

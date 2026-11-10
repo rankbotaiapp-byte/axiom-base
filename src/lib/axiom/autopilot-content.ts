@@ -5,6 +5,7 @@
  */
 
 import { CATALOG_BY_ID, resolveCatalogNiche, type CatalogNiche } from "../../config/catalog.ts";
+import { pickMediaForNiche } from "../../config/mediaLibrary.ts";
 import {
   bookingCta,
   composeAutopilotClip,
@@ -142,6 +143,8 @@ export function curatedStockImage(niche: string | null | undefined, slot = 0): S
 /** Owned master cinematic loop when no free stock video API key is configured. */
 export function curatedStockVideo(niche: string | null | undefined): StockMediaAsset {
   const id = resolveCatalogNiche(niche);
+  const local = libraryStockAsset(id, "video", 0);
+  if (local) return local;
   const src = masterLoopForNiche(id);
   return {
     id: `curated-vid-${id}`,
@@ -153,6 +156,29 @@ export function curatedStockVideo(niche: string | null | undefined): StockMediaA
       license: "platform",
       attribution: "Axiom master cinematic loop (platform-owned)",
       pageUrl: src,
+    },
+  };
+}
+
+/** Platform-owned loop or still from the indexed public/media library. */
+export function libraryStockAsset(
+  niche: string | null | undefined,
+  kind: StockMediaKind,
+  seed = 0,
+): StockMediaAsset | null {
+  const asset = pickMediaForNiche(niche, kind === "video" ? "loop" : "still", seed);
+  if (!asset) return null;
+  return {
+    id: `library-${asset.id}`,
+    kind,
+    src: asset.url,
+    previewSrc: asset.thumbnail,
+    query: `axiom-library:${asset.theme}`,
+    license: {
+      provider: "curated",
+      license: "platform",
+      attribution: `Axiom media library · ${asset.label}`,
+      pageUrl: asset.url,
     },
   };
 }

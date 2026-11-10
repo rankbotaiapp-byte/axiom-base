@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  CINEMATIC_HERO_FALLBACKS,
   CINEMATIC_HERO_VIDEO,
   buildAutonomousContentPlan,
   cinematicLandingMeta,
 } from "./cinematic-content-seo.ts";
 
 describe("cinematic content + SEO architecture", () => {
-  it("pins the underwater leopard asset path", () => {
-    assert.match(CINEMATIC_HERO_VIDEO, /underwater-leapord-hero-animation\.mp4$/);
+  it("pins the generated Axiom landing loop", () => {
+    assert.match(CINEMATIC_HERO_VIDEO, /\/media\/heroes\/axiom-landing\.mp4$/);
+  });
+
+  it("lists generated landing fallbacks before kit placeholders", () => {
+    assert.equal(CINEMATIC_HERO_FALLBACKS[0], CINEMATIC_HERO_VIDEO);
+    assert.ok(CINEMATIC_HERO_FALLBACKS.includes("/media/heroes/axiom-burnout.mp4"));
   });
 
   it("builds an autonomous multi-channel plan with local SEO schema", () => {

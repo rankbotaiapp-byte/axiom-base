@@ -15,7 +15,7 @@ export default async function OnboardPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = flatSearch(await searchParams);
-  const niche = resolveDemoNiche(first(raw.niche)) ?? "field";
+  const niche = resolveDemoNiche(first(raw.niche)) ?? "auto";
   const label = NICHES[niche].label;
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-6 text-center text-fg">

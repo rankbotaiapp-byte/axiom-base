@@ -1,3 +1,4 @@
+.data/
 node_modules/
 .next/
 build/
@@ -14,3 +15,4 @@ debug.log
 .env.*
 .vercel
 .env*
+logs/

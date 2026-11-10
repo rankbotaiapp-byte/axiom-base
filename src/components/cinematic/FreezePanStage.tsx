@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, Clapperboard, Sparkles } from "lucide-react";
+import { Clapperboard, Gem, Sparkles } from "lucide-react";
 import { FxButton } from "@/components/plumbing/fx-button";
 import {
+  CINEMATIC_HERO_FALLBACKS,
+  CINEMATIC_HERO_POSTER,
   CINEMATIC_HERO_VIDEO,
   buildAutonomousContentPlan,
 } from "@/lib/axiom/cinematic-content-seo";
 import { createFreezePanScene, type FreezePanHandle } from "@/lib/axiom/freeze-pan-scene";
+import { HoloGlassLayer } from "./HoloGlassLayer";
 import { cn } from "@/lib/utils";
 
 const FREEZE_EVERY_SEC = 9.5;
@@ -13,6 +16,7 @@ const FREEZE_AT_SEC = 3.6;
 
 type FreezePanStageProps = {
   onEnter?: () => void | Promise<void>;
+  onLifetime?: () => void | Promise<void>;
   onboardHref?: string;
   className?: string;
   headerSlot?: ReactNode;
@@ -22,11 +26,12 @@ type FreezePanStageProps = {
 };
 
 /**
- * Half-viewport cinematic stage: underwater leopard loop + WebGL freeze-pan
- * ice orbit, tactile CTAs into the Axiom funnel, and autonomous content SEO strip.
+ * Cinematic stage: generated Axiom landing loop fills the freeze-pan viewport
+ * under a holographic glass lens, with WebGL freeze-pan orbit and funnel CTAs.
  */
 export function FreezePanStage({
   onEnter,
+  onLifetime,
   onboardHref = "/onboard",
   className,
   headerSlot,
@@ -36,11 +41,14 @@ export function FreezePanStage({
 }: FreezePanStageProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<FreezePanHandle | null>(null);
   const [busy, setBusy] = useState(false);
   const [glReady, setGlReady] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [phase, setPhase] = useState<"loop" | "freeze">("loop");
+  const [filmIndex, setFilmIndex] = useState(0);
+  const filmSrc = CINEMATIC_HERO_FALLBACKS[filmIndex] ?? CINEMATIC_HERO_VIDEO;
   const plan = buildAutonomousContentPlan({ niche, city, businessName: "Axiom" });
 
   useEffect(() => {
@@ -105,7 +113,23 @@ export function FreezePanStage({
       sceneRef.current = null;
       setGlReady(false);
     };
-  }, [leaving, reduceMotion]);
+  }, [leaving, reduceMotion, filmSrc]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || leaving) return;
+    const kick = () => {
+      video.muted = true;
+      void video.play().catch(() => undefined);
+    };
+    kick();
+    video.addEventListener("canplay", kick);
+    video.addEventListener("loadeddata", kick);
+    return () => {
+      video.removeEventListener("canplay", kick);
+      video.removeEventListener("loadeddata", kick);
+    };
+  }, [filmSrc, leaving]);
 
   useEffect(() => {
     if (!leaving) return;
@@ -118,12 +142,13 @@ export function FreezePanStage({
     }
   }, [leaving]);
 
-  async function handleEnter() {
+  async function handleEnter(kind: "trial" | "lifetime") {
     if (busy || leaving) return;
     setBusy(true);
     sceneRef.current?.stop();
     try {
-      await onEnter?.();
+      if (kind === "lifetime") await onLifetime?.();
+      else await onEnter?.();
     } finally {
       setBusy(false);
     }
@@ -153,17 +178,21 @@ export function FreezePanStage({
       </div>
 
       <div className="freeze-pan-layout">
-        <div className="freeze-pan-media" data-phase={phase}>
+        <div ref={mediaRef} className="freeze-pan-media" data-phase={phase}>
           <video
             ref={videoRef}
             className="freeze-pan-video"
-            src={CINEMATIC_HERO_VIDEO}
+            src={filmSrc}
+            poster={CINEMATIC_HERO_POSTER}
             autoPlay
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="auto"
             aria-hidden
+            onError={() => {
+              setFilmIndex((i) => (i + 1 < CINEMATIC_HERO_FALLBACKS.length ? i + 1 : i));
+            }}
           />
           <canvas
             ref={canvasRef}
@@ -172,6 +201,7 @@ export function FreezePanStage({
             data-ready={glReady || undefined}
             data-active={phase === "freeze" || undefined}
           />
+          <HoloGlassLayer video={videoRef} host={mediaRef} dimmed={phase === "freeze"} disabled={leaving} />
           <button
             type="button"
             className="freeze-pan-hit"
@@ -204,18 +234,21 @@ export function FreezePanStage({
               glow
               icon={<Sparkles size={16} />}
               successLabel="Opening your build"
-              onPress={() => void handleEnter()}
+              onPress={() => void handleEnter("trial")}
               className="freeze-pan-cta"
             >
-              {busy ? "Launching…" : "$1 Choose Your Price Trial"}
+              {busy ? "Launching…" : "Start for $1"}
             </FxButton>
             <FxButton
               variant="ghost"
-              href={onboardHref}
-              icon={<ArrowRight size={16} />}
+              glow
+              icon={<Gem size={16} />}
+              successLabel="Opening lifetime access"
+              onPress={() => void handleEnter("lifetime")}
+              href={onLifetime ? undefined : onboardHref}
               className="freeze-pan-cta"
             >
-              Spin up my storefront
+              Get Founder's Lifetime — $1000
             </FxButton>
           </div>
 

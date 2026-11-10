@@ -44,14 +44,16 @@ function useLiveShop(initial: ShopPublic) {
   useEffect(() => {
     if (isProspectShopId(initial.shop.id)) return;
     let stop = false;
-    const id = window.setInterval(() => {
+    const pull = () => {
       void getPublicShop({ data: slug })
         .then((next) => {
           if (!next || stop) return;
           setData((prev) => (shopSnapshot(prev) === shopSnapshot(next) ? prev : next));
         })
         .catch(() => undefined);
-    }, 8000);
+    };
+    pull();
+    const id = window.setInterval(pull, 8000);
     return () => {
       stop = true;
       window.clearInterval(id);

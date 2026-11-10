@@ -151,24 +151,50 @@ function general(_opts: NicheButtonOptions): HeroHudButton[] {
   ];
 }
 
-/** Four gateway buttons for the deep-sea shark storefront. */
-export function deepSeaHeroButtons(bookHref = ""): HeroHudButton[] {
+export type DeepSeaButtonOptions = {
+  bookHref?: string;
+  phone?: string;
+  mapsUrl?: string;
+};
+
+/** Abyssal Systems four-pack: Book / Call / Directions / Instant Quote. */
+export function deepSeaHeroButtons(bookHrefOrOpts: string | DeepSeaButtonOptions = ""): HeroHudButton[] {
+  const opts: DeepSeaButtonOptions =
+    typeof bookHrefOrOpts === "string" ? { bookHref: bookHrefOrOpts } : bookHrefOrOpts;
+  const bookHref = opts.bookHref ?? "";
+  const dial = (opts.phone ?? "").replace(/[^\d+]/g, "").slice(0, 16);
+  const callHref = /^\+?\d{7,16}$/.test(dial) ? `tel:${dial}` : "";
+  const mapsHref = (opts.mapsUrl ?? "").trim().slice(0, 180);
   return [
-    control("hud_explor01", "Explore Services", "layers", "scrollTo", "ripple-shockwave", 12, 18, {
-      variant: "solid-obsidian",
-      href: "#services",
-    }),
-    control("hud_proof001", "Proof of Work Albums", "layers", "scrollTo", "particle-burst", 88, 18, {
-      href: "#proof",
-    }),
-    control("hud_review01", "Client Reviews", "message-circle", "scrollTo", "pulse-glow", 12, 82, {
-      href: "#reviews",
-    }),
-    control("hud_book0001", "Book Now", "calendar-check", "apiTrigger", "morph-success", 88, 82, {
+    control("hud_book0001", "Book Now", "calendar-check", "apiTrigger", "morph-success", 12, 18, {
       href: bookHref,
-      successMessage: "The book is open.",
+      successMessage: "Deploy system — the book is open.",
+    }),
+    control("hud_call0001", "Call Now", "phone", "externalUrl", "pulse-glow", 88, 18, {
+      variant: "liquid-metal",
+      href: callHref,
+      phone: dial,
+      successMessage: "Secure comms.",
+    }),
+    control("hud_dir00001", "Directions", "layers", "externalUrl", "ripple-shockwave", 12, 82, {
+      variant: "solid-obsidian",
+      href: mapsHref || "#identity",
+      successMessage: "Target map.",
+    }),
+    control("hud_quote001", "Instant Quote", "zap", "modal", "morph-success", 88, 82, {
+      successMessage: "Tactical pricing ready.",
     }),
   ];
+}
+
+function isAbyssalFilm(path: string): boolean {
+  return (
+    path.endsWith("/shark-hero-animation.mp4") ||
+    path.endsWith("/sharks-loop.mp4") ||
+    path.endsWith("/abyssal-hero-loop.mp4") ||
+    path.endsWith("/abyssal-hero-animation.mp4") ||
+    path.endsWith("/hero-ocean-loop.mp4")
+  );
 }
 
 /**
@@ -177,11 +203,13 @@ export function deepSeaHeroButtons(bookHref = ""): HeroHudButton[] {
  */
 export const NICHE_BUTTON_PRESETS: Record<string, (opts: NicheButtonOptions) => HeroHudButton[]> = {
   barber,
+  "beauty-salon": barber,
   contractor: field,
   auto,
   landscaping,
   "power-sports": rafting,
   cleaning,
+  "personal-trainer": auto,
 };
 
 function presetKey(niche: string): string {
@@ -200,10 +228,13 @@ export function nicheHeroButtons(niche: string, options?: { phone?: string; book
   return general(opts);
 }
 
-/** Empty HUD: deep-sea four-pack on the shark loop, otherwise the niche pair. */
-export function studioDefaultButtons(niche: string, film: string, bookHref = "", phone = ""): HeroHudButton[] {
+/** Empty HUD: Abyssal four-pack on water-systems / shark loop, otherwise the niche pair. */
+export function studioDefaultButtons(niche: string, film: string, bookHref = "", phone = "", mapsUrl = ""): HeroHudButton[] {
   const path = film.split("?")[0] ?? "";
-  if (path.endsWith("/shark-hero-animation.mp4")) return deepSeaHeroButtons(bookHref);
+  const key = resolveCatalogNiche(niche);
+  if (isAbyssalFilm(path) || key === "water-systems") {
+    return deepSeaHeroButtons({ bookHref, phone, mapsUrl });
+  }
   return nicheHeroButtons(niche, { phone, bookHref });
 }
 

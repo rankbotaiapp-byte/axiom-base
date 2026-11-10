@@ -1,9 +1,14 @@
 import {
   CATALOG,
   CATALOG_NICHES,
+  CORE_PUBLIC_NICHES,
+  PUBLIC_CATALOG,
   catalogFilmUrl,
+  tradeLoopUrl,
   isCatalogNiche,
+  isCorePublicNiche,
   type CatalogNiche,
+  type CorePublicNiche,
 } from "../../config/catalog.ts";
 import type { IntroPreset } from "./intro";
 import { unitsForTemplate } from "./menu";
@@ -59,11 +64,16 @@ export const RING_PRESETS = [
   { name: "Violet", value: "#B388FF" },
 ] as const;
 
-/** Verified 21-loop catalog — sole public and master-hub order. */
-export const PUBLIC_NICHE_ORDER: ShopNiche[] = [...CATALOG_NICHES];
+/**
+ * Public landing / onboard — 5 core master-seed niches only.
+ * Legacy catalog niches stay provisionable via master desk (`NICHE_ORDER`).
+ */
+export const PUBLIC_NICHE_ORDER: ShopNiche[] = [...CORE_PUBLIC_NICHES];
+/** Full verified inventory for master desk, film resolution, and legacy shops. */
 export const NICHE_ORDER: ShopNiche[] = [...CATALOG_NICHES];
-export type PublicNiche = CatalogNiche;
-export const isPublicNiche = isCatalogNiche;
+export type PublicNiche = CorePublicNiche;
+export const isPublicNiche = (value: string): value is PublicNiche => isCorePublicNiche(value);
+export { PUBLIC_CATALOG, CORE_PUBLIC_NICHES, isCorePublicNiche };
 
 /** @deprecated Use PUBLIC_NICHE_ORDER / CATALOG — kept for import compatibility. */
 export const HERO_LOOP_CATALOG = CATALOG.map((row) => ({
@@ -114,7 +124,7 @@ function defaultServices(label: string): NicheTemplate["services"] {
     {
       name: "Full day",
       description: `A full crew day for ${label.toLowerCase()}.`,
-      durationMin: 480,
+        durationMin: 480,
       priceCents: 68000,
     },
   ];
@@ -131,10 +141,10 @@ function buildTemplate(niche: ShopNiche, index: number): NicheTemplate {
     defaultName: entry.defaultName,
     tagline: entry.tagline,
     description: `${entry.blurb} Book the time. The shop confirms.`,
-    address: "Southern Oregon · on the book",
+    address: "Ashland, OR",
     ringColor: RING_CYCLE[index % RING_CYCLE.length]!,
     heroImageUrl: "",
-    heroVideoUrl: catalogFilmUrl(niche),
+    heroVideoUrl: tradeLoopUrl(niche),
     heroBlendPercent: media.heroBlendPercent,
     introPreset: media.introPreset,
     introSpeed: media.introSpeed,
@@ -183,17 +193,17 @@ export type NicheVoice = {
 };
 
 const DEFAULT_VOICE: NicheVoice = {
-  bench: "The crew",
+    bench: "The crew",
   heading: "Who takes the ticket.",
   menuKicker: "Offers",
   menuHeading: "Services",
-  bookLabel: "Book a visit",
+    bookLabel: "Book a visit",
   inquiry: "Ask the shop",
   offerStep: "Service",
-  staffStep: "Who",
+    staffStep: "Who",
   timeStep: "When",
-  timeHint: "Pick a time",
-  requestLabel: "Request this time",
+    timeHint: "Pick a time",
+    requestLabel: "Request this time",
   gallery: "On the job",
 };
 

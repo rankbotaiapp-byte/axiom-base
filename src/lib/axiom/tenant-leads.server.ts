@@ -1,6 +1,7 @@
 import { getSql, withTransaction } from "@/lib/db";
 import { presetForShopNiche } from "../../config/nichePresets.ts";
-import { cityFromAddress, placeFromCityLine } from "./avatar";
+import { normalizeShopNiche } from "./types.ts";
+import { shopCity } from "./avatar";
 import { campaignOutcome, consumerLeadChannel, consumerOutreachCopy } from "./consumer-outreach";
 
 const DAILY_BATCH = 25;
@@ -62,7 +63,7 @@ async function shopForScan(slug: string, userId: string): Promise<ShopGate & { c
   const owner = members[0]?.role === "owner" || shop.owner_user_id === userId;
   const platform = owner ? false : await (await import("./platform-owner.server")).isPlatformOwner(userId);
   if (!owner && !platform && !shop.is_showcase) throw new Error("Forbidden");
-  const city = placeFromCityLine(cityFromAddress(shop.address));
+  const city = shopCity(shop.address);
   if (!city) throw new Error("Add a city to the shop address before scanning");
   return { ...shop, city };
 }
@@ -238,8 +239,9 @@ export async function sendTenantOutreachForShop(slug: string, userId: string) {
       throw new Error(`Live outreach needs ${missing.join(", ")}`);
     }
 
-    const cta = presetForShopNiche(shop.niche).bookingCta;
+    const cta = presetForShopNiche(normalizeShopNiche(shop.niche)).bookingCta;
     const bookUrl = await bookUrlFor(slug);
+    const { finalizeOutreachBody } = await import("./legal-notices");
     const outcomes: { id: string; delivered: boolean }[] = [];
     for (const lead of claimed) {
       const channel = consumerLeadChannel(lead.email ?? "", lead.phone ?? "", lead.consumer_contact ?? "");
@@ -258,7 +260,7 @@ export async function sendTenantOutreachForShop(slug: string, userId: string) {
         channel: channel.channel,
         to: channel.to,
         subject: note.subject,
-        body: note.body,
+        body: finalizeOutreachBody(note.body, channel.channel),
       });
       outcomes.push({ id: lead.id, delivered: result.status === "sent" });
     }

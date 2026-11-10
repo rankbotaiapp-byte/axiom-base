@@ -1,5 +1,6 @@
-import { catalogFilmUrl, resolveCatalogNiche } from "../../config/catalog.ts";
-import { ANIMATION_MP4_FILES, isCatalogHeroUrl, isPublicMediaFilm } from "./hero-films.ts";
+import { defaultNicheFilm } from "../../config/catalog.ts";
+import { heroLibraryItems } from "./hero-library.ts";
+import { isCatalogHeroUrl, isPublicMediaFilm } from "./hero-films.ts";
 import { parseHeroLook, type HeroLook } from "./hero-look.ts";
 
 export { DEFAULT_HERO_LOOK, heroLookFromProfile, parseHeroLook } from "./hero-look.ts";
@@ -22,8 +23,8 @@ export type HeroPreset = {
   url: string;
 };
 
-export const AUTO_HERO_ANIMATION = "/media/auto-hero-animation.mp4";
-export const LEOPARD_HERO_ANIMATION = "/media/leopard-hero-animation.mp4";
+export const AUTO_HERO_ANIMATION = defaultNicheFilm("auto");
+export const LEOPARD_HERO_ANIMATION = defaultNicheFilm("forestry");
 
 const HERO_ANIMATION_FILE = /^[a-z0-9]+(?:-[a-z0-9]+)*-hero-animation\.mp4$/i;
 
@@ -43,14 +44,20 @@ export function heroAnimationLabel(name: string): string {
 }
 
 export function isHeroAnimationUrl(url: string | null | undefined): boolean {
-  if (!url || !url.startsWith("/media/") || url.includes("..") || url.slice("/media/".length).includes("/")) return false;
-  return isHeroAnimationFile(url.slice("/media/".length).split("?")[0] ?? "");
+  if (!url || !url.startsWith("/media/") || url.includes("..")) return false;
+  const rest = url.slice("/media/".length).split("?")[0] ?? "";
+  const nested = rest.match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\/hero-animation\.mp4$/i);
+  if (nested) return true;
+  if (/^master-defaults\/[a-z0-9-]+-loop\.mp4$/i.test(rest)) return true;
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*-hero-path\.mp4$/i.test(rest)) return true;
+  if (rest.includes("/")) return false;
+  return isHeroAnimationFile(rest);
 }
 
 /** Catalog loops, this shop's uploaded clip, or a public storage URL. */
 export function isPlayableHeroFilm(url: string | null | undefined): boolean {
   if (!url || url.includes("..") || /\s/.test(url)) return false;
-  if (isHeroAnimationUrl(url)) return true;
+  if (isHeroAnimationUrl(url) || isCatalogHeroUrl(url) || isPublicMediaFilm(url)) return true;
   if (url.startsWith("/api/hero-video/")) return true;
   return url.startsWith("https://");
 }
@@ -81,22 +88,20 @@ export function heroAnimationsFromNames(names: readonly string[]): HeroPreset[] 
 }
 
 export function heroPresets(): HeroPreset[] {
-  return heroAnimationsFromNames(ANIMATION_MP4_FILES);
+  const fromLibrary = heroLibraryItems().map((item) => ({ id: item.id, label: item.name, url: item.src }));
+  if (fromLibrary.length) return fromLibrary;
+  return [
+    { id: "auto", label: "Auto", url: AUTO_HERO_ANIMATION },
+    { id: "leopard", label: "Leopard", url: LEOPARD_HERO_ANIMATION },
+  ];
 }
 
-/** Auto and cyberpunk shops use the auto loop. Wildlife and expedition shops use the leopard loop. */
-export function boundHeroAnimation(niche: string, customNiche = ""): string | null {
-  const hay = `${niche} ${customNiche}`.toLowerCase();
-  if (/\b(cyberpunk|cyber|auto|mechanic|detailer|detailing)\b/.test(hay) || niche === "field" || niche === "detailer") {
-    return AUTO_HERO_ANIMATION;
-  }
-  if (/\b(wildlife|expeditions?|leopard|safari)\b/.test(hay) || niche === "hunting") {
-    return LEOPARD_HERO_ANIMATION;
-  }
-  return null;
+/** Every trade uses `/media/{niche}/hero-animation.mp4`. */
+export function boundHeroAnimation(niche: string, _customNiche = ""): string {
+  return defaultNicheFilm(niche);
 }
 
-/** A chosen hero animation wins. Otherwise a bound niche uses its animation. */
+/** A chosen hero animation wins. Otherwise the niche default loop. */
 export function resolveStorefrontFilm(input: {
   draft: HeroDraft | null;
   shopVideoUrl: string | null;
@@ -113,19 +118,14 @@ export function resolveStorefrontFilm(input: {
   if (shop && isPlayableHeroFilm(shop)) {
     return { hero_video_url: shop, tagline: input.shopTagline, source: "shop" };
   }
-  const catalog = catalogFilmUrl(resolveCatalogNiche(input.niche));
-  if (isHeroAnimationUrl(catalog)) {
-    return { hero_video_url: catalog, tagline: input.shopTagline, source: "niche" };
-  }
-  const bound = boundHeroAnimation(input.niche, input.customNiche ?? "");
-  if (bound) return { hero_video_url: bound, tagline: input.shopTagline, source: "niche" };
-  const fallback = isHeroAnimationUrl(input.fallbackVideoUrl) ? input.fallbackVideoUrl : LEOPARD_HERO_ANIMATION;
-  return { hero_video_url: fallback, tagline: input.shopTagline, source: "niche" };
+  const catalog = defaultNicheFilm(input.niche);
+  return { hero_video_url: catalog, tagline: input.shopTagline, source: "niche" };
 }
 
-/** Client hero choices: only `*-hero-animation.mp4` in the media root. */
+/** Client hero choices: niche folder loops plus extra pins. */
 export function mediaLibrary(names?: readonly string[]): HeroPreset[] {
-  return heroAnimationsFromNames(names ?? ANIMATION_MP4_FILES);
+  if (names) return heroAnimationsFromNames(names);
+  return heroPresets();
 }
 
 /** Catalog films, public/media loops, and this shop's uploaded clip. Anything else is dropped. */
@@ -316,6 +316,7 @@ export async function persistHeroToSupabase(slug: string, draft: HeroDraft): Pro
     shop_slug: shopSlug,
     hero_video_url: draft.hero_video_url,
     background_video_url: draft.hero_video_url,
+    hero_background_loop: draft.hero_video_url,
     tagline: draft.tagline,
   };
   if (draft.hero_image_url) payload.hero_image_url = draft.hero_image_url;
@@ -339,6 +340,7 @@ export async function persistHeroToSupabase(slug: string, draft: HeroDraft): Pro
     const loop = {
       hero_video_url: draft.hero_video_url,
       background_video_url: draft.hero_video_url,
+      hero_background_loop: draft.hero_video_url,
       tagline: draft.tagline,
     };
     const patch = await fetch(`${url}/rest/v1/client_storefronts?shop_slug=eq.${encodeURIComponent(shopSlug)}`, {

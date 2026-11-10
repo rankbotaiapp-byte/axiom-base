@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   connectStanding,
   dueNowCents,
+  GEAR_GUARDIAN_BPS,
+  gearGuardianFeeCents,
   priceForService,
   type MerchantPrice,
 } from "./merchant-pricing.ts";
@@ -34,5 +36,13 @@ describe("merchant pricing", () => {
   it("collects nothing online when the visit is in person", () => {
     assert.equal(dueNowCents({ ...row, collectionMode: "in_person" }, 8000), 0);
     assert.equal(dueNowCents(null, 4200), 4200);
+  });
+
+  it("takes 1.5 percent Gear Guardian on online due-now and never the full amount", () => {
+    assert.equal(GEAR_GUARDIAN_BPS, 150);
+    assert.equal(gearGuardianFeeCents(10_000), 150);
+    assert.equal(gearGuardianFeeCents(100), 2);
+    assert.equal(gearGuardianFeeCents(0), 0);
+    assert.ok(gearGuardianFeeCents(50) < 50);
   });
 });

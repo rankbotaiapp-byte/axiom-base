@@ -5,8 +5,8 @@ import { PRESENTATION_STYLES, type PresentationStyle } from "./intro.ts";
 import { HOME_REGION_COUNTIES } from "./regional-roster.ts";
 import { isShopNiche, type ShopNiche } from "./types.ts";
 
-/** Unactivated accounts get the next note two days after the launch touch. */
-export const UNACTIVATED_FOLLOW_UP_HOURS = 48;
+/** First automated nudge after the Day 0 launch. */
+export const UNACTIVATED_FOLLOW_UP_HOURS = 72;
 export const UNACTIVATED_FOLLOW_UP_MS = UNACTIVATED_FOLLOW_UP_HOURS * 60 * 60 * 1000;
 
 export function isHomePreviewCounty(county: string): boolean {
@@ -71,7 +71,8 @@ export function tenantPreviewUrl(origin: string, lead: PreviewLead): string | nu
   const business = lead.businessName.trim().slice(0, 80);
   if (!business) return null;
   const niche = previewNicheSlug(lead.tradeType, lead.tradeLabel ?? "");
-  const base = origin.trim().replace(/\/$/, "") || "http://localhost";
+  const base = origin.trim().replace(/\/$/, "");
+  if (!base) return null;
   const url = new URL(`/demo/${niche}`, `${base}/`);
   url.searchParams.set("preview", "true");
   url.searchParams.set("business", business);
@@ -112,18 +113,33 @@ export function appendPreviewLink(body: string, url: string): string {
   const link = url.trim();
   if (!link || bodyHasPreviewLink(body) || body.includes(link)) return body;
   const base = body.trimEnd();
-  return base ? `${base}\n${link}` : link;
+  if (!base) return link;
+  const noticeAt = noticeStart(base);
+  if (noticeAt > 0) {
+    const lead = base.slice(0, noticeAt).trimEnd();
+    const notice = base.slice(noticeAt).trimStart();
+    return `${lead}\n${link}\n\n${notice}`;
+  }
+  return `${base}\n${link}`;
 }
 
-/** Day 2 fires only when the account has not been claimed and has not opened the page. */
+function noticeStart(body: string): number {
+  const sms = body.search(/\nReply STOP to opt out/i);
+  const email = body.search(/\nThis is a business-to-business message/i);
+  if (sms >= 0 && email >= 0) return Math.min(sms, email);
+  return sms >= 0 ? sms : email;
+}
+
+/** Follow-ups halt the moment a lead replies, books, claims, or opens the page. */
 export function shouldSendUnactivatedFollowUp(input: {
   step: number;
   claimed: boolean;
   clicked: boolean;
+  booked?: boolean;
+  replied?: boolean;
 }): boolean {
-  if (input.clicked) return false;
-  if (input.step !== 2) return true;
-  return !input.claimed;
+  if (input.clicked || input.claimed || input.booked || input.replied) return false;
+  return input.step === 3 || input.step === 7;
 }
 
 export function unactivatedFollowUpAt(from: Date): string {

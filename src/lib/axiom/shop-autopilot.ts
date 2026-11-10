@@ -16,6 +16,9 @@ export type AutopilotTickResult = {
   slug: string;
   hero: boolean;
   proof: boolean;
+  social: boolean;
+  /** Fresh legal stock still/video + brand stamp from the daily content sourcer. */
+  stockBrand: boolean;
   notice: boolean;
   detail: string;
 };

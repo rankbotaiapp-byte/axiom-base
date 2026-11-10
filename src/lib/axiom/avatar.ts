@@ -50,8 +50,20 @@ export function cityFromAddress(address: string): string {
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
-  const city = parts.length >= 2 ? parts[1] : (parts[0] ?? "");
-  return clipAvatarField(city);
+  if (parts.length >= 3) return clipAvatarField(parts[1] ?? "");
+  if (parts.length === 2) {
+    if (/^[A-Za-z]{2}$/.test(parts[1] ?? "")) return clipAvatarField(parts[0] ?? "");
+    return clipAvatarField(parts[1] ?? "");
+  }
+  const first = parts[0] ?? "";
+  return clipAvatarField(placeFromCityLine(first) || first);
+}
+
+/** City for Autopilot overlays. Drops tagline leftovers like "on the book". */
+export function shopCity(address: string, fallback = "Ashland"): string {
+  const place = placeFromCityLine(cityFromAddress(address));
+  if (!place || /on the book/i.test(place) || /^southern oregon$/i.test(place)) return fallback;
+  return place;
 }
 
 /** City used to match a prospect batch. Drops the service note after a middot. */
@@ -70,6 +82,50 @@ export function askEricAvatarId(): string {
   return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`;
 }
 
+/** LiveAvatar video quality: high = 720p (best fidelity / latency balance for lip-sync). */
+export type AvatarVideoQuality = "low" | "medium" | "high" | "very_high";
+
+/**
+ * ElevenLabs neural TTS tuned for natural speech + clean lip-sync.
+ * Prefer multilingual_v2 / conversational v3 over flash to cut synthetic artifacting.
+ * @see https://docs.liveavatar.com/docs/full-mode/voice-settings
+ */
+export const PREMIUM_NEURAL_VOICE_SETTINGS = {
+  provider: "elevenLabs" as const,
+  /** Slightly under 1.0 keeps mouth shapes readable without dragging. */
+  speed: 0.98,
+  /** Mid stability = natural variation; high values sound flat / robotic. */
+  stability: 0.52,
+  similarity_boost: 0.88,
+  style: 0.12,
+  use_speaker_boost: true,
+  /**
+   * `eleven_multilingual_v2` = higher fidelity neural TTS.
+   * Override with LIVEAVATAR_VOICE_MODEL when a conversational v3/v4 voice is preferred.
+   */
+  model: "eleven_multilingual_v2",
+};
+
+export function resolveAvatarVideoQuality(raw?: string): AvatarVideoQuality {
+  const value = (raw ?? "").trim().toLowerCase();
+  if (value === "low" || value === "medium" || value === "high" || value === "very_high") return value;
+  return "high";
+}
+
+export function resolveAvatarVoiceModel(raw?: string): string {
+  const value = (raw ?? "").trim();
+  if (
+    value === "eleven_flash_v2_5" ||
+    value === "eleven_multilingual_v2" ||
+    value === "eleven_v3" ||
+    value === "eleven_v3_conversational" ||
+    value === "eleven_v4_turbo"
+  ) {
+    return value;
+  }
+  return PREMIUM_NEURAL_VOICE_SETTINGS.model;
+}
+
 /**
  * LiveAvatar FULL-mode token body. Business, trade, and city fill ${placeholders}
  * in the stored context. The API key never belongs in this object.
@@ -82,6 +138,8 @@ export function avatarSessionPayload(
     voiceId?: string;
     contextId?: string;
     sandbox?: boolean;
+    videoQuality?: AvatarVideoQuality;
+    voiceModel?: string;
   },
 ): Record<string, unknown> {
   const variables = {
@@ -89,13 +147,16 @@ export function avatarSessionPayload(
     trade: clipAvatarField(context.trade) || "local",
     city: clipAvatarField(context.city) || "your city",
   };
+  const quality = resolveAvatarVideoQuality(config.videoQuality);
+  const voiceModel = resolveAvatarVoiceModel(config.voiceModel);
   const body: Record<string, unknown> = {
     mode: "FULL",
     avatar_id: config.avatarId,
     is_sandbox: config.sandbox === true,
     max_session_duration: 180,
     interactivity_type: "CONVERSATIONAL",
-    video_settings: { quality: "medium", encoding: "H264" },
+    // H264 + high (720p): sharp mouth detail without the latency spike of very_high.
+    video_settings: { quality, encoding: "H264" },
     dynamic_variables: variables,
   };
   if (config.voiceAgentId) {
@@ -106,6 +167,10 @@ export function avatarSessionPayload(
       ...(config.voiceId ? { voice_id: config.voiceId } : {}),
       ...(config.contextId ? { context_id: config.contextId } : {}),
       language: "en",
+      voice_settings: {
+        ...PREMIUM_NEURAL_VOICE_SETTINGS,
+        model: voiceModel,
+      },
     };
   }
   return body;

@@ -9,7 +9,7 @@ import { FluidField } from "@/components/fluid-field";
 import { InterfaceAudio } from "@/components/interface-audio";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "New Era Apps";
+const APP_NAME = "Axiom";
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
   const { getSessionUser } = await import("@/lib/auth/verify.server");
@@ -50,7 +50,7 @@ export const Route = createRootRoute({
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fira+Code:wght@450;500;600&family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Fira+Code:wght@450;500;600&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -69,13 +69,13 @@ export const Route = createRootRoute({
 
 function RootDocument() {
   return (
-    <html lang="en" className="dark antialiased" suppressHydrationWarning>
+    <html lang="en" className="dark antialiased" style={{ colorScheme: "dark" }} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body className="bg-transparent font-sans text-fg antialiased">
+      <body className="min-h-dvh bg-[#030712] font-sans text-fg antialiased">
         <FluidField />
-        <div className="relative z-10">
+        <div className="relative z-10 min-h-dvh bg-transparent">
           <PreviewHostBridge />
           <AuthProvider>
             <Outlet />

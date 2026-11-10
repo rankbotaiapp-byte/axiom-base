@@ -12,3 +12,11 @@ test("malformed shop addresses never reach SQL", () => {
   assert.equal(publicShopSlug("has space"), null);
   assert.equal(publicShopSlug(null), null);
 });
+
+test("reserved corporate paths never resolve as tenants", () => {
+  assert.equal(publicShopSlug("index"), null);
+  assert.equal(publicShopSlug("login"), null);
+  assert.equal(publicShopSlug("onboard"), null);
+  assert.equal(publicShopSlug("api"), null);
+  assert.equal(publicShopSlug("obsidian-core"), null);
+});

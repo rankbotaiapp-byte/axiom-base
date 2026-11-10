@@ -7,6 +7,7 @@ import { studioDefaultButtons } from "@/config/niche-button-presets";
 import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
 import { InteractiveOtterHero } from "@/components/interactive-otter-hero";
 import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
+import { HeroLoopVideo } from "@/components/loop-video";
 import {
   HERO_ANIMATION_LABEL,
   HERO_CLICK_ANIMATIONS,
@@ -41,7 +42,7 @@ export function HeroStudioMobile({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actions = getNicheActions(shop.niche);
   const [hud, setHud] = useState<HeroHudConfig>(() =>
-    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: studioDefaultButtons(shop.niche, shop.heroVideoUrl, `/${shop.slug}/book`), plates: [] }, {
+    seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: studioDefaultButtons(shop.niche, shop.heroVideoUrl ?? "", `/${shop.slug}/book`), plates: [] }, {
       name: shop.name,
       tagline: shop.tagline,
       city: shop.address,
@@ -99,11 +100,11 @@ export function HeroStudioMobile({
       <div className="hud-stage">
         {isSharkHeroFilm(film) ? (
           <HeroSharkInteractive active>
-            {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+            {film ? <HeroLoopVideo src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
           </HeroSharkInteractive>
         ) : (
           <InteractiveOtterHero active={isOtterHeroFilm(film)}>
-            {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+            {film ? <HeroLoopVideo src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
           </InteractiveOtterHero>
         )}
         <HeroHud

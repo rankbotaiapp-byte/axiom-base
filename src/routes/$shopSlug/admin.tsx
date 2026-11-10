@@ -4,7 +4,6 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
-  acceptBooking,
   beginStripeConnect,
   getOperatorData,
   inviteEmployee,
@@ -20,17 +19,27 @@ import {
 } from "@/lib/axiom/server";
 import { getNicheActions } from "@/config/niche-actions";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
+import { AssignmentLog, ConciergeDeck, HUD_CARD, HUD_SELECT, HudCard, HudHeading, HudStat, NeonBadge } from "@/components/admin/admin-hud";
+import { ZeroUiOrchestrator } from "@/components/admin/zero-ui-orchestrator";
 import { MakeItMineWizard } from "@/components/admin/make-it-mine-wizard";
 import { HeroStudioMobile } from "@/components/admin/hero-studio-mobile";
 import { studioDefaultButtons } from "@/config/niche-button-presets";
 import { seedFilmPlates, type HeroHudConfig } from "@/lib/axiom/hero-hud";
 import { OUTREACH_STRATEGIES } from "@/lib/axiom/funnel";
-import { NICHES, PUBLIC_NICHE_ORDER, isPublicNiche, shopTradeLabel } from "@/lib/axiom/niches";
+import { DispatchControlPanel } from "@/components/master/DispatchControlPanel";
+import { automateOutreachDesk, readOutreachDesk } from "@/lib/axiom/master";
+import { NICHES, NICHE_ORDER, PUBLIC_NICHE_ORDER, isPublicNiche, shopTradeLabel } from "@/lib/axiom/niches";
+import { isCatalogNiche } from "@/config/catalog";
 import { resolveHeroMedia, NICHE_MEDIA } from "@/lib/axiom/media";
-import { catalogChoices, isCatalogHeroUrl, readMasterTelemetry } from "@/lib/axiom/hero-films";
+import { HeroCustomizer } from "@/components/admin/HeroCustomizer";
+import { HeroLibraryBench } from "@/components/admin/hero-library-bench";
+import { AutopilotLoopsPanel } from "@/components/admin/autopilot-loops";
+import { EmployeeOversight } from "@/components/admin/EmployeeOversight";
+import { isCatalogHeroUrl, readMasterTelemetry } from "@/lib/axiom/hero-films";
 import { PreviewStudio } from "@/components/preview-studio";
 import { HeroTextCanvas } from "@/components/hero-text-canvas";
 import { HeroSpatial } from "@/components/hero-spatial";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { applyDepthStudio, hudVars, paintHero, setHeroLayer, type HeroLayerId, type StorefrontHud } from "@/lib/axiom/hud";
 import { HERO_VIDEO_MAX_BYTES } from "@/lib/axiom/hero-video";
 import { getBearerToken } from "@/lib/auth/client";
@@ -41,11 +50,13 @@ import { BrandedHeroStudio } from "@/components/branded-hero-studio";
 import { HeroMotionDesk } from "@/components/hero-motion-desk";
 import { compileBrandMark, parseBrandStudio, rippleTheme, themeSurface, type RippleThemeId } from "@/lib/axiom/brand-studio";
 import { brandPlate, heroAtmosphereActive } from "@/lib/axiom/hero-brand";
-import { cityFromAddress, placeFromCityLine } from "@/lib/axiom/avatar";
+import { shopCity } from "@/lib/axiom/avatar";
 import { AdminWelcomeTour } from "@/components/admin-welcome-tour";
+import { AiVoiceManager } from "@/components/AiVoiceManager";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
 import { DesignCopilot } from "@/components/design-copilot";
 import { setAvatarScreen } from "@/components/avatar-help-state";
+import { CyberCompanionHud } from "@/components/CyberCompanionHud";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { ProspectScan } from "@/components/prospect-scan";
 import { TodayPost } from "@/components/today-post";
@@ -61,7 +72,6 @@ import { PricingSettings } from "@/components/pricing-settings";
 import { AxiomStudio } from "@/components/axiom-studio";
 import {
   AutopilotDesk,
-  CatalogFilmDesk,
   MISSION_TABS,
   MissionFrame,
   type MissionTab,
@@ -99,7 +109,11 @@ function AdminPage() {
   const { stripe, desk } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const heroStudio = pathname.endsWith("/admin/hero-studio");
+  const heroStudio =
+    pathname.endsWith("/admin/hero-studio") ||
+    pathname.endsWith("/admin/brand-studio") ||
+    pathname.includes("/admin/branding/hero-library") ||
+    pathname.endsWith("/admin/autopilot");
   const [data, setData] = useState<OpData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,8 +156,8 @@ function AdminPage() {
 
   if (isPending) {
     return (
-      <main className="grid min-h-dvh place-items-center">
-        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/8" />
+      <main className="admin-hud grid min-h-dvh place-items-center bg-slate-950">
+        <div className="h-10 w-48 animate-pulse rounded-full border border-cyan-500/30 bg-slate-900/60 shadow-[0_0_30px_rgba(6,182,212,0.15)]" />
       </main>
     );
   }
@@ -158,15 +172,15 @@ function AdminPage() {
   if (heroStudio) return <Outlet />;
   if (!data && !error) {
     return (
-      <main className="grid min-h-dvh place-items-center">
-        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/8" />
+      <main className="admin-hud grid min-h-dvh place-items-center bg-slate-950">
+        <div className="h-10 w-48 animate-pulse rounded-full border border-cyan-500/30 bg-slate-900/60 shadow-[0_0_30px_rgba(6,182,212,0.15)]" />
       </main>
     );
   }
   if (error || !data) {
     return (
-      <main className="neon-shell grid min-h-dvh place-items-center px-6 text-center">
-        <div className="glass-card rounded-2xl px-8 py-10">
+      <main className="neon-shell admin-hud grid min-h-dvh place-items-center bg-slate-950 px-6 text-center">
+        <div className={`${HUD_CARD} px-8 py-10`}>
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">Operator</p>
           <p className="mt-3 font-display text-3xl">This console is locked.</p>
           <p className="mt-2 text-sm text-muted">Create your own shop to get the operator view.</p>
@@ -206,19 +220,26 @@ export function AdminShell({
     setAvatarScreen(screen);
     return () => setAvatarScreen(null);
   }, [tab]);
+  const incoming = data.appointments.filter((a) => a.status === "pending").length;
   const setup = data.shop.onboarding;
   const needsSetup = !readonly && (!setup.hero || !setup.service || !setup.employee);
 
   return (
-    <main className="neon-shell">
-      <header className="glass-panel mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 sm:mx-6 sm:px-6">
+    <main className="neon-shell admin-hud bg-slate-950">
+      <header className={`${HUD_CARD} relative mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 overflow-hidden px-5 py-4 sm:mx-6 sm:px-6`}>
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
         <div>
           <Wordmark />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <NeonBadge tone="emerald" pulse>Live</NeonBadge>
+            {incoming > 0 ? <NeonBadge tone="fuchsia" pulse>{incoming} incoming</NeonBadge> : null}
+            <NeonBadge tone="cyan">{data.employees.length} {data.employees.length === 1 ? "chair" : "chairs"}</NeonBadge>
+          </div>
           {data.platformDesk ? (
             <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-copper">Platform desk · live writes</p>
           ) : null}
-          <p className="mt-2 text-sm text-muted">
-            <span className="font-mono text-fg">{data.shop.name}</span>
+          <p className="mt-2 text-sm text-slate-400">
+            <span className="font-mono text-slate-100">{data.shop.name}</span>
             {readonly ? " · live demo preview" : ""}
           </p>
         </div>
@@ -226,7 +247,7 @@ export function AdminShell({
           {data.platformDesk ? (
             <Link
               to="/master-admin"
-              className="glass-panel inline-flex h-11 items-center rounded-xl px-3 text-sm text-copper hover:text-fg"
+              className="inline-flex h-11 items-center rounded-xl border border-amber-400/50 bg-amber-400/10 px-3 font-mono text-xs uppercase tracking-[0.14em] text-amber-300 hover:bg-amber-400/20"
             >
               Master desk
             </Link>
@@ -236,14 +257,35 @@ export function AdminShell({
             params={{ shopSlug: data.shop.slug }}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-11 items-center rounded-xl bg-fg px-4 text-sm font-medium text-bg shadow-[0_0_20px_color-mix(in_srgb,var(--color-fg)_18%,transparent)]"
+            className="inline-flex h-11 items-center rounded-xl border border-cyan-300 bg-cyan-400 px-4 text-sm font-semibold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.5)] hover:bg-cyan-300"
           >
             View Customer-Facing Site
           </Link>
           <Link
+            to="/$shopSlug/admin/brand-studio"
+            params={{ shopSlug: data.shop.slug }}
+            className="inline-flex h-11 items-center rounded-xl border border-cyan-500/30 bg-slate-900/60 px-3 font-mono text-xs uppercase tracking-[0.14em] text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200"
+          >
+            Brand studio
+          </Link>
+          <Link
+            to="/$shopSlug/admin/branding/hero-library"
+            params={{ shopSlug: data.shop.slug }}
+            className="inline-flex h-11 items-center rounded-xl border border-cyan-500/30 bg-slate-900/60 px-3 font-mono text-xs uppercase tracking-[0.14em] text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200"
+          >
+            Hero library
+          </Link>
+          <Link
+            to="/$shopSlug/admin/autopilot"
+            params={{ shopSlug: data.shop.slug }}
+            className="inline-flex h-11 items-center rounded-xl border border-cyan-500/30 bg-slate-900/60 px-3 font-mono text-xs uppercase tracking-[0.14em] text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200"
+          >
+            Autopilot
+          </Link>
+          <Link
             to="/$shopSlug/employee"
             params={{ shopSlug: data.shop.slug }}
-            className="glass-panel inline-flex h-11 items-center rounded-xl px-3 text-sm text-muted hover:text-fg"
+            className="inline-flex h-11 items-center rounded-xl border border-cyan-500/30 bg-slate-900/60 px-3 font-mono text-xs uppercase tracking-[0.14em] text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200"
           >
             Station
           </Link>
@@ -270,6 +312,7 @@ export function AdminShell({
       <MissionFrame>
         {tab === "overview" ? (
           <div className="grid gap-8">
+            <ZeroUiOrchestrator shop={data.shop} readonly={readonly} onReload={onReload} />
             <MakeItMineWizard shop={data.shop} readonly={readonly} onReload={onReload} />
             <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
             <PaymentsPanel
@@ -286,13 +329,18 @@ export function AdminShell({
           <div className="grid gap-8">
             <ServicesPanel shop={data.shop} services={data.services} readonly={readonly} onReload={onReload} />
             <PricingSettings slug={data.shop.slug} readonly={readonly} />
+          </div>
+        ) : null}
+        {tab === "staff" ? (
+          <div className="grid gap-8">
             <TeamPanel shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
+            <EmployeeOversight shop={data.shop} employees={data.employees} readonly={readonly} onReload={onReload} />
           </div>
         ) : null}
         {tab === "hero" ? (
           <div className="grid gap-6">
             <HeroStudioMobile shop={data.shop} readonly={readonly} onReload={onReload} />
-            <CatalogFilmDesk shop={data.shop} readonly={readonly} onReload={onReload} />
+            <HeroLibraryBench shop={data.shop} readonly={readonly} onReload={onReload} />
             <details className="mission-more">
               <summary>Branding tools</summary>
               <div className="grid gap-8 pt-4">
@@ -307,6 +355,7 @@ export function AdminShell({
         {tab === "autopilot" ? (
           <div className="grid gap-6">
             <AiContentAutopilotToggle shop={data.shop} readonly={readonly && !data.shop.isShowcase} />
+            <AutopilotLoopsPanel shop={data.shop} readonly={readonly && !data.shop.isShowcase} onReload={onReload} />
             <AutopilotDesk
               slug={data.shop.slug}
               appointments={data.appointments}
@@ -362,13 +411,22 @@ export function AdminShell({
         shopName={data.shop.name}
         active={data.mode === "owner" && !data.platformDesk}
       />
-      <AskEricAvatar
-        businessName={data.shop.name}
-        trade={shopTradeLabel(data.shop)}
-        city={cityFromAddress(data.shop.address)}
-        welcome={data.mode === "owner" && !data.platformDesk ? data.shop.slug : undefined}
-      />
+      <div className="fixed right-4 bottom-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col items-end gap-3">
+        <AskEricAvatar
+          docked
+          businessName={data.shop.name}
+          trade={shopTradeLabel(data.shop)}
+          city={shopCity(data.shop.address)}
+          welcome={data.mode === "owner" && !data.platformDesk ? data.shop.slug : undefined}
+        />
+        <AiVoiceManager />
+      </div>
       <DesignCopilot slug={data.shop.slug} readonly={readonly} onApplied={onReload} />
+      <CyberCompanionHud
+        environment="admin"
+        shopName={data.shop.name}
+        shopSlug={data.shop.slug}
+      />
     </main>
   );
 }
@@ -386,15 +444,15 @@ function SetupStrip({
 }) {
   const flags = shop.onboarding;
   return (
-    <div className="mx-5 mb-4 glass-card rounded-2xl p-4 sm:mx-8">
+    <div className={`${HUD_CARD} mx-3 mt-3 p-4 sm:mx-6`}>
       <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Guided loop · admin setup</p>
       <p className="mt-1 font-display text-2xl">Three moves, then book yourself.</p>
       <ol className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-        <li className={flags.hero ? "text-ok" : "text-muted"}>{flags.hero ? "Hero set" : "1 · Hero + blend"}</li>
-        <li className={flags.service ? "text-ok" : "text-muted"}>
+        <li className={flags.hero ? "text-emerald-300" : "text-slate-400"}>{flags.hero ? "Hero set" : "1 · Hero + blend"}</li>
+        <li className={flags.service ? "text-emerald-300" : "text-slate-400"}>
           {flags.service ? "Primary service" : "2 · Primary service"}
         </li>
-        <li className={flags.employee ? "text-ok" : "text-muted"}>
+        <li className={flags.employee ? "text-emerald-300" : "text-slate-400"}>
           {shop.worksAlone
             ? flags.employee
               ? "You're on the book"
@@ -430,12 +488,12 @@ function Overview({
   onReload: () => void;
   paymentsLocked: boolean;
 }) {
-  const ring = useAxiomRing();
   const pending = data.appointments.filter((a) => a.status === "pending");
   const paid = data.appointments.filter((a) => a.paymentStatus === "paid");
   const revenue = paid.reduce((s, a) => s + a.paymentCents, 0);
   const cancelled = data.appointments.filter((a) => a.status === "cancelled");
   const leaked = cancelled.reduce((sum, item) => sum + item.paymentCents, 0);
+  const audits = data.notices.filter((notice) => notice.channel === "inbox" && notice.subject.startsWith("Audit"));
   const chart = useMemo(() => {
     const days: { day: string; cents: number }[] = [];
     for (let i = 6; i >= 0; i -= 1) {
@@ -455,132 +513,86 @@ function Overview({
   }, [paid]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-      <div>
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label="Captured" value={formatMoney(revenue)} />
-        <Stat label="Bookings" value={String(data.appointments.length)} />
-        <Stat label="Left on the table" value={formatMoney(leaked)} hint={`${cancelled.length} cancelled`} />
+    <div className="grid gap-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <HudStat label="Captured" value={formatMoney(revenue)} tone="cyan" />
+        <HudStat label="Bookings" value={String(data.appointments.length)} tone="slate" />
+        <HudStat label="Incoming" value={String(pending.length)} hint="awaiting confirm" tone={pending.length ? "fuchsia" : "slate"} />
+        <HudStat label="Left on the table" value={formatMoney(leaked)} hint={`${cancelled.length} cancelled`} tone="rose" />
       </div>
-        <div className="mt-4 h-48 glass-card rounded-2xl p-3">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chart}>
-              <defs>
-                <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--ring-color, #2ee6d6)" stopOpacity={0.45} />
-                  <stop offset="100%" stopColor="var(--ring-color, #2ee6d6)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="day" stroke="#6d6d76" fontSize={11} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: "#121216", border: "1px solid rgba(243,241,235,0.1)" }}
-                formatter={(v: number) => formatMoney(v)}
-              />
-              <Area type="monotone" dataKey="cents" stroke="var(--ring-color, #2ee6d6)" fill="url(#rev)" />
-            </AreaChart>
-          </ResponsiveContainer>
+
+      <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+        <ConciergeDeck
+          slug={data.shop.slug}
+          appointments={data.appointments}
+          notices={data.notices}
+          canAct={!readonly || data.shop.isShowcase}
+          scheduleLocked={paymentsLocked}
+          onReload={onReload}
+        />
+        <div className="grid content-start gap-5">
+          <HudCard>
+            <HudHeading kicker="Revenue · 7 days" title={formatMoney(revenue)} />
+            <div className="mt-3 h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chart}>
+                  <defs>
+                    <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="day" stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ stroke: "rgba(34,211,238,0.35)" }}
+                    contentStyle={{
+                      background: "rgba(15,23,42,0.92)",
+                      border: "1px solid rgba(6,182,212,0.35)",
+                      borderRadius: 10,
+                      color: "#e2e8f0",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: "#67e8f9" }}
+                    formatter={(v: number) => formatMoney(v)}
+                  />
+                  <Area type="monotone" dataKey="cents" stroke="#22d3ee" strokeWidth={2} fill="url(#rev)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </HudCard>
+          <HudCard>
+            <HudHeading kicker="Inbox" title="Audit reports" />
+            {audits.length === 0 ? (
+              <p className="mt-3 font-mono text-xs text-slate-500">No photo audits yet.</p>
+            ) : (
+              <ul className="mt-3 grid gap-2">
+                {audits.slice(0, 6).map((notice) => (
+                  <li key={notice.id} className="rounded-xl border border-cyan-500/20 bg-slate-950/60 p-3">
+                    <p className="text-sm font-medium text-slate-100">{notice.subject.replace(/^Audit · /, "")}</p>
+                    <p className="mt-1 whitespace-pre-line text-sm text-slate-400">{notice.body}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </HudCard>
         </div>
-        <h3 className="mt-8 text-sm font-medium text-muted">Schedule</h3>
-        <ul className="mt-3 divide-y divide-line">
-          {data.appointments.slice(0, 12).map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <p className="text-sm">
-                  {a.serviceName} · {a.employeeName}
-                </p>
-                <p className="text-xs text-muted">
-                  {a.customerName} ·{" "}
-                  {new Date(a.startsAt).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              <span className="text-xs uppercase tracking-wider text-faint">{a.status}</span>
-            </li>
-          ))}
-        </ul>
       </div>
-      <div>
-        <h3 className="text-sm font-medium text-muted">Audit reports</h3>
-        {data.notices.filter((notice) => notice.channel === "inbox" && notice.subject.startsWith("Audit")).length === 0 ? (
-          <p className="mt-3 text-sm text-faint">No photo audits yet.</p>
-        ) : (
-          <ul className="mt-3 grid gap-2">
-            {data.notices
-              .filter((notice) => notice.channel === "inbox" && notice.subject.startsWith("Audit"))
-              .slice(0, 6)
-              .map((notice) => (
-                <li key={notice.id} className="glass-card rounded-2xl p-4">
-                  <p className="font-medium">{notice.subject.replace(/^Audit · /, "")}</p>
-                  <p className="mt-1 whitespace-pre-line text-sm text-muted">{notice.body}</p>
-                </li>
-              ))}
-          </ul>
-        )}
-        <TodayPost slug={data.shop.slug} />
-        <div className="mt-8">
+
+      <AssignmentLog appointments={data.appointments} employees={data.employees} services={data.services} />
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <HudCard>
+          <TodayPost slug={data.shop.slug} />
+        </HudCard>
+        <HudCard>
           <ProspectScan
             slug={data.shop.slug}
-            city={placeFromCityLine(cityFromAddress(data.shop.address))}
+            city={shopCity(data.shop.address)}
             disabled={paymentsLocked || (readonly && !data.shop.isShowcase)}
           />
-        </div>
-        <h3 className="mt-8 text-sm font-medium text-muted">Incoming</h3>
-        {pending.length === 0 ? (
-          <p className="mt-3 text-sm text-faint">Quiet board. New requests light the ring.</p>
-        ) : (
-          <ul className="mt-3 grid gap-2">
-            {pending.map((a) => (
-              <li key={a.id} className="glass-card rounded-2xl p-4">
-                <p className="font-medium">{a.customerName}</p>
-                <p className="text-sm text-muted">
-                  {a.serviceName} with {a.employeeName}
-                </p>
-                {!readonly || data.shop.isShowcase ? (
-                  <Button
-                    className="mt-3"
-                    size="sm"
-                    disabled={paymentsLocked}
-                    onClick={() => {
-                      void (async () => {
-                        const result = await acceptBooking({
-                          data: { slug: data.shop.slug, appointmentId: a.id },
-                        });
-                        ring.announce(
-                          {
-                            id: `acc-${a.id}`,
-                            type: "booking_confirmed",
-                            appointmentId: a.id,
-                            payload: result.detail,
-                            createdAt: new Date().toISOString(),
-                          },
-                          true,
-                        );
-                        onReload();
-                      })();
-                    }}
-                  >
-                    Confirm
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
+        </HudCard>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="glass-card lift-card rounded-2xl p-4">
-      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">{label}</p>
-      <p className="mt-1 font-mono text-3xl tabular-nums tracking-tight">{value}</p>
-      {hint ? <p className="mt-1 font-mono text-[11px] text-faint">{hint}</p> : null}
     </div>
   );
 }
@@ -624,13 +636,12 @@ function BrandPanel({
   const canIntro = !readonly || shop.isShowcase;
   const hero = resolveHeroMedia(shop);
   const previewVideo = localVideo ?? (catalog || hero.videoUrl);
-  const films = catalogChoices(shop.niche);
   const nicheActions = getNicheActions(shop.niche);
   const [liveHud, setLiveHud] = useState<HeroHudConfig>(() =>
     seedFilmPlates(shop.heroHud && shop.heroHud.buttons.length > 0 ? shop.heroHud : { title: "", buttons: studioDefaultButtons(shop.niche, previewVideo, `/${shop.slug}/book`), plates: [] }, {
       name: shop.name,
       tagline: shop.tagline,
-      city: cityFromAddress(shop.address),
+      city: shopCity(shop.address),
       badge: nicheActions?.badge ?? "",
       bookHref: `/${shop.slug}/book`,
       services: nicheActions?.services ?? [],
@@ -743,7 +754,17 @@ function BrandPanel({
     if (readonly) return;
     setSaving(true);
     try {
-      await updateShopBrand({ data: { slug: shop.slug, catalogFilm: value } });
+      // Pin historical archive selection onto shops.hero_background_loop (+ hero_video_url).
+      await updateShopBrand({
+        data: {
+          slug: shop.slug,
+          catalogFilm: value,
+          heroFilm: value === "default" ? undefined : next,
+          clearHeroVideo: value === "default" ? true : undefined,
+          markHero: true,
+        },
+      });
+      await revalidateStorefront({ data: shop.slug });
       onReload();
     } finally {
       setSaving(false);
@@ -847,7 +868,7 @@ function BrandPanel({
             name: shop.name,
             accent: neon,
             logoUrl: header ? compileBrandMark(header, brandLine, rippleTheme(theme)?.accent || neon).dataUrl : shop.tradeProfile?.logoUrl || undefined,
-            city: cityFromAddress(shop.address),
+            city: shopCity(shop.address),
             trade: shopTradeLabel(shop),
           }}
           effect={null}
@@ -881,9 +902,15 @@ function BrandPanel({
         <p className="mt-2 text-xs text-muted">
           Masks the still into the page so the bottom of the hero dissolves into the dark field.
         </p>
-        <p className="mt-1 text-xs text-muted">{localVideo ? "Custom loop · unsaved preview" : hero.loopLabel}</p>
+        <p className="mt-1 text-xs text-muted">
+          {localVideo
+            ? "Custom loop · unsaved preview"
+            : catalog
+              ? `Pinned archive · ${catalog.split("/").pop()}`
+              : `Live loop · ${(hero.videoUrl || "").split("/").pop() || "niche default"}`}
+        </p>
 
-        <div className="mt-8 rounded-[24px] bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+        <div className={`${HUD_CARD} mt-8 p-4`}>
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Axiom Hero Studio Editor</p>
           <p className="mt-1 font-display text-2xl">Camera entrance</p>
           <p className="mt-1 text-xs text-muted">
@@ -901,7 +928,7 @@ function BrandPanel({
                 e.target.value = "";
                 void onVideo(file);
               }}
-              className="mt-2 block w-full text-sm text-muted"
+              className="admin-file mt-2 block w-full text-sm text-slate-400"
             />
             <p className="mt-2 text-xs text-muted">
               {readonly
@@ -912,26 +939,12 @@ function BrandPanel({
             </p>
             {videoError ? <p className="mt-2 text-sm text-danger">{videoError}</p> : null}
           </div>
-          <div className="mt-4">
-            <Label htmlFor="catalog-film">Niche film</Label>
-            <select
-              id="catalog-film"
-              value={catalog || "default"}
-              disabled={readonly || uploading}
-              onChange={(e) => void onCatalog(e.target.value)}
-              className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
-            >
-              <option value="default">Matched niche film</option>
-              {films.map((film) => (
-                <option key={film.url} value={film.url}>
-                  {film.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-xs text-muted">
-              The matcher picks a `*-hero-animation.mp4` loop from the niche. Pin another active animation from this list.
-            </p>
-          </div>
+          <HeroCustomizer
+            niche={shop.niche}
+            selectedUrl={catalog || hero.videoUrl}
+            disabled={readonly || uploading}
+            onSelect={(value) => void onCatalog(value)}
+          />
           <div className="mt-4">
             <Label htmlFor="intro-preset">Presentation</Label>
             <select
@@ -939,7 +952,7 @@ function BrandPanel({
               value={presentationForIntro(preset)}
               disabled={!canIntro}
               onChange={(e) => void persistIntro({ introPreset: e.target.value as IntroPreset })}
-              className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+              className={`${HUD_SELECT} mt-2`}
             >
               {PRESENTATION_STYLES.map((style) => (
                 <option key={style.id} value={style.id}>
@@ -1067,7 +1080,7 @@ function BrandPanel({
                     data: { slug: shop.slug, neonAccent: neon, glowEnabled: glow, layout: next },
                   }).then(() => onReload());
                 }}
-                className="flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-xl border border-cyan-500/20 bg-slate-950/60 px-3 py-2"
               >
                 <span className="text-sm capitalize">{block}</span>
                 <span className="flex gap-1">
@@ -1143,7 +1156,7 @@ function BrandPanel({
                 }
               })();
             }}
-            className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+            className={`${HUD_SELECT} mt-2`}
           >
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -1160,7 +1173,7 @@ function BrandPanel({
             accept="image/*"
             disabled={readonly}
             onChange={(e) => void onFile(e.target.files?.[0])}
-            className="mt-2 block w-full text-sm text-muted"
+            className="admin-file mt-2 block w-full text-sm text-slate-400"
           />
         </div>
         <Button className="mt-6" disabled={saving || (!canIntro && readonly)} onClick={() => void save()}>
@@ -1188,23 +1201,32 @@ function StorefrontPanel({
 }) {
   const [phone, setPhone] = useState(notifyPhone);
   const [email, setEmail] = useState(notifyEmail);
-  const [niche, setNiche] = useState(isPublicNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
+  const [niche, setNiche] = useState(isCatalogNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [outreach, setOutreach] = useState<{ mode: string; chunkSize: number; intervalSeconds: number } | null>(null);
+  const [outreach, setOutreach] = useState<{
+    mode: string;
+    chunkSize: number;
+    intervalSeconds: number;
+    slotLabels?: string[];
+    smsDailyCap?: number;
+    emailDailyCap?: number;
+  } | null>(null);
   const [outreachError, setOutreachError] = useState<string | null>(null);
+  const [automateBusy, setAutomateBusy] = useState(false);
+  const [automateNote, setAutomateNote] = useState<string | null>(null);
   const [hud, setHud] = useState<StorefrontHud>(shop.tradeProfile.hud);
   const [activeLayer, setActiveLayer] = useState<HeroLayerId>("headline");
   const stageRef = useRef<HTMLDivElement>(null);
   const bookPath = `/${shop.slug}/book`;
-  const previewNiche = isPublicNiche(niche) ? niche : shop.niche;
+  const previewNiche = isCatalogNiche(niche) ? niche : shop.niche;
   const nicheMedia = NICHE_MEDIA[previewNiche];
   const painted = paintHero(nicheMedia.heroImageUrl, nicheMedia.heroVideoUrl || null, hud);
   const legacyLabel = NICHES[shop.niche].label;
 
   useEffect(() => {
-    setNiche(isPublicNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
+    setNiche(isCatalogNiche(shop.niche) ? shop.niche : PUBLIC_NICHE_ORDER[0]);
     setHud(shop.tradeProfile.hud);
   }, [shop.niche, shop.tradeProfile]);
 
@@ -1237,7 +1259,7 @@ function StorefrontPanel({
 
   return (
     <form
-      className="max-w-5xl rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+      className={`${HUD_CARD} max-w-5xl p-5`}
       onSubmit={(event) => {
         event.preventDefault();
         if (readonly) return;
@@ -1280,16 +1302,17 @@ function StorefrontPanel({
             setNiche(next);
             setHud((current) => applyDepthStudio(current, next));
           }}
-          className="mt-2 h-11 w-full rounded-xl bg-surface-2 px-3 text-sm text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+          className={`${HUD_SELECT} mt-2`}
         >
-          {!isPublicNiche(shop.niche) ? (
+          {!isCatalogNiche(shop.niche) ? (
             <option value={shop.niche} disabled>
-              {legacyLabel} (not in the public list)
+              {legacyLabel} (legacy)
             </option>
           ) : null}
-          {PUBLIC_NICHE_ORDER.map((id) => (
+          {NICHE_ORDER.map((id) => (
             <option key={id} value={id}>
               {NICHES[id].label}
+              {isPublicNiche(id) ? "" : " · archive"}
             </option>
           ))}
         </select>
@@ -1323,7 +1346,7 @@ function StorefrontPanel({
             {painted.imageUrl ? (
               <img src={painted.imageUrl} alt="" className="hero-plate absolute -inset-[8%] h-[116%] w-[116%]" />
             ) : painted.videoUrl ? (
-              <video
+              <HeroLoopVideo
                 className="hero-plate pointer-events-none absolute -inset-[8%] h-[116%] w-[116%]"
                 src={painted.videoUrl}
                 muted
@@ -1336,7 +1359,7 @@ function StorefrontPanel({
             <div className="hero-subject absolute inset-0">
               {painted.imageUrl ? <img src={painted.imageUrl} alt="" className="hero-frame absolute inset-0 h-full w-full" /> : null}
               {painted.videoUrl ? (
-                <video className="hero-frame absolute inset-0 z-[1] h-full w-full object-cover" src={painted.videoUrl} autoPlay loop muted playsInline />
+                <HeroLoopVideo className="hero-frame absolute inset-0 z-[1] h-full w-full object-cover" src={painted.videoUrl} autoPlay loop muted playsInline />
               ) : null}
             </div>
             <div className="hero-scan pointer-events-none absolute inset-0" />
@@ -1379,20 +1402,55 @@ function StorefrontPanel({
         {busy ? "Saving" : "Save storefront"}
       </Button>
       {platformDesk ? (
-        <div className="mt-8 border-t border-line pt-6">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Outreach</p>
+        <div className="mt-8 border-t border-cyan-500/20 pt-6">
+          <DispatchControlPanel />
+          <p className="mt-10 text-[11px] uppercase tracking-[0.2em] text-muted">Outreach</p>
           <p className="mt-1 font-display text-2xl">Campaign parameters</p>
-          <p className="mt-2 text-sm text-muted">Simulation stays on. This desk does not send.</p>
+          <p className="mt-2 text-sm text-muted">
+            Live queue is Emergency Plumbing (20,330 records) with the axiom plumber hero. Automate / Dispatch
+            preload sequences onto the trickle clock. Simulation never hits Twilio or Resend.
+          </p>
           {outreach ? (
             <p className="mt-3 text-sm">
-              Mode {outreach.mode}. Chunk {outreach.chunkSize}. Interval {outreach.intervalSeconds}s.
+              Mode {outreach.mode}. Chunk {outreach.chunkSize}. Slots{" "}
+              {(outreach.slotLabels ?? ["9:00 AM", "1:00 PM", "4:00 PM"]).join(" · ")}. Caps{" "}
+              {outreach.smsDailyCap ?? 40} SMS / {outreach.emailDailyCap ?? 80} email.
             </p>
           ) : (
             <p className="mt-3 text-sm text-muted">{outreachError ?? "Reading outreach settings…"}</p>
           )}
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              className="h-12 min-w-[12rem] text-base font-semibold"
+              disabled={automateBusy || readonly}
+              onClick={() => {
+                setAutomateBusy(true);
+                setAutomateNote(null);
+                void automateOutreachDesk()
+                  .then((result) => {
+                    const slots = (result.slots ?? ["9:00 AM", "1:00 PM", "4:00 PM"]).join(" · ");
+                    setAutomateNote(
+                      result.simulation
+                        ? `Queued ${result.queued} leads · ${result.sequences} sequences. Simulation trickle at ${slots}.`
+                        : `Queued ${result.queued} leads · ${result.sequences} sequences. Live trickle at ${slots}.`,
+                    );
+                    return readOutreachDesk().then(setOutreach);
+                  })
+                  .catch((err: unknown) => {
+                    setAutomateNote(err instanceof Error ? err.message : "Automate could not start");
+                  })
+                  .finally(() => setAutomateBusy(false));
+              }}
+            >
+              {automateBusy ? "Automating…" : "Automate"}
+            </Button>
+            <p className="text-xs text-muted">Starts the trickle worker under daily caps.</p>
+          </div>
+          {automateNote ? <p className="mt-3 text-sm text-muted">{automateNote}</p> : null}
           <ul className="mt-4 grid gap-3">
             {OUTREACH_STRATEGIES.map((item) => (
-              <li key={item.id} className="rounded-xl bg-surface-2 p-3 text-sm">
+              <li key={item.id} className="rounded-xl border border-cyan-500/20 bg-slate-950/60 p-3 text-sm">
                 <p className="font-medium">{item.label}</p>
                 <p className="mt-1 text-muted">{item.line}</p>
                 <p className="mt-2 whitespace-pre-wrap text-xs text-faint">{item.text}</p>
@@ -1434,7 +1492,7 @@ function TeamPanel({
         ))}
       </ul>
       <form
-        className="glass-card rounded-2xl p-4"
+        className={`${HUD_CARD} p-4`}
         onSubmit={(ev) => {
           ev.preventDefault();
           if (readonly) return;
@@ -1512,8 +1570,10 @@ function StaffRow({
   }, [employee.bio, employee.displayName, employee.phone, employee.title]);
 
   return (
-    <li className="glass-card rounded-2xl p-4">
-      <p className="text-xs uppercase tracking-wider text-faint">{employee.inviteStatus}</p>
+    <li className={`${HUD_CARD} p-4`}>
+      <NeonBadge tone={employee.inviteStatus === "claimed" ? "emerald" : "amber"}>
+        {employee.inviteStatus === "claimed" ? "On station" : "Invite pending"}
+      </NeonBadge>
       <div className="mt-3 grid gap-3">
         <div>
           <Label htmlFor={`staff-name-${employee.id}`}>Name</Label>

@@ -11,7 +11,7 @@ import {
 
 test("firewood and locksmith keep their own modules", () => {
   assert.deepEqual(layoutFor("firewood").modules, ["workflow", "bulk", "species", "dropzone"]);
-  assert.deepEqual(layoutFor("locksmith").modules, ["dispatch", "callout", "kinds", "radius"]);
+  assert.deepEqual(layoutFor("locksmith").modules, ["dispatch", "callout", "radius"]);
   assert.ok(layoutFor("firewood").fields.includes("cords"));
   assert.ok(layoutFor("firewood").fields.includes("dropZones"));
   assert.ok(layoutFor("locksmith").fields.includes("emergencyCents"));

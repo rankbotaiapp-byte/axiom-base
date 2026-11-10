@@ -32,6 +32,8 @@ test("shop_hero_config is readable publicly, writable only by owners, and keyed 
   assert.match(server, /select config from shop_hero_config where shop_id = \$\{row\.id\}/);
   assert.match(server, /await assertCanModifyShop\(row, context\.userId\)/);
   assert.match(server, /insert into shop_hero_config \(shop_id, config, updated_at\)/);
+  assert.match(server, /overrideHeroVideoUrl/);
+  assert.match(server, /persistOverrideHeroVideo/);
   assert.match(server, /mem\?\.role === "owner"/);
   assert.match(server, /row\.owner_user_id === userId/);
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { attachLoopTailTrim } from "@/lib/axiom/loop-trim";
 import { advanceSpeck, type Speck, spawnSpeck } from "@/lib/axiom/swipe-reveal";
 
 export const PREY_REVEAL_BADGE = "ACTIVE INTERACTION: UNVEIL THE WILDLIFE.";
@@ -117,7 +118,9 @@ export function SwipeRevealHero({
     };
     video.addEventListener("loadeddata", hold);
     reduce.addEventListener("change", hold);
+    const stopTrim = attachLoopTailTrim(video, { loop: true });
     return () => {
+      stopTrim();
       video.removeEventListener("loadeddata", hold);
       reduce.removeEventListener("change", hold);
     };

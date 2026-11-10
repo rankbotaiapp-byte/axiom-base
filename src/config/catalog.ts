@@ -147,8 +147,8 @@ export const CATALOG = [
   {
     id: "plumbing",
     // Emergency Plumbing outreach + /demo/plumbing full-screen cinematic loop.
-    file: "axio-plumber-hero.mp4",
-    fallback: "axiom-plumber-hero.mp4",
+    file: "axiom-plumber-hero.mp4",
+    fallback: "axio-plumber-hero.mp4",
     card: "/media/heroes/plumbing.jpg",
     label: "Plumbing",
     blurb: "Lines, fixtures, and emergency calls.",
@@ -523,6 +523,8 @@ export const FILM_FILE_ALIASES: Record<string, CatalogNiche> = {
   "welding-hero-animation.mp4": "machining",
   "underwater-leopard-hero-animation.mp4": "taxidermy",
   "underwater-leapord-hero-animation.mp4": "taxidermy",
+  "hero-1280.mp4": "taxidermy",
+  "hero-854.mp4": "taxidermy",
   "archery-hero-animation.mp4": "bow-tech",
   "electric-tech-hero-animation.mp4": "electrical",
   "heist-hero-animation.mp4": "glasswork",

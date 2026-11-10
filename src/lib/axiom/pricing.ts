@@ -1,43 +1,58 @@
+import {
+  FOUNDER_LIFETIME_CENTS,
+  NAME_YOUR_PRICE_MIN_CENTS,
+  STANDARD_MONTHLY_CENTS,
+} from "../stripe/commercial.ts";
+
 /** Territory plans the preview and the pitch screen sell. Amounts are cents. */
 
 export const TERRITORY_PLANS = [
   {
     id: "trial",
-    name: "30-Day Free Trial",
-    amountCents: 0,
+    name: "Name Your Price · Month 1",
+    /** Display / floor — actual first charge is the named price (≥ $1). */
+    amountCents: NAME_YOUR_PRICE_MIN_CENTS,
+    minAmountCents: NAME_YOUR_PRICE_MIN_CENTS,
     cadence: "trial",
-    summary: "$0 today. $497 a month starting day 31.",
-    renewalCents: 49700,
-  },
-  {
-    id: "growth",
-    name: "Managed Territory Growth Engine",
-    amountCents: 49700,
-    cadence: "month",
-    summary: "$497 every month.",
-    renewalCents: 49700,
+    summary: `Name your Month 1 price ($1 minimum). Automatically becomes $${STANDARD_MONTHLY_CENTS / 100}/mo on day 31.`,
+    renewalCents: STANDARD_MONTHLY_CENTS,
   },
   {
     id: "lifetime",
-    name: "Lifetime Territory Monopoly",
-    amountCents: 249700,
+    name: "Founder's Lifetime Access",
+    amountCents: FOUNDER_LIFETIME_CENTS,
+    minAmountCents: FOUNDER_LIFETIME_CENTS,
     cadence: "once",
-    summary: "$2,497 once. The territory stays yours.",
+    summary: `$${FOUNDER_LIFETIME_CENTS / 100} once. Permanent storefront access. Zero monthly fees.`,
     renewalCents: null,
   },
 ] as const;
 
+/** Legacy id still resolved for existing activations / open checkouts. */
+const LEGACY_GROWTH = {
+  id: "growth",
+  name: "Standard Monthly",
+  amountCents: STANDARD_MONTHLY_CENTS,
+  minAmountCents: STANDARD_MONTHLY_CENTS,
+  cadence: "month",
+  summary: `$${STANDARD_MONTHLY_CENTS / 100} every month.`,
+  renewalCents: STANDARD_MONTHLY_CENTS,
+} as const;
+
 export type TerritoryPlanId = (typeof TERRITORY_PLANS)[number]["id"];
-export type TerritoryPlan = (typeof TERRITORY_PLANS)[number];
+export type TerritoryPlan =
+  | (typeof TERRITORY_PLANS)[number]
+  | typeof LEGACY_GROWTH;
 export type AccountMode = "simulation" | "live";
 
 const DAY_MS = 86_400_000;
 
 export function territoryPlan(id: string): TerritoryPlan | null {
+  if (id === "growth") return LEGACY_GROWTH;
   return TERRITORY_PLANS.find((plan) => plan.id === id) ?? null;
 }
 
-/** Day 31 of a trial is thirty days after the day they start. Growth bills again in thirty days. */
+/** Day 31 of Name Your Price is thirty days after they start. Lifetime does not renew. */
 export function renewalFor(
   planId: string,
   from: Date,
@@ -56,12 +71,14 @@ export function modeAfterCheckout(): AccountMode {
 }
 
 /**
- * A paid session is settled. A 30-day trial settles only when Stripe completes
- * checkout with nothing due today. Anything else stays in simulation.
+ * Settled when Stripe reports paid.
+ * Legacy $0 trials (no longer sold) still accept `no_payment_required`.
  */
 export function territorySessionSettled(plan: TerritoryPlan, paymentStatus: string | undefined): boolean {
   if (paymentStatus === "paid") return true;
-  return plan.cadence === "trial" && plan.amountCents === 0 && paymentStatus === "no_payment_required";
+  // Historical free trials settled with nothing due; current Name Your Price always charges ≥ $1.
+  const floor = Number(plan.amountCents);
+  return plan.cadence === "trial" && floor === 0 && paymentStatus === "no_payment_required";
 }
 
 export function pitchHref(lead: { leadSlug: string; county: string }): string {

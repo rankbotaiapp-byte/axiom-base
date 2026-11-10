@@ -54,9 +54,14 @@ describe("outreach visit routing", () => {
     assert.doesNotMatch(landing, /AxiomCatalogHub/);
     assert.doesNotMatch(landing, /IndustryGallery/);
     assert.doesNotMatch(tenant, /AxiomCatalogHub/);
-    assert.match(founder, /\/media\/welcome-to-axiom\.mp4/);
+    assert.match(founder, /\/media\/axiom-greeting\.mp4/);
+    assert.match(founder, /FOUNDER_WELCOME_SRC/);
     assert.match(tenant, /OutreachTenantPage/);
     assert.match(tenant, /FounderWelcomeStage/);
+    // Founder intro must render before the niche trade stage.
+    const founderIdx = tenant.indexOf("FounderWelcomeStage");
+    const tradeIdx = tenant.indexOf('id="trade-stage"');
+    assert.ok(founderIdx >= 0 && tradeIdx > founderIdx, "avatar intro must precede #trade-stage");
     assert.match(landing, /OutreachTenantPage/);
     assert.doesNotMatch(landing, /AxiomCatalogHub/);
   });

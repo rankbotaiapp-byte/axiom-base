@@ -1,6 +1,8 @@
+import { catalogFilmUrl } from "../../config/catalog.ts";
+
 /** Portal opener, then the single auto-hero film, then the live desk. */
-export const AUTO_HERO_SRC = "/media/auto-hero-animation.mp4";
-export const AUTO_REPAIR_SRC = "/media/auto-hero-animation.mp4";
+export const AUTO_HERO_SRC = catalogFilmUrl("auto");
+export const AUTO_REPAIR_SRC = catalogFilmUrl("auto");
 
 /** The timed reel stays on auto-hero. If that file is absent, play the auto-repair film. */
 export function swapMissingAutoHero(video: HTMLVideoElement) {

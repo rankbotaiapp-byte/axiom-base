@@ -1,0 +1,290 @@
+/* Land clearing — scoped tactical theme under .land-clearing-root */
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800;900&family=Share+Tech+Mono&display=swap");
+
+@theme {
+  /* Palette — ink anchored on #030712; amber slot remapped to neon cyan */
+  --color-ink-950: #030712;
+  --color-ink-900: #0a0f1a;
+  --color-ink-800: #111827;
+  --color-ink-700: #1a2332;
+  --color-ink-600: #243044;
+
+  --color-forest-950: #030712;
+  --color-forest-900: #0a1612;
+  --color-forest-800: #0f221c;
+  --color-forest-700: #163028;
+
+  --color-amber: #00ffcc;
+  --color-amber-hot: #66ffe6;
+  --color-amber-glow: #99ffef;
+
+  --color-steel-100: #e2e8f0;
+  --color-steel-200: #cbd5e1;
+  --color-steel-300: #94a3b8;
+  --color-steel-400: #64748b;
+  --color-steel-500: #475569;
+  --color-steel-600: #334155;
+
+  --font-stencil: "Big Shoulders Stencil Display", Impact, sans-serif;
+  --font-sans: Barlow, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Share Tech Mono", ui-monospace, monospace;
+
+  --font-family-stencil: var(--font-stencil);
+  --font-family-sans: var(--font-sans);
+  --font-family-mono: var(--font-mono);
+
+  --tracking-tactical: 0.18em;
+
+  --shadow-amber: 0 0 0 1px rgba(0, 255, 204, 0.55), 0 0 24px rgba(0, 255, 204, 0.35);
+  --shadow-amber-lg: 0 0 0 1px rgba(0, 255, 204, 0.8), 0 0 40px rgba(0, 255, 204, 0.55);
+
+  --animate-pulse-amber: lc-pulse-cyan 2.2s ease-in-out infinite;
+  --animate-sweep: lc-sweep 3.2s linear infinite;
+  --animate-scan: lc-scan 7s linear infinite;
+  --animate-blink: lc-blink 1.6s steps(2, start) infinite;
+}
+
+@keyframes lc-pulse-cyan {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(0, 255, 204, 0.6), 0 0 18px rgba(0, 255, 204, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(0, 255, 204, 0.95), 0 0 34px rgba(0, 255, 204, 0.6);
+  }
+}
+
+@keyframes lc-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lc-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes lc-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.land-clearing-root {
+  --lc-bg: #030712;
+  --lc-cyan: #00ffcc;
+  --lc-cyan-soft: rgba(0, 255, 204, 0.35);
+  --lc-cyan-dim: rgba(0, 255, 204, 0.12);
+  --lc-glass-fill: rgba(3, 7, 18, 0.55);
+  --lc-glass-border: rgba(255, 255, 255, 0.1);
+  --font-stencil: "Big Shoulders Stencil Display", Impact, sans-serif;
+  --font-sans: Barlow, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Share Tech Mono", ui-monospace, monospace;
+
+  color-scheme: dark;
+  min-height: 100dvh;
+  background: var(--lc-bg);
+  font-family: var(--font-sans);
+  color: var(--color-steel-100);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+.land-clearing-root *,
+.land-clearing-root *::before,
+.land-clearing-root *::after {
+  box-sizing: border-box;
+}
+
+.land-clearing-root ::selection {
+  background: rgba(0, 255, 204, 0.35);
+  color: #fff;
+}
+
+.land-clearing-root :focus-visible {
+  outline: 2px solid var(--lc-cyan);
+  outline-offset: 3px;
+}
+
+.land-clearing-root input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.land-clearing-root input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--lc-cyan) var(--fill, 50%),
+    rgba(255, 255, 255, 0.12) var(--fill, 50%)
+  );
+}
+
+.land-clearing-root input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.land-clearing-root input[type="range"]::-moz-range-progress {
+  height: 4px;
+  background: var(--lc-cyan);
+}
+
+.land-clearing-root input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--lc-bg);
+  border: 2px solid var(--lc-cyan);
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.7);
+  cursor: grab;
+}
+
+.land-clearing-root input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--lc-bg);
+  border: 2px solid var(--lc-cyan);
+  border-radius: 0;
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.7);
+}
+
+.land-clearing-root .glass {
+  border: 1px solid var(--lc-glass-border);
+  background: var(--lc-glass-fill);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.land-clearing-root .hud-frame {
+  position: relative;
+}
+
+.land-clearing-root .hud-frame::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) top left / 14px 2px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) top left / 2px 14px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) top right / 14px 2px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) top right / 2px 14px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) bottom left / 14px 2px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) bottom left / 2px 14px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) bottom right / 14px 2px,
+    linear-gradient(var(--lc-cyan), var(--lc-cyan)) bottom right / 2px 14px;
+  background-repeat: no-repeat;
+  opacity: 0.85;
+}
+
+.land-clearing-root .hazard {
+  background: repeating-linear-gradient(-45deg, var(--lc-cyan) 0 10px, var(--lc-bg) 10px 20px);
+}
+
+.land-clearing-root .grid-overlay {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.land-clearing-root .scanlines {
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+
+.land-clearing-root .grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.55'/></svg>");
+}
+
+.land-clearing-root .label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-tactical);
+  color: var(--color-steel-400);
+}
+
+.land-clearing-root .field {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(3, 7, 18, 0.7);
+  padding: 0.75rem 1rem;
+  font-size: 15px;
+  color: var(--color-steel-100);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.land-clearing-root .field::placeholder {
+  color: var(--color-steel-500);
+}
+
+.land-clearing-root .field:focus {
+  border-color: var(--lc-cyan);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 204, 0.25);
+}
+
+.land-clearing-root .seg {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(3, 7, 18, 0.6);
+  padding: 0.5rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-steel-300);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.land-clearing-root .seg:hover {
+  border-color: rgba(0, 255, 204, 0.6);
+  color: #fff;
+}
+
+.land-clearing-root .seg[data-active="true"] {
+  border-color: var(--lc-cyan);
+  background: rgba(0, 255, 204, 0.15);
+  color: var(--color-amber-glow);
+  box-shadow: inset 0 0 12px rgba(0, 255, 204, 0.2);
+}
+
+.land-clearing-root .shadow-lc-glow {
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.75);
+}
+
+.land-clearing-root .shadow-lc-glow-md {
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.65);
+}
+
+.land-clearing-root .shadow-lc-glow-lg {
+  box-shadow: 0 0 14px rgba(0, 255, 204, 0.75);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-clearing-root {
+    scroll-behavior: auto;
+  }
+  .land-clearing-root *,
+  .land-clearing-root *::before,
+  .land-clearing-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

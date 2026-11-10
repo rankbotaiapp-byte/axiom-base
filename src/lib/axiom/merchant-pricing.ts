@@ -3,6 +3,16 @@
 export const PRICING_TYPES = ["flat", "deposit", "package", "tiered"] as const;
 export type MerchantPricingType = (typeof PRICING_TYPES)[number];
 export const COLLECTION_MODES = ["online", "in_person"] as const;
+/** Platform take on online due-now. 150 bps = 1.5%. */
+export const GEAR_GUARDIAN_BPS = 150;
+
+export function gearGuardianFeeCents(dueNowCents: number): number {
+  const due = Math.max(0, Math.round(dueNowCents));
+  if (due <= 0) return 0;
+  const fee = Math.round((due * GEAR_GUARDIAN_BPS) / 10000);
+  if (fee <= 0) return due >= 67 ? 1 : 0;
+  return fee >= due ? Math.max(0, due - 1) : fee;
+}
 export type CollectionMode = (typeof COLLECTION_MODES)[number];
 export type ConnectStanding = "none" | "pending" | "active";
 

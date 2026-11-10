@@ -158,7 +158,7 @@ export function mapBusinessToTemplateBrand(record: BusinessBrandRecord): Templat
 /** Absolute preview URL. Matches deskPreviewPath: `/?b=<slug>&utm_source=desk`. */
 export function previewUrlForBusiness(
   origin: string,
-  record: Pick<BusinessBrandRecord, "slug" | "county" | "city" | "businessName" | "categoryLabel" | "category">,
+  record: Pick<BusinessBrandRecord, "id" | "slug" | "county" | "city" | "businessName" | "categoryLabel" | "category">,
 ): string {
   const path = deskPreviewPath({
     leadSlug: record.slug,

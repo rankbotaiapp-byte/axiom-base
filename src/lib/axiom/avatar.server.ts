@@ -7,6 +7,8 @@ import {
   avatarSessionPayload,
   clipAvatarField,
   ericGreeting,
+  resolveAvatarVideoQuality,
+  resolveAvatarVoiceModel,
   type AvatarContext,
 } from "./avatar";
 
@@ -115,6 +117,8 @@ export async function issueAvatarSession(request: Request): Promise<Response> {
     voiceId: env("LIVEAVATAR_VOICE_ID"),
     contextId: env("LIVEAVATAR_CONTEXT_ID"),
     sandbox,
+    videoQuality: resolveAvatarVideoQuality(env("LIVEAVATAR_VIDEO_QUALITY")),
+    voiceModel: resolveAvatarVoiceModel(env("LIVEAVATAR_VOICE_MODEL")),
   });
   const base = providerBase();
   try {

@@ -94,6 +94,7 @@ export async function openTerritoryCheckout(
   leadSlug: string,
   planId: string,
   processor: "trial" | "desk" | "stripe",
+  amountCents?: number,
 ) {
   const plan = territoryPlan(planId);
   if (!plan) throw new Error("Unknown plan");
@@ -109,11 +110,13 @@ export async function openTerritoryCheckout(
   if (!lead) throw new Error("Unknown business");
   if (lead.account_mode === "live") throw new Error("This territory is already live");
   const checkoutId = newId("chk");
+  const charged =
+    typeof amountCents === "number" && Number.isFinite(amountCents) ? amountCents : plan.amountCents;
   await sql`
     insert into territory_checkouts (id, lead_slug, plan_id, amount_cents, processor)
-    values (${checkoutId}, ${leadSlug}, ${plan.id}, ${plan.amountCents}, ${processor})
+    values (${checkoutId}, ${leadSlug}, ${plan.id}, ${charged}, ${processor})
   `;
-  return { checkoutId, plan, businessName: lead.business_name, county: lead.county };
+  return { checkoutId, plan, businessName: lead.business_name, county: lead.county, amountCents: charged };
 }
 
 export async function finishDeskCheckout(_checkoutId: string, _paymentRef: string): Promise<never> {
@@ -125,6 +128,8 @@ export async function activateTerritory(input: {
   planId: string;
   paymentRef: string;
   checkoutId?: string;
+  /** Settled first charge (Name Your Price or lifetime). */
+  amountCents?: number;
 }): Promise<TerritoryActivation & { already: boolean }> {
   const plan = territoryPlan(input.planId);
   if (!plan) throw new Error("Unknown plan");
@@ -144,6 +149,10 @@ export async function activateTerritory(input: {
   }
   const renewal = renewalFor(plan.id, new Date());
   const mode = modeAfterCheckout();
+  const amountCents =
+    typeof input.amountCents === "number" && Number.isFinite(input.amountCents)
+      ? input.amountCents
+      : plan.amountCents;
   await sql`
     update preloaded_leads
     set account_mode = ${mode}
@@ -155,7 +164,7 @@ export async function activateTerritory(input: {
       amount_cents, renewal_cents, renews_at, payment_ref
     ) values (
       ${newId("act")}, ${input.leadSlug}, ${lead.business_name}, ${lead.county},
-      ${plan.id}, ${plan.name}, ${plan.amountCents}, ${renewal.renewalCents},
+      ${plan.id}, ${plan.name}, ${amountCents}, ${renewal.renewalCents},
       ${renewal.renewsAt}, ${input.paymentRef}
     )
     on conflict (lead_slug) do nothing

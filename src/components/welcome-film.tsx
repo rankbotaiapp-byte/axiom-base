@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 const EMPLOYEE_SEEN_PREFIX = "axiom:employee-welcome:";
 export const EMPLOYEE_WELCOME_SRC = "/media/heroes/employee-welcome.mp4";
@@ -88,7 +89,7 @@ function WelcomeDialog({
           </button>
         </div>
         <div className="mt-4 overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-          <video
+          <HeroLoopVideo
             ref={videoRef}
             className="aspect-video w-full"
             src={src}
@@ -96,6 +97,7 @@ function WelcomeDialog({
             muted
             playsInline
             controls
+            loop={false}
           />
         </div>
         <div className="mt-4 flex justify-end">

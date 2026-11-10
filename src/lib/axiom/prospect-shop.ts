@@ -1,4 +1,4 @@
-import { catalogFilmUrl, resolveCatalogNiche } from "../../config/catalog.ts";
+import { resolveCatalogNiche, tradeLoopUrl } from "../../config/catalog.ts";
 import type { BusinessBrandRecord } from "./business-brand.ts";
 import { DEFAULT_DASHBOARD } from "./dashboard.ts";
 import { NICHES, DEFAULT_HOURS } from "./niches.ts";
@@ -22,7 +22,7 @@ export function materializeProspectShop(row: BusinessBrandRecord): ShopPublic {
       description: template.description,
       ringColor: template.ringColor,
       heroImageUrl: "",
-      heroVideoUrl: catalogFilmUrl(niche),
+      heroVideoUrl: tradeLoopUrl(niche),
       heroBlendPercent: 60,
       heroEffectType: "smoke",
       heroBrandingTagline: "",

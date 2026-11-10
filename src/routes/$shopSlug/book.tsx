@@ -16,6 +16,7 @@ import {
   startCardCheckout,
 } from "@/lib/axiom/server";
 import { CardElements } from "@/components/card-elements";
+import { StripeConnectNotice } from "@/components/legal-notice";
 import { listMerchantPricing } from "@/lib/axiom/merchant-pricing-api";
 import { dueNowCents, listPriceCents, priceForService, pricingLabel, type MerchantPrice } from "@/lib/axiom/merchant-pricing";
 import { ProductShelf } from "@/components/product-shelf";
@@ -325,6 +326,7 @@ function BookPage() {
                 {inPerson ? " · pay at the visit" : merchant.pricingType === "deposit" ? " due now" : ""}
               </p>
             ) : null}
+            {!inPerson && dueCents > 0 && !intent && !pay ? <StripeConnectNotice /> : null}
             {slot ? (
               <p className="mt-2 text-sm text-muted">
                 {new Date(slot).toLocaleString("en-US", {

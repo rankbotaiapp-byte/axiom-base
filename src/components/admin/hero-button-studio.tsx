@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { HeroHud } from "@/components/hero-hud";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { studioDefaultButtons } from "@/config/niche-button-presets";
 import { getNicheActions } from "@/config/niche-actions";
 import {
@@ -135,11 +136,11 @@ export function HeroButtonStudio({
       <div className="hud-stage">
         {isSharkHeroFilm(film) ? (
           <HeroSharkInteractive active>
-            {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+            {film ? <HeroLoopVideo src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
           </HeroSharkInteractive>
         ) : (
           <InteractiveOtterHero active={isOtterHeroFilm(film)}>
-            {film ? <video src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
+            {film ? <HeroLoopVideo src={film} autoPlay muted loop playsInline /> : <div className="hud-stage-empty" />}
           </InteractiveOtterHero>
         )}
         <HeroHud

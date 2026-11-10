@@ -24,7 +24,14 @@ import { usesAutomotiveCockpit } from "@/lib/axiom/cockpit";
 import { ownerHeroMedia } from "@/lib/axiom/hero-motion";
 import { brandPlate, heroAtmosphereActive, type HeroEffect } from "@/lib/axiom/hero-brand";
 import { HeroBrandFrame } from "@/components/hero-weather";
-import { applyBrowserFilmOverride, readMasterTelemetry, readNicheFilmOverride } from "@/lib/axiom/hero-films";
+import {
+  abyssalTelemetry,
+  applyBrowserFilmOverride,
+  isSharkHeroFilm,
+  readMasterTelemetry,
+  readNicheFilmOverride,
+} from "@/lib/axiom/hero-films";
+import { resolveCatalogNiche } from "@/config/catalog";
 import { formatPhone, initials } from "@/lib/utils";
 import { CraftLoop } from "@/components/craft-loop";
 import { StudioCinematicHero } from "@/components/studio-cinematic-hero";
@@ -149,7 +156,7 @@ export function NicheStorefront({
   const [filmOverride, setFilmOverride] = useState("");
   useEffect(() => {
     setMasterLines(readMasterTelemetry());
-    setFilmOverride(readNicheFilmOverride(niche));
+    setFilmOverride(isShopNiche(niche) ? readNicheFilmOverride(niche) : "");
   }, [niche]);
   const nicheFilm = isShopNiche(niche) ? NICHE_MEDIA[niche].heroVideoUrl : "";
   const playedVideo =
@@ -159,7 +166,10 @@ export function NicheStorefront({
   const city = (address ?? "").split(",").map((part) => part.trim()).filter(Boolean)[1] ?? "";
   const tradeLabel = kicker || niche;
   const tradeText = [businessName, kicker, tagline, description].filter(Boolean).join(" ");
-  const telemetry = masterLines;
+  const playedFilmUrl = typeof playedVideo === "string" ? playedVideo : playedVideo?.[0] ?? "";
+  const abyssalTheme =
+    resolveCatalogNiche(niche) === "water-systems" || isSharkHeroFilm(playedFilmUrl);
+  const telemetry = abyssalTheme ? abyssalTelemetry() : masterLines;
   const brand = { name: businessName, accent, logoUrl, city, trade: tradeLabel };
   const owned = autoHero ? null : ownerHeroMedia(playedVideo, heroImageUrl);
   const plate = brandPlate({ name: businessName, niche, trade: kicker, tagline: heroTagline });

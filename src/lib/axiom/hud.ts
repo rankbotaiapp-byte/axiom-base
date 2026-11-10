@@ -273,6 +273,8 @@ const DEPTH_LOOK: Partial<
   contractor: { wash: "tide", glow: 75, force: 4, radius: 4, blur: 3, depth: 4, damp: 3, rim: true, scan: true },
   events: { wash: "copper", glow: 75, force: 4, radius: 4, blur: 3, depth: 4, damp: 3, rim: true, scan: true },
   location: { wash: "obsidian", glow: 75, force: 4, radius: 4, blur: 3, depth: 4, damp: 3, rim: true, scan: true },
+  "water-systems": { wash: "tide", glow: 75, force: 4, radius: 4, blur: 3, depth: 4, damp: 3, rim: true, scan: true },
+  abyssal: { wash: "tide", glow: 75, force: 4, radius: 4, blur: 3, depth: 4, damp: 3, rim: true, scan: true },
 };
 
 export function depthStudio(niche: string) {

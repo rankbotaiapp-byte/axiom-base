@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { X } from "lucide-react";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 interface OnboardingVideoModalProps {
   isOpen: boolean;
@@ -22,7 +24,7 @@ export const OnboardingVideoModal: React.FC<OnboardingVideoModalProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xl font-bold tracking-tight text-cyan-400">
-              Welcome to New Era Apps, {shopName}
+              Welcome to Axiom, {shopName}
             </h3>
             <p className="text-sm text-zinc-400">
               Personalized setup guidance from Eric Mullen
@@ -32,21 +34,22 @@ export const OnboardingVideoModal: React.FC<OnboardingVideoModalProps> = ({
             onClick={onClose}
             className="text-zinc-400 hover:text-white transition-colors p-2 rounded-lg bg-zinc-900/50 hover:bg-zinc-800"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Video Player Container with Dark Framing */}
         <div className="relative aspect-video w-full bg-black rounded-xl overflow-hidden border border-zinc-800 shadow-inner">
-          <video
+          <HeroLoopVideo
             className="w-full h-full object-cover"
             controls
             autoPlay
             playsInline
+            loop={false}
             src="https://resource2.heygen.ai/video/34551d5a335c4ec5b5f3f6693e3ee5b8/video.mp4"
           >
             Your browser does not support the video tag.
-          </video>
+          </HeroLoopVideo>
         </div>
 
         {/* Action Footer */}

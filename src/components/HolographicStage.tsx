@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode, type RefObject } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { AiVoiceManager } from "@/components/AiVoiceManager";
 import { GoopyOrb, type OrbAskPhase } from "@/components/GoopyOrb";
 import { useAudioQuery } from "@/hooks/useAudioQuery";
+import { catalogFilmUrl } from "@/config/catalog";
+import { attachLoopTailTrim } from "@/lib/axiom/loop-trim";
 import {
   ASSISTANT_CONFIG_EVENT,
   hairHex,
@@ -23,7 +26,7 @@ export type HolographicStageProps = {
 export function HolographicStage({
   businessName = "Axiom desk",
   customer = false,
-  filmUrl = "/media/orb-explosion-hero-animation.mp4",
+  filmUrl = catalogFilmUrl("contractor"),
   posterUrl = "/media/goopy-orb-base.jpg",
 }: HolographicStageProps) {
   const reduce = useReducedMotion();
@@ -117,6 +120,12 @@ export function HolographicStage({
   }, []);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    return attachLoopTailTrim(video, { loop: true });
+  }, [filmUrl]);
+
+  useEffect(() => {
     if (!orb) return;
     let active = true;
     void import("@/components/DraggableAssistant").then((mod) => {
@@ -206,6 +215,7 @@ export function HolographicStage({
           <p className="font-mono text-xs tracking-[0.18em] text-cyan-200 uppercase">
             {config ? `${config.selectedArchetype} · ${config.outfit}` : "Awaiting a selection"}
           </p>
+          <AiVoiceManager />
         </div>
 
         <div className="rounded-2xl border border-blue-500/30 bg-slate-900/60 p-4 backdrop-blur-md">

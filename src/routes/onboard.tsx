@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { RedirectToSignIn } from "@/lib/auth/gates";
-import { AxiomCatalogHub } from "@/components/AxiomCatalogHub";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { CATALOG, catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "@/config/catalog";
-import { CatalogCardMedia } from "@/components/catalog-card-media";
+import { isCatalogNiche, resolveCatalogNiche, tradeLoopUrl } from "@/config/catalog";
+import { MASTER_CATEGORY_CARDS } from "@/config/MasterCategoryDefaults";
+import { CatalogCardVisual } from "@/components/catalog-card-visual";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { createShopFromNiche, listMyShops } from "@/lib/axiom/server";
 import { NICHES } from "@/lib/axiom/niches";
@@ -72,9 +73,8 @@ function Onboard() {
   if (owned) {
     return (
       <Navigate
-        to="/$shopSlug"
+        to="/$shopSlug/admin"
         params={{ shopSlug: owned.slug }}
-        search={{ tour: owned.onboardingStep !== "complete" }}
       />
     );
   }
@@ -91,7 +91,7 @@ function Onboard() {
           solo: solo === true,
           ownerName: user?.displayName ?? "",
           leadSlug,
-          heroFilm: catalogFilmUrl(niche),
+          heroFilm: tradeLoopUrl(niche),
         },
       });
       await navigate({
@@ -104,7 +104,7 @@ function Onboard() {
     }
   }
 
-  const selected = niche ? CATALOG.find((row) => row.id === niche) : null;
+  const selected = MASTER_CATEGORY_CARDS.find((row) => row.seedNiche === niche) ?? null;
 
   return (
     <main className="min-h-dvh bg-bg px-5 py-6 sm:px-10">
@@ -113,7 +113,7 @@ function Onboard() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Guided loop</p>
         <h1 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Who is on the book?</h1>
         <p className="mt-3 max-w-lg text-muted">
-          Pick solo or a team, then choose one of the twenty-one verified trades. Each one opens with its hero loop.
+          Pick solo or a team, then choose one of the five shop categories. Each one opens with its own loop.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <button
@@ -137,20 +137,21 @@ function Onboard() {
         </div>
 
         <h2 className="mt-12 font-display text-3xl">What do you sell?</h2>
-        <p className="mt-2 text-sm text-muted">Verified catalog only — twenty-one hero loops.</p>
+        <p className="mt-2 text-sm text-muted">Five master categories — the rest of the catalog lives in Admin.</p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          {CATALOG.map((entry) => {
-            const active = niche === entry.id;
+          {MASTER_CATEGORY_CARDS.map((entry) => {
+            const active = niche === entry.seedNiche;
+            const shopName = NICHES[entry.seedNiche].defaultName;
             return (
               <button
                 key={entry.id}
-                id={`niche-${entry.id}`}
+                id={`niche-${entry.seedNiche}`}
                 type="button"
                 onClick={() => {
-                  setNiche(entry.id);
+                  setNiche(entry.seedNiche);
                   setName((current) => {
-                    if (!current || (niche && current === NICHES[niche].defaultName)) return entry.defaultName;
+                    if (!current || (niche && current === NICHES[niche].defaultName)) return shopName;
                     return current;
                   });
                 }}
@@ -160,11 +161,16 @@ function Onboard() {
                 )}
               >
                 <span className="relative block aspect-[16/10] overflow-hidden bg-bg">
-                  <CatalogCardMedia niche={entry.id} className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+                  <CatalogCardVisual
+                    mode="video"
+                    videoSrc={entry.src}
+                    poster={entry.poster}
+                    className="pointer-events-none absolute inset-0"
+                  />
                 </span>
                 <span className="block p-4">
-                  <span className="block text-[11px] uppercase tracking-[0.18em] text-muted">{entry.kicker}</span>
-                  <span className="mt-1 block font-display text-2xl">{entry.label}</span>
+                  <span className="block text-[11px] uppercase tracking-[0.18em] text-muted">{NICHES[entry.seedNiche].kicker}</span>
+                  <span className="mt-1 block font-display text-2xl">{entry.title}</span>
                   <span className="mt-2 block text-sm text-muted">{entry.blurb}</span>
                 </span>
               </button>
@@ -172,19 +178,19 @@ function Onboard() {
           })}
         </div>
 
-        {niche && selected ? (
-          <div className="mt-8 max-w-md">
+        {niche ? (
+          <div className="mt-8 max-w-md pb-24">
             <div className="relative mb-6 aspect-[16/10] overflow-hidden rounded-[24px] bg-bg">
-              <CatalogCardMedia niche={niche} className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+              <HeroLoopVideo src={selected?.src || tradeLoopUrl(niche)} className="pointer-events-none absolute inset-0 h-full w-full object-cover" muted loop playsInline autoPlay />
             </div>
             <Label htmlFor="shop-name">Shop name</Label>
             <Input
               id="shop-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={selected.defaultName}
+              placeholder={NICHES[niche].defaultName}
             />
-            <p className="mt-3 text-sm text-muted">{selected.tagline}</p>
+            <p className="mt-3 text-sm text-muted">{NICHES[niche].tagline}</p>
             {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
             <Button
               className="mt-4 w-full"
@@ -195,11 +201,7 @@ function Onboard() {
               {busy ? "Generating site…" : "Generate live site"}
             </Button>
           </div>
-        ) : (
-          <div className="mt-8">
-            <AxiomCatalogHub view="strip" linkTo="onboard" />
-          </div>
-        )}
+        ) : null}
 
         <p className="mt-10 text-sm text-faint">
           Want to browse first?{" "}

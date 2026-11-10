@@ -16,7 +16,8 @@ import { leadHeroFor, NICHE_MEDIA, SHARED_STAFF } from "@/lib/axiom/media";
 import { DEFAULT_HOURS, formatOffer, nicheCopy, NICHES } from "@/lib/axiom/niches";
 import { resolveProspectBrand } from "@/lib/axiom/prospect-brand";
 import { TERRITORY_PLANS, type TerritoryPlanId } from "@/lib/axiom/pricing";
-import { isShopNiche } from "@/lib/axiom/types";
+import { NAME_YOUR_PRICE_MIN_CENTS, STANDARD_MONTHLY_CENTS } from "@/lib/stripe/commercial";
+import { isShopNiche, normalizeShopNiche } from "@/lib/axiom/types";
 import { formatMoney } from "@/lib/utils";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
 import { ProductShelf } from "@/components/product-shelf";
@@ -27,6 +28,7 @@ import { OnboardingVideoModal } from "@/components/OnboardingVideoModal";
 import { SnapSimulation } from "@/components/snap-simulation";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { OutreachWelcomeFilm } from "@/components/welcome-film";
+import { StripeConnectNotice, SubscriptionDisclaimer } from "@/components/legal-notice";
 
 type Preview = Awaited<ReturnType<typeof getLeadPreview>>;
 
@@ -65,6 +67,8 @@ export function LeadTerritory({
   const [busy, setBusy] = useState(false);
   const [held, setHeld] = useState("");
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [namedDollars, setNamedDollars] = useState("1");
+  const [namingPlan, setNamingPlan] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -110,12 +114,33 @@ export function LeadTerritory({
   }, [leadSlug, sessionId]);
 
   async function choose(nextPlan: TerritoryPlanId) {
+    setError(null);
+    setPlanId(nextPlan);
+    if (nextPlan === "trial") {
+      setNamingPlan(true);
+      setProcessor("");
+      setCheckoutId("");
+      return;
+    }
+    setNamingPlan(false);
+    await startCheckout(nextPlan);
+  }
+
+  async function startCheckout(nextPlan: TerritoryPlanId, namedPriceDollars?: string) {
     setBusy(true);
     setError(null);
     setPlanId(nextPlan);
     try {
       await ensureFunnelSession();
-      const started = await beginTerritoryCheckout({ data: { leadSlug, planId: nextPlan } });
+      const started = await beginTerritoryCheckout({
+        data: {
+          leadSlug,
+          planId: nextPlan,
+          ...(nextPlan === "trial"
+            ? { namedPriceDollars: namedPriceDollars ?? namedDollars }
+            : {}),
+        },
+      });
       if (started.processor === "stripe" && started.url) {
         window.location.assign(started.url);
         return;
@@ -158,7 +183,7 @@ export function LeadTerritory({
     />
   );
 
-  const nicheKey = lead && isShopNiche(lead.tradeType) ? lead.tradeType : "trade";
+  const nicheKey = normalizeShopNiche(lead?.tradeType || "trade");
   const niche = NICHES[nicheKey];
   const hero = lead ? leadHeroFor(lead.tradeType, lead.businessName, lead.tradeLabel) : NICHE_MEDIA.contractor;
   const brand = resolveProspectBrand({
@@ -277,13 +302,41 @@ export function LeadTerritory({
           );
         })}
       </div>
-      {processor === "trial" && checkoutId ? (
+      {namingPlan && planId === "trial" ? (
         <div className="mt-4 rounded-2xl bg-surface px-4 py-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-          <p className="text-sm">$0 today. On day 31 the plan becomes $497 a month.</p>
-          <Button type="button" className="mt-4" size="lg" disabled={busy} onClick={() => void finish("")}>
-            {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            Start the 30-day trial
-          </Button>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent/80">Name Your Price · Month 1</p>
+          <p className="mt-2 text-sm text-muted">
+            Pay what Month 1 is worth to you (${NAME_YOUR_PRICE_MIN_CENTS / 100} minimum). On day 31 it becomes{" "}
+            {formatMoney(STANDARD_MONTHLY_CENTS)}/mo automatically.
+          </p>
+          <label className="mt-4 block text-sm text-muted" htmlFor="named-price">
+            Month 1 amount (USD)
+          </label>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
+              <input
+                id="named-price"
+                type="number"
+                min={NAME_YOUR_PRICE_MIN_CENTS / 100}
+                step="1"
+                value={namedDollars}
+                onChange={(event) => setNamedDollars(event.target.value)}
+                className="h-12 w-full rounded-xl border border-line bg-obsidian/80 pl-7 pr-3 text-sm text-fg outline-none focus:border-accent/50"
+              />
+            </div>
+            <Button
+              type="button"
+              className="h-12"
+              size="lg"
+              disabled={busy}
+              onClick={() => void startCheckout("trial", namedDollars)}
+            >
+              {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              Continue to checkout
+            </Button>
+          </div>
+          <SubscriptionDisclaimer />
         </div>
       ) : null}
       {processor === "desk" && checkoutId && planId ? (
@@ -291,6 +344,7 @@ export function LeadTerritory({
           <GearGuardianCheckout
             amountCents={TERRITORY_PLANS.find((plan) => plan.id === planId)?.amountCents ?? 0}
             shopName={lead.businessName}
+            notice="subscription"
             onPaid={finish}
             onCancel={() => {
               setProcessor("");
@@ -300,6 +354,8 @@ export function LeadTerritory({
         </div>
       ) : null}
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      <SubscriptionDisclaimer />
+      {processor === "stripe" ? <StripeConnectNotice /> : null}
     </div>
   );
 
@@ -439,19 +495,20 @@ export function LeadTerritory({
 }
 
 function priceLabel(id: TerritoryPlanId, amountCents: number) {
-  if (id === "trial") return "$0 today";
-  if (id === "growth") return `${formatMoney(amountCents)}/mo`;
+  if (id === "trial") return `From ${formatMoney(NAME_YOUR_PRICE_MIN_CENTS)}`;
   return formatMoney(amountCents);
 }
 
 function renewalCopy(activation: NonNullable<Preview["activation"]>) {
-  if (!activation.renewsAt) return `${activation.planName}. Paid once. This territory stays live.`;
+  if (!activation.renewsAt) {
+    return `${activation.planName}. Paid once. Permanent storefront access — zero monthly fees.`;
+  }
   const when = new Date(activation.renewsAt).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
   if (activation.amountCents === 0) {
-    return `${activation.planName}. $0 today. $497 a month begins ${when}.`;
+    return `${activation.planName}. $0 today. ${formatMoney(STANDARD_MONTHLY_CENTS)}/mo begins ${when}.`;
   }
-  return `${activation.planName}. Next charge ${formatMoney(activation.renewalCents ?? 0)} on ${when}.`;
+  return `${activation.planName}. Named Month 1 ${formatMoney(activation.amountCents)}. Next charge ${formatMoney(activation.renewalCents ?? STANDARD_MONTHLY_CENTS)} on ${when}.`;
 }

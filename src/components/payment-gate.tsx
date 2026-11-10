@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { StripeConnectNotice } from "@/components/legal-notice";
 
 export function PaymentGate({
   pending,
@@ -17,7 +18,7 @@ export function PaymentGate({
         role="dialog"
         aria-modal="true"
         aria-labelledby="payment-gate-title"
-        className="w-full max-w-lg rounded-[24px] bg-surface p-6 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+        className="glass-card w-full max-w-lg rounded-[24px] p-6"
       >
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Payments</p>
         <h2 id="payment-gate-title" className="mt-2 font-display text-3xl leading-none">
@@ -32,6 +33,7 @@ export function PaymentGate({
         <Button type="button" className="mt-5" disabled={busy} onClick={onLink}>
           {busy ? "Opening Stripe" : "Link Your Payment Account to Go Live"}
         </Button>
+        <StripeConnectNotice />
       </div>
     </div>
   );

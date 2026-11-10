@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   channelFromPackage,
+  dripHaltStatus,
   followUpBody,
   followUpSchedule,
   deskPreviewPath,
@@ -26,6 +27,7 @@ import {
   renderOutreachMessage,
   strategyLabelFromPackage,
 } from "./funnel.ts";
+import { finalizeOutreachBody } from "./legal-notices.ts";
 
 test("lead slugs stay url-safe", () => {
   assert.equal(leadSlugFrom("River Bend Rafting", "Moab"), "river-bend-rafting-moab");
@@ -123,8 +125,8 @@ test("each hook writes a different text and email for the same lead", () => {
   };
   const drafts = OUTREACH_STRATEGIES.map((item) => ({
     id: item.id,
-    text: renderOutreachMessage(item.text, lead),
-    email: renderOutreachMessage(`${item.emailSubject}\n${item.emailBody}`, lead),
+    text: finalizeOutreachBody(renderOutreachMessage(item.text, lead), "sms"),
+    email: `${renderOutreachMessage(item.emailSubject, lead)}\n\n${finalizeOutreachBody(renderOutreachMessage(item.emailBody, lead), "email")}`,
   }));
   assert.equal(drafts.length, 3);
   for (const draft of drafts) {
@@ -138,6 +140,10 @@ test("each hook writes a different text and email for the same lead", () => {
   assert.match(drafts[2]?.email ?? "", /4\.8 from 126 reviews/);
   assert.notEqual(drafts[0]?.text, drafts[1]?.text);
   assert.notEqual(drafts[1]?.email, drafts[2]?.email);
+  for (const draft of drafts) {
+    assert.match(draft.text, /Reply STOP/);
+    assert.match(draft.email, /unsubscribe/);
+  }
   assert.equal(outreachStrategy("missed-calls").label, "Missed Calls Hook");
   const packed = packOutreachPackage({
     strategy: "competitor-edge",
@@ -174,26 +180,28 @@ test("channel routing splits mobile lines from real email addresses", () => {
   assert.match(packed, /trickle/);
 });
 
-test("a nurture loop is day 0, 48 hours, day 3, and day 6, and a click stops it", () => {
+test("a nurture loop is day 0, day 3, and day 7, and a click stops it", () => {
   const start = new Date("2026-10-05T12:00:00.000Z");
   const plan = followUpSchedule(start);
-  assert.deepEqual(plan.map((step) => step.day), [0, 2, 3, 6]);
+  assert.deepEqual(plan.map((step) => step.day), [0, 3, 7]);
   assert.deepEqual(plan.map((step) => step.label), [
-    "Day 0 Initial Hook",
-    "48 hour unactivated reminder",
-    "Day 3 Competitor Proof Bump",
-    "Day 6 Loss Aversion Final Call",
+    "Day 0 Initial outreach",
+    "Day 3 First follow-up",
+    "Day 7 Final closing",
   ]);
   assert.equal(plan[0]?.status, "sent");
   assert.equal(plan[1]?.status, "scheduled");
-  assert.equal(plan[1]?.scheduledAt, "2026-10-07T12:00:00.000Z");
-  assert.equal(plan[3]?.scheduledAt, "2026-10-11T12:00:00.000Z");
+  assert.equal(plan[1]?.scheduledAt, "2026-10-08T12:00:00.000Z");
+  assert.equal(plan[2]?.scheduledAt, "2026-10-12T12:00:00.000Z");
   const launched = { text: "sms hook", emailSubject: "subject", emailBody: "email hook" };
-  assert.equal(followUpBody(0, "sms", launched), "sms hook");
+  assert.match(followUpBody(0, "sms", launched), /^sms hook/);
+  assert.match(followUpBody(0, "sms", launched), /Reply STOP/);
   assert.match(followUpBody(0, "email", launched), /email hook/);
   assert.match(followUpBody(3, "sms", launched), /Other \{trade\} shops/);
-  assert.match(followUpBody(6, "email", launched), /Last call/);
-  assert.notEqual(followUpBody(3, "sms", launched), followUpBody(6, "sms", launched));
+  assert.match(followUpBody(3, "sms", launched), /Reply STOP/);
+  assert.match(followUpBody(7, "email", launched), /Last call/);
+  assert.match(followUpBody(7, "email", launched), /unsubscribe/);
+  assert.notEqual(followUpBody(3, "sms", launched), followUpBody(7, "sms", launched));
   assert.equal(nurtureStatus({ clicked: false, touches: plan }), "active");
   assert.equal(nurtureStatus({ clicked: true, touches: plan }), "stopped");
   assert.equal(
@@ -204,6 +212,10 @@ test("a nurture loop is day 0, 48 hours, day 3, and day 6, and a click stops it"
     "complete",
   );
   assert.equal(nurtureStatus({ clicked: false, touches: [] }), "none");
+  assert.equal(dripHaltStatus("replied"), "replied");
+  assert.equal(dripHaltStatus("clicked"), "replied");
+  assert.equal(dripHaltStatus("booked"), "converted");
+  assert.equal(dripHaltStatus("claimed"), "converted");
 });
 
 test("campaign urls put the lead slug in b", () => {

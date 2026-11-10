@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { OrbGenesisHero } from "@/components/OrbGenesisHero";
 import HeroStudioUpload from "@/components/HeroStudioUpload";
+import { HeroLoopVideo } from "@/components/loop-video";
 import type { Shop } from "@/lib/axiom/types";
 
 type StudioPreview = {
@@ -49,7 +50,7 @@ export function HeroStudioClient({ shop, readonly }: { shop: Shop; readonly: boo
       >
         <div className="hero-studio-stage">
           {film ? (
-            <video className="hero-studio-media" src={film} autoPlay muted loop playsInline />
+            <HeroLoopVideo className="hero-studio-media" src={film} autoPlay muted loop playsInline />
           ) : (
             <OrbGenesisHero
               prompt={preview.prompt}

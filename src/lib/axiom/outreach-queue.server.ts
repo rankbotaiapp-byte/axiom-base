@@ -2,18 +2,26 @@ import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
 import { newId } from "@/lib/utils";
 import { isDueNurtureStep, nurtureReleasePlan, splitOutreachEmail } from "./funnel-guard";
+import { finalizeOutreachBody } from "./legal-notices";
 import { isLeadSlug } from "./funnel";
 import { appendPreviewLink, isHomePreviewCounty, shouldSendUnactivatedFollowUp, tenantPreviewUrl } from "./preview-link";
 import { toE164 } from "./notify-target";
 import {
+  DEFAULT_EMAIL_DAILY_CAP,
+  DEFAULT_SMS_DAILY_CAP,
+  DEFAULT_TRICKLE_SLOT_MINUTES,
+  formatSlotLabel,
   insideSendWindow,
   nextSendInstant,
+  nextTrickleSlotInstant,
   outreachMayCallProviders,
   parseChunkSize,
+  parseDailyCap,
   parseOutreachMode,
   parseSendTiming,
   parseTimingProfile,
   parseTrickleSeconds,
+  parseTrickleSlots,
   timingProfileFor,
   trickleMayRelease,
   type OutreachMode,
@@ -45,12 +53,43 @@ type DueDispatch = {
   profile: string;
 };
 
-export function readOutreachConfig(): { mode: OutreachMode; intervalSeconds: number; chunkSize: number } {
+export type OutreachDeskConfig = {
+  mode: OutreachMode;
+  intervalSeconds: number;
+  chunkSize: number;
+  /** Minutes from midnight Pacific for custom trickle releases. */
+  slots: number[];
+  slotLabels: string[];
+  smsDailyCap: number;
+  emailDailyCap: number;
+};
+
+export function readOutreachConfig(): OutreachDeskConfig {
+  const slots = parseTrickleSlots(env("OUTREACH_TRICKLE_SLOTS"));
   return {
     mode: parseOutreachMode(env("OUTREACH_MODE")),
     intervalSeconds: parseTrickleSeconds(env("OUTREACH_TRICKLE_SECONDS")),
     chunkSize: parseChunkSize(env("OUTREACH_CHUNK_SIZE")),
+    slots: slots.length > 0 ? slots : [...DEFAULT_TRICKLE_SLOT_MINUTES],
+    slotLabels: (slots.length > 0 ? slots : [...DEFAULT_TRICKLE_SLOT_MINUTES]).map(formatSlotLabel),
+    smsDailyCap: parseDailyCap(env("OUTREACH_SMS_DAILY_CAP"), DEFAULT_SMS_DAILY_CAP),
+    emailDailyCap: parseDailyCap(env("OUTREACH_EMAIL_DAILY_CAP"), DEFAULT_EMAIL_DAILY_CAP),
   };
+}
+
+async function channelSentToday(sql: Sql, channel: "sms" | "email"): Promise<number> {
+  try {
+    const rows = await sql<{ n: number }>`
+      select coalesce(sum(lead_count), 0)::int as n
+      from outreach_dispatches
+      where channel = ${channel}
+        and status in ('sent', 'logged')
+        and sent_at >= (date_trunc('day', now() at time zone 'America/Los_Angeles') at time zone 'America/Los_Angeles')
+    `;
+    return Number(rows[0]?.n ?? 0) || 0;
+  } catch {
+    return 0;
+  }
 }
 
 function slugList(slugs: string[]): string {
@@ -78,6 +117,19 @@ async function tickOutreachQueue(): Promise<void> {
     const sql = await getSql();
     await drainOutreachQueue(sql);
     await drainNurtureTouches(sql);
+    const { processOutreachQueue, ensureDailyPlumbingOutreach } = await import("./outreach-scheduler.server");
+    try {
+      const armed = await sql<{ cron_enabled: boolean; paused: boolean }>`
+        select coalesce(cron_enabled, false) as cron_enabled, coalesce(paused, true) as paused
+        from outbound_engine_state where id = ${"master"} limit 1
+      `;
+      if (armed[0]?.cron_enabled && !armed[0]?.paused) {
+        await ensureDailyPlumbingOutreach(sql).catch(() => 0);
+      }
+    } catch {
+      /* engine state may be missing in local snapshots */
+    }
+    await processOutreachQueue(sql).catch(() => undefined);
   } catch (err) {
     if (missingRelation(err, "outreach_dispatches") || missingRelation(err, "outreach_touches") || missingRelation(err, "attempts")) return;
     console.error("outreach queue", err instanceof Error ? err.message : err);
@@ -142,6 +194,22 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
   const lastSentAt = lastSent == null ? null : lastSent instanceof Date ? lastSent.toISOString() : String(lastSent);
   if (!trickleMayRelease(lastSentAt, new Date(), intervalSeconds)) return { released: false };
 
+  const channel = row.channel === "sms" ? "sms" : "email";
+  const config = readOutreachConfig();
+  const dailyCap = channel === "sms" ? config.smsDailyCap : config.emailDailyCap;
+  const sentToday = await channelSentToday(sql, channel);
+  if (sentToday >= dailyCap) {
+    // Hold until the next day's first trickle slot so we never blow the daily ceiling.
+    const next = nextTrickleSlotInstant(new Date(Date.now() + 18 * 3600_000), config.slots).toISOString();
+    await sql`
+      update outreach_dispatches
+      set scheduled_at = ${next},
+          detail = ${`Held for daily ${channel} cap (${sentToday}/${dailyCap}).`}
+      where id = ${row.id} and status = 'queued'
+    `;
+    return { released: false };
+  }
+
   const claimed = await sql<{ id: string }>`
     update outreach_dispatches
     set status = 'releasing'
@@ -150,7 +218,6 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
   `;
   if (!claimed[0]) return { released: false };
 
-  const channel = row.channel === "sms" ? "sms" : "email";
   const mode = parseOutreachMode(row.mode);
   let messages: QueueMessage[] = [];
   try {
@@ -235,7 +302,11 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
     where id = ${row.id}
   `;
   if (delivered.length > 0) await markDayZero(sql, row.campaign_id, delivered, "sent");
-  if (stopped.length > 0) await markDayZero(sql, row.campaign_id, stopped, "skipped");
+  if (stopped.length > 0) {
+    await markDayZero(sql, row.campaign_id, stopped, "skipped");
+    const { haltLeadDrip } = await import("./funnel-guard.server");
+    for (const slug of stopped) await haltLeadDrip(sql, slug, "clicked");
+  }
   return { released: true };
 }
 
@@ -259,7 +330,7 @@ type DueTouch = {
 };
 
 /**
- * Send due 48-hour, day 3, and day 6 touches. Simulation writes the live wire.
+ * Send due day 3 and day 7 touches. Simulation writes the live wire.
  * Live mode calls Resend or Twilio, and only then marks the touch sent.
  */
 export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ released: number }> {
@@ -275,7 +346,7 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
     join outreach_sequences s on s.id = t.sequence_id
     left join preloaded_leads l on l.lead_slug = s.lead_slug
     where t.status = 'scheduled'
-      and t.step in (2, 3, 6)
+      and t.step in (3, 7)
       and t.scheduled_at <= now()
       and s.status = 'active'
     order by t.scheduled_at asc, t.step asc
@@ -320,14 +391,30 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
   let failed = 0;
   const channel = batch[0]?.channel === "sms" ? "sms" : "email";
   const county = batch[0]?.county ?? "";
+  const batchSlugs = slugList(batch.map((touch) => touch.lead_slug));
+  const opened = new Set<string>();
+  if (batchSlugs) {
+    const hits = await sql<{ lead_slug: string }>`
+      select distinct lead_slug from funnel_visits
+      where verified = true and lead_slug = any(string_to_array(${batchSlugs}, ','))
+    `.catch(() => [] as { lead_slug: string }[]);
+    for (const hit of hits) opened.add(hit.lead_slug);
+  }
   for (const touch of batch) {
+    const booked = await leadHasBooking(sql, touch.lead_slug);
+    const clicked = opened.has(touch.lead_slug);
     if (
       !shouldSendUnactivatedFollowUp({
         step: numStep(touch.step),
         claimed: Boolean(touch.claimed),
-        clicked: false,
+        clicked,
+        booked,
+        replied: false,
       })
     ) {
+      const { haltLeadDrip } = await import("./funnel-guard.server");
+      const reason = clicked ? "clicked" : touch.claimed ? "claimed" : "booked";
+      await haltLeadDrip(sql, touch.lead_slug, reason);
       await sql`update outreach_touches set status = 'skipped' where id = ${touch.id} and status = 'scheduled'`;
       continue;
     }
@@ -383,7 +470,7 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
   const status = plan === "log" ? "logged" : failed > 0 ? "failed" : "sent";
   const summary =
     plan === "log"
-      ? `Day 3/6 simulation log for ${sent} leads. No provider call.`
+      ? `Day 3/7 simulation log for ${sent} leads. No provider call.`
       : `${sent} sent, ${failed} failed`;
   await sql`
     insert into outreach_events (id, county, channel, summary, status)
@@ -402,12 +489,17 @@ async function releaseNurtureTouch(
   if (channel === "sms") {
     const to = toE164(touch.contact_phone ?? "");
     if (!to) return "failed";
-    const result = await deliverOutreachMessage({ channel, to, subject: "", body: touch.body.slice(0, 640) });
+    const result = await deliverOutreachMessage({
+      channel,
+      to,
+      subject: "",
+      body: finalizeOutreachBody(touch.body, "sms"),
+    });
     return result.status === "sent" ? "sent" : "failed";
   }
   const to = (touch.contact_email ?? "").trim();
   if (!to) return "failed";
-  const message = splitOutreachEmail(touch.body);
+  const message = splitOutreachEmail(finalizeOutreachBody(touch.body, "email"));
   const result = await deliverOutreachMessage({ channel, to, subject: message.subject, body: message.text });
   return result.status === "sent" ? "sent" : "failed";
 }
@@ -444,6 +536,18 @@ async function stampPreviewLinks(sql: Sql, county: string, origin: string, messa
     if (!url) return message;
     return { ...message, body: appendPreviewLink(message.body, url) };
   });
+}
+
+async function leadHasBooking(sql: Sql, leadSlug: string): Promise<boolean> {
+  const rows = await sql<{ n: number }>`
+    select count(*)::int as n
+    from appointments a
+    join shops s on s.id = a.shop_id
+    join preloaded_leads l on l.shop_id = s.id
+    where l.lead_slug = ${leadSlug}
+      and a.status <> 'cancelled'
+  `.catch(() => [{ n: 0 }]);
+  return Number(rows[0]?.n ?? 0) > 0;
 }
 
 function numStep(value: unknown): number {

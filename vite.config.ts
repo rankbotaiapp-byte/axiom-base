@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
@@ -152,7 +152,50 @@ function authPopupPlugin(): Plugin {
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
+function showcaseIndexMiddleware(root: string) {
+  return (req: { url?: string }, _res: unknown, next: () => void) => {
+    const rawUrl = req.url ?? "";
+    const [pathOnly, query] = rawUrl.split("?");
+    if (!pathOnly?.startsWith("/showcase/")) {
+      next();
+      return;
+    }
+    const last = pathOnly.split("/").pop() ?? "";
+    if (last.includes(".")) {
+      next();
+      return;
+    }
+    const disk = join(root, "public", pathOnly);
+    try {
+      if (existsSync(disk) && statSync(disk).isFile()) {
+        next();
+        return;
+      }
+      const indexed = join(disk, "index.html");
+      if (existsSync(indexed)) {
+        req.url = `${pathOnly.replace(/\/$/, "")}/index.html${query ? `?${query}` : ""}`;
+      }
+    } catch {
+      /* fall through */
+    }
+    next();
+  };
+}
+
+function showcaseFolderPlugin(): Plugin {
+  return {
+    name: "axiom-showcase-folder-index",
+    configureServer(server) {
+      server.middlewares.use(showcaseIndexMiddleware(server.config.root));
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(showcaseIndexMiddleware(server.config.root));
+    },
+  };
+}
+
 export default defineConfig(({ command, isPreview }) => ({
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: {
     host: "0.0.0.0",
     port: 8080,
@@ -174,6 +217,7 @@ export default defineConfig(({ command, isPreview }) => ({
     appEnvPlugin(),
     // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
     grokPwaPlugin(),
+    showcaseFolderPlugin(),
     tailwindcss(),
     tanstackStart(),
     ...(command === "build" || isPreview

@@ -2,6 +2,7 @@ import { dbSource, getSql } from "@/lib/db";
 import { cleanLead } from "./master";
 import { newId } from "@/lib/utils";
 import { channelFromPackage, followUpBody, followUpSchedule, deskPreviewPath, isEmailReady, isLeadSlug, isSmsReady, leadSlugFrom, nurtureStatus, outreachPublicTokens, outreachStrategy, packOutreachPackage, renderOutreachMessage, parseFunnelQuery, parseHasWebsite, parsePhoneLine, parseReviewCount, parseReviewScore, publicLeadFromRow, strategyLabelFromPackage, type PhoneLine } from "./funnel";
+import { finalizeOutreachBody } from "./legal-notices";
 import { outreachDestination } from "./preview-link";
 import { hashStopToken, newStopToken } from "./funnel-guard";
 import { nextSendInstant, parseSendTiming, planSmartChunks, timingProfileFor, type SendTiming } from "./outreach-queue";
@@ -13,15 +14,26 @@ function stamp(value: unknown): string {
   return String(value ?? "");
 }
 async function requestOrigin(): Promise<string> {
-  const {
-    getRequest
-  } = await import("@tanstack/react-start/server");
-  return new URL(getRequest().url).origin;
+  const { resolvePublicAppOrigin } = await import("./public-app-url");
+  try {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    return resolvePublicAppOrigin(new URL(getRequest().url).origin);
+  } catch {
+    return resolvePublicAppOrigin(null);
+  }
 }
 function num(value: unknown): number {
   if (typeof value === "bigint") return Number(value);
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+async function loadGearGuardianCents(sql: Awaited<ReturnType<typeof getSql>>): Promise<number> {
+  try {
+    const rows = await sql<{ n: number }>`select coalesce(sum(amount_cents), 0)::int as n from platform_fees`;
+    return num(rows[0]?.n);
+  } catch {
+    return 0;
+  }
 }
 async function assertPlatformOwner(userId: string) {
   const gate = await import("./platform-owner.server");
@@ -303,7 +315,8 @@ export const getMasterDeskHandler = async ({
     kpis: {
       activeShops: num(row?.active_shops),
       bookings: num(row?.bookings),
-      revenueCents: num(row?.revenue_cents)
+      revenueCents: num(row?.revenue_cents),
+      gearGuardianCents: await loadGearGuardianCents(sql)
     },
     events: mergeWire(events, [...(await loadCampaigns(sql)), ...(await loadDispatchWire(sql)), ...(await loadNurtureWire(sql)), ...activations.map(activation => ({
       id: activation.id,
@@ -439,18 +452,37 @@ export const createOutreachFunnelHandler = async ({
     if (!missingRelation(err, "source")) throw err;
     await writePreloadedLead(sql, lead, slug);
   }
-  const path = deskPreviewPath({
-    leadSlug: slug,
-    county: lead.county,
-    city: lead.city,
+  const { pairDatasetToNichePreview } = await import("./niche-dataset-pairing");
+  const paired = pairDatasetToNichePreview({
     businessName: lead.businessName,
-    trade: lead.tradeLabel || lead.tradeType
+    tradeType: lead.tradeType,
+    tradeLabel: lead.tradeLabel,
+    phone: lead.contactPhone,
+    email: lead.contactEmail,
+    city: lead.city,
+    county: lead.county,
+    leadSlug: slug,
   });
+  const path =
+    paired.previewPath ||
+    deskPreviewPath({
+      leadSlug: slug,
+      county: lead.county,
+      city: lead.city,
+      businessName: lead.businessName,
+      trade: lead.tradeLabel || lead.tradeType,
+    });
   return {
     leadSlug: slug,
     path,
     businessName: lead.businessName,
-    niche: lead.tradeLabel || lead.tradeType
+    niche: paired.niche,
+    tradeLabel: lead.tradeLabel || lead.tradeType,
+    heroVideoUrl: paired.heroVideoUrl,
+    alternateLoops: paired.alternateLoops,
+    overlay: paired.overlay,
+    templateName: paired.templateName,
+    tagline: paired.tagline,
   };
 };
 export const listOutreachFunnelsHandler = async ({
@@ -890,7 +922,7 @@ async function leadsInRegion(sql: Awaited<ReturnType<typeof getSql>>, county: st
 type FollowLoop = {
   id: string;
   channel: "email" | "sms";
-  status: "active" | "stopped" | "complete";
+  status: "active" | "stopped" | "complete" | "replied" | "converted";
   reason: string;
   strategy: string;
   touches: {
@@ -912,7 +944,7 @@ async function reconcileFollowUps(sql: Awaited<ReturnType<typeof getSql>>, slugs
     where status = 'scheduled'
       and sequence_id in (
         select id from outreach_sequences
-        where status = 'stopped'
+        where status in ('stopped', 'replied', 'converted')
           and lead_slug = any(string_to_array(${list}, ','))
       )
   `;
@@ -977,7 +1009,7 @@ async function loadFollowUps(sql: Awaited<ReturnType<typeof getSql>>, slugs: str
         id: row.id,
         leadSlug: row.lead_slug,
         channel,
-        status: row.status === "stopped" ? "stopped" : "active",
+        status: row.status === "replied" || row.status === "converted" || row.status === "stopped" ? row.status : "active",
         reason: row.stopped_reason,
         strategy: row.strategy,
         touches: []
@@ -992,16 +1024,23 @@ async function loadFollowUps(sql: Awaited<ReturnType<typeof getSql>>, slugs: str
     });
   }
   for (const loop of byId.values()) {
-    const status = loop.status === "stopped" || clicked.has(loop.leadSlug) ? "stopped" : nurtureStatus({
-      clicked: false,
-      touches: loop.touches
-    });
+    const status =
+      loop.status === "replied" || loop.status === "converted"
+        ? loop.status
+        : clicked.has(loop.leadSlug)
+          ? "replied"
+          : loop.status === "stopped"
+            ? "stopped"
+            : nurtureStatus({
+                clicked: false,
+                touches: loop.touches
+              });
     if (status === "none") continue;
     const ready: FollowLoop = {
       id: loop.id,
       channel: loop.channel,
       status,
-      reason: status === "stopped" ? "clicked" : loop.reason,
+      reason: status === "replied" ? loop.reason || "clicked" : loop.reason,
       strategy: loop.strategy,
       touches: loop.touches
     };
@@ -1155,14 +1194,14 @@ function outboundFor(lead: OutreachLead, channel: "email" | "sms", draft: {
       leadSlug: lead.leadSlug,
       to: toE164(lead.contactPhone) ?? lead.contactPhone,
       subject: "",
-      body: renderOutreachMessage(draft.text, tokens).slice(0, 640)
+      body: finalizeOutreachBody(renderOutreachMessage(draft.text, tokens), "sms")
     };
   }
   return {
     leadSlug: lead.leadSlug,
     to: lead.contactEmail,
     subject: renderOutreachMessage(draft.emailSubject, tokens).slice(0, 200),
-    body: renderOutreachMessage(draft.emailBody, tokens).slice(0, 4000)
+    body: finalizeOutreachBody(renderOutreachMessage(draft.emailBody, tokens), "email")
   };
 }
 export const launchOutreachBatchHandler = async ({
@@ -1397,9 +1436,19 @@ export const beginTerritoryCheckoutHandler = async ({
   if (!plan) throw new Error("Unknown plan");
   const payments = await import("./payments.server");
   if (!payments.stripeConfigured()) throw new Error("Card checkout is not configured");
+  const { clampNamedPriceCents } = await import("@/lib/stripe/commercial");
+  const namedPriceCents =
+    plan.cadence === "trial"
+      ? clampNamedPriceCents(data.namedPriceCents ?? plan.amountCents)
+      : undefined;
   const processor = "stripe" as const;
   const territory = await import("./territory.server");
-  const opened = await territory.openTerritoryCheckout(data.leadSlug, plan.id, processor);
+  const opened = await territory.openTerritoryCheckout(
+    data.leadSlug,
+    plan.id,
+    processor,
+    namedPriceCents ?? plan.amountCents,
+  );
   try {
     const origin = await requestOrigin();
     let userId = "";
@@ -1417,10 +1466,11 @@ export const beginTerritoryCheckoutHandler = async ({
       checkoutId: opened.checkoutId,
       planId: plan.id,
       planName: plan.name,
-      amountCents: plan.amountCents,
+      amountCents: namedPriceCents ?? plan.amountCents,
       cadence: plan.cadence,
       origin,
-      userId
+      userId,
+      namedPriceCents,
     });
     return {
       checkoutId: opened.checkoutId,

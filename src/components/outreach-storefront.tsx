@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { OutreachTenantPage } from "@/app/[shopSlug]/page";
-import { catalogCardStill, catalogFilmUrl, isCatalogNiche } from "@/config/catalog";
+import { DemoRetentionStack } from "@/components/demo-retention-stack";
+import { catalogCardStill, defaultNicheFilm, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";
 import { nicheHeroButtons } from "@/config/niche-button-presets";
 import { getBusinessBrand } from "@/lib/axiom/business-lookup";
 import type { BusinessBrandRecord } from "@/lib/axiom/business-brand";
 import { LEAD_STORAGE_KEY, type FunnelSearch } from "@/lib/axiom/funnel";
 import { seedFilmPlates } from "@/lib/axiom/hero-hud";
-import { LEOPARD_HERO_ANIMATION, resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
+import { resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
 import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
 import { NICHES } from "@/lib/axiom/niches";
+import { outreachNicheHero } from "@/lib/axiom/outreach-niche-batch";
 import { isOutreachVisit, resolveOutreachProspect } from "@/lib/axiom/outreach-visit";
 import type { ShopPublic } from "@/lib/axiom/types";
 
@@ -50,13 +52,16 @@ export function OutreachStorefront({
   const niche = shop?.shop.niche && isCatalogNiche(shop.shop.niche) ? shop.shop.niche : prospect.niche;
   const template = NICHES[niche];
   const actions = getNicheActions(niche);
-  const bookHref = shop ? `/${shop.shop.slug}/book` : `/onboard?niche=${niche}`;
+  const bookHref = shop ? `/${shop.shop.slug}/book` : "#guest-book";
+  const mappedHero = search.hero?.startsWith("/media/")
+    ? search.hero
+    : outreachNicheHero(niche, prospect.trade || prospect.name);
   const film = resolveStorefrontFilm({
     draft: null,
-    shopVideoUrl: shop?.shop.heroVideoUrl ?? null,
+    shopVideoUrl: shop?.shop.heroVideoUrl ?? mappedHero,
     niche,
     customNiche: `${niche} ${prospect.name} ${prospect.trade}`,
-    fallbackVideoUrl: LEOPARD_HERO_ANIMATION,
+    fallbackVideoUrl: mappedHero || defaultNicheFilm(niche),
     shopTagline: shop?.shop.tagline || template.tagline,
   });
   const city = prospect.place || shop?.shop.address || "";
@@ -113,7 +118,7 @@ export function OutreachStorefront({
         name={prospect.name}
         tagline={film.tagline}
         city={city}
-        src={film.hero_video_url || catalogFilmUrl(niche)}
+        src={film.hero_video_url || defaultNicheFilm(niche)}
         still={isCatalogNiche(niche) ? catalogCardStill(niche) : ""}
         hud={hud}
         actions={actions}
@@ -122,15 +127,34 @@ export function OutreachStorefront({
         proofSlug={shop?.shop.slug || prospect.leadSlug}
         proofNiche={niche}
         bookHref={bookHref}
+        guestBook={!shop}
+        claimHref={`/onboard?niche=${niche}`}
         book={
           shop ? (
             <a href={bookHref}>{actions?.primaryCta ?? "Book"}</a>
           ) : (
-            <Link to="/onboard" search={{ niche }}>
-              {actions?.primaryCta ?? "Claim this page"}
-            </Link>
+            <>
+              <button type="button">{actions?.primaryCta ?? "Book"}</button>
+              <Link to="/onboard" search={{ niche }}>
+                Use this as my shop
+              </Link>
+            </>
           )
         }
+      />
+      <DemoRetentionStack
+        niche={niche}
+        bookHref={bookHref}
+        greet={Boolean(search.greet)}
+        fields={{
+          businessName: prospect.name,
+          phone: prospect.phone || undefined,
+          email: prospect.email || undefined,
+          city: prospect.city || undefined,
+          county: prospect.county || undefined,
+          trade: prospect.trade,
+          nicheLabel: template.label,
+        }}
       />
     </main>
   );

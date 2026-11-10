@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
 import { HeroButtonStudio } from "@/components/admin/hero-button-studio";
@@ -6,7 +6,11 @@ import { HeroMotionStudio } from "@/components/admin/hero-motion-studio";
 import { DefaultAssetStudioPanel } from "@/components/admin/default-asset-studio";
 import { HeroOtterInteractive } from "@/components/HeroOtterInteractive";
 import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
+import { HeroCustomizer } from "@/components/admin/HeroCustomizer";
+import { CyberCompanionHud } from "@/components/CyberCompanionHud";
+import { defaultNicheFilm } from "@/config/catalog";
 import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { getBearerToken } from "@/lib/auth/client";
 import { HERO_CLIP_MAX_SECONDS, HERO_VIDEO_MAX_BYTES, heroClipTooLong } from "@/lib/axiom/hero-video";
 import { MEDIA_FILE_MAX_BYTES } from "@/lib/axiom/media-slots";
@@ -16,16 +20,14 @@ import {
   cleanHeroUrl,
   cleanStillUrl,
   heroPresets,
-  isHeroAnimationUrl,
   isPlayableHeroFilm,
   persistHeroToSupabase,
   readHeroDraft,
   uploadHeroToStorage,
   writeHeroDraft,
   type HeroLook,
-  type HeroPreset,
 } from "@/lib/axiom/hero-studio-state";
-import { listHeroAnimations, revalidateStorefront, updateShopBrand } from "@/lib/axiom/server";
+import { revalidateStorefront, updateShopBrand } from "@/lib/axiom/server";
 import type { Shop } from "@/lib/axiom/types";
 
 const MAX_MB = Math.round(HERO_VIDEO_MAX_BYTES / (1024 * 1024));
@@ -63,7 +65,6 @@ function clipSeconds(file: File): Promise<number> {
 export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }) {
   const router = useRouter();
   const stored = readHeroDraft(shop.slug);
-  const [library, setLibrary] = useState<HeroPreset[]>(heroPresets());
   const [tagline, setTagline] = useState(stored?.tagline ?? shop.tagline);
   const [video, setVideo] = useState(startingFilm(shop, stored?.hero_video_url));
   const [still, setStill] = useState(stored?.hero_image_url || cleanStillUrl(shop.heroImageUrl));
@@ -72,19 +73,6 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void listHeroAnimations()
-      .then((rows) => {
-        if (cancelled || !rows?.length) return;
-        setLibrary(rows.filter((row) => isHeroAnimationUrl(row.url)));
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function publish(next: { video?: string; still?: string; look?: HeroLook; tagline?: string }) {
     const loop = cleanHeroUrl(next.video ?? video);
@@ -127,8 +115,8 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
       await router.invalidate();
       setStatus(
         book === "saved"
-          ? "Hero and background loop are live."
-          : "Hero is on this desk. The hosted book did not take the pin.",
+          ? "Hero background loop is live on the storefront (shops.hero_background_loop)."
+          : "Hero loop is pinned on this desk. The hosted book did not confirm the pin.",
       );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not publish");
@@ -166,7 +154,7 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
     setStatus("");
     try {
       const token = getBearerToken();
-      const auth = token ? { authorization: `Bearer ${token}` } : {};
+      const authHeaders: Record<string, string> = token ? { authorization: `Bearer ${token}` } : {};
       if (image) {
         const body = new FormData();
         body.set("shopId", shop.id);
@@ -174,7 +162,12 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         body.set("slot", "hero");
         body.set("isHero", "1");
         body.set("purpose", "Hero still");
-        const res = await fetch("/api/admin/media/upload", { method: "POST", credentials: "include", headers: auth, body });
+        const res = await fetch("/api/admin/media/upload", {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders,
+          body,
+        });
         const json = (await res.json()) as { asset?: { url?: string }; error?: string };
         const hosted = await uploadHeroToStorage(shop.slug, next);
         const url = cleanStillUrl(hosted) || cleanStillUrl(json.asset?.url);
@@ -185,7 +178,7 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         const res = await fetch(`/api/hero-video/${shop.id}`, {
           method: "POST",
           credentials: "include",
-          headers: { "content-type": "video/mp4", ...auth },
+          headers: { "content-type": "video/mp4", ...authHeaders },
           body: next,
         });
         const json = (await res.json()) as { heroVideoUrl?: string; error?: string };
@@ -219,11 +212,11 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         <div className={`motion-preview${look.glow ? " is-ring" : ""}`}>
           {isSharkHeroFilm(video) ? (
             <HeroSharkInteractive active src={video}>
-              {video ? <video key={video} src={video} autoPlay muted loop playsInline /> : null}
+              {video ? <HeroLoopVideo key={video} src={video} autoPlay muted loop playsInline /> : null}
             </HeroSharkInteractive>
           ) : (
-            <HeroOtterInteractive active={isOtterHeroFilm(video) || !video} src={video || "/media/otter-hero-animation.mp4"}>
-              {video ? <video key={video} src={video} autoPlay muted loop playsInline /> : null}
+            <HeroOtterInteractive active={isOtterHeroFilm(video)} src={video || defaultNicheFilm(shop.niche)}>
+              <HeroLoopVideo key={video || shop.niche} src={video || defaultNicheFilm(shop.niche)} autoPlay muted loop playsInline />
             </HeroOtterInteractive>
           )}
           {still ? <img src={still} alt="" /> : null}
@@ -273,25 +266,18 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
           />
         </div>
 
-        <label className="motion-label" htmlFor="hero-library">
-          Background loop
-        </label>
-        <select
-          id="hero-library"
-          className="film-select"
-          disabled={busy || readonly}
-          value={library.some((item) => item.url === video) ? video : ""}
-          onChange={(event) => {
-            if (event.target.value) setVideo(event.target.value);
-          }}
-        >
-          <option value="">{video && !library.some((item) => item.url === video) ? "Uploaded loop" : "Select a loop"}</option>
-          {library.map((item) => (
-            <option key={item.id} value={item.url}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+        <div id="hero-archive">
+          <HeroCustomizer
+            niche={shop.niche}
+            selectedUrl={video}
+            disabled={busy || readonly}
+            onSelect={(value) => {
+              const next = value === "default" ? defaultNicheFilm(shop.niche) : value;
+              setVideo(next);
+              if (!readonly) void publish({ video: next });
+            }}
+          />
+        </div>
 
         <label className="motion-label" htmlFor="hero-tagline">
           Overlay line
@@ -346,6 +332,14 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         {error ? <p className="motion-error">{error}</p> : null}
         {status ? <p className="motion-status">{status}</p> : null}
       </section>
+      <CyberCompanionHud
+        environment="hero-studio"
+        shopName={shop.name}
+        shopSlug={shop.slug}
+        onFocusArchive={() => {
+          document.getElementById("hero-archive")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
     </main>
   );
 }

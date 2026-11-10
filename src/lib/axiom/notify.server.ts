@@ -8,6 +8,9 @@ import {
   type NoticeKind,
 } from "./booking-notice";
 import { toE164 } from "./notify-target";
+import { twilioSmsFailureDetail } from "./notify-twilio";
+
+export { twilioSmsFailureDetail } from "./notify-twilio";
 
 export type { NoticeKind } from "./booking-notice";
 
@@ -100,7 +103,17 @@ const OUTREACH_CREDENTIALS = [
 
 /** Names of the Resend and Twilio settings a live outreach batch requires. Empty means ready. */
 export function missingOutreachCredentials(): string[] {
-  return OUTREACH_CREDENTIALS.filter((key) => !env(key));
+  const missing = OUTREACH_CREDENTIALS.filter((key) => {
+    if (key === "TWILIO_FROM_NUMBER") {
+      return !(env("TWILIO_FROM_NUMBER") || env("TWILIO_PHONE_NUMBER"));
+    }
+    return !env(key);
+  });
+  return missing;
+}
+
+function twilioFromNumber(): string | undefined {
+  return env("TWILIO_FROM_NUMBER") || env("TWILIO_PHONE_NUMBER");
 }
 
 /** Provider send used only by the live outreach queue. Simulation must not call this. */
@@ -117,8 +130,10 @@ export async function deliverOutreachMessage(input: {
 async function sendSms(to: string, body: string): Promise<SendResult> {
   const sid = env("TWILIO_ACCOUNT_SID");
   const token = env("TWILIO_AUTH_TOKEN");
-  const from = env("TWILIO_FROM_NUMBER");
+  const from = twilioFromNumber();
   if (!sid || !token || !from) return { status: "skipped", detail: "SMS provider is not configured" };
+  const dest = toE164(to) || to.trim();
+  if (!dest || dest.length < 8) return { status: "failed", detail: "Invalid destination phone number" };
   try {
     const auth = Buffer.from(`${sid}:${token}`).toString("base64");
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
@@ -127,10 +142,18 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ To: to, From: from, Body: body.slice(0, 640) }),
+      body: new URLSearchParams({ To: dest, From: from, Body: body.slice(0, 640) }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { status: "failed", detail: "SMS provider rejected the message" };
+    if (!res.ok) {
+      let payload: unknown = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+      return { status: "failed", detail: twilioSmsFailureDetail(res.status, payload) };
+    }
     return { status: "sent", detail: "" };
   } catch {
     return { status: "failed", detail: "SMS request failed" };

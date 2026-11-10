@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { MasterAdminPage } from "@/components/master-desk";
 
 export const Route = createFileRoute("/admin")({
@@ -15,5 +15,18 @@ export const Route = createFileRoute("/admin")({
     ],
     links: [{ rel: "manifest", href: "/master.webmanifest" }],
   }),
-  component: MasterAdminPage,
+  component: AdminGate,
 });
+
+function AdminGate() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (
+    pathname.includes("/admin/branding/hero-library") ||
+    pathname.endsWith("/admin/autopilot") ||
+    pathname.includes("/admin/cyber-stinger") ||
+    pathname.includes("/admin/master-dashboard")
+  ) {
+    return <Outlet />;
+  }
+  return <MasterAdminPage />;
+}

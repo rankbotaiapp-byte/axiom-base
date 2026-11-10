@@ -1,6 +1,6 @@
 import { getSql } from "@/lib/db";
 import { newId } from "@/lib/utils";
-import { cityFromAddress } from "./avatar";
+import { shopCity } from "./avatar";
 import { keepHeroBrand, sniffHeroAsset } from "./hero-brand";
 import { shopTradeLabel } from "./niches";
 import {
@@ -280,7 +280,7 @@ export async function draftSocialPost(
     assets.find((item) => item.slot === "outreach") ??
     assets.find((item) => item.isHero) ??
     assets[0];
-  const city = cityFromAddress(row.address);
+  const city = shopCity(row.address);
   const niche = isShopNiche(row.niche) ? row.niche : "contractor";
   const trade = shopTradeLabel({ niche, customNiche: row.custom_niche ?? "" });
   const fallback = socialCaptionDraft({

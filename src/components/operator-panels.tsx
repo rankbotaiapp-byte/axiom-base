@@ -13,7 +13,9 @@ import { presetsForShop, type NichePreset } from "@/config/nichePresets";
 import { defaultPriceUnit, nicheCopy, PRICE_UNIT_LABEL, priceUnitsFor } from "@/lib/axiom/niches";
 import { insertRow, moveRow, moveSection, nextSectionName, renameSection, sectionsOf } from "@/lib/axiom/menu";
 import { formatMoney } from "@/lib/utils";
-import type { Appointment, Billing, PaymentSetup, PriceUnit, Service, Shop, ShopNotice } from "@/lib/axiom/types";
+import { GEAR_GUARDIAN_BPS } from "@/lib/axiom/merchant-pricing";
+import { StripeConnectNotice, SubscriptionDisclaimer } from "@/components/legal-notice";
+import { normalizeShopNiche, type Appointment, type Billing, type PaymentSetup, type PriceUnit, type Service, type Shop, type ShopNotice } from "@/lib/axiom/types";
 
 export function SettingsPanel({
   shop,
@@ -110,7 +112,7 @@ function ReadyPages({
   onPick: (preset: NichePreset) => void;
   onKeyword: (word: string) => void;
 }) {
-  const presets = presetsForShop(niche);
+  const presets = presetsForShop(normalizeShopNiche(niche));
   const active = presets.find((preset) => preset.title === activeTitle) ?? presets[0];
   if (!active) return null;
   return (
@@ -574,7 +576,7 @@ export function PaymentsPanel({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const volume = appointments.reduce((sum, appointment) => sum + appointment.paymentCents, 0);
-  const fee = billing ? Math.round((volume * billing.gearGuardianBps) / 10000) : 0;
+  const fee = Math.round((volume * GEAR_GUARDIAN_BPS) / 10000);
 
   return (
     <div className="grid max-w-3xl gap-4">
@@ -584,10 +586,11 @@ export function PaymentsPanel({
         <p className="mt-1 text-sm text-muted">
           {billing ? `${formatMoney(billing.priceCents)} / month · ${billing.status}` : "No plan"}
         </p>
+        <SubscriptionDisclaimer />
         <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-muted">Platform fee</p>
-            <p className="tabular">{billing ? `${(billing.gearGuardianBps / 100).toFixed(2)}%` : "—"}</p>
+            <p className="tabular">{(GEAR_GUARDIAN_BPS / 100).toFixed(2)}%</p>
           </div>
           <div>
             <p className="text-muted">Fees on paid bookings</p>
@@ -607,6 +610,7 @@ export function PaymentsPanel({
               ? "Stripe has the account. Charges stay off until verification finishes. Lead dispatch and booking stay locked until then."
               : "Guests pay on this shop's booking page. Funds settle to the connected account, with the platform fee taken on each charge."}
         </p>
+        <StripeConnectNotice />
         {!payments.processorReady && !readonly ? (
           <p className="mt-3 text-sm text-muted">Card payments are not configured for this workspace yet. Guests can still request a time.</p>
         ) : null}

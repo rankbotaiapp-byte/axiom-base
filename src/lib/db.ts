@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Pool, types as pgTypes } from "pg";
 import { isDatabaseUnavailable } from "../../scripts/db-availability.mjs";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 
@@ -282,33 +283,56 @@ function migratePostgresOnce(): Promise<void> {
   return globalRef.__pgMigratePromise__;
 }
 
+/**
+ * Single process-wide `pg` Pool for hosted Postgres.
+ *
+ * Better Auth and app data MUST share this. Two separate pools (auth default 10 +
+ * app max 10) against a Supabase/Neon pooler exhaust slots and surface as
+ * `Connection terminated unexpectedly` during Playwright / login storms —
+ * not because Playwright workers are too high (E2E already uses workers:1).
+ *
+ * Local/dev keeps the pool tiny and recycles idle clients quickly so a dead
+ * pooler socket cannot pin the process.
+ */
+export function getHostedPgPool(): Pool {
+  if (!databaseUrl) {
+    throw new Error("getHostedPgPool() requires DATABASE_URL");
+  }
+  if (globalRef.__pgPool__) return globalRef.__pgPool__;
+
+  pgTypes.setTypeParser(OID_INT8, Number);
+  pgTypes.setTypeParser(OID_DATE, identity);
+  pgTypes.setTypeParser(OID_INTERVAL, identity);
+
+  const local = localDevelopment();
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    // Local E2E + Vite SSR share one process — keep this well under the
+    // typical Supabase pooler budget (~15). Production stays at 10.
+    max: local ? 2 : 10,
+    idleTimeoutMillis: local ? 5_000 : 30_000,
+    connectionTimeoutMillis: local ? 4_000 : 15_000,
+    allowExitOnIdle: local,
+  });
+  // A reset from the pooler emits `error` on an idle client. Without a
+  // listener Node treats that as fatal and exits the dev server.
+  pool.on("error", (err) => {
+    console.error("[db] connection dropped", err instanceof Error ? err.message : err);
+  });
+  pool.on("connect", (client) => {
+    client.on("error", (err) => {
+      console.error("[db] connection dropped", err instanceof Error ? err.message : err);
+    });
+  });
+  globalRef.__pgPool__ = pool;
+  return pool;
+}
+
 function createNeonSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
     // Regular Postgres driver: node-postgres (`pg`) — works directly with Neon's
-    // pooled endpoint. One pool per process; warm serverless instances reuse it.
-    const { Pool, types } = await import("pg");
-    types.setTypeParser(OID_INT8, Number);
-    types.setTypeParser(OID_DATE, identity);
-    types.setTypeParser(OID_INTERVAL, identity);
-    // One pool per process. Bulk import holds a single client for each
-    // stage-and-promote transaction so the batch is not split across connections.
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      max: 10,
-      idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 15_000,
-    });
-    // A reset from the pooler emits `error` on an idle client. Without a
-    // listener Node treats that as fatal and exits the dev server.
-    pool.on("error", (err) => {
-      console.error("[db] connection dropped", err instanceof Error ? err.message : err);
-    });
-    pool.on("connect", (client) => {
-      client.on("error", (err) => {
-        console.error("[db] connection dropped", err instanceof Error ? err.message : err);
-      });
-    });
-    globalRef.__pgPool__ = pool;
+    // pooled endpoint. One shared pool per process (also used by Better Auth).
+    const pool = getHostedPgPool();
     return toSql(async <T>(text: string, params: unknown[]) =>
       withDbRetry(async () => {
         const res = await pool.query(text, params);

@@ -400,16 +400,16 @@ function HeroTypeControls({
 
 const FAQ = [
   {
-    q: "What does the trial cost today?",
-    a: "The 30-day trial is $0 today. The published renewal is $497 a month starting day 31.",
+    q: "What does Name Your Price cost today?",
+    a: "Month 1 is Name Your Price with a $1 minimum. The published renewal is $150 a month starting day 31.",
   },
   {
     q: "What is the monthly plan?",
-    a: "Managed Territory Growth Engine is $497 every month. The calculator multiplies that published price. It is not a discount.",
+    a: "After Month 1, the storefront renews at $150 every month unless they chose Founder's Lifetime Access.",
   },
   {
-    q: "What is the one-time plan?",
-    a: "Lifetime Territory Monopoly is $2,497 once. The territory stays with that purchase.",
+    q: "What is Founder's Lifetime Access?",
+    a: "Founder's Lifetime Access is $1,500 once. Permanent storefront access with zero monthly fees.",
   },
   {
     q: "Does the page send outreach?",

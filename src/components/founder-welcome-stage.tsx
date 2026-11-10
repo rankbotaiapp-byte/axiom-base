@@ -1,8 +1,18 @@
 import { useState } from "react";
+import { HeroLoopVideo } from "@/components/loop-video";
 
-export const FOUNDER_WELCOME_SRC = "/media/welcome-to-axiom.mp4";
-export const FOUNDER_WELCOME_SRC_FALLBACK = "/media/welcome-to-axiom.mp4.mp4";
-export const FOUNDER_WELCOME_POSTER = "/media/eric.jpg";
+/** Official HeyGen face-to-camera intro — plays before the niche cinematic loop. */
+export const FOUNDER_WELCOME_SRC = "/media/axiom-greeting.mp4";
+export const FOUNDER_WELCOME_SRC_FALLBACK = "/media/welcome-to-axiom.mp4";
+export const FOUNDER_WELCOME_SRC_FALLBACK_2 = "/media/welcome-to-axiom.mp4.mp4";
+export const FOUNDER_WELCOME_POSTER = "/media/axiom-greeting-poster.jpg";
+export const FOUNDER_WELCOME_POSTER_FALLBACK = "/media/eric.jpg";
+
+const SRC_CHAIN = [
+  FOUNDER_WELCOME_SRC,
+  FOUNDER_WELCOME_SRC_FALLBACK,
+  FOUNDER_WELCOME_SRC_FALLBACK_2,
+] as const;
 
 export function FounderWelcomeStage({
   owner,
@@ -15,12 +25,18 @@ export function FounderWelcomeStage({
   trade: string;
   place: string;
 }) {
-  const [src, setSrc] = useState(FOUNDER_WELCOME_SRC);
+  const [srcIndex, setSrcIndex] = useState(0);
   const [still, setStill] = useState(false);
+  const [poster, setPoster] = useState(FOUNDER_WELCOME_POSTER);
   const target = business.trim() || "your shop";
+  const src = SRC_CHAIN[Math.min(srcIndex, SRC_CHAIN.length - 1)]!;
 
   return (
-    <section className="founder-stage" aria-label={`Founder briefing for ${target}`}>
+    <section
+      className="founder-stage"
+      aria-label={`Founder briefing for ${target}`}
+      data-axiom-pre-roll="avatar-greeting"
+    >
       <div className="founder-hud">
         <header className="founder-target">
           <p className="founder-target-kicker">Target lock</p>
@@ -37,12 +53,12 @@ export function FounderWelcomeStage({
           <span className="film-bracket film-bracket-sw" aria-hidden />
           <span className="film-bracket film-bracket-se" aria-hidden />
           {still ? (
-            <img className="founder-stage-media" src={FOUNDER_WELCOME_POSTER} alt="" />
+            <img className="founder-stage-media" src={poster} alt="" />
           ) : (
-            <video
+            <HeroLoopVideo
               className="founder-stage-media"
               src={src}
-              poster={FOUNDER_WELCOME_POSTER}
+              poster={poster}
               autoPlay
               muted
               loop
@@ -50,9 +66,12 @@ export function FounderWelcomeStage({
               preload="auto"
               aria-hidden
               onError={() => {
-                if (src !== FOUNDER_WELCOME_SRC_FALLBACK) {
-                  setSrc(FOUNDER_WELCOME_SRC_FALLBACK);
+                if (srcIndex < SRC_CHAIN.length - 1) {
+                  setSrcIndex((i) => i + 1);
                   return;
+                }
+                if (poster !== FOUNDER_WELCOME_POSTER_FALLBACK) {
+                  setPoster(FOUNDER_WELCOME_POSTER_FALLBACK);
                 }
                 setStill(true);
               }}

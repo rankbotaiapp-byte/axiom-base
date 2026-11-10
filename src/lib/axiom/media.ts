@@ -1,4 +1,4 @@
-import { CATALOG, catalogFilmUrl, isCatalogNiche, resolveCatalogNiche } from "../../config/catalog.ts";
+import { CATALOG, catalogFilmUrl, isCatalogNiche, resolveCatalogNiche, tradeLoopUrl } from "../../config/catalog.ts";
 import { classifyTrade } from "./directory.ts";
 import {
   animationForNiche,
@@ -10,6 +10,7 @@ import {
 } from "./hero-films.ts";
 import type { IntroPreset } from "./intro.ts";
 import { isCustomHeroVideo } from "./hero-video.ts";
+import { pairDatasetToNichePreview } from "./niche-dataset-pairing.ts";
 import { isShopNiche, SHOP_NICHES, type ShopNiche } from "./types.ts";
 
 export type HeroTone = "stage" | "site" | "backcountry" | "cinema";
@@ -69,7 +70,7 @@ function toneFor(niche: ShopNiche): HeroTone | undefined {
 }
 
 function filmFor(niche: ShopNiche): NicheFilm {
-  const url = catalogFilmUrl(niche);
+  const url = tradeLoopUrl(niche);
   const file = CATALOG.find((row) => row.id === niche)?.file ?? "loop";
   return {
     heroImageUrl: "",
@@ -132,19 +133,32 @@ export function isOutdoorGuideNiche(value: string): boolean {
   return /\b(hunting[-\s]?guides?|outdoor[-\s]?expeditions?|forestry)\b/i.test(value);
 }
 
-/** Preview pages and new shops read the niche film, or contractor when the key is legacy. */
+/** Preview pages and new shops read the verified niche film (dataset pairing pipeline). */
 export function leadHeroFor(tradeType: string, businessName: string, category = ""): NicheFilm {
   const named = [businessName, category].filter((part) => part && part.trim()).join(" ");
   const text = named || tradeType.replace(/-/g, " ");
   if (isOutdoorGuideNiche(tradeType) || isOutdoorGuideNiche(category)) {
     return withSpecificFilm(NICHE_MEDIA.forestry, text);
   }
-  const fromName = classifyQuiet(businessName);
-  if (fromName) return withSpecificFilm(NICHE_MEDIA[fromName], text);
-  const fromCategory = classifyQuiet(category) ?? classifyQuiet(tradeType.replace(/-/g, " "));
-  if (fromCategory) return withSpecificFilm(NICHE_MEDIA[fromCategory], text);
-  const niche = resolveCatalogNiche(tradeType);
-  return withSpecificFilm(NICHE_MEDIA[niche], text);
+  // Prefer the automated niche→MP4 binding (water→otter/shark, auto→auto-hero, etc.).
+  const paired = pairDatasetToNichePreview({
+    businessName,
+    tradeType,
+    tradeLabel: category,
+  });
+  const base = NICHE_MEDIA[paired.niche] ?? NICHE_MEDIA.contractor;
+  const matched = withSpecificFilm(base, text);
+  if (paired.heroVideoUrl && paired.heroVideoUrl !== matched.heroVideoUrl) {
+    return {
+      ...matched,
+      heroVideoUrl: paired.heroVideoUrl,
+      heroVideos: [paired.heroVideoUrl, ...paired.alternateLoops].filter(
+        (url, index, list) => list.indexOf(url) === index,
+      ),
+      loopLabel: paired.heroVideoUrl.split("/").pop()?.replace(/-/g, " ") ?? matched.loopLabel,
+    };
+  }
+  return matched;
 }
 
 function classifyQuiet(label: string): ShopNiche | null {

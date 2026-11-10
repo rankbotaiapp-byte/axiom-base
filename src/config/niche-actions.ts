@@ -46,6 +46,16 @@ export const NICHE_ACTION_MAP: Record<CatalogNiche, NicheActions> = {
       { title: "Beard sculpt", detail: "Shape, lineup, and oil.", priceLabel: "$28" },
     ),
   },
+  "beauty-salon": {
+    primaryCta: "Book the suite",
+    secondaryCta: "Hold a color block",
+    badge: "Suite open",
+    services: cards(
+      { title: "Color service", detail: "Consult, formula, and gloss.", priceLabel: "$120" },
+      { title: "Skin treatment", detail: "Cleanse, extract, and finish.", priceLabel: "$95" },
+      { title: "Lash and brow", detail: "Shape, tint, and set.", priceLabel: "$68" },
+    ),
+  },
   "bow-tech": {
     primaryCta: "Book archery tuning",
     secondaryCta: "Schedule a string build",
@@ -217,13 +227,23 @@ export const NICHE_ACTION_MAP: Record<CatalogNiche, NicheActions> = {
     ),
   },
   "water-systems": {
-    primaryCta: "Book a well check",
-    secondaryCta: "Schedule filtration",
-    badge: "Water on schedule",
+    primaryCta: "Book Now",
+    secondaryCta: "Instant Quote",
+    badge: "SECTOR 07 // ABYSSAL",
     services: cards(
-      { title: "Well check", detail: "Pressure, drawdown, and the pump.", priceLabel: "$149" },
-      { title: "Filter service", detail: "Cartridges, UV, and a sample.", priceLabel: "$110" },
-      { title: "Line locate", detail: "Find the supply before you dig.", priceLabel: "$180" },
+      { title: "Inspection", detail: "Depth survey, pressure, and the first fault.", priceLabel: "$149" },
+      { title: "Repair Op", detail: "Pump, line, and filtration repair.", priceLabel: "$249" },
+      { title: "Full Install", detail: "System deploy from the well to the tap.", priceLabel: "$899" },
+    ),
+  },
+  "personal-trainer": {
+    primaryCta: "Book a session",
+    secondaryCta: "Start a program",
+    badge: "Hour open",
+    services: cards(
+      { title: "Assessment", detail: "Movement screen and the first plan.", priceLabel: "$75" },
+      { title: "Training hour", detail: "Coached work for the booked block.", priceLabel: "$90" },
+      { title: "Four-week program", detail: "Sessions, notes, and the check-in.", priceLabel: "$320" },
     ),
   },
   woodworking: {

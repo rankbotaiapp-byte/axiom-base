@@ -25,7 +25,7 @@ export function funnelBucketOpen(hitsInWindow: number, limit: number): boolean {
 }
 
 export function isDueNurtureStep(step: number): boolean {
-  return step === 2 || step === 3 || step === 6;
+  return step === 3 || step === 7;
 }
 
 /** Simulation logs the touch. Live sends only when both providers are configured. */
@@ -38,7 +38,7 @@ export function nurtureReleasePlan(
   return "send";
 }
 
-/** Day 3 and Day 6 emails are stored as subject, blank line, then body. */
+/** Day 3 and Day 7 emails are stored as subject, blank line, then body. */
 export function splitOutreachEmail(body: string): { subject: string; text: string } {
   const breakAt = body.indexOf("\n\n");
   if (breakAt === -1) return { subject: body.slice(0, 140), text: body };

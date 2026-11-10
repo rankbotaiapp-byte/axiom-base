@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { catalogFilmUrl } from "../../config/catalog.ts";
 import {
   ambienceFor,
   balanceChannels,
@@ -16,16 +17,18 @@ test("a listed phone needs ten digits", () => {
   assert.equal(hasListedPhone("555"), false);
 });
 
-test("both-channel leads fill the smaller side", () => {
+test("mobile-verified leads go SMS-first; office emails go email-first", () => {
   const split = balanceChannels([
-    { email: "a@sweep.example", phone: "" },
-    { email: "b@sweep.example", phone: "5415550100" },
-    { email: "", phone: "5415550101" },
-    { email: "not-an-email", phone: "12" },
+    { email: "a@sweep.example", phone: "", phoneLine: "" },
+    { email: "b@sweep.example", phone: "5415550100", phoneLine: "mobile" },
+    { email: "info@shop.example", phone: "5415550199", phoneLine: "mobile" },
+    { email: "", phone: "5415550101", phoneLine: "" },
+    { email: "not-an-email", phone: "12", phoneLine: "" },
   ]);
   assert.equal(split.email.length, 2);
-  assert.equal(split.sms.length, 1);
-  assert.equal(split.email.some((lead) => lead.email.startsWith("b@")), true);
+  assert.equal(split.sms.length, 2);
+  assert.equal(split.sms.some((lead) => lead.email.startsWith("b@")), true);
+  assert.equal(split.email.some((lead) => lead.email.startsWith("info@")), true);
 });
 
 test("simulation copy says the batch will not send", () => {
@@ -49,9 +52,12 @@ test("local storefronts keep a film and service shards", async () => {
   assert.equal(river?.heroVideoUrl, "/media/trout-fishin-hero-animation.mp4");
   assert.equal(river?.ambience, "river");
   assert.ok((river?.shards.length ?? 0) >= 2);
+  assert.equal(localStorefront("axiom-auto")?.name, "Apex Moto Labs");
+  assert.equal(localStorefront("axiom-auto")?.niche, "auto");
+  assert.equal(localStorefront("axiom-auto")?.heroVideoUrl, catalogFilmUrl("auto"));
   assert.equal(localStorefront("high-desert-wildlife")?.heroVideoUrl, "/media/leopard-hero-animation.mp4");
   assert.equal(localStorefront("night-circuit")?.name, "Night Circuit");
-  assert.equal(localStorefront("night-circuit")?.heroVideoUrl, "/media/auto-hero-animation.mp4");
+  assert.equal(localStorefront("night-circuit")?.heroVideoUrl, catalogFilmUrl("auto"));
   assert.equal(localStorefront("ashland-barber")?.tagline, "A straight cut, a hot towel, and the chair by the front window.");
   assert.equal(localStorefront("rogue-contractor")?.address, "Grants Pass, Oregon");
   assert.equal(localStorefront("cascade-weld")?.niche, "welding");

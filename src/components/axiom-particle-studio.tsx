@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { coveredShare, createCover, particleStudioModel, revealStroke } from "@/lib/axiom/particle-brand";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { NICHES } from "@/lib/axiom/niches";
 import type { ShopNiche } from "@/lib/axiom/types";
 
@@ -136,7 +137,7 @@ export function AxiomParticleStudio({ niche, business }: { niche: ShopNiche; bus
       <div className="glass-panel grid gap-0 overflow-hidden rounded-[24px] lg:grid-cols-[minmax(0,1.45fr)_minmax(16rem,0.8fr)]">
         <div className="relative min-h-64 bg-bg">
           {model.heroKind === "video" ? (
-            <video
+            <HeroLoopVideo
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               src={model.heroUrl}
               autoPlay

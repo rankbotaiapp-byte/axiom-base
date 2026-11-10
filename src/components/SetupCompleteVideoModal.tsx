@@ -1,4 +1,6 @@
 import React from 'react';
+import { X } from "lucide-react";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 interface OnboardingVideoModalProps {
   isOpen: boolean;
@@ -32,16 +34,17 @@ export const OnboardingVideoModal: React.FC<OnboardingVideoModalProps> = ({
             onClick={onClose}
             className="text-zinc-400 hover:text-white transition-colors p-2 rounded-lg"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Video Player */}
         <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-zinc-800 mb-6">
-          <video
+          <HeroLoopVideo
             src="/media/heroes/intro-welcome.mp4"
             controls
             autoPlay
+            loop={false}
             className="w-full h-full object-cover"
           />
         </div>

@@ -1,5 +1,3 @@
-import type { ShopNiche } from "./types.ts";
-
 export const JOB_LANES = ["residential", "commercial", "emergency"] as const;
 export type JobLane = (typeof JOB_LANES)[number];
 
@@ -84,11 +82,11 @@ const RETAIL_CATALOG: ShelfItem[] = [
   },
 ];
 
-export function offerModel(niche: ShopNiche): OfferModel {
+export function offerModel(niche: string): OfferModel {
   return niche === "retail" ? "product" : "service";
 }
 
-export function quoteProfile(niche: ShopNiche): QuoteProfile {
+export function quoteProfile(niche: string): QuoteProfile {
   if (offerModel(niche) === "product") {
     return {
       model: "product",
@@ -234,7 +232,7 @@ export function formatAuditReport(input: {
 }
 
 export function shelfFor(
-  niche: ShopNiche,
+  niche: string,
   lines?: { id?: string; name: string; description: string; priceCents: number }[],
 ): ShelfItem[] {
   if (offerModel(niche) !== "product") return [];
@@ -268,7 +266,7 @@ export const NEON_PRESETS = [
 const WEEK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export type WeekKey = (typeof WEEK)[number];
 
-export function themeForNiche(niche: ShopNiche): ThemeProfile {
+export function themeForNiche(niche: string): ThemeProfile {
   if (niche === "field" || niche === "contractor" || niche === "locksmith" || niche === "firewood" || niche === "landscaper" || niche === "foodtruck" || niche === "dogwalk" || niche === "detailer" || niche === "hunting" || niche === "trade" || niche === "clean" || niche === "security") {
     return "site";
   }
@@ -276,7 +274,7 @@ export function themeForNiche(niche: ShopNiche): ThemeProfile {
   return "desk";
 }
 
-export function parseThemeProfile(raw: unknown, niche: ShopNiche): ThemeProfile {
+export function parseThemeProfile(raw: unknown, niche: string): ThemeProfile {
   const value = typeof raw === "string" ? raw : "";
   if (THEME_PROFILES.includes(value as ThemeProfile)) return value as ThemeProfile;
   return themeForNiche(niche);

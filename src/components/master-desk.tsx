@@ -13,6 +13,8 @@ import {
   renderOutreachMessage,
   type OutreachStrategyId,
 } from "@/lib/axiom/funnel";
+import { finalizeOutreachBody } from "@/lib/axiom/legal-notices";
+import { MessagingDisclaimer } from "@/components/legal-notice";
 import { prospectViewPath } from "@/lib/axiom/outreach-visit";
 import {
   addPreloadedLeads,
@@ -29,6 +31,8 @@ import {
 } from "@/lib/axiom/master";
 import { nicheLabel, sortLeads, type LeadSort } from "@/lib/axiom/directory";
 import { NICHE_ORDER, NICHES, PUBLIC_NICHE_ORDER } from "@/lib/axiom/niches";
+/** Master desk lead tools use the full inventory; public landing uses PUBLIC_NICHE_ORDER (5 cores). */
+const DESK_NICHE_ORDER = NICHE_ORDER;
 import { pitchHref } from "@/lib/axiom/pricing";
 import {
   formatSendSlot,
@@ -40,6 +44,10 @@ import {
 import { HOME_REGION_COUNTIES, HOME_REGION_LABEL } from "@/lib/axiom/regional-roster";
 import { isShopNiche, type ShopNiche } from "@/lib/axiom/types";
 import { AutopilotCard } from "@/components/master/AutopilotCard";
+import { DispatchControlPanel } from "@/components/master/DispatchControlPanel";
+import { GlobalMasterDashboard } from "@/components/master/global-master-dashboard";
+import { MASTER_GLASS, MasterCyberFrame } from "@/components/master/master-cyber-frame";
+import { FunnelStrategyControl } from "@/components/master/FunnelStrategyControl";
 import { Button } from "@/components/ui/button";
 import { GlassReveal } from "@/components/ui/glass-reveal";
 import { Input, Label } from "@/components/ui/input";
@@ -49,7 +57,7 @@ import { pulseHaptic, readFeedback } from "@/lib/axiom/feedback";
 import { listPlatformPulse, type PlatformPulse } from "@/lib/axiom/master";
 import { createLeadCsvReader, IMPORT_BATCH, importBulkLeads, importRegistrySweep, leadCsvChunks, type BulkImportResult } from "@/lib/axiom/bulk-import";
 import { SWEEP_PER_COUNTY } from "@/lib/axiom/registry-sweep";
-import { formatMoney } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 import { nicheFilmCatalog } from "@/lib/axiom/media";
 import { catalogChoices, readMasterTelemetry, readNicheOverrides, writeMasterTelemetry, writeNicheFilmOverride } from "@/lib/axiom/hero-films";
 
@@ -94,7 +102,7 @@ function HeroFilmPanel() {
               }}
               className="h-10 rounded-lg bg-surface px-2 text-sm text-fg"
             >
-              <option value="default">Matched · {film.file}</option>
+              <option value="default">Matched · {film.label}</option>
               {catalogChoices(film.niche).map((choice) => (
                 <option key={choice.url} value={choice.url}>
                   {choice.label}
@@ -207,9 +215,9 @@ export function MasterAdminPage() {
 
   if (entry === "loading" || isPending || ((bypass || user) && !desk && !error)) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-bg">
-        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/8" />
-      </main>
+      <MasterCyberFrame className="grid place-items-center">
+        <div className="h-10 w-48 animate-pulse rounded-full bg-cyan-400/20" />
+      </MasterCyberFrame>
     );
   }
   if (!bypass && !user) {
@@ -251,14 +259,19 @@ export function MasterAdminPage() {
     );
   }
   return (
-    <DeskView
-      desk={desk}
-      persistent={bypass}
-      query={query}
-      onQuery={setQuery}
-      onRefresh={() => {
-        void getMasterDesk().then(setDesk).catch(() => undefined);
-      }}
+    <GlobalMasterDashboard
+      ops={
+        <DeskView
+          desk={desk}
+          persistent={bypass}
+          query={query}
+          onQuery={setQuery}
+          onRefresh={() => {
+            void getMasterDesk().then(setDesk).catch(() => undefined);
+          }}
+          embedded
+        />
+      }
     />
   );
 }
@@ -266,21 +279,21 @@ export function MasterAdminPage() {
 function Locked({ message, extra }: { message: string; extra?: ReactNode }) {
   const unconfigured = message === "Master admin is not configured";
   return (
-    <main className="neon-shell grid min-h-dvh place-items-center px-6 py-16 text-center">
-      <div className="glass-card w-full max-w-md rounded-2xl px-6 py-10">
+    <MasterCyberFrame className="grid place-items-center px-6 py-16 text-center">
+      <div className={cn("w-full max-w-md p-10", MASTER_GLASS)}>
         <Wordmark />
-        <h1 className="mt-8 font-display text-4xl">This desk is locked.</h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted">
+        <h1 className="mt-8 font-display text-4xl text-cyan-400">This desk is locked.</h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-400">
           {unconfigured
             ? "Set MASTER_ADMIN_EMAIL to the platform owner's sign-in email, then restart the app."
             : "Only the platform owner account can open the master desk."}
         </p>
         {extra}
-        <Link to="/" className="mt-6 inline-block text-sm text-muted underline-offset-4 hover:underline">
+        <Link to="/" className="mt-6 inline-block text-sm text-slate-400 underline-offset-4 hover:underline">
           Back to Axiom
         </Link>
       </div>
-    </main>
+    </MasterCyberFrame>
   );
 }
 
@@ -343,24 +356,24 @@ function BypassGate({
   );
   if (embedded) return form;
   return (
-    <main className="neon-shell grid min-h-dvh place-items-center px-6 py-16">
-      <div className="glass-card w-full max-w-md rounded-2xl px-6 py-10 reveal-up">
+    <MasterCyberFrame className="grid place-items-center px-6 py-16">
+      <div className={cn("w-full max-w-md p-10", MASTER_GLASS)}>
         <Wordmark />
-        <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.22em] text-accent">Master desk</p>
-        <h1 className="mt-2 font-mono text-4xl leading-none tabular-nums">Open the owner desk.</h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted">
+        <p className="mt-8 font-mono text-xs uppercase tracking-[0.22em] text-cyan-400">Master desk</p>
+        <h1 className="mt-2 font-mono text-4xl leading-none tabular-nums text-cyan-400">Open the owner desk.</h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-400">
           Enter the owner key once. This browser keeps the desk open for a year, and each visit renews that session.
         </p>
         {form}
-        <div className="glass-card mt-8 rounded-xl px-4 py-4 text-sm leading-relaxed text-muted">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg">Pin it to your phone</p>
+        <div className={cn("mt-8 p-4 text-sm leading-relaxed text-slate-400", MASTER_GLASS)}>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-cyan-300">Pin it to your phone</p>
           <p className="mt-2">
-            Open <span className="text-fg">/master</span> in Safari or Chrome, then Add to Home Screen. The icon opens
-            this desk. <span className="text-fg">/admin</span> opens it too.
+            Open <span className="text-cyan-100">/master</span> in Safari or Chrome, then Add to Home Screen. The icon opens
+            this desk. <span className="text-cyan-100">/admin</span> opens it too.
           </p>
         </div>
       </div>
-    </main>
+    </MasterCyberFrame>
   );
 }
 
@@ -370,12 +383,14 @@ function DeskView({
   query,
   onQuery,
   onRefresh,
+  embedded = false,
 }: {
   desk: Desk;
   persistent: boolean;
   query: string;
   onQuery: (value: string) => void;
   onRefresh: () => void;
+  embedded?: boolean;
 }) {
   const [regionQuery, setRegionQuery] = useState("");
   const needle = query.trim().toLowerCase();
@@ -393,8 +408,9 @@ function DeskView({
     );
   }, [desk.shops, needle]);
 
+  const Shell = embedded ? "div" : "main";
   return (
-    <main className="neon-shell px-5 py-6 sm:px-8">
+    <Shell className="neon-shell px-5 py-6 sm:px-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Wordmark />
@@ -413,10 +429,11 @@ function DeskView({
         </p>
       </header>
 
-      <section className="mt-8 grid gap-3 sm:grid-cols-3">
+      <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Active shops" value={desk.kpis.activeShops.toLocaleString()} />
         <Kpi label="Bookings processed" value={desk.kpis.bookings.toLocaleString()} />
         <Kpi label="Revenue captured" value={formatMoney(desk.kpis.revenueCents)} />
+        <Kpi label="Gear Guardian 1.5%" value={formatMoney(desk.kpis.gearGuardianCents ?? 0)} />
       </section>
 
       <PlatformWire />
@@ -519,7 +536,9 @@ function DeskView({
         </section>
       </div>
 
+      <DispatchControlPanel onChanged={onRefresh} />
       <AutopilotCard mode={desk.outreach.mode} onDispatched={onRefresh} />
+      <FunnelStrategyControl onChanged={onRefresh} />
       <HeroFilmPanel />
 
       <OutreachEngine
@@ -582,7 +601,7 @@ function DeskView({
           </ul>
         </div>
       </section>
-    </main>
+    </Shell>
   );
 }
 
@@ -713,8 +732,8 @@ function OutreachEngine({
   const windowProfile = timingProfile === "mixed" ? "general" : timingProfile;
   const nextWindow = nextSendInstant(new Date(), timingMode, windowProfile);
   const windowOpen = nextWindow.getTime() <= Date.now() + 30_000;
-  const renderedText = renderOutreachMessage(text, tokens);
-  const renderedEmail = `${renderOutreachMessage(emailSubject, tokens)}\n\n${renderOutreachMessage(emailBody, tokens)}`;
+  const renderedText = finalizeOutreachBody(renderOutreachMessage(text, tokens), "sms");
+  const renderedEmail = `${renderOutreachMessage(emailSubject, tokens)}\n\n${finalizeOutreachBody(renderOutreachMessage(emailBody, tokens), "email")}`;
 
   function applyStrategy(id: OutreachStrategyId) {
     const next = outreachStrategy(id);
@@ -800,7 +819,7 @@ function OutreachEngine({
           ? "Smart timing holds each trade for its own hours."
           : "Weekday hours hold the queue until Monday–Thursday, 8:00 AM–7:00 PM Pacific.";
       setNote(
-        `Queued ${result.leadCount} ${kind} in ${result.county} with ${hook}. ${loops} scheduled through Day 6. ${chunks}, ${result.intervalSeconds} seconds apart. ${safety} ${hours} ${first}${skipped}${looping}`,
+        `Queued ${result.leadCount} ${kind} in ${result.county} with ${hook}. ${loops} scheduled through Day 7. ${chunks}, ${result.intervalSeconds} seconds apart. ${safety} ${hours} ${first}${skipped}${looping}`,
       );
       onLaunched();
     } catch (err) {
@@ -990,7 +1009,7 @@ function OutreachEngine({
         })}
       </div>
       <p className="mt-3 text-xs text-faint">
-        {"Use {business}, {owner}, {city}, {county}, {trade}, {reviews}, {website}, {line}, and {url}."}
+        {"Use {business}, {owner}, {city}, {county}, {trade}, {reviews}, {website}, {line}, and {url}. SMS and email footers add Reply STOP automatically."}
       </p>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
@@ -1053,6 +1072,7 @@ function OutreachEngine({
               : `Next window opens ${formatSendSlot(nextWindow)}.`}
         </p>
       </button>
+      <MessagingDisclaimer />
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button type="button" disabled={busy !== null || emailReady === 0} onClick={() => void launch("email")}>
           <Mail className="size-4" aria-hidden />
@@ -1066,7 +1086,7 @@ function OutreachEngine({
       <p className="mt-3 text-sm text-muted">
         {preview == null
           ? "Load a county to sort the list into channels."
-          : "A mobile line is SMS-ready. A real address is email-ready. A launch queues chunks instead of sending the list at once. Day 3 and Day 6 wait for the same hours as the batch. Only the private link in the message stops that lead. Simulation only writes the live wire."}
+          : "A mobile line is SMS-ready. A real address is email-ready. A launch queues chunks instead of sending the list at once. Day 3 and Day 7 wait for the same hours as the batch. A reply, STOP, a booking, or a claimed page stops that lead. Simulation only writes the live wire."}
       </p>
       {note ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
     </section>
@@ -1354,7 +1374,7 @@ function BulkIngest() {
 
 function StrategicFunnel() {
   const [businessName, setBusinessName] = useState("");
-  const [niche, setNiche] = useState<string>(PUBLIC_NICHE_ORDER[0] ?? "contractor");
+  const [niche, setNiche] = useState<string>(DESK_NICHE_ORDER[0] ?? "contractor");
   const [contact, setContact] = useState("");
   const [city, setCity] = useState("");
   const [path, setPath] = useState("");
@@ -1416,7 +1436,7 @@ function StrategicFunnel() {
             className="h-10 glass-card rounded-xl px-3 text-sm text-fg shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]"
             aria-label="Niche"
           >
-            {PUBLIC_NICHE_ORDER.map((id) => (
+            {DESK_NICHE_ORDER.map((id) => (
               <option key={id} value={id}>
                 {NICHES[id].label}
               </option>
@@ -1604,7 +1624,7 @@ function FunnelTool() {
             aria-label="Category"
           />
           <datalist id="trade-categories">
-            {PUBLIC_NICHE_ORDER.map((niche) => (
+            {DESK_NICHE_ORDER.map((niche) => (
               <option key={niche} value={NICHES[niche].label} />
             ))}
           </datalist>

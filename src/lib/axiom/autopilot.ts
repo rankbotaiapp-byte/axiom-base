@@ -1,4 +1,6 @@
-import { isEmailReady } from "./funnel.ts";
+import { catalogFilmUrl } from "../../config/catalog.ts";
+import { isEmailReady, type PhoneLine } from "./funnel.ts";
+import { splitLeadsByChannelPriority } from "./sms-drip.ts";
 
 export type AutopilotMode = "simulation" | "live";
 
@@ -11,6 +13,8 @@ export type AutopilotLead = {
   tradeType: string;
   email: string;
   phone: string;
+  contactName?: string;
+  phoneLine?: PhoneLine | "";
 };
 
 export type AutopilotProposal = {
@@ -32,28 +36,27 @@ export function hasListedPhone(phone: string): boolean {
 }
 
 /**
- * Email-only and SMS-only leads stay on their channel.
- * Leads with both go to whichever side is smaller, so the batch stays balanced.
+ * Mobile-verified numbers → SMS-first queue.
+ * Office / email-heavy desks → email-first sequence.
+ * Falls back to listed-phone / valid-email when phone_line is unknown.
  */
-export function balanceChannels<T extends { email: string; phone: string }>(leads: readonly T[]): {
-  email: T[];
-  sms: T[];
-} {
-  const email: T[] = [];
-  const sms: T[] = [];
-  const both: T[] = [];
-  for (const lead of leads) {
-    const emailReady = isEmailReady(lead.email);
-    const smsReady = hasListedPhone(lead.phone);
-    if (emailReady && smsReady) both.push(lead);
-    else if (emailReady) email.push(lead);
-    else if (smsReady) sms.push(lead);
+export function balanceChannels<
+  T extends { email: string; phone: string; phoneLine?: string | null; contactName?: string },
+>(leads: readonly T[]): { email: T[]; sms: T[] } {
+  const routed = splitLeadsByChannelPriority(
+    leads.map((lead) => ({
+      ...lead,
+      contactEmail: lead.email,
+      phoneLine: lead.phoneLine ?? "",
+    })),
+  );
+  // Dual-unknown leftovers that only have a listed phone and no usable email
+  // still enter SMS so we never drop a dialable lead from the batch.
+  const rescued: T[] = [];
+  for (const lead of routed.skipped) {
+    if (hasListedPhone(lead.phone) && !isEmailReady(lead.email)) rescued.push(lead);
   }
-  for (const lead of both) {
-    if (email.length <= sms.length) email.push(lead);
-    else sms.push(lead);
-  }
-  return { email, sms };
+  return { email: routed.email, sms: [...routed.sms, ...rescued] };
 }
 
 export function formulateProposal(input: {
@@ -105,7 +108,7 @@ export type ClientStorefront = {
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const FALLBACK_ACCENT = "#2EE6D6";
-const FALLBACK_FILM = "/media/orb-explosion-hero-animation.mp4";
+const FALLBACK_FILM = catalogFilmUrl("contractor");
 
 export function sanitizeAccent(value: string, fallback = FALLBACK_ACCENT): string {
   const next = value.trim();
@@ -172,7 +175,16 @@ function shardList(value: unknown, film: string): ServiceShard[] {
 }
 
 function telemetryFor(name: string, niche: string, film: string): string[] {
-  const file = film.split("/").pop() || "loop";
+  const file = (film.split("/").pop() || "loop").toLowerCase();
+  const hay = `${niche} ${file} ${name}`.toLowerCase();
+  if (
+    /shark|abyssal|ocean|water-systems|water systems|underwater|deep-sea/.test(hay) ||
+    file.includes("shark") ||
+    file.includes("abyssal") ||
+    file.includes("hero-ocean")
+  ) {
+    return ["DEPTH 1,243 m", "WATER TEMP 4.2 °C", "COORDS 42.432°N 123.171°W"];
+  }
   return ["GPS ACTIVE", "LIVE TELEMETRY", `${name} · ${niche} · ${file}`].map((line) => line.slice(0, 96));
 }
 
@@ -202,7 +214,53 @@ export function parseClientStorefront(row: unknown, source: StorefrontSource): C
   };
 }
 
+/** Default local/dev tenant — keeps `/axiom-auto/admin` alive when hosted Postgres is down. */
+export const AXIOM_TEST_SHOP = {
+  shopSlug: "axiom-auto",
+  name: "Apex Moto Labs",
+  niche: "auto",
+  heroVideoUrl: catalogFilmUrl("auto"),
+} as const;
+
 const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
+  {
+    shopSlug: AXIOM_TEST_SHOP.shopSlug,
+    name: AXIOM_TEST_SHOP.name,
+    tagline: "Custom turbo builds, dyno-proven before they leave the bay.",
+    niche: AXIOM_TEST_SHOP.niche,
+    accent: "#7EC8E3",
+    heroVideoUrl: AXIOM_TEST_SHOP.heroVideoUrl,
+    address: "Medford, Oregon",
+    ambience: "workshop",
+    source: "json",
+    telemetry: telemetryFor(AXIOM_TEST_SHOP.name, AXIOM_TEST_SHOP.niche, AXIOM_TEST_SHOP.heroVideoUrl),
+    shards: [
+      {
+        id: "consult",
+        label: "Build consultation",
+        meta: "Bay",
+        blurb: "Goals, platform, and a dyno path before any metal moves.",
+        priceCents: 15000,
+        videoUrl: AXIOM_TEST_SHOP.heroVideoUrl,
+      },
+      {
+        id: "stage1",
+        label: "Stage I · Street",
+        meta: "Package",
+        blurb: "Intake, exhaust, and a street map that holds boost honest.",
+        priceCents: 480000,
+        videoUrl: AXIOM_TEST_SHOP.heroVideoUrl,
+      },
+      {
+        id: "diag",
+        label: "Bay diagnostic",
+        meta: "Same day",
+        blurb: "Codes, sensors, and a road test before the next pull.",
+        priceCents: 18500,
+        videoUrl: AXIOM_TEST_SHOP.heroVideoUrl,
+      },
+    ],
+  },
   {
     shopSlug: "rogue-river-outfitters",
     name: "Rogue River Outfitters",
@@ -285,11 +343,11 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
     tagline: "Mobile rigs, shop welds, and railings that stay square.",
     niche: "welding",
     accent: "#E7B48A",
-    heroVideoUrl: "/media/electrician-hero-animation.mp4",
+    heroVideoUrl: catalogFilmUrl("machining"),
     address: "Medford, Oregon",
     ambience: "workshop",
     source: "json",
-    telemetry: telemetryFor("Cascade Weld", "welding", "/media/electrician-hero-animation.mp4"),
+    telemetry: telemetryFor("Cascade Weld", "welding", catalogFilmUrl("machining")),
     shards: [
       {
         id: "mobile",
@@ -297,7 +355,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Callout",
         blurb: "The truck comes to the gate. Cracks, hinges, and a trailer tongue.",
         priceCents: 18500,
-        videoUrl: "/media/electrician-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("machining"),
       },
       {
         id: "rail",
@@ -305,7 +363,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Bay",
         blurb: "Stairs and decks, measured on site and finished in the bay.",
         priceCents: 64000,
-        videoUrl: "/media/electrician-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("machining"),
       },
       {
         id: "repair",
@@ -313,7 +371,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Same week",
         blurb: "A bracket, a mount, a piece of equipment that has to go back to work.",
         priceCents: 24000,
-        videoUrl: "/media/electrician-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("machining"),
       },
     ],
   },
@@ -323,11 +381,11 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
     tagline: "Custom work, flash on the wall, and cover-ups that read clean.",
     niche: "tattoo studio",
     accent: "#FF4FD8",
-    heroVideoUrl: "/media/leopard-hero-animation.mp4",
+    heroVideoUrl: catalogFilmUrl("taxidermy"),
     address: "Ashland, Oregon",
     ambience: "workshop",
     source: "json",
-    telemetry: telemetryFor("Meridian Ink", "tattoo studio", "/media/leopard-hero-animation.mp4"),
+    telemetry: telemetryFor("Meridian Ink", "tattoo studio", catalogFilmUrl("taxidermy")),
     shards: [
       {
         id: "custom",
@@ -335,7 +393,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Session",
         blurb: "A drawing first, then the needle. Deposit holds the chair.",
         priceCents: 20000,
-        videoUrl: "/media/leopard-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("taxidermy"),
       },
       {
         id: "flash",
@@ -343,7 +401,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Walk-in",
         blurb: "The sheet on the wall. Small work, same day when the book allows.",
         priceCents: 8000,
-        videoUrl: "/media/leopard-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("taxidermy"),
       },
       {
         id: "cover",
@@ -361,11 +419,11 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
     tagline: "Cyberpunk paint, night diagnostics, and a bay that stays open late.",
     niche: "cyberpunk auto",
     accent: "#7EC8E3",
-    heroVideoUrl: "/media/auto-hero-animation.mp4",
+    heroVideoUrl: catalogFilmUrl("auto"),
     address: "Medford, Oregon",
     ambience: "workshop",
     source: "json",
-    telemetry: telemetryFor("Night Circuit", "cyberpunk auto", "/media/auto-hero-animation.mp4"),
+    telemetry: telemetryFor("Night Circuit", "cyberpunk auto", catalogFilmUrl("auto")),
     shards: [
       {
         id: "diag",
@@ -373,7 +431,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Bay",
         blurb: "Codes, lights, and a road test after dark.",
         priceCents: 18000,
-        videoUrl: "/media/auto-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("auto"),
       },
     ],
   },
@@ -383,11 +441,11 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
     tagline: "A straight cut, a hot towel, and the chair by the front window.",
     niche: "barber",
     accent: "#E7B48A",
-    heroVideoUrl: "/media/leopard-hero-animation.mp4",
+    heroVideoUrl: catalogFilmUrl("barber"),
     address: "Ashland, Oregon",
     ambience: "workshop",
     source: "json",
-    telemetry: telemetryFor("Ashland Barber Co.", "barber", "/media/leopard-hero-animation.mp4"),
+    telemetry: telemetryFor("Ashland Barber Co.", "barber", catalogFilmUrl("barber")),
     shards: [
       {
         id: "cut",
@@ -405,11 +463,11 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
     tagline: "Foundations, framing, and a crew that shows up with the lumber.",
     niche: "contractor",
     accent: "#E7B48A",
-    heroVideoUrl: "/media/auto-hero-animation.mp4",
+    heroVideoUrl: catalogFilmUrl("contractor"),
     address: "Grants Pass, Oregon",
     ambience: "workshop",
     source: "json",
-    telemetry: telemetryFor("Rogue Contractor", "contractor", "/media/auto-hero-animation.mp4"),
+    telemetry: telemetryFor("Rogue Contractor", "contractor", catalogFilmUrl("contractor")),
     shards: [
       {
         id: "frame",
@@ -417,7 +475,7 @@ const LOCAL_STOREFRONTS: readonly ClientStorefront[] = [
         meta: "Job",
         blurb: "Walls, openings, and a level line.",
         priceCents: 120000,
-        videoUrl: "/media/auto-hero-animation.mp4",
+        videoUrl: catalogFilmUrl("contractor"),
       },
     ],
   },

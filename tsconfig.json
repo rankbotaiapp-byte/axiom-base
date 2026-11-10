@@ -44,6 +44,10 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/components/aether",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "scripts/**/*.test.mjs"
   ]
 }

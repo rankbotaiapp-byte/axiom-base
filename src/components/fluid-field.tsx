@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { mixRgb, paletteFromFrame, type Rgb } from "@/lib/axiom/film-palette";
 
 const VERT = `#version 300 es
@@ -149,7 +150,18 @@ const GL_ATTRS = {
   preserveDrawingBuffer: false,
 } as const;
 
+/** Cinematic landing and white-label frames already own the GPU (video + trail). */
+function skipFluidForPath(pathname: string) {
+  return pathname === "/" || pathname.startsWith("/t/") || pathname.startsWith("/showcase");
+}
+
 export function FluidField() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (skipFluidForPath(pathname)) return null;
+  return <FluidFieldRuntime />;
+}
+
+function FluidFieldRuntime() {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -223,9 +235,11 @@ export function FluidField() {
     let gpu = acquire();
     if (!gpu) {
       document.documentElement.classList.add("fluid-off");
+      document.documentElement.classList.remove("fluid-on");
       return () => document.documentElement.classList.remove("fluid-off");
     }
     document.documentElement.classList.remove("fluid-off");
+    document.documentElement.classList.add("fluid-on");
 
     const trail = new Float32Array(TRAIL * 2);
     const age = new Float32Array(TRAIL);
@@ -374,6 +388,7 @@ export function FluidField() {
       lost = true;
       halt();
       document.documentElement.classList.add("fluid-off");
+      document.documentElement.classList.remove("fluid-on");
     };
     const onRestored = () => {
       if (dead) return;
@@ -381,9 +396,11 @@ export function FluidField() {
       lost = !gpu;
       if (!gpu) {
         document.documentElement.classList.add("fluid-off");
+        document.documentElement.classList.remove("fluid-on");
         return;
       }
       document.documentElement.classList.remove("fluid-off");
+      document.documentElement.classList.add("fluid-on");
       resize();
       pump();
     };
@@ -412,6 +429,8 @@ export function FluidField() {
     const stop = () => {
       dead = true;
       halt();
+      document.documentElement.classList.remove("fluid-on");
+      document.documentElement.classList.add("fluid-off");
       window.clearInterval(followFilm);
       cancelAnimationFrame(kick);
       canvas.removeEventListener("webglcontextlost", onLost);

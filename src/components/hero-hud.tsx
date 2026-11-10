@@ -12,6 +12,7 @@ import {
 import { setAvatarHelpOpen } from "@/components/avatar-help-state";
 import { HeroInteractiveButton } from "@/components/hero-interactive-buttons";
 import { DefaultAssetFrame } from "@/components/default-asset-placeholder";
+import { isCustomStorefrontAsset } from "@/lib/axiom/gallery";
 import {
   HERO_HUD_ACTIONS,
   HERO_HUD_ACTION_LABEL,
@@ -72,6 +73,7 @@ export function HeroHud({
   onChange,
   onSelect,
   beforeAction,
+  onBook,
 }: {
   hud: HeroHudConfig;
   title?: string;
@@ -93,6 +95,7 @@ export function HeroHud({
   onSelect?: (id: string) => void;
   /** Plays a transition, then runs the saved response. */
   beforeAction?: (button: HeroHudButton, proceed: () => void) => void;
+  onBook?: () => void;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const dragged = useRef(false);
@@ -141,8 +144,12 @@ export function HeroHud({
       return;
     }
     if (response === "apiTrigger") {
-      const target = button.href.startsWith("/") ? button.href : bookHref;
-      if (target) window.location.href = target;
+      const target = button.href.startsWith("/") || button.href.startsWith("#") ? button.href : bookHref;
+      if (target?.startsWith("#guest") && onBook) {
+        onBook();
+        return;
+      }
+      if (target && !target.startsWith("#")) window.location.href = target;
       return;
     }
     setSheet(button);
@@ -345,9 +352,15 @@ export function HeroHud({
           </p>
           <p className="hud-sheet-copy">{sheet.successMessage || sheet.label}</p>
           {bookHref || sheet.href ? (
-            <a className="hud-action hud-sheet-go" href={sheet.href || bookHref}>
-              Continue
-            </a>
+            (sheet.href || bookHref || "").startsWith("#guest") && onBook ? (
+              <button type="button" className="hud-action hud-sheet-go" onClick={() => { setSheet(null); onBook(); }}>
+                Continue
+              </button>
+            ) : (
+              <a className="hud-action hud-sheet-go" href={sheet.href || bookHref}>
+                Continue
+              </a>
+            )
           ) : null}
           <button type="button" className="hud-sheet-close" onClick={() => setSheet(null)}>
             Close
@@ -564,7 +577,9 @@ function ServiceLines({
     <ul className="film-service-stack" aria-label="Services">
       {cards.map((card, index) => (
         <li key={card[0]?.id} className="film-service">
-          <DefaultAssetFrame src={serviceThumbs[index]} compact alt="" />
+          {editable || isCustomStorefrontAsset(serviceThumbs[index] ?? "") ? (
+            <DefaultAssetFrame src={serviceThumbs[index]} compact hideEmpty={!editable} alt="" />
+          ) : null}
           <div className="film-service-copy">
             {card.map((line) =>
               !line.text && !editable ? null : (

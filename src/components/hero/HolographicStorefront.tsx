@@ -11,8 +11,11 @@ import { Color, ShaderMaterial, Vector2, type Mesh } from "three";
 import type { StorefrontAmbience } from "@/lib/axiom/autopilot";
 import { sanitizeAccent } from "@/lib/axiom/autopilot";
 import { formatMoney } from "@/lib/utils";
+import { catalogFilmUrl } from "@/config/catalog";
+import { attachLoopTailTrim } from "@/lib/axiom/loop-trim";
+import { HeroLoopVideo } from "@/components/loop-video";
 
-const FALLBACK_FILM = "/media/heroes/universal-fallback.mp4.mp4";
+const FALLBACK_FILM = catalogFilmUrl("contractor");
 
 export type HoloShard = {
   id: string;
@@ -115,6 +118,12 @@ function HoloPlane({
   const { viewport } = useThree();
 
   useEffect(() => () => material.dispose(), [material]);
+
+  useEffect(() => {
+    const video = texture.image as HTMLVideoElement | undefined;
+    if (!video || typeof video.addEventListener !== "function") return;
+    return attachLoopTailTrim(video, { loop: true });
+  }, [texture, url]);
 
   useFrame((_, raw) => {
     const dt = Math.min(raw, 0.05);
@@ -349,7 +358,7 @@ export function HolographicStorefront({
                 exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.86 }}
                 transition={reduced ? { duration: 0.01 } : { type: "spring", stiffness: 170, damping: 22 }}
               >
-                <video
+                <HeroLoopVideo
                   key={open.id}
                   src={open.videoUrl || film}
                   autoPlay

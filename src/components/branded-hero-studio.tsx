@@ -1,6 +1,7 @@
 import { useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { getBearerToken } from "@/lib/auth/client";
 import { canvasToJpeg, paintBrandedStill, paintHeroFrame, readBrandInk, type BrandInk } from "@/lib/axiom/brand-paint";
 import {
@@ -326,7 +327,7 @@ export function BrandedHeroStudio({
             {selected && !drawing && !clipUrl ? <img className="tactical-media" src={selected.jpeg} alt="" /> : null}
             <canvas ref={canvasRef} className="tactical-media" hidden={!drawing} />
             {clipUrl && !drawing ? (
-              <video className="tactical-media" src={clipUrl} poster={selected?.jpeg} autoPlay muted loop playsInline />
+              <HeroLoopVideo className="tactical-media" src={clipUrl} poster={selected?.jpeg} autoPlay muted loop playsInline />
             ) : null}
             {!selected && !drawing ? <p className="brand-empty">The branded still lands here.</p> : null}
             <div className="tactical-rim" />

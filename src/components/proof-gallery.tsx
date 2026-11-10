@@ -3,7 +3,14 @@ import { HoloCard } from "@/components/holo-card";
 import { Reveal } from "@/components/reveal";
 import { StatusPill, StatusRow, toneAt } from "@/components/status-pill";
 import { DefaultAssetPlaceholder } from "@/components/default-asset-placeholder";
-import { defaultProof, GALLERY_LIMIT, isCustomProof, padProofFrames, type ProofFrame } from "@/lib/axiom/gallery";
+import { HeroLoopVideo } from "@/components/loop-video";
+import {
+  GALLERY_LIMIT,
+  isCustomProof,
+  nextProofFallback,
+  padProofFrames,
+  type ProofFrame,
+} from "@/lib/axiom/gallery";
 import { addPortfolioItem, listShopPortfolio, removePortfolioItem } from "@/lib/axiom/server";
 import type { ShopNiche } from "@/lib/axiom/types";
 import { Input, Label } from "@/components/ui/input";
@@ -43,7 +50,7 @@ export function ProofGallery({
         const removeId = removeIds?.[index];
         const figure = (
           <figure>
-            <FrameMedia frame={frame} />
+            <FrameMedia frame={frame} quiet={signal} />
             <figcaption className="flex items-center justify-between gap-3 px-4 py-3">
               <span className="min-w-0">
                 <span className="block truncate text-sm text-muted">{frame.caption || "Untitled"}</span>
@@ -104,7 +111,7 @@ export function ProofGallery({
           <div key={`${frame.kind}:${frame.src}:${frame.caption}`} className="min-w-0">
             <HoloCard className="h-full overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
               <figure>
-                <FrameMedia frame={frame} />
+                <FrameMedia frame={frame} quiet={signal} />
                 <figcaption className="px-4 py-3">
                   <span className="block truncate text-sm text-muted">{frame.caption || "Untitled"}</span>
                   <StatusPill tone={toneAt(index)} className="mt-2" />
@@ -119,24 +126,54 @@ export function ProofGallery({
   );
 }
 
-function FrameMedia({ frame }: { frame: ProofFrame }) {
-  if (frame.placeholder || !frame.src) {
-    return <DefaultAssetPlaceholder />;
+function FrameMedia({ frame, quiet = false }: { frame: ProofFrame; quiet?: boolean }) {
+  const [src, setSrc] = useState(frame.src);
+  const [exhausted, setExhausted] = useState(false);
+
+  useEffect(() => {
+    setSrc(frame.src);
+    setExhausted(false);
+  }, [frame.src]);
+
+  if (exhausted || (!frame.src && !frame.fallbacks?.length)) {
+    return quiet ? null : <DefaultAssetPlaceholder />;
   }
   if (frame.kind === "video") {
     return (
-      <video
-        src={frame.src}
+      <HeroLoopVideo
+        src={src || frame.src}
         className="aspect-[4/3] w-full object-cover"
         muted
         loop
         playsInline
         autoPlay
         preload="metadata"
+        onError={(event) => {
+          const next = nextProofFallback(event.currentTarget.currentSrc || src, [
+            ...(frame.fallbacks ?? []),
+            "/media/defaults/proof-plate.svg",
+          ]);
+          if (next && next !== src) setSrc(next);
+          else setExhausted(true);
+        }}
       />
     );
   }
-  return <img src={frame.src} alt={frame.caption} className="aspect-[4/3] w-full object-cover" />;
+  return (
+    <img
+      src={src || frame.src}
+      alt={frame.caption}
+      className="aspect-[4/3] w-full object-cover"
+      onError={() => {
+        const next = nextProofFallback(src, [
+          ...(frame.fallbacks ?? []),
+          "/media/defaults/proof-plate.svg",
+        ]);
+        if (next && next !== src) setSrc(next);
+        else setExhausted(true);
+      }}
+    />
+  );
 }
 
 export function ShopProofGallery({
@@ -148,8 +185,7 @@ export function ShopProofGallery({
   niche: ShopNiche;
   heading: string;
 }) {
-  const defaults = defaultProof(niche);
-  const [frames, setFrames] = useState<ProofFrame[]>(defaults);
+  const [frames, setFrames] = useState<ProofFrame[]>([]);
 
   useEffect(() => {
     let stop = false;
@@ -158,14 +194,10 @@ export function ShopProofGallery({
         .then((items) => {
           if (stop) return;
           const custom = items.filter((item) => isCustomProof(item.imageUrl));
-          setFrames(
-            padProofFrames(
-              custom.map((item) => ({ src: item.imageUrl, caption: item.caption, kind: "image" as const })),
-            ),
-          );
+          setFrames(custom.map((item) => ({ src: item.imageUrl, caption: item.caption, kind: "image" as const })));
         })
         .catch(() => {
-          if (!stop) setFrames(defaultProof(niche));
+          if (!stop) setFrames([]);
         });
     };
     load();
@@ -219,6 +251,7 @@ export function ProofGalleryManager({
 
   const custom = items.map((item) => ({ src: item.imageUrl, caption: item.caption, kind: "image" as const }));
   const showingDefaults = custom.length === 0;
+  const frames = padProofFrames(custom, niche);
 
   async function onFile(file: File | undefined) {
     if (!file || readonly) return;
@@ -254,7 +287,7 @@ export function ProofGalleryManager({
     <div>
       <ProofGallery
         heading={heading}
-        frames={padProofFrames(custom)}
+        frames={frames}
         note={
           showingDefaults
             ? "The public page is showing this trade’s sample album. Upload your own photos and they replace it."

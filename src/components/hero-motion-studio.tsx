@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TacticalHero } from "@/components/tactical-hero";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { Button } from "@/components/ui/button";
 import {
   HERO_MOTIONS,
@@ -34,7 +35,7 @@ export type HeroMotionResult = {
 const COLS = 72;
 const ROWS = 40;
 const BRUSH = 5.5;
-const LEAD: ShopNiche[] = ["field", "landscaper", "contractor"];
+const LEAD: ShopNiche[] = ["auto", "landscaping", "contractor"];
 
 type Upload = { file: File; url: string; kind: "video" | "image"; poster: string };
 
@@ -349,7 +350,7 @@ export function HeroMotionStudio({
             style={{ transformStyle: "preserve-3d" }}
           >
             {mediaUrl && mediaKind === "video" ? (
-              <video
+              <HeroLoopVideo
                 key={mediaUrl}
                 className="pointer-events-none h-full w-full object-cover"
                 src={mediaUrl}

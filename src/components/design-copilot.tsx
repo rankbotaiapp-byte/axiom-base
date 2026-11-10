@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { confirmCopilot, readCopilot, saveCopilotFeedback, sendCopilot, stageCopilotPreview } from "@/lib/axiom/copilot-api";
 import {
   applyStylePatch,
@@ -326,7 +327,7 @@ export function DesignCopilot({
                 {mode === "staging" ? "Staging preview" : "Live hero"}
               </p>
               {shownUrl && FILM.test(shownUrl) ? (
-                <video src={shownUrl} controls muted playsInline loop className="mt-3 h-36 w-full object-cover" />
+                <HeroLoopVideo src={shownUrl} controls muted playsInline loop className="mt-3 h-36 w-full object-cover" />
               ) : shownUrl ? (
                 <img src={shownUrl} alt="" className="mt-3 h-36 w-full object-cover" />
               ) : (
@@ -546,7 +547,7 @@ export function DesignCopilot({
                   <img src={pending.hero.assetUrl} alt="Staged hero" className="mt-3 h-36 w-full rounded-xl object-cover" />
                 ) : null}
                 {pending.hero?.assetUrl && pending.hero.medium === "video" ? (
-                  <video src={pending.hero.assetUrl} controls muted playsInline className="mt-3 h-36 w-full rounded-xl" />
+                  <HeroLoopVideo src={pending.hero.assetUrl} controls muted playsInline loop={false} className="mt-3 h-36 w-full rounded-xl" />
                 ) : null}
                 {pending.hero && !pending.hero.assetUrl ? (
                   <p className="mt-3 text-sm text-muted">No asset came back. The style can still be applied.</p>
@@ -585,7 +586,7 @@ export function DesignCopilot({
                 <p className="mt-2 text-sm text-muted">Not on the public storefront until you confirm it.</p>
                 <p className="mt-2 text-sm text-fg">{desk.memory.stagedHero.prompt}</p>
                 {desk.memory.stagedHero.medium === "video" ? (
-                  <video src={desk.memory.stagedHero.url} controls muted playsInline className="mt-3 h-36 w-full rounded-xl" />
+                  <HeroLoopVideo src={desk.memory.stagedHero.url} controls muted playsInline loop={false} className="mt-3 h-36 w-full rounded-xl" />
                 ) : (
                   <img src={desk.memory.stagedHero.url} alt="Staged hero" className="mt-3 h-36 w-full rounded-xl object-cover" />
                 )}

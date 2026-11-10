@@ -25,6 +25,9 @@ import { HeroBrandFrame } from "@/components/hero-weather";
 import { TelemetryLog } from "@/components/telemetry-log";
 import { HeroHud } from "@/components/hero-hud";
 import type { HeroHudConfig } from "@/lib/axiom/hero-hud";
+import { applyLoopTailTrim, attachLoopTailTrim } from "@/lib/axiom/loop-trim";
+import { resolveShopHeroFilm, type ShopHeroConfig } from "@/lib/axiom/resolve-hero-film";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 export function CinematicHero({
   imageUrl,
@@ -52,6 +55,7 @@ export function CinematicHero({
   className,
   sequence,
   dashboard = null,
+  shopConfig = null,
   children,
 }: {
   imageUrl: string;
@@ -82,9 +86,12 @@ export function CinematicHero({
   /** Portal, then auto-hero.mp4, then the live desk. */
   sequence?: "auto";
   dashboard?: ReactNode;
+  /** When `videoUrl` is empty, pin then master-category default. */
+  shopConfig?: ShopHeroConfig | null;
   children: ReactNode;
 }) {
-  const reels = heroVideoList(videoUrl);
+  const listed = heroVideoList(videoUrl);
+  const reels = listed.length ? listed : heroVideoList(resolveShopHeroFilm(shopConfig ?? {}));
   const reelKey = reels.join("|");
   const primaryReel = reels[0] ?? "";
   const [reduced, setReduced] = useState(false);
@@ -312,6 +319,12 @@ export function CinematicHero({
                 muted
                 playsInline
                 aria-hidden
+                onTimeUpdate={(event) => {
+                  applyLoopTailTrim(event.currentTarget, {
+                    loop: !cycling,
+                    onAdvance: cycling ? advanceReel : undefined,
+                  });
+                }}
               />
             )}
           </motion.div>
@@ -364,6 +377,7 @@ export function CinematicHero({
                   preload="auto"
                   onError={(event) => swapMissingAutoHero(event.currentTarget)}
                   onTimeUpdate={(event) => {
+                    applyLoopTailTrim(event.currentTarget, { loop: true });
                     if (!sequenced) return;
                     const next = autoBeatFromFilm(event.currentTarget.currentTime);
                     setBeat((current) => (current === "portal" || current === next ? current : next));
@@ -382,6 +396,12 @@ export function CinematicHero({
                 playsInline
                 onEnded={advanceReel}
                 onError={missReel}
+                onTimeUpdate={(event) => {
+                  applyLoopTailTrim(event.currentTarget, {
+                    loop: !cycling,
+                    onAdvance: cycling ? advanceReel : undefined,
+                  });
+                }}
               />
             ) : null}
             </div>
@@ -583,7 +603,16 @@ export function InsetFilm({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?
   );
 }
 
-export function LoopVideo({ src, className }: { src: string; className?: string }) {
+export function LoopVideo({
+  src,
+  poster,
+  className,
+}: {
+  src: string;
+  /** Optional still so the frame is never an empty dark box while the loop buffers. */
+  poster?: string;
+  className?: string;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   const [near, setNear] = useState(false);
 
@@ -602,8 +631,9 @@ export function LoopVideo({ src, className }: { src: string; className?: string 
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !near) {
-      ref.current?.pause();
+    if (!el || !src) return;
+    if (!near) {
+      el.pause();
       return;
     }
     el.muted = true;
@@ -612,20 +642,27 @@ export function LoopVideo({ src, className }: { src: string; className?: string 
     };
     play();
     el.addEventListener("canplay", play);
-    return () => el.removeEventListener("canplay", play);
-  }, [near]);
+    const stopTrim = attachLoopTailTrim(el, { loop: true });
+    return () => {
+      el.removeEventListener("canplay", play);
+      stopTrim();
+    };
+  }, [near, src]);
 
   if (!src) return null;
 
+  // Always bind `src` so cards never render as blank dark frames before intersection.
   return (
-    <video
+    <HeroLoopVideo
       ref={ref}
       className={cn("h-full w-full object-cover", className)}
-      src={near ? src : undefined}
-      autoPlay
+      src={src}
+      poster={poster || undefined}
+      autoPlay={near}
       loop
       muted
       playsInline
+      trimTail
       preload={near ? "metadata" : "none"}
     />
   );

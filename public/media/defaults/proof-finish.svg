@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Finished job placeholder">
+  <rect width="1200" height="900" fill="#10141c"/>
+  <polygon points="80,760 420,280 760,760" fill="#1b2330" stroke="#00ffcc" stroke-opacity="0.25"/>
+  <polygon points="520,760 820,320 1120,760" fill="#151c27" stroke="#e8e8ed" stroke-opacity="0.12"/>
+  <rect x="140" y="120" width="920" height="64" rx="12" fill="#00ffcc" fill-opacity="0.08" stroke="#00ffcc" stroke-opacity="0.3"/>
+  <text x="600" y="162" text-anchor="middle" fill="#e8e8ed" fill-opacity="0.7" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28">Finished work plate</text>
+</svg>

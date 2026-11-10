@@ -134,8 +134,8 @@ async function enhanceWithXai(prompt: string, scene: { bytes: Uint8Array; mime: 
   const form = new FormData();
   form.set("model", "grok-imagine-image");
   form.set("prompt", prompt);
-  form.append("image", new Blob([scene.bytes], { type: scene.mime }), "scene.jpg");
-  if (logo) form.append("image", new Blob([logo.bytes], { type: logo.mime }), "logo.png");
+  form.append("image", new Blob([new Uint8Array(scene.bytes)], { type: scene.mime }), "scene.jpg");
+  if (logo) form.append("image", new Blob([new Uint8Array(logo.bytes)], { type: logo.mime }), "logo.png");
   let res = await fetch(IMAGE_EDIT, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}` },

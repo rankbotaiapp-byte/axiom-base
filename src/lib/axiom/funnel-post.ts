@@ -1,4 +1,5 @@
 import { presetForShopNiche } from "../../config/nichePresets.ts";
+import { normalizeShopNiche } from "./types.ts";
 
 export type FunnelPostInput = {
   niche: string;
@@ -30,7 +31,7 @@ function hashtag(value: string): string {
 export function buildFunnelPost(input: FunnelPostInput): FunnelPost {
   const pageUrl = clip(input.pageUrl, 300);
   if (pageUrl.includes(" ")) throw new Error("Page link is too long");
-  const preset = presetForShopNiche(clip(input.niche, 80));
+  const preset = presetForShopNiche(normalizeShopNiche(clip(input.niche, 80)));
   const city = clip(input.city) || "Your city";
   const niche = preset.label || "Local service";
   const line = `${city}. ${niche}. ${preset.tagline}`.replace(/\s+/g, " ").trim();

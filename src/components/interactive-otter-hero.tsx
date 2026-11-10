@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { motion, useReducedMotion, type PanInfo } from "framer-motion";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 const SEED = [
   { id: "a", x: 8, y: 58, size: 18 },
@@ -114,7 +115,7 @@ export function InteractiveOtterHero({
   }
 
   const film = children ?? (
-    <video className="film-hero-media" src={src || OTTER_LOOP} autoPlay muted loop playsInline preload="auto" aria-hidden />
+    <HeroLoopVideo className="film-hero-media" src={src || OTTER_LOOP} autoPlay muted loop playsInline preload="auto" aria-hidden />
   );
 
   return (

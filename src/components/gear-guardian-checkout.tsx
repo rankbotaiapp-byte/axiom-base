@@ -3,17 +3,20 @@ import { ShieldCheck, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
+import { StripeConnectNotice, SubscriptionDisclaimer } from "@/components/legal-notice";
 
 export function GearGuardianCheckout({
   amountCents,
   shopName,
   onPaid,
   onCancel,
+  notice = "booking",
 }: {
   amountCents: number;
   shopName: string;
   onPaid: (paymentRef: string) => Promise<void>;
   onCancel: () => void;
+  notice?: "booking" | "subscription";
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,9 +94,10 @@ export function GearGuardianCheckout({
           Cancel
         </Button>
       </div>
-      <p className="mt-3 text-center text-[11px] text-faint">
+      <p className="mt-3 text-center text-xs text-faint">
         Card details stay in this browser. Nothing is stored or charged.
       </p>
+      {notice === "subscription" ? <SubscriptionDisclaimer /> : <StripeConnectNotice />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listTenantLeads, scanTenantProspects, sendTenantOutreach, type TenantLead } from "@/lib/axiom/tenant-leads";
+import { MessagingDisclaimer } from "@/components/legal-notice";
 import { Button } from "@/components/ui/button";
 
 export function ProspectScan({
@@ -72,6 +73,7 @@ export function ProspectScan({
           {busy === "send" ? "Sending" : "Send Today's Outreach Campaign"}
         </Button>
       </div>
+      <MessagingDisclaimer />
       {added !== null ? (
         <p className="mt-3 text-sm text-muted">
           {added === 0 ? "No new prospects for today." : `${added} added to the queue.`}

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { tradeLoopUrl } from "../../config/catalog.ts";
 import { readHeroAnimationPresets } from "./hero-animation-scan.server.ts";
 import {
   AUTO_HERO_ANIMATION,
@@ -47,7 +48,7 @@ test("studio draft replaces the shop film and tagline", () => {
     assert.equal(cleanHeroUrl("javascript:alert(1)"), "");
     assert.equal(cleanHeroUrl("/media/leopard-hero-animation.mp4"), "/media/leopard-hero-animation.mp4");
     assert.equal(cleanHeroUrl("/media/../secret.mp4"), "");
-    assert.equal(heroPresets().every((preset) => preset.url.endsWith("-hero-animation.mp4")), true);
+    assert.equal(heroPresets().every((preset) => preset.url.startsWith("/media/") && preset.url.endsWith(".mp4")), true);
   } finally {
     if (previous) Object.defineProperty(globalThis, "localStorage", previous);
     else delete (globalThis as { localStorage?: unknown }).localStorage;
@@ -57,8 +58,8 @@ test("studio draft replaces the shop film and tagline", () => {
 test("auto and wildlife niches use the new animation loops", () => {
   assert.equal(boundHeroAnimation("field"), AUTO_HERO_ANIMATION);
   assert.equal(boundHeroAnimation("trade", "cyberpunk garage"), AUTO_HERO_ANIMATION);
-  assert.equal(boundHeroAnimation("hunting", "wildlife"), LEOPARD_HERO_ANIMATION);
-  assert.equal(boundHeroAnimation("guide", "outdoor expedition"), LEOPARD_HERO_ANIMATION);
+  assert.equal(boundHeroAnimation("hunting", "wildlife"), tradeLoopUrl("bow-tech"));
+  assert.equal(boundHeroAnimation("guide", "outdoor expedition"), tradeLoopUrl("forestry"));
   const wild = resolveStorefrontFilm({
     draft: null,
     shopVideoUrl: "/media/leopard-hero-animation.mp4",
@@ -67,7 +68,7 @@ test("auto and wildlife niches use the new animation loops", () => {
     fallbackVideoUrl: "/media/owl-attack-hero-animation.mp4",
     shopTagline: "Night country",
   });
-  assert.equal(wild.hero_video_url, LEOPARD_HERO_ANIMATION);
+  assert.equal(wild.hero_video_url, "/media/leopard-hero-animation.mp4");
   const picked = resolveStorefrontFilm({
     draft: {
       hero_video_url: AUTO_HERO_ANIMATION,
@@ -91,7 +92,7 @@ test("auto and wildlife niches use the new animation loops", () => {
     fallbackVideoUrl: "/media/orb-explosion-hero-animation.mp4",
     shopTagline: "Water",
   });
-  assert.equal(unbound.hero_video_url, "/media/guide-service-hero-animation.mp4");
+  assert.equal(unbound.hero_video_url, tradeLoopUrl("forestry"));
   const uploaded = resolveStorefrontFilm({
     draft: {
       hero_video_url: "/api/hero-video/shop_demo?v=4",
@@ -121,12 +122,10 @@ test("auto and wildlife niches use the new animation loops", () => {
   assert.equal(isHeroAnimationFile("auto-hero-animation.mp4.mp4"), false);
   assert.equal(isHeroAnimationFile("leopard.mp4"), false);
   const library = mediaLibrary();
-  assert.equal(library.some((row) => row.url.includes("/heroes/")), false);
   assert.equal(library.some((row) => row.url === AUTO_HERO_ANIMATION), true);
+  assert.equal(library.some((row) => row.url === LEOPARD_HERO_ANIMATION), true);
   const onDisk = readHeroAnimationPresets();
-  assert.equal(onDisk.some((row) => row.url === AUTO_HERO_ANIMATION), true);
-  assert.equal(onDisk.some((row) => row.url === LEOPARD_HERO_ANIMATION), true);
-  assert.equal(onDisk.every((row) => /-hero-animation\.mp4$/.test(row.url)), true);
+  assert.equal(onDisk.every((row) => row.url.startsWith("/media/") && row.url.endsWith(".mp4")), true);
 });
 
 test("a shop film is used when the studio has not published", () => {

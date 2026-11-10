@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 export function TacticalHero({
   videoUrl,
@@ -54,7 +55,7 @@ export function TacticalHero({
     <section ref={ref} className={compact ? "tactical-hero is-compact" : "tactical-hero is-stage"} aria-label={label}>
       <motion.div className="tactical-plate" style={{ scale }}>
         {videoUrl ? (
-          <video
+          <HeroLoopVideo
             key={videoUrl}
             className="tactical-media"
             src={videoUrl}

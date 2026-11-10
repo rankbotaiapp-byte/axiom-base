@@ -1,16 +1,18 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { CATALOG, EXTRA_HERO_LOOPS, catalogFilmPath, catalogFilmUrl, isCatalogNiche } from "@/config/catalog";
+import { CATALOG, EXTRA_HERO_LOOPS, catalogFilmPath, isCatalogNiche, tradeLoopUrl } from "@/config/catalog";
 import { TelemetryLog } from "@/components/telemetry-log";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { writeHeroDraft } from "@/lib/axiom/hero-studio-state";
 import { isCatalogHeroUrl } from "@/lib/axiom/hero-films";
 import { updateShopBrand } from "@/lib/axiom/server";
 import type { Appointment, Shop, ShopNotice } from "@/lib/axiom/types";
 
-export type MissionTab = "overview" | "services" | "hero" | "autopilot";
+export type MissionTab = "overview" | "services" | "staff" | "hero" | "autopilot";
 
 export const MISSION_TABS: { id: MissionTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "services", label: "Services & Pricing" },
+  { id: "staff", label: "Staff & Portfolio" },
   { id: "hero", label: "Hero Studio & Branding" },
   { id: "autopilot", label: "Autopilot & Logs" },
 ];
@@ -112,7 +114,7 @@ export function CatalogFilmDesk({
   readonly: boolean;
   onReload: () => void;
 }) {
-  const nicheFilm = isCatalogNiche(shop.niche) ? catalogFilmUrl(shop.niche) : catalogFilmUrl("contractor");
+  const nicheFilm = isCatalogNiche(shop.niche) ? tradeLoopUrl(shop.niche) : tradeLoopUrl("contractor");
   const pinned = isCatalogHeroUrl(shop.heroVideoUrl) ? shop.heroVideoUrl!.split("?")[0]! : nicheFilm;
   const [selected, setSelected] = useState(pinned);
   const [status, setStatus] = useState("");
@@ -123,7 +125,7 @@ export function CatalogFilmDesk({
         id: row.id,
         label: row.label,
         blurb: row.blurb,
-        url: catalogFilmUrl(row.id),
+        url: tradeLoopUrl(row.id),
       })),
       ...EXTRA_HERO_LOOPS.map((row) => ({
         id: row.id,
@@ -165,7 +167,7 @@ export function CatalogFilmDesk({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <figure className="mission-stage">
-        <video key={selected} src={selected} autoPlay muted loop playsInline />
+        <HeroLoopVideo key={selected} src={selected} autoPlay muted loop playsInline />
         <figcaption>
           <p className="font-mono text-xs uppercase tracking-widest text-accent">{active?.label ?? "Loop"}</p>
           <p className="mt-1 text-sm text-muted">{active?.blurb}</p>

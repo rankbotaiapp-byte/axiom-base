@@ -81,7 +81,8 @@ test("trickle spacing and plan tiers hold outreach unless the plan and mode allo
   const growth = territoryPlan("growth");
   const lifetime = territoryPlan("lifetime");
   assert.ok(trial && growth && lifetime);
-  assert.equal(territorySessionSettled(trial, "no_payment_required"), true);
+  assert.equal(territorySessionSettled(trial, "paid"), true);
+  assert.equal(territorySessionSettled(trial, "no_payment_required"), false);
   assert.equal(territorySessionSettled(growth, "unpaid"), false);
   assert.equal(territorySessionSettled(lifetime, "paid"), true);
   assert.equal(modeAfterCheckout(), "live");

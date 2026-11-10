@@ -1,8 +1,8 @@
 import { getSql } from "@/lib/db";
 import { newId, slugify } from "@/lib/utils";
 import { nicheForLead } from "./directory";
-import { assertCatalogNiche, catalogFilmUrl } from "../../config/catalog.ts";
-import { isCatalogHeroUrl } from "./hero-films";
+import { assertCatalogNiche, tradeLoopUrl } from "../../config/catalog.ts";
+import { isCatalogHeroUrl, isPublicMediaFilm } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
 import { DEFAULT_HOURS, isPublicNiche, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
@@ -15,6 +15,18 @@ import { keepHeroBrand, parseHeroEffect, parseMorphDuration, readHeroBrandFallba
 import { publicShopSlug } from "./shop-slug";
 import { heroLookFromProfile, parseHeroLook } from "./hero-look.ts";
 import { defaultShopHeroHud } from "../../config/niche-button-presets.ts";
+import { parseShopConfig, sanitizeAutopilotLoops } from "../../config/AutopilotContentEngine.ts";
+import { parseFrontendTemplate } from "./frontend-template";
+import {
+  canModeratePortfolio,
+  canStaffWritePortfolio,
+  defaultUploadStatus,
+  isPublicPortfolioStatus,
+  parsePortfolioStatus,
+  parsePortfolioTags,
+  serializePortfolioTags,
+  type PortfolioActor,
+} from "./portfolio-access.ts";
 import { heroHudFromProfile, parseHeroHud } from "./hero-hud";
 import { isShopNiche, normalizeShopNiche, type AccessMode, type Appointment, type Billing, type Employee, type PaymentSetup, type ShopNotice, type OnboardingStep, type PortfolioItem, type Service, type Shop, type ShopEvent, type PriceUnit, type ShopNiche, type ShopPublic } from "./types";
 type ShopRow = {
@@ -28,6 +40,8 @@ type ShopRow = {
   ring_color: string;
   hero_image_url: string;
   hero_video_url: string | null;
+  /** Historical archive pick from Hero Studio (`migrations/0080_hero_background_loop.sql`). */
+  hero_background_loop?: string | null;
   hero_blend_percent: number;
   hero_effect_type?: string | null;
   hero_branding_tagline?: string | null;
@@ -135,7 +149,9 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     description: r.description,
     ringColor: r.ring_color || "#2EE6D6",
     heroImageUrl: r.hero_image_url || "",
-    heroVideoUrl: r.hero_video_url || null,
+    heroVideoUrl: (typeof r.hero_background_loop === "string" && r.hero_background_loop.trim()
+      ? r.hero_background_loop.trim()
+      : r.hero_video_url) || null,
     heroBlendPercent: finiteNumber(r.hero_blend_percent, 60),
     ...heroBrandFields(r),
     introPreset: parseIntroPreset(r.intro_preset),
@@ -161,6 +177,8 @@ function mapShop(r: ShopRow, acceptsCard = false, includeOwner = false): Shop {
     autopilotActive: isOn(r.autopilot_active) || isOn(r.ai_content_autopilot),
     layout: parseLayout(r.layout_json),
     tradeProfile: parseTradeProfile(niche, r.trade_profile),
+    shopConfig: parseShopConfig(r.trade_profile),
+    frontendTemplate: parseFrontendTemplate(r.trade_profile),
     createdAt: String(r.created_at)
   };
 }
@@ -228,6 +246,69 @@ async function loadShopRow(slug: string): Promise<ShopRow | null> {
     if (!/shop_hero_config/i.test(message)) throw err;
   }
   return row;
+}
+
+async function mergeShopConfig(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  row: ShopRow,
+  patch: Record<string, unknown>,
+) {
+  let profile: Record<string, unknown> = {};
+  try {
+    const parsed = typeof row.trade_profile === "string" ? JSON.parse(row.trade_profile) : row.trade_profile;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = { ...(parsed as Record<string, unknown>) };
+  } catch {
+    profile = {};
+  }
+  const shopConfig =
+    profile.shopConfig && typeof profile.shopConfig === "object" && !Array.isArray(profile.shopConfig)
+      ? { ...(profile.shopConfig as Record<string, unknown>) }
+      : {};
+  Object.assign(shopConfig, patch);
+  profile.shopConfig = shopConfig;
+  try {
+    await sql`update shops set trade_profile = ${JSON.stringify(profile)} where id = ${row.id}`;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/trade_profile/i.test(message)) throw err;
+  }
+  try {
+    const existing = await sql<{ config: string | null }>`
+      select config from shop_hero_config where shop_id = ${row.id} limit 1
+    `;
+    let config: Record<string, unknown> = {};
+    try {
+      const parsed = existing[0]?.config ? JSON.parse(existing[0].config) : {};
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) config = parsed as Record<string, unknown>;
+    } catch {
+      config = {};
+    }
+    if (!config.title && row.hero_config_json) {
+      try {
+        const hud = JSON.parse(row.hero_config_json);
+        if (hud && typeof hud === "object") config = { ...(hud as Record<string, unknown>), ...config };
+      } catch {
+        /* keep config */
+      }
+    }
+    Object.assign(config, patch);
+    await sql`
+      insert into shop_hero_config (shop_id, config, updated_at)
+      values (${row.id}, ${JSON.stringify(config)}, now())
+      on conflict (shop_id) do update set config = excluded.config, updated_at = now()
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/shop_hero_config/i.test(message)) throw err;
+  }
+}
+
+async function persistOverrideHeroVideo(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  row: ShopRow,
+  url: string,
+) {
+  await mergeShopConfig(sql, row, { overrideHeroVideoUrl: url });
 }
 
 async function persistSeededHeroHud(
@@ -416,26 +497,56 @@ export const listBookedStartsHandler = async ({
          and starts_at > now() - interval '1 day'`, [row.id, data.employeeId]);
   return rows.map(r => String(r.starts_at));
 };
+function mapPortfolioRow(r: {
+  id: string;
+  employee_id: string;
+  image_url: string;
+  caption: string;
+  status?: string | null;
+  featured?: boolean | null;
+  sort_order?: number | null;
+  tags?: string | null;
+  display_name?: string | null;
+}): PortfolioItem {
+  return {
+    id: r.id,
+    employeeId: r.employee_id,
+    imageUrl: r.image_url,
+    caption: r.caption,
+    status: parsePortfolioStatus(r.status),
+    featured: Boolean(r.featured),
+    sortOrder: Number(r.sort_order) || 0,
+    tags: parsePortfolioTags(r.tags ?? ""),
+    employeeName: r.display_name ?? undefined,
+  };
+}
+
 export const getPortfolioHandler = async ({
   data: employeeId
 }: any): Promise<PortfolioItem[]> => {
   const sql = await getSql();
-  const rows = await sql<{
-    id: string;
-    employee_id: string;
-    image_url: string;
-    caption: string;
-  }>`
-      select id, employee_id, image_url, caption
-      from portfolio_items where employee_id = ${employeeId}
-      order by created_at desc
+  try {
+    const rows = await sql<{
+      id: string;
+      employee_id: string;
+      image_url: string;
+      caption: string;
+      status: string;
+      featured: boolean;
+      sort_order: number;
+      tags: string;
+    }>`
+      select id, employee_id, image_url, caption, status, featured, sort_order, tags
+      from portfolio_items
+      where employee_id = ${employeeId} and status = 'approved'
+      order by featured desc, sort_order asc, created_at desc
     `;
-  return rows.map(r => ({
-    id: r.id,
-    employeeId: r.employee_id,
-    imageUrl: r.image_url,
-    caption: r.caption
-  }));
+    return rows.map(mapPortfolioRow).filter((item) => isPublicPortfolioStatus(item.status));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/status|featured|sort_order|tags/i.test(message)) throw err;
+    return [];
+  }
 };
 export const listShopEventsHandler = async ({
   data
@@ -689,6 +800,12 @@ export const createBookingHandler = async ({
     startsAt: data.startsAt,
     phase: "request"
   });
+  try {
+    const { haltDripForShop } = await import("./funnel-guard.server");
+    await haltDripForShop(sql, booked.shop.id, "booked");
+  } catch {
+    /* Drip tables may not exist yet. */
+  }
   if (!booked.shop.is_showcase) {
     const flags = parseOnboarding(booked.shop.onboarding_json);
     flags.testBooked = true;
@@ -778,20 +895,8 @@ async function claimPreloadedLead(sql: ShopSql, leadSlug: string, shopId: string
     values (${newId("fun")}, ${leadSlug}, ${"onboarding"}, ${claimed[0].county}, ${"/onboard"}, ${shopId}, ${true})
   `;
   try {
-    await sql`
-      update outreach_sequences
-      set status = 'stopped', stopped_reason = 'claimed'
-      where lead_slug = ${leadSlug} and status = 'active'
-    `;
-    await sql`
-      update outreach_touches
-      set status = 'skipped'
-      where status = 'scheduled'
-        and sequence_id in (
-          select id from outreach_sequences
-          where lead_slug = ${leadSlug} and status = 'stopped' and stopped_reason = 'claimed'
-        )
-    `;
+    const { haltLeadDrip } = await import("./funnel-guard.server");
+    await haltLeadDrip(sql, leadSlug, "claimed");
   } catch {
     // A shop can be claimed before nurture tables exist.
   }
@@ -841,16 +946,23 @@ export async function provisionShopFromNiche(input: {
     };
   }
   const customNiche = cleanCustomNiche(input.customNiche ?? "");
-  const pinnedFilm =
-    typeof input.heroFilm === "string" && isCatalogHeroUrl(input.heroFilm.trim())
-      ? input.heroFilm.trim().split("?")[0]!
-      : catalogFilmUrl(niche);
+  const { resolveProvisionFilm } = await import("./niche-dataset-pairing");
+  const pinnedFilm = resolveProvisionFilm({
+    niche,
+    heroFilm:
+      typeof input.heroFilm === "string" && isCatalogHeroUrl(input.heroFilm.trim())
+        ? input.heroFilm.trim().split("?")[0]!
+        : null,
+    tradeLabel: customNiche,
+  }) || tradeLoopUrl(niche);
   const name = input.name.trim() || customNiche || template.defaultName;
-  let slug = slugify(name);
+  const { publicShopSlug } = await import("./shop-slug");
+  let slug = publicShopSlug(slugify(name)) ?? `shop-${crypto.randomUUID().slice(0, 8)}`;
   const taken = await sql<{
     slug: string;
   }>`select slug from shops where slug = ${slug}`;
   if (taken[0]) slug = `${slug}-${crypto.randomUUID().slice(0, 4)}`;
+  if (!publicShopSlug(slug)) slug = `shop-${crypto.randomUUID().slice(0, 8)}`;
   const shopId = newId("shop");
   const services = template.services.map((s, i) => ({
     ...s,
@@ -1012,12 +1124,43 @@ export async function provisionTerritoryForPayer(input: {
       created: false
     };
   }
-  return provisionShopFromNiche({
+  const created = await provisionShopFromNiche({
     userId: input.userId,
     niche: nicheForLead(lead.trade_type, lead.trade_label ?? ""),
     name: lead.business_name,
     leadSlug: input.leadSlug
   });
+  if (created?.shopId) {
+    try {
+      const acts = await sql<{ plan_id: string | null }>`
+        select plan_id from territory_activations where lead_slug = ${input.leadSlug} limit 1
+      `;
+      const planId = acts[0]?.plan_id ?? "";
+      if (planId === "lifetime") {
+        await sql`
+          update shop_billing
+          set plan = ${"founder_lifetime"},
+              status = ${"active"},
+              price_cents = ${0},
+              updated_at = now()
+          where shop_id = ${created.shopId}
+        `;
+      } else {
+        const { STANDARD_MONTHLY_CENTS } = await import("@/lib/stripe/commercial");
+        await sql`
+          update shop_billing
+          set plan = ${"name_your_price"},
+              status = ${"trialing"},
+              price_cents = ${STANDARD_MONTHLY_CENTS},
+              updated_at = now()
+          where shop_id = ${created.shopId}
+        `;
+      }
+    } catch {
+      /* older schemas still leave the default axiom_pro trialing row */
+    }
+  }
+  return created;
 }
 export const updateShopBrandHandler = async ({
   data,
@@ -1063,22 +1206,63 @@ export const updateShopBrandHandler = async ({
     const next = data.catalogFilm.trim();
     if (next === "default") {
       if (isCatalogHeroUrl(row.hero_video_url) || isPublicMediaFilm(row.hero_video_url)) {
-        await sql`update shops set hero_video_url = null where id = ${row.id}`;
+        try {
+          await sql`update shops set hero_video_url = null, hero_background_loop = null where id = ${row.id}`;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "";
+          if (!/hero_background_loop/i.test(message)) throw err;
+          await sql`update shops set hero_video_url = null where id = ${row.id}`;
+        }
       }
     } else if (isPublicMediaFilm(next)) {
-      await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
+      try {
+        await sql`update shops set hero_video_url = ${next}, hero_background_loop = ${next} where id = ${row.id}`;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (!/hero_background_loop/i.test(message)) throw err;
+        await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
+      }
     }
   }
-  if (typeof data.heroFilm === "string") {
-    const next = data.heroFilm.trim().slice(0, 400);
+  const pinFilm =
+    typeof data.overrideHeroVideoUrl === "string"
+      ? data.overrideHeroVideoUrl.trim().slice(0, 400)
+      : typeof data.heroFilm === "string"
+        ? data.heroFilm.trim().slice(0, 400)
+        : "";
+  const configPatch: Record<string, unknown> = {};
+  if (pinFilm) {
     const stored =
-      isPublicMediaFilm(next) ||
-      (next.startsWith("/api/hero-video/") && !next.includes("..")) ||
-      (next.startsWith("https://") && !/\s/.test(next));
-    if (stored) await sql`update shops set hero_video_url = ${next} where id = ${row.id}`;
+      isPublicMediaFilm(pinFilm) ||
+      (pinFilm.startsWith("/api/hero-video/") && !pinFilm.includes("..")) ||
+      (pinFilm.startsWith("https://") && !/\s/.test(pinFilm));
+    if (stored) {
+      try {
+        await sql`update shops set hero_video_url = ${pinFilm}, hero_background_loop = ${pinFilm} where id = ${row.id}`;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (!/hero_background_loop/i.test(message)) throw err;
+        await sql`update shops set hero_video_url = ${pinFilm} where id = ${row.id}`;
+      }
+      configPatch.overrideHeroVideoUrl = pinFilm;
+      configPatch.hero_background_loop = pinFilm;
+      configPatch.storefrontFilmAt = Date.now();
+    }
+  }
+  if (Array.isArray(data.selectedAutopilotLoops)) {
+    configPatch.selectedAutopilotLoops = sanitizeAutopilotLoops(data.selectedAutopilotLoops);
+  }
+  if (Object.keys(configPatch).length) {
+    await mergeShopConfig(sql, row, configPatch);
   }
   if (data.clearHeroVideo === true) {
-    await sql`update shops set hero_video_url = null where id = ${row.id}`;
+    try {
+      await sql`update shops set hero_video_url = null, hero_background_loop = null where id = ${row.id}`;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (!/hero_background_loop/i.test(message)) throw err;
+      await sql`update shops set hero_video_url = null where id = ${row.id}`;
+    }
   }
   if (data.heroLook && typeof data.heroLook === "object") {
     const look = parseHeroLook(data.heroLook);
@@ -1128,9 +1312,22 @@ export const updateShopBrandHandler = async ({
         if (!/trade_profile/i.test(message)) throw err;
       }
       try {
+        const existing = await sql<{ config: string | null }>`
+          select config from shop_hero_config where shop_id = ${row.id} limit 1
+        `;
+        let overrideHeroVideoUrl = "";
+        try {
+          const parsed = existing[0]?.config ? JSON.parse(existing[0].config) : {};
+          if (parsed && typeof parsed === "object" && typeof parsed.overrideHeroVideoUrl === "string") {
+            overrideHeroVideoUrl = parsed.overrideHeroVideoUrl;
+          }
+        } catch {
+          overrideHeroVideoUrl = "";
+        }
+        const payload = overrideHeroVideoUrl ? { ...hud, overrideHeroVideoUrl } : hud;
         await sql`
           insert into shop_hero_config (shop_id, config, updated_at)
-          values (${row.id}, ${JSON.stringify(hud)}, now())
+          values (${row.id}, ${JSON.stringify(payload)}, now())
           on conflict (shop_id) do update set config = excluded.config, updated_at = now()
         `;
       } catch (err) {
@@ -1942,6 +2139,19 @@ export const getAuditStatusHandler = async ({
     detail: payload.slice(data.length + 1)
   };
 };
+async function portfolioActor(row: ShopRow, userId: string): Promise<PortfolioActor> {
+  if (row.owner_user_id === userId) return { userId, role: "owner" };
+  const mem = await membership(row.id, userId);
+  if (mem?.role === "owner") return { userId, role: "owner", employeeId: mem.employee_id };
+  if (mem?.role === "employee") return { userId, role: "employee", employeeId: mem.employee_id };
+  const sql = await getSql();
+  const claimed = await sql<{ id: string }>`
+    select id from employees where shop_id = ${row.id} and claimed_user_id = ${userId} limit 1
+  `;
+  if (claimed[0]) return { userId, role: "employee", employeeId: claimed[0].id };
+  return { userId, role: "customer" };
+}
+
 export const addPortfolioItemHandler = async ({
   data,
   context
@@ -1949,19 +2159,10 @@ export const addPortfolioItemHandler = async ({
   const row = await loadShopRow(data.slug);
   if (!row) throw new Error("Shop not found");
   if (row.is_showcase) throw new Error("Showcase shops are read-only");
-  const mem = await membership(row.id, context.userId);
-  const employeeId = mem?.employee_id ?? (await (await getSql())<{
-    id: string;
-  }>`
-          select id from employees where shop_id = ${row.id} and claimed_user_id = ${context.userId} limit 1
-        `)[0]?.id;
-  if (!employeeId && row.owner_user_id !== context.userId) throw new Error("Forbidden");
-  const empId = employeeId ?? (await (await getSql())<{
-    id: string;
-  }>`
-          select id from employees where shop_id = ${row.id} order by created_at asc limit 1
-        `)[0]?.id;
-  if (!empId) throw new Error("No staff profile");
+  const actor = await portfolioActor(row, context.userId);
+  const requested = typeof data.employeeId === "string" ? data.employeeId : "";
+  const empId = actor.role === "owner" ? requested || actor.employeeId || "" : actor.employeeId || "";
+  if (!empId || !canStaffWritePortfolio(actor, empId)) throw new Error("Forbidden");
   if (!data.imageUrl.startsWith("data:image/") && !data.imageUrl.startsWith("/")) {
     throw new Error("Invalid image");
   }
@@ -1974,17 +2175,29 @@ export const addPortfolioItemHandler = async ({
       n: number;
     }>`
         select count(*)::int as n from portfolio_items
-        where shop_id = ${row.id} and image_url like 'data:%'
+        where shop_id = ${row.id} and employee_id = ${empId} and image_url like 'data:%'
       `;
     if (Number(counted[0]?.n ?? 0) >= 12) throw new Error("Gallery is full");
   }
   const id = newId("pf");
-  await sql`
-      insert into portfolio_items (id, shop_id, employee_id, image_url, caption)
-      values (${id}, ${row.id}, ${empId}, ${data.imageUrl}, ${data.caption.trim().slice(0, 80)})
+  const tags = serializePortfolioTags(parsePortfolioTags(data.tags ?? data.caption ?? ""));
+  const status = defaultUploadStatus(actor);
+  try {
+    await sql`
+      insert into portfolio_items (id, shop_id, employee_id, image_url, caption, status, featured, sort_order, tags)
+      values (${id}, ${row.id}, ${empId}, ${data.imageUrl}, ${String(data.caption ?? "").trim().slice(0, 80)}, ${status}, ${false}, ${0}, ${tags})
     `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/status|featured|sort_order|tags/i.test(message)) throw err;
+    await sql`
+      insert into portfolio_items (id, shop_id, employee_id, image_url, caption)
+      values (${id}, ${row.id}, ${empId}, ${data.imageUrl}, ${String(data.caption ?? "").trim().slice(0, 80)})
+    `;
+  }
   return {
-    id
+    id,
+    status,
   };
 };
 export const listShopPortfolioHandler = async ({
@@ -1993,22 +2206,138 @@ export const listShopPortfolioHandler = async ({
   const row = await loadShopRow(slug);
   if (!row) return [];
   const sql = await getSql();
-  const rows = await sql<{
-    id: string;
-    image_url: string;
-    caption: string;
-  }>`
-      select id, image_url, caption
+  try {
+    const rows = await sql<{
+      id: string;
+      employee_id: string;
+      image_url: string;
+      caption: string;
+      status: string;
+      featured: boolean;
+      sort_order: number;
+      tags: string;
+    }>`
+      select id, employee_id, image_url, caption, status, featured, sort_order, tags
       from portfolio_items
-      where shop_id = ${row.id}
-      order by created_at desc
+      where shop_id = ${row.id} and status = 'approved'
+      order by featured desc, sort_order asc, created_at desc
       limit 24
     `;
-  return rows.map(item => ({
-    id: item.id,
-    imageUrl: item.image_url,
-    caption: item.caption
-  }));
+    return rows.map(mapPortfolioRow).filter((item) => isPublicPortfolioStatus(item.status));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/status|featured|sort_order|tags/i.test(message)) throw err;
+    // Older snapshots cannot prove approval. Hide every still from the public gallery.
+    return [];
+  }
+};
+export const listStaffPortfolioHandler = async ({
+  data,
+  context,
+}: any): Promise<PortfolioItem[]> => {
+  const slug = typeof data === "string" ? data : data.slug;
+  const row = await loadShopRow(slug);
+  if (!row) return [];
+  const actor = await portfolioActor(row, context.userId);
+  if (actor.role === "customer") throw new Error("Forbidden");
+  const sql = await getSql();
+  try {
+    const rows = await sql<{
+      id: string;
+      employee_id: string;
+      image_url: string;
+      caption: string;
+      status: string;
+      featured: boolean;
+      sort_order: number;
+      tags: string;
+      display_name: string;
+    }>`
+      select p.id, p.employee_id, p.image_url, p.caption, p.status, p.featured, p.sort_order, p.tags, e.display_name
+      from portfolio_items p
+      join employees e on e.id = p.employee_id
+      where p.shop_id = ${row.id}
+      order by p.featured desc, p.sort_order asc, p.created_at desc
+      limit 80
+    `;
+    return rows
+      .map(mapPortfolioRow)
+      .filter((item) => actor.role === "owner" || item.employeeId === actor.employeeId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/status|featured|sort_order|tags/i.test(message)) throw err;
+    const rows = await sql<{
+      id: string;
+      employee_id: string;
+      image_url: string;
+      caption: string;
+      display_name: string;
+    }>`
+      select p.id, p.employee_id, p.image_url, p.caption, e.display_name
+      from portfolio_items p
+      join employees e on e.id = p.employee_id
+      where p.shop_id = ${row.id}
+      order by p.created_at desc
+      limit 80
+    `;
+    return rows
+      .map(mapPortfolioRow)
+      .filter((item) => actor.role === "owner" || item.employeeId === actor.employeeId);
+  }
+};
+export const moderatePortfolioItemHandler = async ({
+  data,
+  context,
+}: any) => {
+  const row = await loadShopRow(data.slug);
+  if (!row) throw new Error("Shop not found");
+  if (row.is_showcase) throw new Error("Showcase shops are read-only");
+  const actor = await portfolioActor(row, context.userId);
+  if (!canModeratePortfolio(actor)) throw new Error("Forbidden");
+  const sql = await getSql();
+  if (data.remove === true) {
+    await sql`delete from portfolio_items where id = ${data.id} and shop_id = ${row.id}`;
+    return { ok: true as const };
+  }
+  const status = data.status ? parsePortfolioStatus(data.status) : null;
+  const featured = typeof data.featured === "boolean" ? data.featured : null;
+  const sortOrder = Number.isFinite(Number(data.sortOrder)) ? Math.max(0, Math.min(99, Math.floor(Number(data.sortOrder)))) : null;
+  const tags = data.tags != null ? serializePortfolioTags(parsePortfolioTags(data.tags)) : null;
+  try {
+    await sql`
+      update portfolio_items set
+        status = coalesce(${status}, status),
+        featured = coalesce(${featured}, featured),
+        sort_order = coalesce(${sortOrder}, sort_order),
+        tags = coalesce(${tags}, tags)
+      where id = ${data.id} and shop_id = ${row.id}
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/status|featured|sort_order|tags/i.test(message)) throw err;
+    throw new Error("Oversight columns are not on this database yet");
+  }
+  return { ok: true as const };
+};
+export const updateStaffAvatarHandler = async ({
+  data,
+  context,
+}: any) => {
+  const row = await loadShopRow(data.slug);
+  if (!row) throw new Error("Shop not found");
+  if (row.is_showcase) throw new Error("Showcase shops are read-only");
+  const actor = await portfolioActor(row, context.userId);
+  const employeeId = actor.role === "owner" ? data.employeeId || actor.employeeId : actor.employeeId;
+  if (!employeeId || !canStaffWritePortfolio(actor, employeeId)) throw new Error("Forbidden");
+  const imageUrl = String(data.imageUrl ?? "");
+  if (!imageUrl.startsWith("data:image/") && !imageUrl.startsWith("/")) throw new Error("Invalid image");
+  if (imageUrl.startsWith("data:") && imageUrl.length > 1_200_000) throw new Error("Image is too large");
+  const sql = await getSql();
+  const updated = await sql<{ id: string }>`
+    update employees set avatar_url = ${imageUrl} where id = ${employeeId} and shop_id = ${row.id} returning id
+  `;
+  if (!updated[0]) throw new Error("Staff not found");
+  return { ok: true as const };
 };
 export const removePortfolioItemHandler = async ({
   data,
@@ -2017,13 +2346,19 @@ export const removePortfolioItemHandler = async ({
   const row = await loadShopRow(data.slug);
   if (!row) throw new Error("Shop not found");
   if (row.is_showcase) throw new Error("Showcase shops are read-only");
-  const mem = await membership(row.id, context.userId);
-  if (!mem && row.owner_user_id !== context.userId) throw new Error("Forbidden");
+  const actor = await portfolioActor(row, context.userId);
   const sql = await getSql();
-  await sql`
-      delete from portfolio_items
-      where id = ${data.id} and shop_id = ${row.id}
-    `;
+  if (actor.role === "owner") {
+    await sql`delete from portfolio_items where id = ${data.id} and shop_id = ${row.id}`;
+    return { ok: true as const };
+  }
+  if (actor.role !== "employee" || !actor.employeeId) throw new Error("Forbidden");
+  const removed = await sql<{ id: string }>`
+    delete from portfolio_items
+    where id = ${data.id} and shop_id = ${row.id} and employee_id = ${actor.employeeId}
+    returning id
+  `;
+  if (!removed[0]) throw new Error("Forbidden");
   return {
     ok: true as const
   };
@@ -2265,9 +2600,8 @@ export const startCardCheckoutHandler = async ({
   const billing = await sql<{
     stripe_account_id: string | null;
     stripe_charges_enabled: boolean;
-    gear_guardian_bps: number;
   }>`
-      select stripe_account_id, stripe_charges_enabled, gear_guardian_bps
+      select stripe_account_id, stripe_charges_enabled
       from shop_billing where shop_id = ${booked.shop.id}
     `;
   const account = billing[0]?.stripe_account_id;
@@ -2289,13 +2623,19 @@ export const startCardCheckoutHandler = async ({
     if (isSlotTaken(err)) throw new Error("That time was just taken. Please choose another slot.");
     throw err;
   }
+  try {
+    const { haltDripForShop } = await import("./funnel-guard.server");
+    await haltDripForShop(sql, booked.shop.id, "booked");
+  } catch {
+    /* Drip tables may not exist yet. */
+  }
   const {
     createConnectCheckout,
     requestOrigin
   } = await import("./payments.server");
+  const { gearGuardianFeeCents } = await import("./merchant-pricing");
   const origin = requestOrigin();
-  let fee = Math.round(quote.dueNowCents * Number(billing[0].gear_guardian_bps) / 10000);
-  if (fee >= quote.dueNowCents) fee = Math.max(0, quote.dueNowCents - 50);
+  const fee = gearGuardianFeeCents(quote.dueNowCents);
   try {
     const session = await createConnectCheckout({
       destination: account,
@@ -2327,9 +2667,8 @@ export const beginCardElementsHandler = async ({
   const billing = await sql<{
     stripe_account_id: string | null;
     stripe_charges_enabled: boolean;
-    gear_guardian_bps: number;
   }>`
-      select stripe_account_id, stripe_charges_enabled, gear_guardian_bps
+      select stripe_account_id, stripe_charges_enabled
       from shop_billing where shop_id = ${booked.shop.id}
     `;
   const account = billing[0]?.stripe_account_id;
@@ -2357,8 +2696,14 @@ export const beginCardElementsHandler = async ({
     if (isSlotTaken(err)) throw new Error("That time was just taken. Please choose another slot.");
     throw err;
   }
-  let fee = Math.round(quote.dueNowCents * Number(billing[0].gear_guardian_bps) / 10000);
-  if (fee >= quote.dueNowCents) fee = Math.max(0, quote.dueNowCents - 50);
+  try {
+    const { haltDripForShop } = await import("./funnel-guard.server");
+    await haltDripForShop(sql, booked.shop.id, "booked");
+  } catch {
+    /* Drip tables may not exist yet. */
+  }
+  const { gearGuardianFeeCents } = await import("./merchant-pricing");
+  const fee = gearGuardianFeeCents(quote.dueNowCents);
   try {
     const intent = await createConnectPaymentIntent({
       destination: account,
@@ -2470,4 +2815,135 @@ export const refreshStripeConnectHandler = async ({
     syncConnectAccount
   } = await import("./payments.server");
   return syncConnectAccount(accountId);
+};
+
+function mapAppointmentRequest(row: {
+  id: string;
+  consumer_lead_id: string | null;
+  shop_id: string | null;
+  caller_name: string;
+  caller_phone: string;
+  requested_service: string;
+  transcript: string;
+  vapi_call_id: string;
+  status: string;
+  created_at: string;
+}, hidePii: boolean): import("./types").AppointmentRequest {
+  const status = row.status === "reviewed" || row.status === "booked" || row.status === "closed" ? row.status : "new";
+  return {
+    id: row.id,
+    consumerLeadId: row.consumer_lead_id,
+    shopId: row.shop_id,
+    callerName: hidePii ? "Guest" : row.caller_name,
+    callerPhone: hidePii ? "" : row.caller_phone,
+    requestedService: row.requested_service,
+    transcript: hidePii ? "" : row.transcript,
+    vapiCallId: row.vapi_call_id,
+    status,
+    createdAt: String(row.created_at),
+  };
+}
+
+export const listAppointmentRequestsHandler = async ({
+  data,
+  context,
+}: any): Promise<import("./types").AppointmentRequest[]> => {
+  const row = await loadShopRow(data.slug);
+  if (!row) throw new Error("Shop not found");
+  const mem = await membership(row.id, context.userId);
+  const owner = row.owner_user_id === context.userId || mem?.role === "owner" || (await allowOperator(row, context.userId));
+  if (!owner && !row.is_showcase) throw new Error("Forbidden");
+  const hidePii = !owner;
+  const sql = await getSql();
+  try {
+    const rows = await sql<{
+      id: string;
+      consumer_lead_id: string | null;
+      shop_id: string | null;
+      caller_name: string;
+      caller_phone: string;
+      requested_service: string;
+      transcript: string;
+      vapi_call_id: string;
+      status: string;
+      created_at: string;
+    }>`
+      select id, consumer_lead_id::text as consumer_lead_id, shop_id, caller_name, caller_phone,
+             requested_service, transcript, vapi_call_id, status, created_at::text as created_at
+      from appointment_requests
+      where shop_id = ${row.id} or shop_id is null
+      order by created_at desc
+      limit 40
+    `;
+    return rows.map((item) => mapAppointmentRequest(item, hidePii));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/appointment_requests/i.test(message)) throw err;
+    return [];
+  }
+};
+
+export const reviewAppointmentRequestHandler = async ({
+  data,
+  context,
+}: any) => {
+  const row = await loadShopRow(data.slug);
+  if (!row) throw new Error("Shop not found");
+  if (row.is_showcase) throw new Error("Showcase shops are read-only");
+  const mem = await membership(row.id, context.userId);
+  const owner = row.owner_user_id === context.userId || mem?.role === "owner" || (await allowOperator(row, context.userId));
+  if (!owner && mem?.role !== "employee") throw new Error("Forbidden");
+  const sql = await getSql();
+  const status = data.status === "reviewed" || data.status === "booked" || data.status === "closed" ? data.status : "";
+  if (!status) throw new Error("Unknown action");
+  const found = await sql<{
+    id: string;
+    caller_name: string;
+    caller_phone: string;
+    requested_service: string;
+    status: string;
+  }>`
+    select id, caller_name, caller_phone, requested_service, status
+    from appointment_requests
+    where id = ${data.id} and (shop_id = ${row.id} or shop_id is null)
+    limit 1
+  `;
+  const request = found[0];
+  if (!request) throw new Error("Request not found");
+  if (status === "booked") {
+    const employeeId = String(data.employeeId ?? "");
+    const serviceId = String(data.serviceId ?? "");
+    const startsAt = String(data.startsAt ?? "");
+    if (!employeeId || !serviceId || !startsAt) throw new Error("Pick a chair, a service, and a time");
+    const when = new Date(startsAt);
+    if (Number.isNaN(when.getTime())) throw new Error("That time is not valid");
+    const staff = await sql<{ id: string }>`select id from employees where id = ${employeeId} and shop_id = ${row.id} limit 1`;
+    const service = await sql<{ id: string; name: string; price_cents: number }>`
+      select id, name, price_cents from services where id = ${serviceId} and shop_id = ${row.id} limit 1
+    `;
+    if (!staff[0] || !service[0]) throw new Error("Staff or service not found");
+    const aptId = newId("apt");
+    try {
+      await sql`
+        insert into appointments (
+          id, shop_id, employee_id, service_id, customer_name, customer_phone, customer_email,
+          starts_at, status, payment_status, payment_cents
+        ) values (
+          ${aptId}, ${row.id}, ${employeeId}, ${serviceId}, ${request.caller_name || "Guest"},
+          ${request.caller_phone}, ${""}, ${when.toISOString()}, 'pending', 'unpaid', ${Number(service[0].price_cents) || 0}
+        )
+      `;
+    } catch (err) {
+      if (isSlotTaken(err)) throw new Error("That time was just taken. Pick another slot.");
+      throw err;
+    }
+  }
+  const updated = await sql<{ id: string }>`
+    update appointment_requests
+    set status = ${status}, shop_id = ${row.id}
+    where id = ${data.id} and (shop_id = ${row.id} or shop_id is null)
+    returning id
+  `;
+  if (!updated[0]) throw new Error("Request not found");
+  return { ok: true as const, status };
 };

@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  DEFAULT_EMAIL_DAILY_CAP,
+  DEFAULT_SMS_DAILY_CAP,
+  DEFAULT_TRICKLE_SLOT_MINUTES,
+  formatSlotLabel,
   insideSendWindow,
   nextSendInstant,
+  nextTrickleSlotInstant,
   outreachMayCallProviders,
   parseChunkSize,
+  parseDailyCap,
   parseOutreachMode,
   parseTrickleSeconds,
+  parseTrickleSlots,
+  planSlotChunks,
   planSmartChunks,
   planTrickleChunks,
   planWindowedChunks,
@@ -90,6 +98,47 @@ test("weekday window holds nights and weekends until Monday morning Pacific", ()
   assert.equal(rolled[0]?.scheduledAt, late.toISOString());
   assert.equal(rolled[1]?.scheduledAt, "2026-10-09T01:59:45.000Z");
   assert.equal(rolled[2]?.scheduledAt, "2026-10-12T15:00:00.000Z");
+});
+
+test("custom trickle slots default to 9 AM, 1 PM, and 4 PM Pacific", () => {
+  assert.deepEqual(parseTrickleSlots(undefined), [...DEFAULT_TRICKLE_SLOT_MINUTES]);
+  assert.deepEqual(parseTrickleSlots("9:00,13:00,16:00"), [9 * 60, 13 * 60, 16 * 60]);
+  assert.deepEqual(parseTrickleSlots("9, 13, 16"), [9 * 60, 13 * 60, 16 * 60]);
+  assert.equal(formatSlotLabel(9 * 60), "9:00 AM");
+  assert.equal(formatSlotLabel(13 * 60), "1:00 PM");
+  assert.equal(formatSlotLabel(16 * 60), "4:00 PM");
+  assert.equal(parseDailyCap(undefined, DEFAULT_SMS_DAILY_CAP), 40);
+  assert.equal(parseDailyCap("80", DEFAULT_EMAIL_DAILY_CAP), 80);
+  assert.equal(DEFAULT_SMS_DAILY_CAP, 40);
+  assert.equal(DEFAULT_EMAIL_DAILY_CAP, 80);
+
+  // Monday 10:00 AM Pacific (2026-10-05 17:00 UTC during PDT).
+  const afterNine = new Date("2026-10-05T17:00:00.000Z");
+  const next = nextTrickleSlotInstant(afterNine, DEFAULT_TRICKLE_SLOT_MINUTES);
+  assert.equal(next.toISOString(), "2026-10-05T20:00:00.000Z"); // 1:00 PM PDT
+
+  const leads = Array.from({ length: 12 }, (_, i) => `lead-${i}`);
+  const chunks = planSlotChunks(leads, {
+    chunkSize: 5,
+    start: new Date("2026-10-05T15:00:00.000Z"), // 8:00 AM PDT Monday
+    slots: DEFAULT_TRICKLE_SLOT_MINUTES,
+    dailyCap: 40,
+  });
+  assert.equal(chunks.length, 3);
+  assert.equal(chunks[0]?.items.length, 5);
+  assert.equal(chunks[0]?.scheduledAt, "2026-10-05T16:00:00.000Z"); // 9:00 AM PDT
+  assert.equal(chunks[1]?.scheduledAt, "2026-10-05T20:00:00.000Z"); // 1:00 PM PDT
+  assert.equal(chunks[2]?.scheduledAt, "2026-10-05T23:00:00.000Z"); // 4:00 PM PDT
+
+  const capped = planSlotChunks(leads, {
+    chunkSize: 5,
+    start: new Date("2026-10-05T15:00:00.000Z"),
+    slots: DEFAULT_TRICKLE_SLOT_MINUTES,
+    dailyCap: 6,
+  });
+  assert.equal(capped.reduce((n, chunk) => n + chunk.items.length, 0), 12);
+  assert.ok((capped[0]?.items.length ?? 0) <= 5);
+  assert.ok((capped[1]?.items.length ?? 0) + (capped[0]?.items.length ?? 0) <= 6);
 });
 
 test("smart timing uses niche windows and keeps a mixed list on separate clocks", () => {

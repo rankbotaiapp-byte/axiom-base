@@ -1,6 +1,8 @@
-import { resolveCatalogNiche } from "../../config/catalog.ts";
+import { catalogFilmUrl, resolveCatalogNiche } from "../../config/catalog.ts";
+import { nicheForLead } from "./directory.ts";
 import { DEFAULT_DASHBOARD } from "./dashboard.ts";
 import { resolveHeroMedia } from "./media.ts";
+import { pairDatasetToNichePreview, verifiedPrimaryLoop } from "./niche-dataset-pairing.ts";
 import { parseLayout, parseThemeProfile } from "./storefront.ts";
 import { defaultTradeProfile } from "./trade-layout.ts";
 import { isShopNiche, type Employee, type Service, type Shop, type ShopNiche, type ShopPublic } from "./types.ts";
@@ -14,20 +16,23 @@ const WEEK = { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false
 export function nicheForDataset(label: string): ShopNiche {
   const hay = label.toLowerCase();
   if (hay.includes("tattoo") || hay.includes("taxidermy")) return "taxidermy";
-  if (hay.includes("weld") || hay.includes("machin")) return "machining";
+  if (hay.includes("fabricat") || hay.includes("weld")) return "fabrication";
+  if (hay.includes("machin")) return "machining";
   if (hay.includes("wild") || hay.includes("hunt") || hay.includes("forest")) return "forestry";
   if (hay.includes("fish") || hay.includes("river") || hay.includes("water")) return "water-systems";
   if (hay.includes("plumb")) return "plumbing";
   if (hay.includes("electric")) return "electrical";
-  if (hay.includes("barber") || hay.includes("salon")) return "barber";
+  if (hay.includes("barber") || hay.includes("hair")) return "barber";
+  if (hay.includes("beauty") || hay.includes("salon")) return "beauty-salon";
+  if (hay.includes("trainer") || hay.includes("fitness") || hay.includes("gym")) return "personal-trainer";
   if (hay.includes("auto") || hay.includes("mechanic") || hay.includes("cyber")) return "auto";
   if (isShopNiche(hay)) return hay;
-  return resolveCatalogNiche(hay);
+  return nicheForLead(hay) || resolveCatalogNiche(hay);
 }
 
 export function storefrontForShop(data: ShopPublic): ClientStorefront {
   const hero = resolveHeroMedia(data.shop);
-  const film = hero.videoUrl || "/media/orb-explosion-hero-animation.mp4";
+  const film = hero.videoUrl || catalogFilmUrl("contractor");
   return storefrontFromFields({
     shopSlug: data.shop.slug,
     name: data.shop.name,
@@ -50,6 +55,14 @@ export function storefrontForShop(data: ShopPublic): ClientStorefront {
 /** A dataset row with no database shop still has a book, a crew, and a film. */
 export function materializeDatasetShop(dataset: ClientStorefront): ShopWithAutopilot {
   const niche = nicheForDataset(dataset.niche);
+  const paired = pairDatasetToNichePreview({
+    businessName: dataset.name,
+    tradeType: niche,
+    tradeLabel: dataset.niche,
+    city: dataset.address,
+    leadSlug: dataset.shopSlug,
+  });
+  const boundFilm = dataset.heroVideoUrl?.trim() || paired.heroVideoUrl || verifiedPrimaryLoop(niche);
   const shopId = `dataset_${dataset.shopSlug}`;
   const services: Service[] = dataset.shards.map((shard) => ({
     id: `${dataset.shopSlug}-${shard.id}`,
@@ -69,11 +82,11 @@ export function materializeDatasetShop(dataset: ClientStorefront): ShopWithAutop
     name: dataset.name,
     niche,
     customNiche: dataset.niche,
-    tagline: dataset.tagline,
-    description: dataset.tagline,
+    tagline: dataset.tagline || paired.tagline,
+    description: dataset.tagline || paired.tagline,
     ringColor: dataset.accent,
-    heroImageUrl: "",
-    heroVideoUrl: dataset.heroVideoUrl,
+    heroImageUrl: paired.heroStillUrl,
+    heroVideoUrl: boundFilm,
     heroBlendPercent: 48,
     heroEffectType: "smoke",
     heroBrandingTagline: "",
@@ -120,6 +133,7 @@ export function materializeDatasetShop(dataset: ClientStorefront): ShopWithAutop
       inviteStatus: "claimed",
       serviceIds: services.map((service) => service.id),
       dashboardConfig: DEFAULT_DASHBOARD,
+      availability: WEEK,
     },
   ];
   return { shop, services, employees, autopilot: dataset };

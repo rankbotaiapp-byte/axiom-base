@@ -64,7 +64,13 @@ export async function handleHeroAnimate(request: Request): Promise<Response> {
     const { userIdFromUpload } = await import("./hero-video.server");
     const { saveHeroAtmosphere } = await import("./hero-brand.server");
     const userId = await userIdFromUpload(request);
-    const saved = await saveHeroAtmosphere(userId, { ...body, shopId });
+    const saved = await saveHeroAtmosphere(userId, {
+      shopId,
+      effect: body.effect,
+      tagline: body.tagline,
+      heroImageUrl: body.heroImageUrl,
+      heroVideoUrl: body.heroVideoUrl,
+    });
     return Response.json(saved);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not publish the hero";

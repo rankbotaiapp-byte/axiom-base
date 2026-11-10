@@ -1,12 +1,15 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { FilmStage } from "@/app/[shopSlug]/page";
+import { DemoRetentionStack } from "@/components/demo-retention-stack";
+import { FounderWelcomeStage } from "@/components/founder-welcome-stage";
 import { OutreachStorefront } from "@/components/outreach-storefront";
-import { catalogCardStill, isCatalogNiche } from "@/config/catalog";
+import { catalogCardStill, defaultNicheFilm, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";
 import { parseBusinessId } from "@/lib/axiom/business-brand";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
-import { LEOPARD_HERO_ANIMATION, resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
+import { resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
 import { NICHES } from "@/lib/axiom/niches";
+import { outreachNicheHero } from "@/lib/axiom/outreach-niche-batch";
 import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
 import ShopAdminPage from "@/app/[shop-slug]/admin/page";
@@ -51,31 +54,64 @@ function NichePreview() {
   const template = NICHES[niche];
   const name = (search.business || template.defaultName).trim();
   const city = (search.city || "").trim();
+  const mappedHero =
+    search.hero?.startsWith("/media/") ? search.hero : outreachNicheHero(niche, search.trade || name);
   const film = resolveStorefrontFilm({
     draft: null,
-    shopVideoUrl: null,
+    shopVideoUrl: mappedHero,
     niche,
     customNiche: `${niche} ${name}`,
-    fallbackVideoUrl: LEOPARD_HERO_ANIMATION,
+    fallbackVideoUrl: mappedHero || defaultNicheFilm(niche),
     shopTagline: template.tagline,
   });
 
   return (
-    <FilmStage
-      name={name}
-      tagline={film.tagline}
-      city={city}
-      src={film.hero_video_url}
-      still={isCatalogNiche(niche) ? catalogCardStill(niche) : ""}
-      actions={getNicheActions(niche)}
-      niche={niche}
-      bookHref={`/onboard?niche=${niche}`}
-      book={
-        <Link to="/onboard" search={claimSearch(niche)}>
-          {getNicheActions(niche)?.primaryCta ?? "Claim"}
-        </Link>
-      }
-    />
+    <main className="bg-obsidian text-fg">
+      {search.greet ? (
+        <FounderWelcomeStage
+          owner={name}
+          business={name}
+          trade={search.trade || template.label}
+          place={city}
+        />
+      ) : null}
+      <div id="trade-stage">
+        <FilmStage
+          name={name}
+          tagline={film.tagline}
+          city={city}
+          src={film.hero_video_url}
+          still={isCatalogNiche(niche) ? catalogCardStill(niche) : ""}
+          actions={getNicheActions(niche)}
+          niche={niche}
+          bookHref="#guest-book"
+          guestBook
+          claimHref={`/onboard?niche=${niche}`}
+          book={
+            <>
+              <button type="button">{getNicheActions(niche)?.primaryCta ?? "Book"}</button>
+              <Link to="/onboard" search={claimSearch(niche)}>
+                Use this as my shop
+              </Link>
+            </>
+          }
+        />
+      </div>
+      <DemoRetentionStack
+        niche={niche}
+        bookHref="#guest-book"
+        greet={Boolean(search.greet)}
+        fields={{
+          businessName: name,
+          phone: search.phone || undefined,
+          email: search.email || undefined,
+          city: city || undefined,
+          county: search.county || undefined,
+          trade: search.trade || template.label,
+          nicheLabel: template.label,
+        }}
+      />
+    </main>
   );
 }
 

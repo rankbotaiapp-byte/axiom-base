@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { motion, useMotionTemplate, useReducedMotion } from "framer-motion";
 import { useBiokineticEngine } from "@/hooks/use-biokinetic-engine";
 import { AUTO_HERO_SRC, swapMissingAutoHero } from "@/lib/axiom/auto-sequence";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 const POSTER = "/media/auto-hero.jpg";
 /** Power glyph inside coastal-drive.mp4, as a fraction of the frame. */
@@ -266,7 +267,7 @@ export function InteractiveCockpit({
           }
           transition={{ duration: 0.4, ease: "easeInOut" }}
         >
-          <video className="cockpit-film" src={AUTO_HERO_SRC} poster={POSTER} autoPlay loop muted playsInline onError={(event) => swapMissingAutoHero(event.currentTarget)} />
+          <HeroLoopVideo className="cockpit-film" src={AUTO_HERO_SRC} poster={POSTER} autoPlay loop muted playsInline onError={(event) => swapMissingAutoHero(event.currentTarget)} />
           <motion.div aria-hidden className="pointer-events-none absolute inset-0 z-[5]" style={{ backdropFilter: glassBlur }} />
           {scene === "rift" ? (
             <button type="button" className="cockpit-warp" onClick={engage}>
@@ -283,7 +284,7 @@ export function InteractiveCockpit({
           style={{ transformOrigin: `${hot.x}% ${hot.y}%` }}
         >
           <div className="cockpit-rig">
-          <video
+          <HeroLoopVideo
             ref={coastRef}
             src={AUTO_HERO_SRC}
             autoPlay
@@ -411,7 +412,7 @@ export function InteractiveCockpit({
             {mode === "claim" && !booked ? (
               <Link
                 to="/onboard"
-                search={{ niche: "field" }}
+                search={{ niche: "auto" }}
                 className="cockpit-key is-primary mt-6 inline-flex h-12 items-center justify-center"
               >
                 Claim Storefront

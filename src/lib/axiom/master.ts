@@ -1,4 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import {
+  clampNamedPriceCents,
+  dollarsToNamedPriceCents,
+  NAME_YOUR_PRICE_MIN_CENTS,
+} from "@/lib/stripe/commercial";
 import { masterAccessMiddleware } from "./master-access";
 import { channelFromPackage, followUpBody, followUpSchedule, deskPreviewPath, funnelUrl, isEmailReady, isLeadSlug, isSmsReady, leadSlugFrom, nurtureStatus, outreachPublicTokens, outreachStrategy, packOutreachPackage, renderOutreachMessage, parseFunnelQuery, parseHasWebsite, parsePhoneLine, parseReviewCount, parseReviewScore, publicLeadFromRow, strategyLabelFromPackage, type PhoneLine } from "./funnel";
 import { nextSendInstant, parseSendTiming, planSmartChunks, timingProfileFor, type SendTiming } from "./outreach-queue";
@@ -16,6 +21,18 @@ export const readOutreachDesk = createServerFn({
 }).middleware([masterAccessMiddleware]).handler(async () => {
   const queue = await import("./outreach-queue.server");
   return queue.readOutreachConfig();
+});
+
+/**
+ * Preload the multi-step queue onto the trickle clock and start the worker.
+ * Simulation never calls Twilio or Resend — due chunks become mock logs only.
+ */
+export const automateOutreachDesk = createServerFn({
+  method: "POST"
+}).middleware([masterAccessMiddleware]).handler(async () => {
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const { automateOutreach } = await import("./autopilot.server");
+  return automateOutreach(getRequest());
 });
 export const masterGate = createServerFn({
   method: "GET"
@@ -252,7 +269,7 @@ type OutreachLead = {
 type FollowLoop = {
   id: string;
   channel: "email" | "sms";
-  status: "active" | "stopped" | "complete";
+  status: "active" | "stopped" | "complete" | "replied" | "converted";
   reason: string;
   strategy: string;
   touches: {
@@ -361,14 +378,27 @@ export const beginTerritoryCheckout = createServerFn({
 }).validator((input: {
   leadSlug?: string;
   planId?: string;
+  namedPriceCents?: number;
+  namedPriceDollars?: string;
 }) => {
   const leadSlug = String(input?.leadSlug ?? "").trim().toLowerCase();
   const planId = String(input?.planId ?? "").trim();
   if (!isLeadSlug(leadSlug)) throw new Error("Unknown business");
   if (planId !== "trial" && planId !== "growth" && planId !== "lifetime") throw new Error("Unknown plan");
+  let namedPriceCents: number | undefined;
+  if (planId === "trial") {
+    if (typeof input?.namedPriceCents === "number") {
+      namedPriceCents = clampNamedPriceCents(input.namedPriceCents);
+    } else if (typeof input?.namedPriceDollars === "string" && input.namedPriceDollars.trim()) {
+      namedPriceCents = dollarsToNamedPriceCents(input.namedPriceDollars);
+    } else {
+      namedPriceCents = clampNamedPriceCents(NAME_YOUR_PRICE_MIN_CENTS);
+    }
+  }
   return {
     leadSlug,
-    planId
+    planId,
+    namedPriceCents,
   };
 }).handler(async (ctx: any) => {
   const loaded = await import("./master.server");

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useBiokineticEngine } from "@/hooks/use-biokinetic-engine";
 import { UNIVERSAL_FALLBACK } from "@/lib/axiom/hero-films";
+import { HeroLoopVideo } from "@/components/loop-video";
 import { NICHE_MEDIA } from "@/lib/axiom/media";
 
 const BARBER_FILM = NICHE_MEDIA.barber.heroVideoUrl;
@@ -68,7 +69,7 @@ export function BarberMirrorStudio({
       aria-label="Barber mirror studio"
     >
       <motion.div className="barber-rig" style={{ scale: biokinetic.cameraDollyScale }}>
-        <video
+        <HeroLoopVideo
           className="barber-wall"
           src={barberFilm(filmUrl)}
           autoPlay

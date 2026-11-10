@@ -8,7 +8,6 @@ import { Input, Label } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
 import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
 import { submitAudit } from "@/lib/axiom/server";
-import type { ShopNiche } from "@/lib/axiom/types";
 import { estimateRange, impactScore, quoteProfile, serviceLane, type JobLane } from "@/lib/axiom/storefront";
 
 const AUDIT_STEPS = ["Analyzing wear...", "Calculating impact score...", "Building the bracket..."];
@@ -32,14 +31,14 @@ export function NeonField({ active }: { active: boolean }) {
 export function SnapEstimate({
   lines,
   bookTo,
-  niche = "trade",
+  niche = "auto",
   bookLabel = "Book now",
   shopSlug = "",
   leadSlug = "",
 }: {
   lines: { name: string; description: string; priceCents: number }[];
   bookTo?: string;
-  niche?: ShopNiche;
+  niche?: string;
   bookLabel?: string;
   shopSlug?: string;
   leadSlug?: string;

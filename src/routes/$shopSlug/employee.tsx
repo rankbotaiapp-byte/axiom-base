@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { effectiveDashboard } from "@/lib/axiom/dashboard";
 import { WEEKDAYS } from "@/lib/axiom/niches";
-import { addPortfolioItem, acceptBooking, getOperatorData, getPortfolio, setEmployeeAvailability } from "@/lib/axiom/server";
+import { acceptBooking, getOperatorData, getPortfolio, listStaffPortfolio, setEmployeeAvailability } from "@/lib/axiom/server";
+import { ProofStudio } from "@/components/employee/ProofStudio";
 import type { AccessMode, Appointment, Employee, PortfolioItem, Shop, ShopNotice } from "@/lib/axiom/types";
 import { EmployeeDashboardEditor } from "@/components/dashboard-controls";
 import { EmployeeWelcomeFilm } from "@/components/welcome-film";
 import { Wordmark } from "@/components/shop-chrome";
-import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAxiomRing } from "@/components/axiom-ring";
 import { useShopPageData } from "./route";
@@ -42,11 +42,15 @@ function EmployeePage() {
         setMode(d.mode);
         setAppointments(d.appointments);
         setNotices(d.notices);
-        const emp =
-          d.employees.find((e) => e.id === d.employeeId) ??
-          (d.mode === "owner" ? d.employees[0] : null);
+        const emp = d.employees.find((e) => e.id === d.employeeId) ?? null;
         setEmployee(emp);
-        if (emp) setGallery(await getPortfolio({ data: emp.id }));
+        if (emp) {
+          try {
+            setGallery(await listStaffPortfolio({ data: { slug: shopSlug } }));
+          } catch {
+            setGallery(await getPortfolio({ data: emp.id }));
+          }
+        }
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Forbidden");
@@ -70,6 +74,9 @@ function EmployeePage() {
         <p className="font-display text-3xl">No station on this shop.</p>
       </main>
     );
+  }
+  if (mode === "owner") {
+    return <Navigate to="/$shopSlug/admin" params={{ shopSlug: shop.slug }} />;
   }
 
   const stationShop = live.shop.slug === shop.slug ? live.shop : shop;
@@ -102,7 +109,7 @@ function EmployeePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {mode === "owner" || mode === "preview" ? (
+          {mode === "preview" ? (
             <Link
               to="/$shopSlug/admin"
               params={{ shopSlug: shop.slug }}
@@ -125,7 +132,7 @@ function EmployeePage() {
         <EmployeeDashboardEditor
           shop={stationShop}
           employee={editorEmployee}
-          disabled={mode !== "preview" && mode !== "owner" && mode !== "employee"}
+          disabled={mode !== "preview" && mode !== "employee"}
           onSaved={setLocalConfig}
         />
       ) : null}
@@ -227,12 +234,13 @@ function EmployeePage() {
       </section>
       ) : null}
 
-      {layout?.sections.includes("portfolio") && employee ? (
-        <PortfolioManager
+      {employee ? (
+        <ProofStudio
           slug={shop.slug}
-          employeeId={employee.id}
+          employee={employee}
           gallery={gallery}
-          onChange={setGallery}
+          onGallery={setGallery}
+          onAvatar={(url) => setEmployee({ ...employee, avatarUrl: url })}
           readonly={mode === "preview"}
         />
       ) : null}
@@ -359,78 +367,3 @@ function ShopHours({ hours }: { hours: Shop["hours"] }) {
   );
 }
 
-function PortfolioManager({
-  slug,
-  employeeId,
-  gallery,
-  onChange,
-  readonly,
-}: {
-  slug: string;
-  employeeId: string;
-  gallery: PortfolioItem[];
-  onChange: (items: PortfolioItem[]) => void;
-  readonly: boolean;
-}) {
-  const [caption, setCaption] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function onFile(file: File | undefined) {
-    if (!file || readonly) return;
-    setBusy(true);
-    try {
-      const imageUrl = await compress(file);
-      await addPortfolioItem({ data: { slug, imageUrl, caption } });
-      setCaption("");
-      onChange(await getPortfolio({ data: employeeId }));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="mt-12 pb-16">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Proof of work</p>
-      <h2 className="mt-2 font-display text-3xl">Portfolio</h2>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {gallery.map((p) => (
-          <figure key={p.id} className="overflow-hidden rounded-2xl bg-surface">
-            <img src={p.imageUrl} alt="" className="aspect-[4/3] w-full object-cover" />
-            {p.caption ? (
-              <figcaption className="px-3 py-2 text-xs text-muted">{p.caption}</figcaption>
-            ) : null}
-          </figure>
-        ))}
-      </div>
-      <form className="mt-6 max-w-sm" onSubmit={(e) => e.preventDefault()}>
-        <Label htmlFor="cap">Caption</Label>
-        <Input id="cap" value={caption} onChange={(e) => setCaption(e.target.value)} />
-        <label className="mt-3 flex h-11 cursor-pointer items-center justify-center rounded-xl bg-fg text-sm font-medium text-bg">
-          {busy ? "Uploading…" : "Upload image"}
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={readonly || busy}
-            onChange={(e) => void onFile(e.target.files?.[0])}
-          />
-        </label>
-        {readonly ? (
-          <p className="mt-2 text-xs text-faint">Preview only on the demo shop.</p>
-        ) : null}
-      </form>
-    </section>
-  );
-}
-
-async function compress(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas");
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.8);
-}

@@ -1,5 +1,5 @@
 import { getSql } from "@/lib/db";
-import { cityFromAddress } from "./avatar";
+import { shopCity } from "./avatar";
 import { buildFunnelPost } from "./funnel-post";
 import { requestOrigin } from "./payments.server";
 
@@ -43,7 +43,7 @@ export async function todayFunnelPostHandler(ctx: {
   const pageUrl = `${requestOrigin()}/${shop.slug}`;
   const piece = buildFunnelPost({
     niche: shop.niche,
-    city: cityFromAddress(shop.address),
+    city: shopCity(shop.address),
     pageUrl,
   });
   return { ...piece, pageUrl };

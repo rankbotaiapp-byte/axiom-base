@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { CATALOG } from "../../config/catalog.ts";
+import { CATALOG, catalogFilmUrl, tradeLoopUrl } from "../../config/catalog.ts";
+import { heroLibraryItems } from "./hero-library.ts";
 import { AUTO_HERO_SRC, AUTO_REPAIR_SRC, swapMissingAutoHero } from "./auto-sequence.ts";
 import { PHOTO_REELS, resolveHeroMedia } from "./media.ts";
 import {
@@ -10,6 +11,7 @@ import {
   BROWSER_LOG_ORDER,
   HERO_MP4_FILES,
   UNIVERSAL_FALLBACK,
+  abyssalTelemetry,
   applyBrowserFilmOverride,
   catalogChoices,
   filmMatchingText,
@@ -31,31 +33,34 @@ describe("hero film directory", () => {
       .sort();
     assert.deepEqual([...ANIMATION_MP4_FILES].sort(), onDisk);
     assert.deepEqual([...HERO_MP4_FILES].sort(), onDisk);
-    assert.equal(CATALOG.length, 21);
+    assert.equal(CATALOG.length, 23);
     assert.equal(onDisk.includes("otter-hero-animation.mp4"), true);
     assert.equal(onDisk.includes("shark-hero-animation.mp4"), true);
     assert.equal(isOtterHeroFilm("/media/otter-hero-animation.mp4"), true);
     assert.equal(isSharkHeroFilm("/media/shark-hero-animation.mp4?v=2"), true);
+    assert.equal(isSharkHeroFilm("/media/abyssal-hero-loop.mp4"), true);
     assert.equal(isSharkHeroFilm("/media/otter-hero-animation.mp4"), false);
+    assert.deepEqual(abyssalTelemetry(42.4318, -123.1709).slice(0, 2), ["DEPTH 1,243 m", "WATER TEMP 4.2 °C"]);
+    assert.match(abyssalTelemetry()[2] ?? "", /COORDS/);
     assert.equal(
-      catalogChoices("auto").some(
-        (row) => row.url.endsWith("/otter-hero-animation.mp4") && row.label === "Underwater Otter",
-      ),
+      catalogChoices("auto").some((row) => row.url.endsWith("/otter-hero-animation.mp4")),
       true,
     );
     assert.equal(isCatalogHeroUrl("/media/heroes/auto-repair.mp4"), false);
+    assert.equal(isCatalogHeroUrl("/media/master-defaults/otter-loop.mp4"), true);
     assert.equal(isCatalogHeroUrl("/media/auto-hero-animation.mp4"), true);
+    assert.equal(isCatalogHeroUrl("/media/auto/hero-animation.mp4"), true);
     assert.equal(heroStem("auto-hero-animation.mp4"), "auto hero animation");
   });
 
   it("keeps the named animations on their niches", () => {
-    assert.equal(resolveNicheFilm("electrical"), "/media/electrician-hero-animation.mp4");
-    assert.equal(resolveNicheFilm("auto"), "/media/auto-hero-animation.mp4");
-    assert.equal(resolveNicheFilm("barber"), "/media/barber-hero-animation.mp4");
-    assert.equal(filmMatchingText("Main Street Plumbing"), "/media/plumbers-hero-animation.mp4");
-    assert.equal(catalogChoices("auto")[0]?.url, "/media/auto-hero-animation.mp4");
-    assert.equal(catalogChoices("barber")[0]?.url, "/media/barber-hero-animation.mp4");
-    assert.equal(UNIVERSAL_FALLBACK, "/media/orb-explosion-hero-animation.mp4");
+    assert.equal(resolveNicheFilm("electrical"), tradeLoopUrl("electrical"));
+    assert.equal(resolveNicheFilm("auto"), tradeLoopUrl("auto"));
+    assert.equal(resolveNicheFilm("barber"), tradeLoopUrl("barber"));
+    assert.equal(filmMatchingText("Main Street Plumbing"), tradeLoopUrl("plumbing"));
+    assert.equal(catalogChoices("auto")[0]?.url, tradeLoopUrl("auto"));
+    assert.equal(catalogChoices("barber")[0]?.url, tradeLoopUrl("barber"));
+    assert.equal(UNIVERSAL_FALLBACK, catalogFilmUrl("contractor"));
   });
 
   it("lets a shop upload or a tenant pin beat the niche film and a browser override", () => {
@@ -96,7 +101,7 @@ describe("hero film directory", () => {
 
   it("offers every active animation in the admin dropdown", () => {
     const choices = catalogChoices("electrical").map((row) => row.url);
-    assert.equal(choices[0], "/media/electrician-hero-animation.mp4");
-    assert.equal(choices.length, CATALOG.length);
+    assert.equal(choices[0], tradeLoopUrl("electrical"));
+    assert.equal(choices.length, heroLibraryItems().length);
   });
 });

@@ -1,5 +1,10 @@
 {
   "installCommand": "npm install --omit=dev --no-audit --no-fund",
   "buildCommand": "npm run build",
-  "framework": null
+  "framework": null,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/showcase/:dir/:page", "destination": "/showcase/:dir/:page/index.html" },
+    { "source": "/showcase/:dir", "destination": "/showcase/:dir/index.html" }
+  ]
 }

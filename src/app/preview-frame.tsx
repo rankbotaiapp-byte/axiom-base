@@ -1,8 +1,9 @@
 import { FilmStage } from "@/app/[shopSlug]/page";
-import { catalogCardStill, isCatalogNiche } from "@/config/catalog";
+import { DemoRetentionStack } from "@/components/demo-retention-stack";
+import { catalogCardStill, defaultNicheFilm, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";
 import type { BusinessBrandRecord } from "@/lib/axiom/business-brand";
-import { LEOPARD_HERO_ANIMATION, resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
+import { resolveStorefrontFilm } from "@/lib/axiom/hero-studio-state";
 import { NICHES } from "@/lib/axiom/niches";
 import type { ShopNiche } from "@/lib/axiom/types";
 import type { TenantPreviewSearch } from "@/components/tenant-preview";
@@ -25,25 +26,44 @@ export function PreviewFrame({
     shopVideoUrl: null,
     niche,
     customNiche: `${niche} ${name}`,
-    fallbackVideoUrl: LEOPARD_HERO_ANIMATION,
+    fallbackVideoUrl: defaultNicheFilm(niche),
     shopTagline: template.tagline,
   });
   const plate = isCatalogNiche(niche) ? catalogCardStill(niche) : "";
   return (
-    <FilmStage
-      name={name}
-      tagline={film.tagline}
-      city={city}
-      src={film.hero_video_url}
-      still={plate}
-      actions={getNicheActions(niche)}
-      niche={niche}
-      bookHref={`/onboard?niche=${niche}`}
-      book={
-        <a href={`/onboard?niche=${niche}`}>
-          {getNicheActions(niche)?.primaryCta ?? "Claim"}
-        </a>
-      }
-    />
+    <main className="bg-obsidian text-fg">
+      <FilmStage
+        name={name}
+        tagline={film.tagline}
+        city={city}
+        src={film.hero_video_url}
+        still={plate}
+        actions={getNicheActions(niche)}
+        niche={niche}
+        bookHref="#guest-book"
+        guestBook
+        claimHref={`/onboard?niche=${niche}`}
+        book={
+          <>
+            <button type="button">{getNicheActions(niche)?.primaryCta ?? "Book"}</button>
+            <a href={`/onboard?niche=${niche}`}>Use this as my shop</a>
+          </>
+        }
+      />
+      <DemoRetentionStack
+        niche={niche}
+        bookHref="#guest-book"
+        greet={Boolean(search.greet)}
+        fields={{
+          businessName: name,
+          phone: loaded?.phone || search.phone || undefined,
+          email: loaded?.email || search.email || undefined,
+          city: city || loaded?.city || undefined,
+          county: loaded?.county || search.county || undefined,
+          trade: loaded?.categoryLabel || search.trade || template.label,
+          nicheLabel: template.label,
+        }}
+      />
+    </main>
   );
 }

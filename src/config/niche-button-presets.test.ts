@@ -30,18 +30,26 @@ test("niche presets stay on the outer edges", () => {
   assert.equal(nicheHeroButtons("auto_repair")[0]?.label, "Book the Bay");
   assert.equal(nicheHeroButtons("cleaning")[0]?.label, "Book a Clean");
 
-  const sea = deepSeaHeroButtons("/reef/book");
+  const sea = deepSeaHeroButtons({ bookHref: "/reef/book", phone: "5415550100", mapsUrl: "https://maps.example/reef" });
   assert.equal(sea.length, 4);
-  assert.equal(sea[0]?.label, "Explore Services");
-  assert.equal(sea[1]?.label, "Proof of Work Albums");
-  assert.equal(sea[2]?.label, "Client Reviews");
-  assert.equal(sea[3]?.label, "Book Now");
-  assert.equal(sea[3]?.href, "/reef/book");
+  assert.equal(sea[0]?.label, "Book Now");
+  assert.equal(sea[0]?.href, "/reef/book");
+  assert.equal(sea[1]?.label, "Call Now");
+  assert.equal(sea[1]?.href, "tel:5415550100");
+  assert.equal(sea[2]?.label, "Directions");
+  assert.equal(sea[2]?.href, "https://maps.example/reef");
+  assert.equal(sea[3]?.label, "Instant Quote");
   assert.ok(sea.every((button) => button.x <= 12 || button.x >= 88));
 
   const fromShark = studioDefaultButtons("barber", "/media/shark-hero-animation.mp4", "/reef/book");
   assert.equal(fromShark.length, 4);
-  assert.equal(fromShark[3]?.label, "Book Now");
+  assert.equal(fromShark[0]?.label, "Book Now");
+  assert.equal(fromShark[3]?.label, "Instant Quote");
+  const fromWater = studioDefaultButtons("water-systems", "/media/otter-hero-animation.mp4", "/abyss/book");
+  assert.equal(fromWater[0]?.label, "Book Now");
+  assert.equal(fromWater[3]?.label, "Instant Quote");
+  const fromAbyssalAlias = studioDefaultButtons("abyssal-hero", "", "/abyss/book");
+  assert.equal(fromAbyssalAlias[0]?.label, "Book Now");
   const fromBarber = studioDefaultButtons("barber", "/media/barber-hero-animation.mp4");
   assert.equal(fromBarber[0]?.label, "Book Fade & Trim");
 });

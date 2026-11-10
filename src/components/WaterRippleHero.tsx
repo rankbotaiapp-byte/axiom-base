@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { attachLoopTailTrim } from "@/lib/axiom/loop-trim";
 import type { Speck } from "@/lib/axiom/swipe-reveal";
 import {
   advanceSplash,
@@ -117,6 +118,12 @@ export function WaterRippleHero({
   const glRef = useRef<HTMLCanvasElement>(null);
   const moteRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    return attachLoopTailTrim(video, { loop: true });
+  }, [baseVideoSrc]);
 
   useEffect(() => {
     const root = rootRef.current;

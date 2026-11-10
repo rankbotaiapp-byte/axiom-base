@@ -1,5 +1,6 @@
-import { CATALOG_BY_ID, type CatalogNiche } from "./catalog.ts";
+import { CATALOG_BY_ID, isCatalogNiche, type CatalogNiche } from "./catalog.ts";
 import { HERO_LIBRARY, heroLibraryEntryByUrl } from "./HeroLibrary.ts";
+import { isMediaLibraryUrl, mediaForNiche } from "./mediaLibrary.ts";
 import { MASTER_HERO_DEFAULTS } from "./MasterHeroDefaults.ts";
 import { masterCategoryFor } from "./NicheRegistry.ts";
 import { isHeroLibrarySrc } from "../lib/axiom/hero-library.ts";
@@ -36,7 +37,7 @@ function cleanMediaUrl(url: string | null | undefined): string {
   const path = url.trim().split("?")[0] ?? "";
   if (!path.startsWith("/media/") || path.includes("..") || /\s/.test(path)) return "";
   if (!/\.mp4$/i.test(path)) return "";
-  if (isHeroLibrarySrc(path) || heroLibraryEntryByUrl(path)) return path;
+  if (isMediaLibraryUrl(path) || isHeroLibrarySrc(path) || heroLibraryEntryByUrl(path)) return path;
   return "";
 }
 
@@ -78,8 +79,8 @@ export function masterLoopForNiche(niche: string | null | undefined): string {
 }
 
 export function tradeCopyForNiche(niche: string | null | undefined): { tradeLabel: string; tradeLine: string } {
-  const key = (niche ?? "").trim().toLowerCase() as CatalogNiche;
-  const row = CATALOG_BY_ID[key];
+  const key = (niche ?? "").trim().toLowerCase();
+  const row = isCatalogNiche(key) ? CATALOG_BY_ID[key] : undefined;
   if (!row) {
     const category = masterCategoryFor(niche);
     return {
@@ -87,9 +88,10 @@ export function tradeCopyForNiche(niche: string | null | undefined): { tradeLabe
       tradeLine: "Book online. The chair stays full.",
     };
   }
+  const copy = row as { tagline?: string; blurb?: string; kicker?: string };
   return {
     tradeLabel: row.label,
-    tradeLine: (row.tagline || row.blurb || row.kicker).trim().slice(0, 120),
+    tradeLine: (copy.tagline || copy.blurb || copy.kicker || "").trim().slice(0, 120),
   };
 }
 
@@ -100,7 +102,10 @@ export function defaultAutopilotLoops(input: {
 }): string[] {
   const pinned = cleanMediaUrl(input.pinnedHeroUrl);
   const master = masterLoopForNiche(input.niche);
-  return [...new Set([pinned, master].filter(Boolean))].slice(0, AUTOPILOT_LOOP_MAX);
+  const themed = mediaForNiche(input.niche, "loop")
+    .map((asset) => cleanMediaUrl(asset.url))
+    .filter(Boolean);
+  return [...new Set([pinned, master, ...themed].filter(Boolean))].slice(0, AUTOPILOT_LOOP_MAX);
 }
 
 /**

@@ -1,20 +1,18 @@
 import {
   CATALOG,
   CATALOG_BY_ID,
-  EXTRA_HERO_LOOPS,
+  ROOT_HERO_ANIMATION_FILES,
   UNIVERSAL_CATALOG_FALLBACK,
   catalogFilmPath,
   catalogFilmUrl,
+  tradeLoopUrl,
   isCatalogNiche,
-  type CatalogNiche,
 } from "../../config/catalog.ts";
+import { heroLibraryItems, isHeroLibrarySrc } from "./hero-library.ts";
 import type { ShopNiche } from "./types.ts";
 
 /** Active cinematic loops under public/media — mirrors `src/config/catalog.ts`. */
-export const ANIMATION_MP4_FILES = [
-  ...CATALOG.map((row) => row.file),
-  ...EXTRA_HERO_LOOPS.map((row) => row.file),
-];
+export const ANIMATION_MP4_FILES = [...ROOT_HERO_ANIMATION_FILES];
 
 /** @deprecated Use ANIMATION_MP4_FILES — legacy /media/heroes catalog removed. */
 export const HERO_MP4_FILES = ANIMATION_MP4_FILES;
@@ -25,9 +23,9 @@ export const NICHE_FILM_KEY = "axiom-hero-niche-map";
 /** Core log after the saved lines: GPU, frame rate, link, engine. */
 export const BROWSER_LOG_ORDER = ["GPU", "FRAME", "LINK", "AI engine"] as const;
 
-/** Niche → root /media/*-hero-animation file. */
+/** Niche → seed filename under public/media (copied to /media/{niche}/hero-animation.mp4). */
 export const ANIMATION_BY_NICHE: Record<ShopNiche, string> = Object.fromEntries(
-  CATALOG.map((row) => [row.id, row.file]),
+  CATALOG.map((row) => [row.id, tradeLoopUrl(row.id).replace(/^\/media\//, "")]),
 ) as Record<ShopNiche, string>;
 
 export function animationPath(file: string): string {
@@ -36,7 +34,7 @@ export function animationPath(file: string): string {
 
 export function animationForNiche(niche: ShopNiche): string {
   if (!isCatalogNiche(niche)) return UNIVERSAL_FALLBACK;
-  return catalogFilmUrl(niche);
+  return tradeLoopUrl(niche);
 }
 
 const FILLER = new Set(["hero", "master", "mobile", "custom", "loop", "animation", "page"]);
@@ -62,7 +60,7 @@ function tokensOf(file: string): string[] {
 export function scoreHeroFile(file: string, niche: ShopNiche): number {
   if (!onDisk(file)) return 0;
   const entry = CATALOG_BY_ID[niche];
-  if (entry && entry.file === file) return 1000;
+  if (entry && (entry.file === file || ("fallback" in entry && entry.fallback === file))) return 1000;
   const stem = heroStem(file);
   const hay = `${niche} ${entry?.label ?? ""}`.toLowerCase();
   let score = 0;
@@ -93,7 +91,8 @@ export function filmMatchingText(text: string, current = ""): string | null {
     }
   }
   if (!best || bestScore < 50) return null;
-  const url = animationPath(best);
+  const matched = CATALOG.find((row) => row.file === best);
+  const url = matched ? tradeLoopUrl(matched.id) : animationPath(best);
   return url === current ? null : url;
 }
 
@@ -127,52 +126,72 @@ export function nextReelIndex(index: number, count: number): number {
 
 export function isCatalogHeroUrl(url: string | null | undefined): boolean {
   if (!url || !url.startsWith("/media/")) return false;
-  if (url.includes("..") || url.includes("\\") || url.includes("/heroes/")) return false;
+  if (url.includes("..") || url.includes("\\")) return false;
+  if (isHeroLibrarySrc(url.split("?")[0])) return true;
   const file = url.slice("/media/".length).split("?")[0] ?? "";
+  const nested = file.match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\/hero-animation\.mp4$/i);
+  if (nested) return isCatalogNiche(nested[1]!.toLowerCase());
+  if (/^master-defaults\/[a-z0-9-]+-loop\.mp4$/i.test(file)) return true;
+  if (/^heroes\/[a-z0-9._-]*hero(?:-animation)?(?:\.mp4)+$/i.test(file)) return true;
   if (file.includes("/")) return false;
-  return onDisk(file) || /^[a-z0-9]+(?:-[a-z0-9]+)*-hero-animation\.mp4$/i.test(file);
+  return (
+    onDisk(file) ||
+    /^[a-z0-9]+(?:-[a-z0-9]+)*-hero-animation\.mp4$/i.test(file) ||
+    /^[a-z0-9]+(?:-[a-z0-9]+)*-hero-path\.mp4$/i.test(file)
+  );
 }
 
 /** A loop that lives under public/media and can be pinned on a shop. */
 export function isPublicMediaFilm(url: string | null | undefined): boolean {
-  return isCatalogHeroUrl(url);
+  if (!url || !url.startsWith("/media/") || url.includes("..") || /\s/.test(url)) return false;
+  const path = url.split("?")[0] ?? url;
+  if (isCatalogHeroUrl(path)) return true;
+  return /\.mp4$/i.test(path);
 }
 
 /** The underwater river otter loop, including a cache-busted picker URL. */
 export function isOtterHeroFilm(url: string | null | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? "";
-  return path.endsWith("/otter-hero-animation.mp4");
+  return path.endsWith("/otter-hero-animation.mp4") || path.endsWith("/otter-loop.mp4");
 }
 
-/** Deep-sea reef loop with shark, barracuda, eel, and octopus. */
+/** Deep-sea / Abyssal Systems loop (shark reef or ocean alias). */
 export function isSharkHeroFilm(url: string | null | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? "";
-  return path.endsWith("/shark-hero-animation.mp4");
+  return (
+    path.endsWith("/shark-hero-animation.mp4") ||
+    path.endsWith("/sharks-loop.mp4") ||
+    path.endsWith("/abyssal-hero-loop.mp4") ||
+    path.endsWith("/abyssal-hero-animation.mp4") ||
+    path.endsWith("/hero-ocean-loop.mp4")
+  );
+}
+
+/** HUD readouts for the Abyssal Systems / water-systems theme. */
+export function abyssalTelemetry(lat = 42.4318, lng = -123.1709): string[] {
+  const fmt = (v: number, pos: string, neg: string) =>
+    `${Math.abs(v).toFixed(3)}°${v >= 0 ? pos : neg}`;
+  return [
+    "DEPTH 1,243 m",
+    "WATER TEMP 4.2 °C",
+    `COORDS ${fmt(lat, "N", "S")} ${fmt(lng, "E", "W")}`,
+  ];
 }
 
 export type CatalogChoice = { url: string; label: string; score: number };
 
-/** Admin studio dropdown — every verified loop, niche match first. */
+/** Admin studio library — category default first, then every loop. */
 export function catalogChoices(niche: ShopNiche): CatalogChoice[] {
-  const ranked = [
-    ...CATALOG.map((row) => ({
-      url: catalogFilmUrl(row.id),
-      label: row.label,
-      score: scoreHeroFile(row.file, niche),
-    })),
-    ...EXTRA_HERO_LOOPS.map((row) => ({
-      url: catalogFilmPath(row.file),
-      label: row.label,
-      score: scoreHeroFile(row.file, niche),
-    })),
-  ].sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
-
-  const pinned = catalogFilmUrl(niche);
-  const head = ranked.filter((row) => row.url === pinned);
-  const rest = ranked.filter((row) => row.url !== pinned);
-  return [...head, ...rest];
+  const pinned = tradeLoopUrl(niche);
+  return heroLibraryItems()
+    .map((item) => ({
+      url: item.src,
+      label: item.name,
+      score: item.src === pinned ? 1000 : item.kind === "master-default" ? 80 : 0,
+    }))
+    .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label) || a.url.localeCompare(b.url));
 }
 
 export function readMasterTelemetry(): string[] {
@@ -229,16 +248,18 @@ export function readNicheFilmOverride(niche: ShopNiche): string {
 }
 
 export function applyBrowserFilmOverride(
-  current: string | readonly string[],
+  current: string | readonly string[] | null,
   nicheFilm: string,
   browserPick: string,
-): string | readonly string[] {
+): string | readonly string[] | null {
   if (!isCatalogHeroUrl(browserPick)) return current;
   if (typeof current === "string") {
+    if (current.startsWith("/api/hero-video/")) return current;
     if (isCatalogHeroUrl(current) && current !== nicheFilm) return current;
     return browserPick;
   }
   const list = heroVideoList(current);
+  if (list.some((url) => url.startsWith("/api/hero-video/"))) return current;
   if (list.some((url) => isCatalogHeroUrl(url) && url !== nicheFilm)) return current;
   return browserPick;
 }

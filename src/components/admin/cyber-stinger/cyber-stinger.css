@@ -1,0 +1,102 @@
+/* CyberStinger — effects Tailwind utilities can't express cleanly. */
+
+.cs-root {
+  --cs-cyan: #00ffcc;
+  --cs-amber: #f5c518;
+  --cs-red: #ff3b5c;
+  --cs-ink: #030712;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+}
+.cs-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: 'zero' 1;
+}
+
+/* Scanlines: 1px dark line every 3px, plus faint RGB grain */
+.cs-scanlines {
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 255, 204, 0.015) 0 1px, transparent 1px 4px);
+  mix-blend-mode: multiply;
+}
+.cs-sweep {
+  top: -10rem;
+  background: linear-gradient(to bottom, transparent, rgba(0, 255, 204, 0.06) 60%, rgba(0, 255, 204, 0.12) 98%, transparent);
+  animation: cs-sweep 7s linear infinite;
+}
+@keyframes cs-sweep {
+  to { transform: translateY(calc(100vh + 10rem)); }
+}
+
+/* Glass card with corner brackets */
+.cs-card {
+  position: relative;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(0, 255, 204, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 20px 60px -30px rgba(0, 255, 204, 0.35);
+}
+.cs-card::before,
+.cs-card::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--cs-cyan);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.cs-card::before { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; border-top-left-radius: inherit; }
+.cs-card::after { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; border-bottom-right-radius: inherit; }
+
+/* Neon CTA: edge-lit border + travelling highlight on hover */
+.cs-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+}
+.cs-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgba(0, 255, 204, 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+.cs-cta:hover::after,
+.cs-cta:focus-visible::after { transform: translateX(120%); }
+.cs-cta:hover,
+.cs-cta:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px var(--cs-cyan), 0 0 18px rgba(0, 255, 204, 0.55), 0 0 48px rgba(0, 255, 204, 0.25), inset 0 0 14px rgba(0, 255, 204, 0.2);
+}
+.cs-cta-primary { animation: cs-breathe 3.2s ease-in-out infinite; }
+@keyframes cs-breathe {
+  50% { box-shadow: 0 0 0 1px var(--cs-cyan), 0 0 22px rgba(0, 255, 204, 0.45); }
+}
+
+.cs-ping { animation: cs-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes cs-ping {
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+.cs-event-in { animation: cs-event-in 0.5s ease-out both; }
+@keyframes cs-event-in {
+  from { opacity: 0; transform: translateX(-8px); background-color: rgba(0, 255, 204, 0.12); }
+}
+
+/* Native dialog */
+.cs-dialog::backdrop { background: rgba(3, 7, 18, 0.72); backdrop-filter: blur(6px); }
+.cs-dialog[open] { animation: cs-dialog-in 0.25s ease-out; }
+@keyframes cs-dialog-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-sweep, .cs-ping, .cs-cta-primary, .cs-event-in, .cs-dialog[open] { animation: none !important; }
+  .cs-cta, .cs-cta::after { transition: none !important; }
+}

@@ -3,6 +3,7 @@ import { parseServiceThumbs } from "./gallery.ts";
 import { sanitizeLogoUrl } from "./prospect-brand.ts";
 import { EMPTY_BRAND_STUDIO, parseBrandStudio, type BrandStudioState } from "./brand-studio.ts";
 import { emptyStudioIdentity, parseStudioIdentity, type StudioIdentity } from "./studio-identity.ts";
+import { resolveCatalogNiche } from "../../config/catalog.ts";
 import type { ShopNiche } from "./types.ts";
 
 /** Blocks a niche may place on the public page. Order is the layout. */
@@ -112,6 +113,12 @@ const LAYOUTS: Partial<Record<ShopNiche, NicheLayout>> = {
     kicker: "The chair",
     heading: "What the chair is booked for.",
   },
+  "beauty-salon": {
+    modules: ["chair"],
+    fields: ["note"],
+    kicker: "The suite",
+    heading: "What the suite is booked for.",
+  },
   "bow-tech": {
     modules: ["kinds"],
     fields: ["kinds", "note"],
@@ -177,6 +184,12 @@ const LAYOUTS: Partial<Record<ShopNiche, NicheLayout>> = {
     fields: ["dispatchOn", "responseMin", "emergencyCents", "radiusMiles"],
     kicker: "The line",
     heading: "How the call is covered.",
+  },
+  "personal-trainer": {
+    modules: ["session", "party"],
+    fields: ["partyMax", "note"],
+    kicker: "The hour",
+    heading: "Who the session is for.",
   },
   "power-sports": {
     modules: ["session", "party"],
@@ -259,11 +272,12 @@ const DEFAULT_KINDS: Partial<Record<ShopNiche, string[]>> = {
   "bow-tech": ["Tune", "Setup", "Repair"],
   hvac: ["Standard", "Deep clean", "Move-out"],
   barber: ["Cut", "Fade", "Beard"],
-  retail: ["House cap", "Shop print", "Counter bundle"],
+  "beauty-salon": ["Color", "Skin", "Finish"],
+  "personal-trainer": ["Assessment", "Session", "Program"],
 };
 
-export function layoutFor(niche: ShopNiche): NicheLayout {
-  return LAYOUTS[niche] ?? DEFAULT_LAYOUT;
+export function layoutFor(niche: string): NicheLayout {
+  return LAYOUTS[resolveCatalogNiche(niche)] ?? DEFAULT_LAYOUT;
 }
 
 export function defaultTradeProfile(niche: ShopNiche): TradeProfile {

@@ -1,0 +1,325 @@
+{
+  "loopTailTrimSec": 1.75,
+  "items": [
+    {
+      "id": "apex-launch-hero-animation",
+      "name": "Apex Launch",
+      "src": "/media/apex-launch-hero-animation.mp4",
+      "thumbnail": "/media/apex-launch-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "apex-launch-control-hero-animation",
+      "name": "Apex Launch Control",
+      "src": "/media/apex-launch-control-hero-animation.mp4",
+      "thumbnail": "/media/apex-launch-control-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "auto-hero-animation",
+      "name": "Auto",
+      "src": "/media/auto-hero-animation.mp4",
+      "thumbnail": "/media/auto-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "auto-tuning-hero-animation",
+      "name": "Auto Tuning",
+      "src": "/media/auto-tuning-hero-animation.mp4",
+      "thumbnail": "/media/auto-tuning-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "barber-hero-animation",
+      "name": "Barber",
+      "src": "/media/barber-hero-animation.mp4",
+      "thumbnail": "/media/barber-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "bear-charge-hero-animation",
+      "name": "Bear Charge",
+      "src": "/media/bear-charge-hero-animation.mp4",
+      "thumbnail": "/media/bear-charge-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "boarding-lessons-hero-animation",
+      "name": "Boarding Lessons",
+      "src": "/media/boarding-lessons-hero-animation.mp4",
+      "thumbnail": "/media/boarding-lessons-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "bow-tech-hero-animation",
+      "name": "Bow Tech",
+      "src": "/media/bow-tech-hero-animation.mp4",
+      "thumbnail": "/media/bow-tech-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "cleaner-hero-animation",
+      "name": "Cleaner",
+      "src": "/media/cleaner-hero-animation.mp4",
+      "thumbnail": "/media/cleaner-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "content-cretion-hero-animation",
+      "name": "Content Cretion",
+      "src": "/media/content-cretion-hero-animation.mp4",
+      "thumbnail": "/media/content-cretion-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "electrician-hero-animation",
+      "name": "Electrician",
+      "src": "/media/electrician-hero-animation.mp4",
+      "thumbnail": "/media/electrician-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "eye-hero-animation",
+      "name": "Eye",
+      "src": "/media/eye-hero-animation.mp4",
+      "thumbnail": "/media/eye-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "guide-service-hero-animation",
+      "name": "Guide Service",
+      "src": "/media/guide-service-hero-animation.mp4",
+      "thumbnail": "/media/guide-service-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "gunsmith-hero-animation",
+      "name": "Gunsmith",
+      "src": "/media/gunsmith-hero-animation.mp4",
+      "thumbnail": "/media/gunsmith-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "infrastructure-hero-animation",
+      "name": "Infrastructure",
+      "src": "/media/infrastructure-hero-animation.mp4",
+      "thumbnail": "/media/infrastructure-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "leapard-page-hero-animation",
+      "name": "Leapard Page",
+      "src": "/media/leapard-page-hero-animation.mp4",
+      "thumbnail": "/media/leapard-page-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "leopard-hero-animation",
+      "name": "Leopard",
+      "src": "/media/leopard-hero-animation.mp4",
+      "thumbnail": "/media/leopard-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "leopard-loop",
+      "name": "Leopard",
+      "src": "/media/master-defaults/leopard-loop.mp4",
+      "thumbnail": "/media/master-defaults/leopard-loop.mp4",
+      "kind": "master-default",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "leopard-hero-path",
+      "name": "Leopard Hero Path",
+      "src": "/media/leopard-hero-path.mp4",
+      "thumbnail": "/media/leopard-hero-path.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "locksmith-hero-animation",
+      "name": "Locksmith",
+      "src": "/media/locksmith-hero-animation.mp4",
+      "thumbnail": "/media/locksmith-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "octopus-loop",
+      "name": "Octopus",
+      "src": "/media/master-defaults/octopus-loop.mp4",
+      "thumbnail": "/media/master-defaults/octopus-loop.mp4",
+      "kind": "master-default",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "orb-explosion-hero-animation",
+      "name": "Orb Explosion",
+      "src": "/media/orb-explosion-hero-animation.mp4",
+      "thumbnail": "/media/orb-explosion-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "otter-loop",
+      "name": "Otter",
+      "src": "/media/master-defaults/otter-loop.mp4",
+      "thumbnail": "/media/master-defaults/otter-loop.mp4",
+      "kind": "master-default",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "otter-hero-animation",
+      "name": "Otter",
+      "src": "/media/otter-hero-animation.mp4",
+      "thumbnail": "/media/otter-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "owl-attack-hero-animation",
+      "name": "Owl Attack",
+      "src": "/media/owl-attack-hero-animation.mp4",
+      "thumbnail": "/media/owl-attack-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "personal-protection-hero-animation",
+      "name": "Personal Protection",
+      "src": "/media/personal-protection-hero-animation.mp4",
+      "thumbnail": "/media/personal-protection-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "photogaphy-hero-animation",
+      "name": "Photogaphy",
+      "src": "/media/photogaphy-hero-animation.mp4",
+      "thumbnail": "/media/photogaphy-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "physical-trainer-hero-animation",
+      "name": "Physical Trainer",
+      "src": "/media/physical-trainer-hero-animation.mp4",
+      "thumbnail": "/media/physical-trainer-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "plumbers-hero-animation",
+      "name": "Plumbers",
+      "src": "/media/plumbers-hero-animation.mp4",
+      "thumbnail": "/media/plumbers-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "polar-bear-loop",
+      "name": "Polar bear",
+      "src": "/media/master-defaults/polar-bear-loop.mp4",
+      "thumbnail": "/media/master-defaults/polar-bear-loop.mp4",
+      "kind": "master-default",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "polar-bear-hero-animation",
+      "name": "Polar Bear",
+      "src": "/media/polar-bear-hero-animation.mp4",
+      "thumbnail": "/media/polar-bear-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "raptor-hero-animation",
+      "name": "Raptor",
+      "src": "/media/raptor-hero-animation.mp4",
+      "thumbnail": "/media/raptor-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "shark-hero-animation",
+      "name": "Shark",
+      "src": "/media/shark-hero-animation.mp4",
+      "thumbnail": "/media/shark-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "sharks-loop",
+      "name": "Sharks",
+      "src": "/media/master-defaults/sharks-loop.mp4",
+      "thumbnail": "/media/master-defaults/sharks-loop.mp4",
+      "kind": "master-default",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "silver-orb-hero-animation",
+      "name": "Silver Orb",
+      "src": "/media/silver-orb-hero-animation.mp4",
+      "thumbnail": "/media/silver-orb-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "snowleapard-hero-animation",
+      "name": "Snowleapard",
+      "src": "/media/snowleapard-hero-animation.mp4",
+      "thumbnail": "/media/snowleapard-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "taxidermy-hero-animation",
+      "name": "Taxidermy",
+      "src": "/media/taxidermy-hero-animation.mp4",
+      "thumbnail": "/media/taxidermy-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "tiger-hero-animation",
+      "name": "Tiger",
+      "src": "/media/tiger-hero-animation.mp4",
+      "thumbnail": "/media/tiger-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "trout-fishin-hero-animation",
+      "name": "Trout Fishin",
+      "src": "/media/trout-fishin-hero-animation.mp4",
+      "thumbnail": "/media/trout-fishin-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    },
+    {
+      "id": "underwater-leapord-hero-animation",
+      "name": "Underwater Leapord",
+      "src": "/media/underwater-leapord-hero-animation.mp4",
+      "thumbnail": "/media/underwater-leapord-hero-animation.mp4",
+      "kind": "library",
+      "loopTailTrimSec": 1.75
+    }
+  ]
+}

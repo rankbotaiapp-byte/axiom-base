@@ -26,7 +26,7 @@ import {
 import { parseHud } from "./hud.ts";
 import { sanitizeAccent } from "./prospect-brand.ts";
 import { parseTradeProfile } from "./trade-layout.ts";
-import { isShopNiche } from "./types.ts";
+import { normalizeShopNiche } from "./types.ts";
 
 const CHAT_URL = "https://api.x.ai/v1/chat/completions";
 const IMAGE_URL = "https://api.x.ai/v1/images/generations";
@@ -106,7 +106,7 @@ async function ownedShop(userId: string, slug: string): Promise<Gate | null> {
 }
 
 function lookOf(row: Gate): CopilotLook {
-  const niche = isShopNiche(row.niche) ? row.niche : "location";
+  const niche = normalizeShopNiche(row.niche);
   let parsed: unknown = {};
   if (row.trade_profile) {
     try {
@@ -517,7 +517,7 @@ export async function confirmCopilotHandler(ctx: {
   }
   const accent = patch.accent || look.accent;
   if (visual || publishHero) {
-    const niche = isShopNiche(shop.niche) ? shop.niche : "location";
+    const niche = normalizeShopNiche(shop.niche);
     let parsed: unknown = {};
     if (shop.trade_profile) {
       try {
@@ -605,7 +605,7 @@ export async function promoteCopilotHeroHandler(ctx: {
   if (publicHeroUrl(nextHud, staged.url) !== staged.url) {
     return { ok: false, error: "That hero did not pass the URL check" };
   }
-  const niche = isShopNiche(shop.niche) ? shop.niche : "location";
+  const niche = normalizeShopNiche(shop.niche);
   let parsed: unknown = {};
   if (shop.trade_profile) {
     try {

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Service bay placeholder">
+  <rect width="1200" height="900" fill="#0b1018"/>
+  <rect x="0" y="620" width="1200" height="280" fill="#151b24"/>
+  <path d="M80 620h1040" stroke="#00ffcc" stroke-opacity="0.35" stroke-width="2"/>
+  <rect x="180" y="280" width="840" height="340" rx="12" fill="#1a222e" stroke="#e8e8ed" stroke-opacity="0.14"/>
+  <rect x="260" y="340" width="280" height="160" rx="8" fill="#0a0f1a"/>
+  <rect x="620" y="340" width="320" height="160" rx="8" fill="#0a0f1a"/>
+  <circle cx="300" cy="700" r="48" fill="#0a0f1a" stroke="#e8e8ed" stroke-opacity="0.25" stroke-width="8"/>
+  <circle cx="900" cy="700" r="48" fill="#0a0f1a" stroke="#e8e8ed" stroke-opacity="0.25" stroke-width="8"/>
+  <circle cx="300" cy="700" r="12" fill="#00ffcc"/>
+  <circle cx="900" cy="700" r="12" fill="#00ffcc"/>
+</svg>

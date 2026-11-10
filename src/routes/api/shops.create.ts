@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { assertCatalogNiche, catalogFilmUrl } from "@/config/catalog";
+import { assertCatalogNiche, tradeLoopUrl } from "@/config/catalog";
 import { requireUserId } from "@/lib/auth/verify.server";
 import { isCatalogHeroUrl } from "@/lib/axiom/hero-films";
 import { cleanCustomNiche } from "@/lib/axiom/media";
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/shops/create")({
           const niche = assertCatalogNiche(String(body.niche ?? ""));
           const customNiche = cleanCustomNiche(typeof body.customNiche === "string" ? body.customNiche : "");
           const requestedFilm = typeof body.heroFilm === "string" ? body.heroFilm.trim() : "";
-          const heroFilm = isCatalogHeroUrl(requestedFilm) ? requestedFilm.split("?")[0]! : catalogFilmUrl(niche);
+          const heroFilm = isCatalogHeroUrl(requestedFilm) ? requestedFilm.split("?")[0]! : tradeLoopUrl(niche);
           const result = await provisionShopFromNiche({
             userId,
             niche,

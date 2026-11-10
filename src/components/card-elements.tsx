@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
+import { StripeConnectNotice } from "@/components/legal-notice";
 
 export function CardElements({
   publishableKey,
@@ -72,6 +73,7 @@ function CardFields({
       <button type="button" className="text-sm text-muted hover:text-fg" onClick={onCancel}>
         Cancel
       </button>
+      <StripeConnectNotice />
     </form>
   );
 }

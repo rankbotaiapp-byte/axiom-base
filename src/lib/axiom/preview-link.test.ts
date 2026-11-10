@@ -3,6 +3,7 @@ import test from "node:test";
 import { compileBrandMark, rippleTheme, themeSurface } from "./brand-studio.ts";
 import { connectStanding } from "./merchant-pricing.ts";
 import { followUpBody, followUpSchedule } from "./funnel.ts";
+import { SMS_TCPA_FOOTER } from "./legal-notices.ts";
 import { isShopNiche } from "./types.ts";
 import { REGIONAL_VERTICALS } from "./regional-roster.ts";
 import {
@@ -145,19 +146,23 @@ test("the preview link is appended once to email and SMS bodies", () => {
   assert.equal(appendPreviewLink(once, link), once);
   assert.equal(bodyHasPreviewLink(once), true);
   assert.equal(appendPreviewLink("", link), link);
+  const withStop = appendPreviewLink(`The page is ready.\n\n${SMS_TCPA_FOOTER}`, link);
+  assert.ok(withStop.indexOf(link) < withStop.indexOf("Reply STOP"));
+  assert.ok(withStop.includes(SMS_TCPA_FOOTER));
 });
 
-test("unactivated follow-up is 48 hours and skips claimed or opened accounts", () => {
+test("unactivated follow-up is day 3 and skips claimed, opened, booked, or replied accounts", () => {
   const start = new Date("2026-10-05T12:00:00.000Z");
-  assert.equal(unactivatedFollowUpAt(start), "2026-10-07T12:00:00.000Z");
+  assert.equal(unactivatedFollowUpAt(start), "2026-10-08T12:00:00.000Z");
   const plan = followUpSchedule(start);
-  assert.equal(plan.find((step) => step.day === 2)?.scheduledAt, "2026-10-07T12:00:00.000Z");
-  assert.match(followUpBody(2, "sms", { text: "", emailSubject: "", emailBody: "" }), /\{url\}/);
-  assert.match(followUpBody(2, "email", { text: "", emailSubject: "", emailBody: "" }), /unactivated/);
-  assert.equal(shouldSendUnactivatedFollowUp({ step: 2, claimed: false, clicked: false }), true);
-  assert.equal(shouldSendUnactivatedFollowUp({ step: 2, claimed: true, clicked: false }), false);
-  assert.equal(shouldSendUnactivatedFollowUp({ step: 2, claimed: false, clicked: true }), false);
-  assert.equal(shouldSendUnactivatedFollowUp({ step: 3, claimed: true, clicked: false }), true);
+  assert.equal(plan.find((step) => step.day === 3)?.scheduledAt, "2026-10-08T12:00:00.000Z");
+  assert.match(followUpBody(3, "sms", { text: "", emailSubject: "", emailBody: "" }), /\{url\}/);
+  assert.equal(shouldSendUnactivatedFollowUp({ step: 3, claimed: false, clicked: false }), true);
+  assert.equal(shouldSendUnactivatedFollowUp({ step: 7, claimed: false, clicked: false }), true);
+  assert.equal(shouldSendUnactivatedFollowUp({ step: 3, claimed: true, clicked: false }), false);
+  assert.equal(shouldSendUnactivatedFollowUp({ step: 3, claimed: false, clicked: true }), false);
+  assert.equal(shouldSendUnactivatedFollowUp({ step: 7, claimed: false, clicked: false, booked: true }), false);
+  assert.equal(shouldSendUnactivatedFollowUp({ step: 7, claimed: false, clicked: false, replied: true }), false);
 });
 
 test("a preview link compiles a mark, a ripple theme, and a hero style", () => {

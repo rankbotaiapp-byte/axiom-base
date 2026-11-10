@@ -4,6 +4,7 @@ import { HoloCard } from "@/components/holo-card";
 import { StatusRow } from "@/components/status-pill";
 import { presetForShopNiche } from "@/config/nichePresets";
 import { submitClientAudit } from "@/lib/axiom/client-audit";
+import { normalizeShopNiche } from "@/lib/axiom/types";
 
 interface StorefrontAuditWidgetProps {
   tenantId: string;
@@ -18,7 +19,7 @@ export const StorefrontAuditWidget: FC<StorefrontAuditWidgetProps> = ({
   niche,
   bookSlug,
 }) => {
-  const preset = presetForShopNiche(niche);
+  const preset = presetForShopNiche(normalizeShopNiche(niche));
   const [step, setStep] = useState<"form" | "analyzing" | "results">("form");
   const [consumerName, setConsumerName] = useState("");
   const [consumerContact, setConsumerContact] = useState("");

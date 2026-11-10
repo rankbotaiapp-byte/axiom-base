@@ -3,9 +3,15 @@
  * Schema and query errors stay fatal. XX000 is only treated as offline when
  * the pooler says the authentication query could not reach Postgres.
  */
+/** @param {unknown} err */
+/** @param {unknown} err */
 export function isDatabaseUnavailable(err) {
   const seen = new Set();
 
+  /**
+   * @param {string} code
+   * @param {string} message
+   */
   function matches(code, message) {
     if (
       code === "57P01" ||
@@ -40,16 +46,23 @@ export function isDatabaseUnavailable(err) {
     );
   }
 
+  /**
+   * @param {unknown} value
+   * @param {number} depth
+   */
   function walk(value, depth) {
     if (value == null || depth > 4 || seen.has(value)) return false;
     if (typeof value === "object") seen.add(value);
     const message = value instanceof Error ? value.message : typeof value === "string" ? value : "";
     const code =
-      value && typeof value === "object" && "code" in value ? String(value.code ?? "") : "";
+      value && typeof value === "object" && "code" in value ? String(/** @type {{ code?: unknown }} */ (value).code ?? "") : "";
     if (matches(code, message)) return true;
     if (value && typeof value === "object") {
-      if ("cause" in value && walk(value.cause, depth + 1)) return true;
-      if (Array.isArray(value.errors) && value.errors.some((item) => walk(item, depth + 1))) return true;
+      if ("cause" in value && walk(/** @type {{ cause?: unknown }} */ (value).cause, depth + 1)) return true;
+      const bag = /** @type {{ errors?: unknown[] }} */ (value);
+      if (Array.isArray(bag.errors) && bag.errors.some((/** @type {unknown} */ item) => walk(item, depth + 1))) {
+        return true;
+      }
     }
     return false;
   }

@@ -3,6 +3,7 @@ import { getRequest, setCookie } from "@tanstack/react-start/server";
 import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
 import { FUNNEL_IP_LIMIT, FUNNEL_SLUG_LIMIT, funnelBucketOpen, hashStopToken, tokenHashMatches } from "./funnel-guard";
+import { dripHaltStatus, type DripHaltReason } from "./funnel";
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 
@@ -92,6 +93,43 @@ export async function funnelHitAllowed(sql: Sql, key: string, slug: string): Pro
   return funnelBucketOpen(countOf(bySlug), FUNNEL_SLUG_LIMIT);
 }
 
+/** Halt every active drip for this lead. Remaining scheduled touches are skipped. */
+export async function haltLeadDrip(sql: Sql, slug: string, reason: DripHaltReason): Promise<number> {
+  if (!slug) return 0;
+  const status = dripHaltStatus(reason);
+  try {
+    const rows = await sql<{ id: string }>`
+      update outreach_sequences
+      set status = ${status}, stopped_reason = ${reason}
+      where lead_slug = ${slug} and status = 'active'
+      returning id
+    `;
+    if (rows.length === 0) return 0;
+    const list = rows.map((row) => row.id).join(",");
+    await sql`
+      update outreach_touches
+      set status = 'skipped'
+      where status = 'scheduled'
+        and sequence_id = any(string_to_array(${list}, ','))
+    `;
+    return rows.length;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/outreach_sequences|outreach_touches/i.test(message) && /does not exist/i.test(message)) return 0;
+    throw err;
+  }
+}
+
+export async function haltDripForShop(sql: Sql, shopId: string, reason: DripHaltReason): Promise<number> {
+  const leads = await sql<{ lead_slug: string }>`
+    select lead_slug from preloaded_leads
+    where shop_id = ${shopId} and lead_slug <> ''
+  `.catch(() => [] as { lead_slug: string }[]);
+  let halted = 0;
+  for (const row of leads) halted += await haltLeadDrip(sql, row.lead_slug, reason);
+  return halted;
+}
+
 /** Stop only the sequences whose message carried this token. */
 export async function stopSequencesForToken(sql: Sql, slug: string, token: string): Promise<number> {
   if (!slug || !token) return 0;
@@ -102,18 +140,5 @@ export async function stopSequencesForToken(sql: Sql, slug: string, token: strin
   `;
   const ids = rows.filter((row) => tokenHashMatches(hash, row.stop_token_hash)).map((row) => row.id);
   if (ids.length === 0) return 0;
-  const list = ids.join(",");
-  await sql`
-    update outreach_sequences
-    set status = 'stopped', stopped_reason = 'clicked'
-    where id = any(string_to_array(${list}, ','))
-      and status = 'active'
-  `;
-  await sql`
-    update outreach_touches
-    set status = 'skipped'
-    where status = 'scheduled'
-      and sequence_id = any(string_to_array(${list}, ','))
-  `;
-  return ids.length;
+  return haltLeadDrip(sql, slug, "replied");
 }

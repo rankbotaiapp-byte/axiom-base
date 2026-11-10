@@ -2,6 +2,10 @@ export type OutreachMode = "simulation" | "live";
 
 export const DEFAULT_TRICKLE_SECONDS = 45;
 export const DEFAULT_CHUNK_SIZE = 5;
+/** Pacific wall-clock releases: 9:00 AM, 1:00 PM, 4:00 PM. */
+export const DEFAULT_TRICKLE_SLOT_MINUTES = [9 * 60, 13 * 60, 16 * 60] as const;
+export const DEFAULT_SMS_DAILY_CAP = 40;
+export const DEFAULT_EMAIL_DAILY_CAP = 80;
 
 /** Anything other than an explicit live value stays in simulation. */
 export function parseOutreachMode(value: string | undefined | null): OutreachMode {
@@ -24,6 +28,42 @@ export function parseChunkSize(value: string | undefined | null): number {
   const n = Number(raw);
   if (!Number.isFinite(n)) return DEFAULT_CHUNK_SIZE;
   return Math.min(20, Math.max(1, Math.round(n)));
+}
+
+/** Minutes-from-midnight for trickle slots. Accepts `9:00,13:00,16:00` or `9,13,16`. */
+export function parseTrickleSlots(value: string | undefined | null): number[] {
+  const raw = String(value ?? "").trim();
+  if (!raw) return [...DEFAULT_TRICKLE_SLOT_MINUTES];
+  const parsed: number[] = [];
+  for (const piece of raw.split(/[,|;]+/)) {
+    const token = piece.trim();
+    if (!token) continue;
+    const hm = /^(\d{1,2})(?::(\d{2}))?$/.exec(token);
+    if (!hm) continue;
+    const hour = Number(hm[1]);
+    const minute = Number(hm[2] ?? "0");
+    if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue;
+    if (!Number.isFinite(minute) || minute < 0 || minute > 59) continue;
+    parsed.push(hour * 60 + minute);
+  }
+  if (parsed.length === 0) return [...DEFAULT_TRICKLE_SLOT_MINUTES];
+  return [...new Set(parsed)].sort((a, b) => a - b);
+}
+
+export function parseDailyCap(value: string | undefined | null, fallback: number): number {
+  const raw = String(value ?? "").trim();
+  if (!raw) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(500, Math.max(0, Math.round(n)));
+}
+
+export function formatSlotLabel(minutes: number): string {
+  const hour = Math.floor(minutes / 60) % 24;
+  const minute = minutes % 60;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return minute === 0 ? `${twelve}:00 ${suffix}` : `${twelve}:${String(minute).padStart(2, "0")} ${suffix}`;
 }
 
 export type TrickleChunk<T> = {
@@ -332,6 +372,124 @@ export function planSmartChunks<T extends { tradeType?: string }>(
   const planned: ProfiledChunk<T>[] = [];
   for (const [profile, group] of groups) {
     for (const chunk of planWindowedChunks(group, { ...options, timing, profile })) {
+      planned.push({ ...chunk, profile });
+    }
+  }
+  planned.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  return planned.map((chunk, index) => ({ ...chunk, index }));
+}
+
+/**
+ * Next custom trickle release at or after `now`.
+ * Slots are wall-clock minutes in Pacific (default 9:00 / 13:00 / 16:00).
+ * Nights and weekends roll forward to the next weekday slot.
+ */
+export function nextTrickleSlotInstant(
+  now: Date,
+  slotMinutes: readonly number[],
+  timeZone = OUTREACH_TIME_ZONE,
+): Date {
+  const slots = (slotMinutes.length > 0 ? [...slotMinutes] : [...DEFAULT_TRICKLE_SLOT_MINUTES]).sort((a, b) => a - b);
+  const parts = zonedParts(now, timeZone);
+  for (let add = 0; add < 14; add += 1) {
+    const day = addCalendarDays(parts.year, parts.month, parts.day, add);
+    // Match the weekday guardrail: Mon–Thu only.
+    if (day.weekday < 1 || day.weekday > 4) continue;
+    for (const minutes of slots) {
+      if (add === 0 && parts.minutes > minutes) continue;
+      const instant = zonedDateTime(day.year, day.month, day.day, minutes, timeZone);
+      if (instant.getTime() >= now.getTime() - 1_000) return instant;
+    }
+  }
+  return now;
+}
+
+export type SlotChunkOptions = {
+  chunkSize: number;
+  start: Date;
+  /** Minutes from midnight Pacific. */
+  slots: readonly number[];
+  /** Hard ceiling for leads released on any single Pacific day. */
+  dailyCap: number;
+  timeZone?: string;
+};
+
+/**
+ * Preloads a channel queue onto the custom trickle clock.
+ * Each slot can carry up to `chunkSize` leads, and the day never exceeds `dailyCap`.
+ */
+export function planSlotChunks<T>(items: T[], options: SlotChunkOptions): TrickleChunk<T>[] {
+  const size = Math.max(1, Math.floor(options.chunkSize));
+  const dailyCap = Math.max(0, Math.floor(options.dailyCap));
+  if (items.length === 0 || dailyCap === 0) return [];
+  const timeZone = options.timeZone ?? OUTREACH_TIME_ZONE;
+  const slots = (options.slots.length > 0 ? [...options.slots] : [...DEFAULT_TRICKLE_SLOT_MINUTES]).sort(
+    (a, b) => a - b,
+  );
+  const chunks: TrickleChunk<T>[] = [];
+  let offset = 0;
+  let cursor = nextTrickleSlotInstant(options.start, slots, timeZone);
+  let dayKey = zonedParts(cursor, timeZone);
+  let usedToday = 0;
+
+  while (offset < items.length) {
+    if (usedToday >= dailyCap) {
+      const tomorrow = addCalendarDays(dayKey.year, dayKey.month, dayKey.day, 1);
+      cursor = nextTrickleSlotInstant(
+        zonedDateTime(tomorrow.year, tomorrow.month, tomorrow.day, 0, timeZone),
+        slots,
+        timeZone,
+      );
+      dayKey = zonedParts(cursor, timeZone);
+      usedToday = 0;
+      continue;
+    }
+    const room = Math.min(size, dailyCap - usedToday, items.length - offset);
+    chunks.push({
+      index: chunks.length,
+      items: items.slice(offset, offset + room),
+      scheduledAt: cursor.toISOString(),
+    });
+    offset += room;
+    usedToday += room;
+    if (offset >= items.length) break;
+    const after = new Date(cursor.getTime() + 60_000);
+    cursor = nextTrickleSlotInstant(after, slots, timeZone);
+    const nextParts = zonedParts(cursor, timeZone);
+    if (nextParts.year !== dayKey.year || nextParts.month !== dayKey.month || nextParts.day !== dayKey.day) {
+      dayKey = nextParts;
+      usedToday = 0;
+    }
+  }
+  return chunks;
+}
+
+/**
+ * Slot planner with the same niche split as `planSmartChunks`.
+ * Prefer this for Automate preloads so SMS/email land on 9 / 1 / 4 Pacific.
+ */
+export function planSmartSlotChunks<T extends { tradeType?: string }>(
+  items: T[],
+  options: {
+    chunkSize: number;
+    start: Date;
+    slots: readonly number[];
+    dailyCap: number;
+    timing: SendTiming;
+    timeZone?: string;
+  },
+): ProfiledChunk<T>[] {
+  const timing = parseSendTiming(options.timing);
+  const groups = new Map<TimingProfile, T[]>();
+  for (const item of items) {
+    const profile = timing === "smart" ? timingProfileFor(item.tradeType ?? "") : "general";
+    const list = groups.get(profile) ?? [];
+    list.push(item);
+    groups.set(profile, list);
+  }
+  const planned: ProfiledChunk<T>[] = [];
+  for (const [profile, group] of groups) {
+    for (const chunk of planSlotChunks(group, options)) {
       planned.push({ ...chunk, profile });
     }
   }

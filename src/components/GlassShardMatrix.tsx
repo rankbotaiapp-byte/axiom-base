@@ -4,6 +4,7 @@ import { useReducedMotion } from "framer-motion";
 import { useMemo, useState, type ReactNode } from "react";
 import { demoHeroFilm } from "@/lib/axiom/demo-hero";
 import { funnelShards } from "@/lib/axiom/funnel-glass";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 export function GlassShardMatrix({
   businessName,
@@ -40,7 +41,7 @@ export function GlassShardMatrix({
     <div className={cleared ? "glass-shard-frame is-clear" : "glass-shard-frame"}>
       {children}
       <div className="glass-shard-matrix" data-clear={cleared ? "on" : "off"} aria-hidden={cleared}>
-        <video
+        <HeroLoopVideo
           className="glass-shard-film"
           src={film}
           autoPlay={!reduce}

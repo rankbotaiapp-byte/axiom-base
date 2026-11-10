@@ -32,12 +32,12 @@ export function AvatarHelpButton() {
   }, [open]);
 
   return (
-    <div className="avatar-help fixed bottom-36 left-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col items-start gap-3 sm:bottom-4">
+    <div className="avatar-help pointer-events-none fixed bottom-4 right-4 z-40 flex w-[min(22rem,calc(100vw-6.5rem))] flex-col items-end gap-3">
       {open ? (
         <section
           role="dialog"
           aria-labelledby="avatar-help-title"
-          className="w-full rounded-[24px] bg-surface p-5 text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
+          className="pointer-events-auto w-full rounded-[24px] bg-surface p-5 text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
         >
           <div className="flex items-start gap-3">
             <span className="grid size-11 shrink-0 place-items-center rounded-full bg-fg font-display text-xl text-bg" aria-hidden>
@@ -72,7 +72,7 @@ export function AvatarHelpButton() {
       <button
         type="button"
         onClick={() => setAvatarHelpOpen(!open)}
-        className="inline-flex h-12 items-center gap-2 rounded-full bg-surface px-4 text-sm font-medium text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.12)]"
+        className="pointer-events-auto inline-flex h-12 items-center gap-2 rounded-full bg-surface px-4 text-sm font-medium text-fg shadow-[0_0_0_1px_rgba(243,241,235,0.12)]"
         aria-expanded={open}
         aria-controls="avatar-help-title"
       >

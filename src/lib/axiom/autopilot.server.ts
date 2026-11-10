@@ -2,8 +2,14 @@ import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { newId } from "@/lib/utils";
-import { nicheLabel } from "./directory";
-import { outreachStrategy, renderOutreachMessage } from "./funnel";
+import {
+  appendFounderOfferAssets,
+  founderOfferMedia,
+  founderOfferPitchUrl,
+} from "@/lib/stripe/commercial";
+import { followUpBody, followUpSchedule, outreachStrategy, renderOutreachMessage, type PhoneLine } from "./funnel";
+import { newStopToken, hashStopToken } from "./funnel-guard";
+import { finalizeOutreachBody } from "./legal-notices";
 import { outreachDestination } from "./preview-link";
 import { verifyMasterPass } from "./master-bypass";
 import { bypassSecret } from "./master-bypass.server";
@@ -16,12 +22,34 @@ import {
   type AutopilotProposal,
 } from "./autopilot";
 import {
+  firstNameFrom,
+  renderSmsDripBody,
+  smsDripSchedule,
+  smsDripStorefrontPath,
+} from "./sms-drip";
+import {
+  nextSendInstant,
   parseOutreachMode,
-  planSmartChunks,
+  planSmartSlotChunks,
+  timingProfileFor,
   type OutreachMode,
 } from "./outreach-queue";
-import { HOME_REGION_COUNTIES } from "./regional-roster";
+import {
+  demoStorefrontPath,
+  outreachNicheHero,
+  outreachNicheLabel,
+  OUTREACH_ACTIVE_VERTICAL,
+  pickNextNicheBatch,
+  tradeTypeMatchersForNiche,
+  trimBatchToDailyCaps,
+  type OutreachNicheId,
+  isOutreachNicheId,
+} from "./outreach-niche-batch";
+import { outreachTemplatesForNiche, PLUMBING_EMERGENCY_POSTER } from "./outreach-templates";
+import { nicheForLead } from "./directory";
+import { HOME_REGION_COUNTIES, type HomeCounty } from "./regional-roster";
 import { buildAutopilotDryRun, type AutopilotDryRun, type DryCue, type DryShop } from "./autopilot-dry-run";
+import { remainingCap } from "./outbound-engine";
 
 const BATCH_LIMIT = 24;
 
@@ -50,6 +78,10 @@ function readCookie(request: Request, name: string): string {
 }
 
 export async function assertAutopilotDesk(request: Request): Promise<void> {
+  // Automated schedulers: CRON_SECRET / OUTREACH_CRON_SECRET (timing-safe).
+  const { cronTokenValid } = await import("./cron-auth.server");
+  if (cronTokenValid(request)) return;
+
   const origin = request.headers.get("origin");
   if (origin) {
     let same = false;
@@ -114,33 +146,156 @@ async function metrics(sql: Sql): Promise<{ totalLeads: number; dailySent: numbe
   return { totalLeads, dailySent, remainingQueue };
 }
 
-type Cell = { county: string; trade_type: string; ready: number };
+type NicheBatch = {
+  niche: OutreachNicheId;
+  county: string;
+  ready: number;
+  heroVideoUrl: string;
+};
 
-async function bestLocalCell(sql: Sql): Promise<Cell | null> {
-  const counties = [...HOME_REGION_COUNTIES];
+async function readActiveNiche(sql: Sql): Promise<string> {
   try {
-    const rows = await sql<Cell>`
-      select county, trade_type,
+    const rows = await sql<{ active_niche: string | null }>`
+      select coalesce(active_niche, '') as active_niche
+      from outbound_engine_state where id = ${"master"} limit 1
+    `;
+    return (rows[0]?.active_niche ?? "").trim();
+  } catch {
+    return "";
+  }
+}
+
+async function readyCountsByTrade(sql: Sql): Promise<{ niche: string; ready: number }[]> {
+  const counties = [...HOME_REGION_COUNTIES];
+  const aggregate = (
+    rows: { trade_type: string; trade_label: string; ready: number }[],
+  ): { niche: string; ready: number }[] => {
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      const niche = nicheForLead(row.trade_type, row.trade_label);
+      counts.set(niche, (counts.get(niche) ?? 0) + (Number(row.ready) || 0));
+    }
+    return [...counts.entries()].map(([niche, ready]) => ({ niche, ready }));
+  };
+  try {
+    const rows = await sql<{ trade_type: string; trade_label: string; ready: number }>`
+      select trade_type, trade_label,
         count(*) filter (
           where btrim(contact_email) <> '' or btrim(contact_phone) <> ''
         )::int as ready
       from preloaded_leads
       where claimed = false
         and county = any(string_to_array(${counties.join("|")}, '|'))
-      group by county, trade_type
-      order by ready desc, county asc, trade_type asc
-      limit 1
+        and not exists (
+          select 1 from outreach_sequences s
+          where s.lead_slug = preloaded_leads.lead_slug and s.status = 'active'
+        )
+      group by trade_type, trade_label
     `;
-    const row = rows[0];
-    if (!row || row.ready < 1) return null;
-    return row;
+    return aggregate(rows);
   } catch (err) {
-    if (missingRelation(err)) return null;
-    throw err;
+    if (!missingRelation(err)) throw err;
+    try {
+      const rows = await sql<{ trade_type: string; trade_label: string; ready: number }>`
+        select trade_type, trade_label,
+          count(*) filter (
+            where btrim(contact_email) <> '' or btrim(contact_phone) <> ''
+          )::int as ready
+        from preloaded_leads
+        where claimed = false
+          and county = any(string_to_array(${counties.join("|")}, '|'))
+        group by trade_type, trade_label
+      `;
+      return aggregate(rows);
+    } catch {
+      return [];
+    }
   }
 }
 
-async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<AutopilotLead[]> {
+/** Today's batch is always the plumbing dataset (20,330 records). */
+async function nextNicheBatch(sql: Sql): Promise<NicheBatch | null> {
+  const ready = await readyCountsByTrade(sql);
+  const picked = pickNextNicheBatch(ready, OUTREACH_ACTIVE_VERTICAL);
+  const niche: OutreachNicheId = picked?.niche ?? OUTREACH_ACTIVE_VERTICAL;
+  if (!isOutreachNicheId(niche) || niche !== OUTREACH_ACTIVE_VERTICAL) return null;
+
+  const counties = [...HOME_REGION_COUNTIES];
+  const matchers = tradeTypeMatchersForNiche(niche);
+  let county = counties[0] ?? "";
+  let readyCount = 0;
+  try {
+    const rows = await sql<{ county: string; ready: number }>`
+      select county, count(*)::int as ready
+      from preloaded_leads
+      where claimed = false
+        and county = any(string_to_array(${counties.join("|")}, '|'))
+        and (
+          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
+          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
+        )
+        and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
+      group by county
+      order by count(*) desc, county asc
+      limit 1
+    `;
+    const nextCounty = rows[0]?.county;
+    if (nextCounty && (HOME_REGION_COUNTIES as readonly string[]).includes(nextCounty)) {
+      county = nextCounty as HomeCounty;
+    }
+    readyCount = Number(rows[0]?.ready ?? 0) || 0;
+  } catch {
+    /* keep default */
+  }
+  if (readyCount < 1) {
+    return nextNicheBatchForced(sql, OUTREACH_ACTIVE_VERTICAL);
+  }
+  return {
+    niche,
+    county,
+    ready: readyCount,
+    heroVideoUrl: outreachNicheHero(niche),
+  };
+}
+
+async function nextNicheBatchForced(sql: Sql, niche: OutreachNicheId): Promise<NicheBatch | null> {
+  const counties = [...HOME_REGION_COUNTIES];
+  const matchers = tradeTypeMatchersForNiche(niche);
+  try {
+    const rows = await sql<{ county: string; ready: number }>`
+      select county, count(*)::int as ready
+      from preloaded_leads
+      where claimed = false
+        and county = any(string_to_array(${counties.join("|")}, '|'))
+        and (
+          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
+          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
+        )
+        and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
+      group by county
+      order by count(*) desc, county asc
+      limit 1
+    `;
+    if (!rows[0] || Number(rows[0].ready) < 1) return null;
+    return {
+      niche,
+      county: rows[0].county,
+      ready: Number(rows[0].ready) || 0,
+      heroVideoUrl: outreachNicheHero(niche),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function phoneLineOf(value: string | null | undefined): PhoneLine | "" {
+  const line = String(value ?? "").trim().toLowerCase();
+  return line === "mobile" || line === "landline" ? line : "";
+}
+
+async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<AutopilotLead[]> {
+  const counties = [...HOME_REGION_COUNTIES];
+  const matchers = tradeTypeMatchersForNiche(niche);
   const map = (
     rows: {
       id: string;
@@ -151,6 +306,8 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
       trade_type: string;
       contact_email: string | null;
       contact_phone: string | null;
+      contact_name?: string | null;
+      phone_line?: string | null;
     }[],
   ): AutopilotLead[] =>
     rows.map((row) => ({
@@ -159,9 +316,11 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
       businessName: row.business_name,
       city: row.city,
       county: row.county,
-      tradeType: row.trade_type,
+      tradeType: niche,
       email: row.contact_email ?? "",
       phone: row.contact_phone ?? "",
+      contactName: (row.contact_name ?? "").trim(),
+      phoneLine: phoneLineOf(row.phone_line),
     }));
   try {
     const rows = await sql<{
@@ -173,23 +332,29 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
       trade_type: string;
       contact_email: string | null;
       contact_phone: string | null;
+      contact_name: string | null;
+      phone_line: string | null;
     }>`
-      select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
+      select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone,
+             coalesce(contact_name, '') as contact_name, coalesce(phone_line, '') as phone_line
       from preloaded_leads
       where claimed = false
-        and lower(county) = lower(${county})
-        and trade_type = ${tradeType}
+        and county = any(string_to_array(${counties.join("|")}, '|'))
+        and (
+          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
+          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
+        )
         and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
         and not exists (
           select 1 from outreach_sequences s
           where s.lead_slug = preloaded_leads.lead_slug and s.status = 'active'
         )
-      order by lead_slug asc
+      order by county asc, lead_slug asc
       limit ${BATCH_LIMIT}
     `;
     return map(rows);
   } catch (err) {
-    if (!missingRelation(err)) throw err;
+    if (!missingRelation(err) && !missingColumn(err, "contact_name") && !missingColumn(err, "phone_line")) throw err;
     const rows = await sql<{
       id: string;
       lead_slug: string;
@@ -203,14 +368,22 @@ async function loadLeads(sql: Sql, county: string, tradeType: string): Promise<A
       select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
       from preloaded_leads
       where claimed = false
-        and lower(county) = lower(${county})
-        and trade_type = ${tradeType}
+        and county = any(string_to_array(${counties.join("|")}, '|'))
+        and (
+          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
+          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
+        )
         and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
-      order by lead_slug asc
+      order by county asc, lead_slug asc
       limit ${BATCH_LIMIT}
     `;
     return map(rows);
   }
+}
+
+function missingColumn(err: unknown, column: string): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  return new RegExp(column, "i").test(message) && /does not exist|undefined column/i.test(message);
 }
 
 function toProposal(
@@ -221,7 +394,7 @@ function toProposal(
   emailCount: number,
   smsCount: number,
 ): AutopilotProposal {
-  const label = tradeType ? nicheLabel(tradeType) : "";
+  const label = tradeType ? outreachNicheLabel(tradeType) : "";
   return {
     mode,
     totalLeads: totals.totalLeads,
@@ -248,73 +421,158 @@ export async function readAutopilot(request: Request): Promise<AutopilotProposal
   const sql = await getSql();
   const totals = await metrics(sql);
   const mode = modeNow();
-  const cell = await bestLocalCell(sql);
-  if (!cell) return toProposal(mode, totals, "", "", 0, 0);
-  const split = balanceChannels(await loadLeads(sql, cell.county, cell.trade_type));
-  return toProposal(mode, totals, cell.county, cell.trade_type, split.email.length, split.sms.length);
+  const batch = await nextNicheBatch(sql);
+  if (!batch) return toProposal(mode, totals, "", "", 0, 0);
+  const split = balanceChannels(await loadLeadsForNiche(sql, batch.niche));
+  return toProposal(mode, totals, batch.county, batch.niche, split.email.length, split.sms.length);
 }
 
-function messageFor(lead: AutopilotLead, channel: "email" | "sms", origin: string): { leadSlug: string; to: string; subject: string; body: string } {
-  const draft = outreachStrategy("done-for-you");
-  const url = outreachDestination(origin, {
+function messageFor(
+  lead: AutopilotLead,
+  channel: "email" | "sms",
+  origin: string,
+  niche: OutreachNicheId,
+): { leadSlug: string; to: string; subject: string; body: string } {
+  const nicheDraft = outreachTemplatesForNiche(niche);
+  const draft = niche === "plumbing" ? nicheDraft : outreachStrategy("done-for-you");
+  const media = founderOfferMedia(origin);
+  const heroPath = outreachNicheHero(niche);
+  const base = origin.replace(/\/$/, "");
+  const heroUrl = heroPath.startsWith("http") ? heroPath : `${base}${heroPath}`;
+  const posterUrl =
+    niche === "plumbing" ? `${base}${PLUMBING_EMERGENCY_POSTER}` : media.thumbUrl;
+  const demoPath = demoStorefrontPath({
+    niche,
     businessName: lead.businessName,
-    tradeType: lead.tradeType,
-    county: lead.county,
     leadSlug: lead.leadSlug,
     leadId: lead.id,
     city: lead.city,
-    trade: nicheLabel(lead.tradeType),
-    greet: true,
+    county: lead.county,
+    tradeLabel: outreachNicheLabel(niche),
   });
+  const url =
+    outreachDestination(origin, {
+      businessName: lead.businessName,
+      tradeType: niche,
+      tradeLabel: outreachNicheLabel(niche),
+      county: lead.county,
+      leadSlug: lead.leadSlug,
+      leadId: lead.id,
+      city: lead.city,
+      greet: true,
+      trade: outreachNicheLabel(niche),
+    }) ||
+    `${base}${demoPath}` ||
+    founderOfferPitchUrl(origin, { leadSlug: lead.leadSlug, county: lead.county });
   const tokens = {
     business: lead.businessName,
     url,
-    trade: nicheLabel(lead.tradeType),
+    trade: outreachNicheLabel(niche),
     county: lead.county,
     city: lead.city,
     owner: lead.businessName,
     reviews: "no public reviews",
     website: "no website listed",
     line: "listed number",
+    video: heroUrl || media.videoUrl,
+    video_thumb: posterUrl,
+    videoThumb: posterUrl,
   };
   if (channel === "sms") {
-    return { leadSlug: lead.leadSlug, to: lead.phone, subject: "", body: renderOutreachMessage(draft.text, tokens).slice(0, 640) };
+    const dripUrl = smsDripStorefrontPath({
+      niche,
+      businessName: lead.businessName,
+      leadSlug: lead.leadSlug,
+      leadId: lead.id,
+      city: lead.city,
+      county: lead.county,
+      tradeLabel: outreachNicheLabel(niche),
+      origin,
+    });
+    const day1 = renderSmsDripBody("day1-preview", {
+      firstName: firstNameFrom(lead.contactName ?? "", lead.businessName),
+      business: lead.businessName,
+      url: dripUrl || url,
+      trade: outreachNicheLabel(niche),
+      city: lead.city,
+    });
+    const body = appendFounderOfferAssets(day1, {
+      videoUrl: heroUrl || media.videoUrl,
+      thumbUrl: posterUrl,
+      previewUrl: dripUrl || url,
+    });
+    return {
+      leadSlug: lead.leadSlug,
+      to: lead.phone,
+      subject: "",
+      body: finalizeOutreachBody(body, "sms"),
+    };
   }
+  const emailBody = appendFounderOfferAssets(renderOutreachMessage(draft.emailBody, tokens), {
+    videoUrl: heroUrl || media.videoUrl,
+    thumbUrl: posterUrl,
+    previewUrl: url,
+  });
   return {
     leadSlug: lead.leadSlug,
     to: lead.email,
     subject: renderOutreachMessage(draft.emailSubject, tokens).slice(0, 200),
-    body: renderOutreachMessage(draft.emailBody, tokens).slice(0, 4000),
+    body: finalizeOutreachBody(emailBody, "email"),
   };
 }
 
-export async function dispatchAutopilot(request: Request): Promise<AutopilotProposal & { queued: number }> {
+export async function dispatchAutopilot(request: Request): Promise<
+  AutopilotProposal & { queued: number; sequences: number; niche: string; heroVideoUrl: string }
+> {
   await assertAutopilotDesk(request);
   const sql = await getSql();
-  const proposal = await readAutopilot(request);
-  if (proposal.emailCount + proposal.smsCount === 0) {
-    throw new AutopilotError(409, "No contactable leads are ready for a batch");
-  }
+  const batch = await nextNicheBatch(sql);
+  if (!batch) throw new AutopilotError(409, "No contactable leads are ready for a niche batch");
+  const niche = batch.niche;
   const mode = modeNow();
-  const leads = await loadLeads(sql, proposal.county, proposal.tradeType);
-  const split = balanceChannels(leads);
+  const engine = await import("./outbound-engine.server");
+  const shot = await engine.readOutboundEngine(request);
+  const { occupancyToday } = await import("./outreach-scheduler.server");
+  const smsOcc = await occupancyToday(sql, "sms");
+  const emailOcc = await occupancyToday(sql, "email");
+  let split = balanceChannels(await loadLeadsForNiche(sql, niche));
+  split = trimBatchToDailyCaps(split, {
+    emailRemaining: Math.min(emailOcc.remaining, remainingCap(shot.metrics.emailSentToday, shot.state.emailDailyCap)),
+    smsRemaining: Math.min(smsOcc.remaining, remainingCap(shot.metrics.smsSentToday, shot.state.smsDailyCap)),
+  });
   const queued = split.email.length + split.sms.length;
-  if (queued === 0) throw new AutopilotError(409, "No contactable leads are ready for a batch");
+  if (queued === 0) {
+    throw new AutopilotError(409, `Daily caps are full or no ${outreachNicheLabel(niche)} leads remain today`);
+  }
 
   const { readOutreachConfig, ensureOutreachWorker, drainOutreachQueue } = await import("./outreach-queue.server");
+  const { resolvePublicAppOrigin } = await import("./public-app-url");
   const config = readOutreachConfig();
-  const origin = new URL(request.url).origin;
+  const origin = resolvePublicAppOrigin(new URL(request.url).origin);
   const campaignId = newId("cmp");
   const draft = outreachStrategy("done-for-you");
+  const totals = await metrics(sql);
+  const proposal = toProposal(mode, totals, batch.county, niche, split.email.length, split.sms.length);
+
+  await engine.setActiveOutreachNiche(request, niche);
   await sql`
     insert into outreach_campaigns (id, county, trade_type, lead_count, status, template)
     values (
       ${campaignId},
-      ${proposal.county},
-      ${proposal.tradeType},
+      ${batch.county},
+      ${niche},
       ${queued},
       ${mode},
-      ${JSON.stringify({ strategy: draft.id, channel: "split", queue: "trickle", mode })}
+      ${JSON.stringify({
+        strategy: draft.id,
+        channel: "split",
+        queue: "niche-day",
+        niche,
+        hero: batch.heroVideoUrl,
+        mode,
+        slots: config.slotLabels,
+        caps: { sms: config.smsDailyCap, email: config.emailDailyCap },
+      })}
     )
   `;
 
@@ -327,22 +585,27 @@ export async function dispatchAutopilot(request: Request): Promise<AutopilotProp
     leads: AutopilotLead[];
   }[] = [];
   for (const channel of ["email", "sms"] as const) {
-    const chunks = planSmartChunks(split[channel], {
+    const dailyCap = channel === "sms" ? config.smsDailyCap : config.emailDailyCap;
+    const chunks = planSmartSlotChunks(split[channel], {
       chunkSize: config.chunkSize,
-      intervalSeconds: config.intervalSeconds,
       start: started,
+      slots: config.slots,
+      dailyCap,
       timing: "immediate",
     });
     for (const chunk of chunks) {
       planned.push({
         channel,
-        messages: chunk.items.map((lead) => messageFor(lead, channel, origin)),
+        messages: chunk.items.map((lead) => messageFor(lead, channel, origin, niche)),
         scheduledAt: chunk.scheduledAt,
         profile: chunk.profile,
         leads: chunk.items,
       });
     }
   }
+  planned.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+  let sequences = 0;
   for (let index = 0; index < planned.length; index += 1) {
     const chunk = planned[index];
     if (!chunk) continue;
@@ -353,30 +616,172 @@ export async function dispatchAutopilot(request: Request): Promise<AutopilotProp
       ) values (
         ${newId("dsp")}, ${campaignId}, ${chunk.channel}, ${mode}, ${index}, ${planned.length},
         ${chunk.messages.length}, ${config.intervalSeconds}, ${JSON.stringify(chunk.messages)},
-        ${"queued"}, ${chunk.scheduledAt}, ${proposal.county}, ${"immediate"}, ${chunk.profile}
+        ${"queued"}, ${chunk.scheduledAt}, ${batch.county}, ${"immediate"}, ${chunk.profile}
       )
     `;
     for (const lead of chunk.leads) {
+      const sequenceId = newId("seq");
+      const stopToken = newStopToken();
+      const stopHash = await hashStopToken(stopToken);
       await sql`
         insert into outreach_sequences (
           id, lead_slug, campaign_id, channel, county, trade_type, strategy, status, stop_token_hash, timing
         ) values (
-          ${newId("seq")}, ${lead.leadSlug}, ${campaignId}, ${chunk.channel},
-          ${proposal.county}, ${proposal.tradeType}, ${draft.id}, ${"active"}, ${""}, ${"immediate"}
+          ${sequenceId}, ${lead.leadSlug}, ${campaignId}, ${chunk.channel},
+          ${lead.county || batch.county}, ${niche}, ${draft.id}, ${"active"}, ${stopHash}, ${"immediate"}
         )
       `;
+      const anchorIso = chunk.scheduledAt;
+      const anchor = new Date(anchorIso);
+      const profile = timingProfileFor(niche);
+      const dayZero = messageFor(lead, chunk.channel, origin, niche);
+
+      if (chunk.channel === "sms") {
+        // SMS-first 3-step drip: Day 1 preview → Day 3 check-in → Day 7 missed-call hook.
+        const dripUrl = smsDripStorefrontPath({
+          niche,
+          businessName: lead.businessName,
+          leadSlug: lead.leadSlug,
+          leadId: lead.id,
+          city: lead.city,
+          county: lead.county,
+          tradeLabel: outreachNicheLabel(niche),
+          origin,
+        });
+        const dripTokens = {
+          firstName: firstNameFrom(lead.contactName ?? "", lead.businessName),
+          business: lead.businessName,
+          url: dripUrl,
+          trade: outreachNicheLabel(niche),
+          city: lead.city,
+        };
+        for (const item of smsDripSchedule(anchor)) {
+          const nominal = new Date(anchor.getTime() + item.step.offsetDays * 86_400_000);
+          const scheduledAt =
+            item.step.offsetDays === 0 || Number.isNaN(nominal.getTime())
+              ? anchorIso
+              : nextSendInstant(nominal, "immediate", profile).toISOString();
+          const body =
+            item.step.offsetDays === 0
+              ? dayZero.body
+              : finalizeOutreachBody(renderSmsDripBody(item.step, dripTokens), "sms");
+          await sql`
+            insert into outreach_touches (id, sequence_id, step, label, status, scheduled_at, body)
+            values (
+              ${newId("tch")}, ${sequenceId}, ${item.step.day}, ${item.step.label},
+              ${"scheduled"}, ${scheduledAt}, ${body}
+            )
+          `;
+        }
+      } else {
+        const plan = followUpSchedule(anchor);
+        for (const step of plan) {
+          const nominal = new Date(anchor.getTime() + step.day * 86_400_000);
+          const scheduledAt =
+            step.day === 0 || Number.isNaN(nominal.getTime())
+              ? anchorIso
+              : nextSendInstant(nominal, "immediate", profile).toISOString();
+          const template = followUpBody(step.day, "email", {
+            text: dayZero.body,
+            emailSubject: dayZero.subject || draft.emailSubject,
+            emailBody: dayZero.body,
+          });
+          const body =
+            step.day === 0
+              ? `${dayZero.subject}\n\n${dayZero.body}`
+              : renderOutreachMessage(template, {
+                  business: lead.businessName,
+                  url: dayZero.body.match(/https?:\/\/\S+/)?.[0] ?? "",
+                  trade: outreachNicheLabel(niche),
+                  county: lead.county,
+                  city: lead.city,
+                  owner: lead.contactName || lead.businessName,
+                  reviews: "no public reviews",
+                  website: "no website listed",
+                  line: "listed number",
+                });
+          await sql`
+            insert into outreach_touches (id, sequence_id, step, label, status, scheduled_at, body)
+            values (
+              ${newId("tch")}, ${sequenceId}, ${step.day}, ${step.label},
+              ${"scheduled"}, ${scheduledAt}, ${body}
+            )
+          `;
+        }
+      }
+      sequences += 1;
     }
   }
 
+  const queueRows = planned.flatMap((chunk) =>
+    chunk.leads.map((lead) => ({
+      businessName: lead.businessName,
+      phone: lead.phone ?? "",
+      email: lead.email ?? "",
+      niche,
+      channel: chunk.channel,
+      leadSlug: lead.leadSlug,
+      campaignId,
+    })),
+  );
+  const { enqueueOutreachBatch, processOutreachQueue } = await import("./outreach-scheduler.server");
+  await enqueueOutreachBatch(sql, queueRows).catch(() => 0);
+  await processOutreachQueue(sql).catch(() => ({ processed: 0, sent: 0, failed: 0, rateLimited: 0 }));
+
   ensureOutreachWorker();
-  if (mode !== "live") {
-    await drainOutreachQueue(sql).catch(() => undefined);
+  // Manual dispatch: release due chunks now (simulation → mock logs only).
+  for (let i = 0; i < 12; i += 1) {
+    const released = await drainOutreachQueue(sql, origin).catch(() => ({ released: false }));
+    if (!released.released) break;
   }
-  const confirmed = toProposal(mode, proposal, proposal.county, proposal.tradeType, split.email.length, split.sms.length);
+  const confirmed = toProposal(mode, proposal, batch.county, niche, split.email.length, split.sms.length);
   await import("./hero-motion-studio.server")
     .then((mod) => mod.tickArmedAiHeroes())
     .catch(() => 0);
-  return { ...confirmed, queued };
+  await import("./shop-autopilot.server")
+    .then((mod) => mod.queueAutopilotSocialClips())
+    .catch(() => ({ queued: 0 }));
+  return { ...confirmed, queued, sequences, niche, heroVideoUrl: batch.heroVideoUrl };
+}
+
+/**
+ * Single-click Automate: preload the sequence queue, open the trickle worker,
+ * and (in simulation) process due chunks through mock logs only.
+ */
+export async function automateOutreach(request: Request): Promise<
+  AutopilotProposal & {
+    queued: number;
+    sequences: number;
+    worker: "started";
+    simulation: boolean;
+    slots: string[];
+  }
+> {
+  await assertAutopilotDesk(request);
+  const engine = await import("./outbound-engine.server");
+  await engine.setOutboundPaused(request, false);
+  const { ensureOutreachWorker, readOutreachConfig, drainOutreachQueue, drainNurtureTouches } = await import(
+    "./outreach-queue.server"
+  );
+  ensureOutreachWorker();
+  const dispatched = await dispatchAutopilot(request);
+  const config = readOutreachConfig();
+  const simulation = config.mode !== "live";
+  if (simulation) {
+    const sql = await getSql();
+    // Walk due simulation chunks without calling Twilio/Resend.
+    for (let i = 0; i < 8; i += 1) {
+      const released = await drainOutreachQueue(sql).catch(() => ({ released: false }));
+      if (!released.released) break;
+    }
+    await drainNurtureTouches(sql).catch(() => ({ released: 0 }));
+  }
+  return {
+    ...dispatched,
+    worker: "started",
+    simulation,
+    slots: config.slotLabels,
+  };
 }
 
 async function rowsOrEmpty<T>(query: Promise<T[]>): Promise<T[]> {

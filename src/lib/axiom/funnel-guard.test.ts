@@ -18,9 +18,9 @@ test("a stop token matches only its own hash", async () => {
   assert.equal(tokenHashMatches(await hashStopToken("other-token"), hash), false);
   assert.equal(tokenHashMatches(hash, ""), false);
   assert.equal(isDueNurtureStep(0), false);
-  assert.equal(isDueNurtureStep(2), true);
+  assert.equal(isDueNurtureStep(2), false);
   assert.equal(isDueNurtureStep(3), true);
-  assert.equal(isDueNurtureStep(6), true);
+  assert.equal(isDueNurtureStep(7), true);
 });
 
 test("nurture sends only in live mode with credentials, and visits are capped", () => {

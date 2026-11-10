@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Mail, Radar, Smartphone } from "lucide-react";
+import { Mail, Radar, Smartphone, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Proposal = {
@@ -14,6 +14,10 @@ type Proposal = {
   smsCount: number;
   summary: string;
   queued?: number;
+  sequences?: number;
+  slots?: string[];
+  simulation?: boolean;
+  worker?: string;
 };
 
 function count(value: number): string {
@@ -28,7 +32,7 @@ export function AutopilotCard({
   onDispatched?: () => void;
 }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [busy, setBusy] = useState<"read" | "dispatch" | null>(null);
+  const [busy, setBusy] = useState<"read" | "dispatch" | "automate" | null>(null);
   const [approved, setApproved] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,12 +69,41 @@ export function AutopilotCard({
       const queued = body.queued ?? body.emailCount + body.smsCount;
       setNote(
         body.mode === "live"
-          ? `Queued ${count(queued)} leads. The outreach worker releases them on its timer.`
+          ? `Queued ${count(queued)} leads on the trickle slots. The worker releases them under the daily caps.`
           : `Queued ${count(queued)} leads in simulation. No email or SMS was sent.`,
       );
       onDispatched?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "The batch stayed on the desk");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function automate() {
+    setBusy("automate");
+    setError(null);
+    setNote(null);
+    try {
+      const response = await fetch("/api/master/autopilot", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "automate" }),
+      });
+      const body = (await response.json()) as Proposal & { error?: string; slots?: string[] };
+      if (!response.ok) throw new Error(body.error || "Automate could not start");
+      setProposal((current) => ({ ...(current ?? body), ...body }));
+      setApproved(true);
+      const slots = (body.slots ?? ["9:00 AM", "1:00 PM", "4:00 PM"]).join(" · ");
+      setNote(
+        simulation || body.mode !== "live"
+          ? `Automate preloaded the sequence queue. Simulation will trickle at ${slots} without calling carriers.`
+          : `Automate is live. Batches trickle at ${slots} under the 40 SMS / 80 email daily caps.`,
+      );
+      onDispatched?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Automate could not start");
     } finally {
       setBusy(null);
     }
@@ -90,8 +123,8 @@ export function AutopilotCard({
       <h2 className="mt-3 font-display text-3xl leading-none">Next local batch</h2>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
         {simulation
-          ? "Outreach is in simulation. One approval writes the queue and does not contact anyone."
-          : "Outreach is live. One approval waits on the existing send timer."}
+          ? "Outreach is in simulation. Automate preloads Day 0 / 3 / 7 sequences onto the 9 · 1 · 4 trickle clock and writes mock logs only."
+          : "Outreach is live. Automate queues personalized $1-trial sequences and releases them at 9:00 AM, 1:00 PM, and 4:00 PM Pacific under daily caps."}
       </p>
 
       {proposal ? (
@@ -123,12 +156,23 @@ export function AutopilotCard({
       {note ? <p className="mt-4 text-sm text-ok">{note}</p> : null}
       {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button
+          type="button"
+          variant="accent"
+          size="lg"
+          className="sm:min-w-56"
+          disabled={busy !== null}
+          onClick={() => void automate()}
+        >
+          <Zap className="size-4" aria-hidden />
+          {busy === "automate" ? "Automating…" : "Automate"}
+        </Button>
         <Button type="button" variant="secondary" disabled={busy !== null} onClick={() => void engage()}>
           {busy === "read" ? "Reading the desk" : "Engage Autopilot"}
         </Button>
         {proposal && !approved ? (
-          <Button type="button" variant="accent" size="lg" className="sm:min-w-56" disabled={!ready || busy !== null} onClick={() => void approve()}>
+          <Button type="button" variant="secondary" disabled={!ready || busy !== null} onClick={() => void approve()}>
             {busy === "dispatch" ? "Queuing" : "Approve & Dispatch"}
           </Button>
         ) : null}

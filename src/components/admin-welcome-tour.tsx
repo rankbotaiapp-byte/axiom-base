@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HeroLoopVideo } from "@/components/loop-video";
 
 const SEEN_PREFIX = "axiom:admin-welcome:";
 export const ADMIN_WELCOME_SRC = "/media/heroes/admin-welcome.mp4";
@@ -84,7 +85,7 @@ export function AdminWelcomeTour({
           </button>
         </div>
         <div className="mt-4 overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
-          <video
+          <HeroLoopVideo
             ref={videoRef}
             className="aspect-video w-full"
             src={ADMIN_WELCOME_SRC}
@@ -92,6 +93,7 @@ export function AdminWelcomeTour({
             muted
             playsInline
             controls
+            loop={false}
           />
         </div>
         <div className="mt-4 flex justify-end">

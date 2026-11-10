@@ -24,11 +24,13 @@ export function DefaultAssetFrame({
   src,
   alt = "",
   compact = false,
+  hideEmpty = false,
   children,
 }: {
   src?: string;
   alt?: string;
   compact?: boolean;
+  hideEmpty?: boolean;
   children?: ReactNode;
 }) {
   const custom = isCustomStorefrontAsset(src ?? "");
@@ -40,6 +42,7 @@ export function DefaultAssetFrame({
       </div>
     );
   }
+  if (hideEmpty) return children ? <>{children}</> : null;
   return (
     <div className={compact ? "default-asset-photo is-compact" : "default-asset-photo"}>
       <DefaultAssetPlaceholder compact={compact} />

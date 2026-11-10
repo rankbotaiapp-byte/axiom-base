@@ -3,8 +3,10 @@ import { useReducedMotion } from "framer-motion";
 import { CorePresenceBar } from "@/components/core-presence-bar";
 import { CoreSphere } from "@/components/CoreSphere";
 import type { CoreStateId } from "@/lib/axiom/core-presence";
+import { catalogFilmUrl } from "@/config/catalog";
+import { attachLoopTailTrim } from "@/lib/axiom/loop-trim";
 
-const ORB_FILM = "/media/orb-explosion-hero-animation.mp4";
+const ORB_FILM = catalogFilmUrl("contractor");
 const ORB_POSTER = "/media/goopy-orb-base.jpg";
 
 export function storefrontFilm(
@@ -74,6 +76,7 @@ export function StorefrontPresence({
     const video = videoRef.current;
     if (!video) return;
     void video.play?.().catch(() => {});
+    return attachLoopTailTrim(video, { loop: true });
   }, [visible, film]);
 
   return (

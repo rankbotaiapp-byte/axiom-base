@@ -10,7 +10,7 @@ import type { IntroPreset } from "./intro";
 import type { LayoutBlock, ThemeProfile } from "./storefront";
 import type { TradeProfile } from "./trade-layout";
 
-/** Public + provisionable niches — the verified 21-loop catalog only. */
+/** Public + provisionable niches — the verified catalog only. */
 export const SHOP_NICHES = CATALOG_NICHES;
 export type ShopNiche = CatalogNiche;
 
@@ -89,6 +89,10 @@ export type Shop = {
   aiContentAutopilot?: boolean;
   /** Server master switch. Cron ticks content and notices while this is on. */
   autopilotActive?: boolean;
+  /** Pinned storefront film, Autopilot loop rotation, and related desk settings. */
+  shopConfig?: import("../../config/AutopilotContentEngine.ts").ShopConfig;
+  /** Locked public-page snapshot. Sibling of shopConfig — Autopilot never reads this. */
+  frontendTemplate?: import("./frontend-template").FrontendTemplate | null;
   layout: LayoutBlock[];
   tradeProfile: TradeProfile;
   createdAt: string;
@@ -125,6 +129,11 @@ export type PortfolioItem = {
   employeeId: string;
   imageUrl: string;
   caption: string;
+  status?: "pending" | "approved" | "rejected";
+  featured?: boolean;
+  sortOrder?: number;
+  tags?: string[];
+  employeeName?: string;
 };
 
 export type Appointment = {
@@ -185,6 +194,21 @@ export type PaymentSetup = {
   connected: boolean;
   chargesEnabled: boolean;
   connectStatus: "none" | "pending" | "active";
+};
+
+export type AppointmentRequestStatus = "new" | "reviewed" | "booked" | "closed";
+
+export type AppointmentRequest = {
+  id: string;
+  consumerLeadId: string | null;
+  shopId: string | null;
+  callerName: string;
+  callerPhone: string;
+  requestedService: string;
+  transcript: string;
+  vapiCallId: string;
+  status: AppointmentRequestStatus;
+  createdAt: string;
 };
 
 export type ShopPublic = {
