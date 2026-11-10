@@ -2,16 +2,30 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DEFAULT_PLUMBING_STOREFRONT,
+  PLUMBING_DIAGNOSTIC_VIDEO,
+  PLUMBING_FIELD_OPS_VIDEO,
+  PLUMBING_HERO_VIDEO,
   dialDigits,
   dialNumber,
   fillTemplate,
+  filmTierFromSrc,
   formatRevenueLoss,
   missedCallScript,
   monthlyRevenueLoss,
   parsePlumbingStorefront,
+  pinPlumbingTenantFilm,
   safeHref,
   safeMediaUrl,
 } from "./plumbing-storefront.ts";
+
+test("tenant overlay film helpers are exported and pin campaign files", () => {
+  assert.equal(filmTierFromSrc(PLUMBING_DIAGNOSTIC_VIDEO), "diagnostic");
+  assert.equal(filmTierFromSrc(PLUMBING_FIELD_OPS_VIDEO), "field");
+  assert.equal(filmTierFromSrc(PLUMBING_HERO_VIDEO), "drain");
+  assert.equal(pinPlumbingTenantFilm("/media/plumbing-diagnostic-telemetry.mp4?v=1"), PLUMBING_DIAGNOSTIC_VIDEO);
+  assert.equal(pinPlumbingTenantFilm("/media/plumber-field-operations.mp4"), PLUMBING_FIELD_OPS_VIDEO);
+  assert.equal(pinPlumbingTenantFilm("/media/unknown.mp4"), PLUMBING_HERO_VIDEO);
+});
 
 test("junk input falls back to the full default storefront", () => {
   const parsed = parsePlumbingStorefront(null);

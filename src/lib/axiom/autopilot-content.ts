@@ -15,6 +15,14 @@ import {
   type AutopilotComposedClip,
 } from "../../config/AutopilotContentEngine.ts";
 import { nicheProofPlates } from "../../config/nicheDefaults.ts";
+import {
+  facebookFeedPayload,
+  gbpLocalPostPayload,
+  instagramMediaPayload,
+  type GbpLocalPostPayload,
+  type GraphFeedPayload,
+  type InstagramMediaPayload,
+} from "./social-publish.ts";
 
 export type StockMediaKind = "image" | "video";
 
@@ -321,6 +329,39 @@ export function framedStockSvg(overlay: BrandOverlayStamp, base: StockMediaAsset
 
 export function framedSvgDataUrl(svg: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+export function composeSocialPublishJob(input: {
+  caption: string;
+  storefrontUrl: string;
+  imageUrl: string;
+  pageId?: string;
+  igUserId?: string;
+  gbpAccountId?: string;
+  gbpLocationId?: string;
+}): {
+  facebook: GraphFeedPayload;
+  instagram: InstagramMediaPayload;
+  gbp: GbpLocalPostPayload;
+} {
+  return {
+    facebook: facebookFeedPayload({
+      pageId: input.pageId ?? "",
+      message: input.caption,
+      link: input.storefrontUrl,
+    }),
+    instagram: instagramMediaPayload({
+      igUserId: input.igUserId ?? "",
+      imageUrl: input.imageUrl,
+      caption: input.caption,
+    }),
+    gbp: gbpLocalPostPayload({
+      accountId: input.gbpAccountId ?? "",
+      locationId: input.gbpLocationId ?? "",
+      summary: input.caption,
+      articleUrl: input.storefrontUrl,
+    }),
+  };
 }
 
 function escapeXml(value: string): string {

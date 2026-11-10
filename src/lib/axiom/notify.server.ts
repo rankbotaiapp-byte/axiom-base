@@ -160,6 +160,10 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
   }
 }
 
+export async function sendTwilioSms(to: string, body: string): Promise<SendResult> {
+  return sendSms(to, body);
+}
+
 function logSkip(channel: string, detail: string) {
   if (detail) console.info(`notify ${channel} skipped: ${detail}`);
 }

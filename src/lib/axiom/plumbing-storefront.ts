@@ -28,6 +28,25 @@ export const PLUMBING_DRAFT_MESSAGE = "axiom:plumbing-draft";
 export const PLUMBING_HERO_VIDEO = "/media/axio-plumber-hero.mp4";
 export const PLUMBING_HERO_VIDEO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
 export const PLUMBING_HERO_POSTER = "/media/axio-plumber-hero.jpg";
+export const PLUMBING_DIAGNOSTIC_VIDEO = "/media/plumbing-diagnostic-telemetry.mp4";
+export const PLUMBING_FIELD_OPS_VIDEO = "/media/plumber-field-operations.mp4";
+
+export type PlumbingFilmTier = "drain" | "diagnostic" | "field";
+
+export function filmTierFromSrc(src: string | undefined | null): PlumbingFilmTier {
+  const path = (src ?? "").split("?")[0]?.toLowerCase() ?? "";
+  if (path.includes("diagnostic") || path.includes("telemetry")) return "diagnostic";
+  if (path.includes("field-operations") || path.includes("plumber-field")) return "field";
+  return "drain";
+}
+
+/** Resolve a tenant desk film URL onto the locked campaign files. */
+export function pinPlumbingTenantFilm(src: string | undefined | null): string {
+  const tier = filmTierFromSrc(src);
+  if (tier === "diagnostic") return PLUMBING_DIAGNOSTIC_VIDEO;
+  if (tier === "field") return PLUMBING_FIELD_OPS_VIDEO;
+  return PLUMBING_HERO_VIDEO;
+}
 
 export type TrustBadge = { id: string; icon: TrustIcon; label: string };
 export type TrustIcon = "shield" | "clock" | "badge" | "dollar" | "star" | "truck";
