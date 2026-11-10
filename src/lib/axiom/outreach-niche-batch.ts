@@ -14,6 +14,7 @@ export const PLUMBING_LEAD_DATASET_SIZE = 20_330;
 export const PLUMBING_CAMPAIGN_HERO = "/media/axio-plumber-hero.mp4";
 export const PLUMBING_CAMPAIGN_GREETING =
   "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
+export const PLUMBING_CAMPAIGN_GREETING_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBING_CAMPAIGN_TEMPLATE = "/t/{slug}?niche=plumbing&greet=1";
 
 /**

@@ -7,6 +7,7 @@ import {
   testDispatchCopy,
 } from "./dispatch-phone";
 import { sendTwilioSms } from "./notify.server";
+import { resolveShopLeadAlerts } from "./notify-prefs";
 
 const hits = new Map<string, number>();
 
@@ -38,12 +39,15 @@ export async function lockDispatchPhone(slug: string, rawPhone: string): Promise
     try {
       await sql`
         update shops
-        set notify_phone = ${phone}, dispatch_phone_locked = true
+        set notify_phone = ${phone},
+            notification_phone = ${phone},
+            notify_sms_enabled = true,
+            dispatch_phone_locked = true
         where slug = ${slug}
       `;
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      if (/dispatch_phone_locked/i.test(message)) {
+      if (/dispatch_phone_locked|notification_phone|notify_sms_enabled/i.test(message)) {
         await sql`update shops set notify_phone = ${phone} where slug = ${slug}`;
       } else if (!/does not exist|relation/i.test(message)) {
         throw err;
@@ -59,6 +63,8 @@ export async function lockDispatchPhone(slug: string, rawPhone: string): Promise
     await updateTenant(tenant.id, {
       dispatch_phone: phone,
       dispatch_phone_locked: true,
+      notification_phone: phone,
+      notify_sms_enabled: true,
       status: tenant.status === "pending_payment" ? "active" : tenant.status,
       activated_at: tenant.activated_at ?? new Date().toISOString(),
     }).catch(() => undefined);
@@ -82,19 +88,41 @@ export async function testLiveDispatch(slug: string): Promise<{
   let shopName = slug;
   try {
     const sql = await getSql();
-    const rows = await sql<{ notify_phone: string; name: string }>`
-      select notify_phone, name from shops where slug = ${slug} limit 1
+    const rows = await sql<{
+      notify_phone: string;
+      name: string;
+      notification_phone?: string | null;
+      notify_sms_enabled?: boolean | null;
+    }>`
+      select notify_phone, name, notification_phone, notify_sms_enabled
+      from shops where slug = ${slug} limit 1
     `;
-    phone = collectedDispatchPhone(rows[0]?.notify_phone ?? "");
+    const alerts = resolveShopLeadAlerts(rows[0]);
+    if (rows[0] && !alerts.smsEnabled) {
+      throw Object.assign(new Error("SMS alerts are off for this shop."), { status: 409 });
+    }
+    phone = collectedDispatchPhone(alerts.phone);
     shopName = rows[0]?.name?.trim() || shopName;
-  } catch {
+  } catch (err) {
+    if (err && typeof err === "object" && "status" in err && (err as { status?: number }).status === 409) throw err;
     phone = "";
   }
 
   if (!phone) {
     const { getTenantBySlug } = await import("@/lib/axiom-landing/tenants/store");
     const tenant = await getTenantBySlug(slug, { fresh: true }).catch(() => null);
-    phone = collectedDispatchPhone(tenant?.dispatch_phone ?? tenant?.phone ?? "");
+    const tenantAlerts = resolveShopLeadAlerts({
+      notify_phone: tenant?.dispatch_phone ?? tenant?.phone ?? "",
+      notification_phone: tenant?.notification_phone,
+      notify_sms_enabled: tenant?.notify_sms_enabled,
+      notify_email: tenant?.email,
+      notification_email: tenant?.notification_email,
+      notify_email_enabled: tenant?.notify_email_enabled,
+    });
+    if (tenant && !tenantAlerts.smsEnabled) {
+      throw Object.assign(new Error("SMS alerts are off for this shop."), { status: 409 });
+    }
+    phone = collectedDispatchPhone(tenantAlerts.phone);
     shopName = tenant?.business_name?.trim() || shopName;
   }
 

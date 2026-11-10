@@ -17,7 +17,7 @@ const SLIDES = [
 
 const NEON = ["#2EE6D6", "#67E8F9", "#22D3EE", "#F59E0B", "#34D399", "#FB7185"] as const;
 
-const ASSISTANT_STILL = "/media/ai-female.png.png";
+const ASSISTANT_STILL = "/media/ai-female.png";
 
 type Busy = "lock" | "generate" | "build" | null;
 

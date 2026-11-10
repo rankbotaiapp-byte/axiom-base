@@ -58,6 +58,7 @@ import { DesignCopilot } from "@/components/design-copilot";
 import { setAvatarScreen } from "@/components/avatar-help-state";
 import { CyberCompanionHud } from "@/components/CyberCompanionHud";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
+import { NotificationPrefsCard } from "@/components/admin/notification-prefs-card";
 import { ProspectScan } from "@/components/prospect-scan";
 import { TodayPost } from "@/components/today-post";
 import { useAxiomRing } from "@/components/axiom-ring";
@@ -97,6 +98,10 @@ export type OpData = {
   notices: ShopNotice[];
   notifyEmail: string;
   notifyPhone: string;
+  notifySmsEnabled: boolean;
+  notifyEmailEnabled: boolean;
+  notificationPhone: string;
+  notificationEmail: string;
   payments: PaymentSetup;
   platformDesk?: boolean;
 };
@@ -315,6 +320,15 @@ export function AdminShell({
         {tab === "overview" ? (
           <div className="grid gap-8">
             <ZeroUiOrchestrator shop={data.shop} readonly={readonly} onReload={onReload} />
+            <NotificationPrefsCard
+              slug={data.shop.slug}
+              notifySmsEnabled={data.notifySmsEnabled}
+              notificationPhone={data.notificationPhone || data.notifyPhone}
+              notifyEmailEnabled={data.notifyEmailEnabled}
+              notificationEmail={data.notificationEmail || data.notifyEmail}
+              readonly={readonly}
+              onReload={onReload}
+            />
             <MakeItMineWizard shop={data.shop} readonly={readonly} onReload={onReload} />
             <Overview data={data} readonly={readonly} onReload={onReload} paymentsLocked={paymentsLocked} />
             <PaymentsPanel
@@ -371,6 +385,10 @@ export function AdminShell({
                   shop={data.shop}
                   notifyEmail={data.notifyEmail}
                   notifyPhone={data.notifyPhone}
+                  notifySmsEnabled={data.notifySmsEnabled}
+                  notifyEmailEnabled={data.notifyEmailEnabled}
+                  notificationPhone={data.notificationPhone}
+                  notificationEmail={data.notificationEmail}
                   notices={data.notices}
                   readonly={readonly}
                   onReload={onReload}

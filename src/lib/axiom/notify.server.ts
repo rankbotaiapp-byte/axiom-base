@@ -8,6 +8,7 @@ import {
   type NoticeKind,
 } from "./booking-notice";
 import { toE164 } from "./notify-target";
+import { resolveShopLeadAlerts, type ShopNotifyPrefs } from "./notify-prefs";
 import { twilioSmsFailureDetail } from "./notify-twilio";
 
 export { twilioSmsFailureDetail } from "./notify-twilio";
@@ -210,6 +211,8 @@ async function reach(opts: {
   inboxDetail: string;
   skipEmail: boolean;
   skipSms: boolean;
+  skipEmailDetail?: string;
+  skipSmsDetail?: string;
 }) {
   await record(
     opts.shopId,
@@ -224,7 +227,20 @@ async function reach(opts: {
   );
 
   const email = opts.email.trim();
-  if (email && !opts.skipEmail) {
+  if (opts.skipEmail && opts.skipEmailDetail) {
+    logSkip("email", opts.skipEmailDetail);
+    await record(
+      opts.shopId,
+      opts.notice.kind,
+      "email",
+      email || "unset",
+      opts.notice.subject,
+      opts.notice.body,
+      "skipped",
+      opts.skipEmailDetail,
+      opts.employeeId,
+    );
+  } else if (email && !opts.skipEmail) {
     const result = await sendEmail(email, opts.notice.subject, opts.notice.body);
     if (result.status === "skipped") logSkip("email", result.detail);
     await record(
@@ -241,7 +257,20 @@ async function reach(opts: {
   }
 
   const smsTo = opts.phone.trim() ? toE164(opts.phone) : null;
-  if (opts.phone.trim() && !smsTo && !opts.skipSms) {
+  if (opts.skipSms && opts.skipSmsDetail) {
+    logSkip("sms", opts.skipSmsDetail);
+    await record(
+      opts.shopId,
+      opts.notice.kind,
+      "sms",
+      smsTo || opts.phone.trim().slice(0, 20) || "unset",
+      opts.notice.subject,
+      opts.notice.body,
+      "skipped",
+      opts.skipSmsDetail,
+      opts.employeeId,
+    );
+  } else if (opts.phone.trim() && !smsTo && !opts.skipSms) {
     await record(
       opts.shopId,
       opts.notice.kind,
@@ -270,27 +299,43 @@ async function reach(opts: {
   }
 }
 
-/** Inbox always. Email and SMS fire only to the shop's own saved contacts. */
-export async function notifyShop(shopId: string, notice: NoticeInput) {
+async function loadShopLeadAlerts(shopId: string) {
+  const sql = await getSql();
   try {
-    const sql = await getSql();
+    const rows = await sql<ShopNotifyPrefs>`
+      select notify_email, notify_phone, notify_sms_enabled, notification_phone,
+             notify_email_enabled, notification_email
+      from shops where id = ${shopId} limit 1
+    `;
+    return resolveShopLeadAlerts(rows[0]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/notify_sms_enabled|notification_phone|notify_email_enabled|notification_email/i.test(message)) throw err;
     const rows = await sql<{ notify_email: string; notify_phone: string }>`
       select notify_email, notify_phone from shops where id = ${shopId} limit 1
     `;
-    const email = rows[0]?.notify_email?.trim() ?? "";
-    const phone = rows[0]?.notify_phone?.trim() ?? "";
+    return resolveShopLeadAlerts(rows[0]);
+  }
+}
+
+/** Inbox always. Twilio / Resend follow tenant notification preferences. */
+export async function notifyShop(shopId: string, notice: NoticeInput) {
+  try {
+    const alerts = await loadShopLeadAlerts(shopId);
     await reach({
       shopId,
       employeeId: null,
       destination: "console",
-      email,
-      phone,
+      email: alerts.email,
+      phone: alerts.phone,
       notice,
       inboxDetail: "",
-      skipEmail: false,
-      skipSms: false,
+      skipEmail: alerts.skipEmail,
+      skipSms: alerts.skipSms,
+      skipEmailDetail: alerts.emailSkipDetail,
+      skipSmsDetail: alerts.smsSkipDetail,
     });
-    await sendWebhook(shopId, notice, email, phone);
+    await sendWebhook(shopId, notice, alerts.email, alerts.phone);
   } catch (err) {
     console.error("notify failed", shopId, notice.kind, err instanceof Error ? err.message : "error");
   }
@@ -358,12 +403,9 @@ export async function notifyBookingParties(input: BookingNoticeInput) {
       body: `${copy.owner.body}${phoneNote}${emailNote}`,
     });
 
-    const sql = await getSql();
-    const shops = await sql<{ notify_email: string; notify_phone: string }>`
-      select notify_email, notify_phone from shops where id = ${input.shopId} limit 1
-    `;
-    const shopEmail = shops[0]?.notify_email?.trim().toLowerCase() ?? "";
-    const shopPhone = shops[0]?.notify_phone ? toE164(shops[0].notify_phone) : null;
+    const alerts = await loadShopLeadAlerts(input.shopId);
+    const shopEmail = alerts.email.trim().toLowerCase();
+    const shopPhone = alerts.phone ? toE164(alerts.phone) : null;
     const staff = await loadStaffContact(input.shopId, input.employeeId);
     const staffPhone = staff?.phone ? toE164(staff.phone) : null;
     if (staff) {

@@ -6,6 +6,8 @@ import { INTRO_CAPTION_CUES, captionAtTime } from "@/lib/axiom/intro-captions";
 import "./founder-intro-hero.css";
 
 export const FOUNDER_INTRO_VIDEO = "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
+/** Space-free alias so production CDNs resolve the same film. */
+export const FOUNDER_INTRO_VIDEO_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBING_DEMO_ANCHOR = "plumbing-demo";
 
 export function explorePlumbingDemo() {
@@ -31,8 +33,8 @@ export function FounderIntroHero() {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.setAttribute("src", "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4");
-    video.src = "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
+    video.setAttribute("src", FOUNDER_INTRO_VIDEO_SAFE);
+    video.src = FOUNDER_INTRO_VIDEO_SAFE;
     video.load();
     video.muted = true;
     video.volume = 1;
@@ -81,6 +83,7 @@ export function FounderIntroHero() {
           playsInline
           preload="auto"
         >
+          <source src="/media/axiom-24-7-booking-for-contractors.mp4" type="video/mp4" />
           <source src="/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4" type="video/mp4" />
           <track
             kind="captions"

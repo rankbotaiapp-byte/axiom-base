@@ -3,7 +3,6 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   beginStripeConnect,
   saveShopServices,
-  updateNotifyChannels,
   updateShopProfile,
 } from "@/lib/axiom/server";
 import { FeedbackToggles } from "@/components/feedback-toggles";
@@ -15,6 +14,7 @@ import { insertRow, moveRow, moveSection, nextSectionName, renameSection, sectio
 import { formatMoney } from "@/lib/utils";
 import { GEAR_GUARDIAN_BPS } from "@/lib/axiom/merchant-pricing";
 import { StripeConnectNotice, SubscriptionDisclaimer } from "@/components/legal-notice";
+import { NotificationPrefsCard } from "@/components/admin/notification-prefs-card";
 import { normalizeShopNiche, type Appointment, type Billing, type PaymentSetup, type PriceUnit, type Service, type Shop, type ShopNotice } from "@/lib/axiom/types";
 
 export function SettingsPanel({
@@ -490,6 +490,10 @@ export function AlertsPanel({
   shop,
   notifyEmail,
   notifyPhone,
+  notifySmsEnabled,
+  notifyEmailEnabled,
+  notificationPhone,
+  notificationEmail,
   notices,
   readonly,
   onReload,
@@ -497,47 +501,25 @@ export function AlertsPanel({
   shop: Shop;
   notifyEmail: string;
   notifyPhone: string;
+  notifySmsEnabled: boolean;
+  notifyEmailEnabled: boolean;
+  notificationPhone: string;
+  notificationEmail: string;
   notices: ShopNotice[];
   readonly: boolean;
   onReload: () => void;
 }) {
-  const [email, setEmail] = useState(notifyEmail);
-  const [phone, setPhone] = useState(notifyPhone);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    setEmail(notifyEmail);
-    setPhone(notifyPhone);
-  }, [notifyEmail, notifyPhone]);
-
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
-      <form
-        className="rounded-[24px] bg-surface p-5 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (readonly) return;
-          setBusy(true);
-          setError(null);
-          void updateNotifyChannels({ data: { slug: shop.slug, notifyEmail: email, notifyPhone: phone } })
-            .then(() => onReload())
-            .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not save"))
-            .finally(() => setBusy(false));
-        }}
-      >
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Hooks</p>
-        <p className="mt-1 font-display text-3xl">Alerts</p>
-        <p className="mt-2 text-sm text-muted">
-          Every booking and inquiry lands in this console. Email and SMS go out when this workspace has a provider connected.
-        </p>
-        <Field label="Email" id="alert-email" value={email} onChange={setEmail} disabled={readonly} />
-        <Field label="Mobile" id="alert-phone" value={phone} onChange={setPhone} disabled={readonly} />
-        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-        <Button type="submit" className="mt-5" disabled={readonly || busy}>
-          {busy ? "Saving" : "Save alerts"}
-        </Button>
-      </form>
+      <NotificationPrefsCard
+        slug={shop.slug}
+        notifySmsEnabled={notifySmsEnabled}
+        notificationPhone={notificationPhone || notifyPhone}
+        notifyEmailEnabled={notifyEmailEnabled}
+        notificationEmail={notificationEmail || notifyEmail}
+        readonly={readonly}
+        onReload={onReload}
+      />
       <ul className="grid gap-2">
         {notices.length === 0 ? (
           <li className="text-sm text-faint">No alerts yet.</li>

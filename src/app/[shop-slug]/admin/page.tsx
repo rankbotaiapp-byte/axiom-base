@@ -255,6 +255,10 @@ function demoOperatorDesk(slug: string): OpData {
     ],
     notifyEmail: "",
     notifyPhone: "",
+    notifySmsEnabled: true,
+    notifyEmailEnabled: true,
+    notificationPhone: "",
+    notificationEmail: "",
     payments: {
       processorReady: false,
       connected: false,

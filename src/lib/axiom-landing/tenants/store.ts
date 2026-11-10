@@ -19,6 +19,12 @@ export type Tenant = {
   amount_paid_cents: number | null;
   created_at: string;
   activated_at: string | null;
+  dispatch_phone?: string | null;
+  dispatch_phone_locked?: boolean;
+  notify_sms_enabled?: boolean;
+  notification_phone?: string | null;
+  notify_email_enabled?: boolean;
+  notification_email?: string | null;
 };
 
 export type NewTenant = Pick<Tenant, "slug" | "status" | "build_id" | "plan" | "business_name" | "phone" | "logo_url" | "owner_name" | "email">;

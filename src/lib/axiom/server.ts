@@ -487,6 +487,10 @@ export const updateNotifyChannels = createServerFn({
   slug: string;
   notifyEmail: string;
   notifyPhone: string;
+  notificationEmail?: string;
+  notificationPhone?: string;
+  notifySmsEnabled?: boolean;
+  notifyEmailEnabled?: boolean;
 }) => d).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");
   return loaded.updateNotifyChannelsHandler(ctx);

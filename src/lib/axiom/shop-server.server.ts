@@ -6,6 +6,7 @@ import { isCatalogHeroUrl, isPublicMediaFilm } from "./hero-films";
 import { cleanCustomNiche, heroForCustomNiche } from "./media";
 import { DEFAULT_HOURS, isPublicNiche, NICHES, priceUnitsFor } from "./niches";
 import { isNotifyEmail, toE164 } from "./notify-target";
+import { resolveShopLeadAlerts } from "./notify-prefs";
 import { parseDashboardConfig, type DashboardConfig } from "./dashboard";
 import { parseIntroPreset, type IntroPreset } from "./intro";
 import { parseGlowEnabled, parseLayout, parseNeonAccent, parseThemeProfile, parseWeek, type LayoutBlock, type WeekKey } from "./storefront";
@@ -60,6 +61,10 @@ type ShopRow = {
   works_alone?: boolean | number | string | null;
   notify_email?: string;
   notify_phone?: string;
+  notify_sms_enabled?: boolean | number | string | null;
+  notify_email_enabled?: boolean | number | string | null;
+  notification_phone?: string | null;
+  notification_email?: string | null;
   dashboard_override?: unknown;
   dashboard_config?: unknown;
   theme_profile?: string;
@@ -2024,6 +2029,7 @@ export const getOperatorDataHandler = async ({
   };
   if (mode === "owner") await deliverPendingAudits(shop.id);
   const notices = mode === "owner" ? await loadNotices(shop.id) : mode === "employee" && mem?.employee_id ? await loadNotices(shop.id, mem.employee_id) : [];
+  const alerts = mode === "owner" ? resolveShopLeadAlerts(row) : null;
   return {
     mode,
     shop,
@@ -2035,6 +2041,10 @@ export const getOperatorDataHandler = async ({
     notices,
     notifyEmail: mode === "owner" ? row.notify_email ?? "" : "",
     notifyPhone: mode === "owner" ? row.notify_phone ?? "" : "",
+    notifySmsEnabled: alerts?.smsEnabled ?? true,
+    notifyEmailEnabled: alerts?.emailEnabled ?? true,
+    notificationPhone: alerts?.phone ?? "",
+    notificationEmail: alerts?.email ?? "",
     payments,
     platformDesk: asMaster && mode === "owner"
   };
@@ -2432,28 +2442,73 @@ export const updateShopProfileHandler = async ({
     ok: true as const
   };
 };
+function cleanNotifyEmail(raw: unknown): string {
+  const email = String(raw ?? "").trim().toLowerCase();
+  if (email && !isNotifyEmail(email)) throw new Error("Enter a valid email");
+  return email;
+}
+
+function cleanNotifyPhone(raw: unknown): string {
+  const phoneRaw = String(raw ?? "").trim();
+  if (!phoneRaw) return "";
+  const normalized = toE164(phoneRaw);
+  if (!normalized) throw new Error("Use a 10-digit mobile number");
+  return normalized;
+}
+
 export const updateNotifyChannelsHandler = async ({
   data,
   context
 }: any) => {
   const row = await requireOwnerShop(data.slug, context.userId);
-  const email = data.notifyEmail.trim().toLowerCase();
-  if (email && !isNotifyEmail(email)) throw new Error("Enter a valid email");
-  let phone = "";
-  if (data.notifyPhone.trim()) {
-    const normalized = toE164(data.notifyPhone);
-    if (!normalized) throw new Error("Use a 10-digit mobile number");
-    phone = normalized;
-  }
+  const hasPrefs =
+    data.notificationEmail != null ||
+    data.notificationPhone != null ||
+    data.notifySmsEnabled != null ||
+    data.notifyEmailEnabled != null;
+  const email = cleanNotifyEmail(hasPrefs ? (data.notificationEmail ?? data.notifyEmail) : data.notifyEmail);
+  const phone = cleanNotifyPhone(hasPrefs ? (data.notificationPhone ?? data.notifyPhone) : data.notifyPhone);
+  const smsEnabled = data.notifySmsEnabled !== false;
+  const emailEnabled = data.notifyEmailEnabled !== false;
   const sql = await getSql();
-  await sql`
+  if (!hasPrefs) {
+    await sql`
       update shops set notify_email = ${email}, notify_phone = ${phone}
       where id = ${row.id}
     `;
+    return {
+      ok: true as const,
+      notifyEmail: email,
+      notifyPhone: phone,
+    };
+  }
+  try {
+    await sql`
+      update shops set
+        notify_email = ${email},
+        notify_phone = ${phone},
+        notification_email = ${email},
+        notification_phone = ${phone},
+        notify_sms_enabled = ${smsEnabled},
+        notify_email_enabled = ${emailEnabled}
+      where id = ${row.id}
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/notify_sms_enabled|notification_phone|notify_email_enabled|notification_email/i.test(message)) throw err;
+    await sql`
+      update shops set notify_email = ${email}, notify_phone = ${phone}
+      where id = ${row.id}
+    `;
+  }
   return {
     ok: true as const,
     notifyEmail: email,
-    notifyPhone: phone
+    notifyPhone: phone,
+    notificationEmail: email,
+    notificationPhone: phone,
+    notifySmsEnabled: smsEnabled,
+    notifyEmailEnabled: emailEnabled,
   };
 };
 export const saveShopServicesHandler = async ({

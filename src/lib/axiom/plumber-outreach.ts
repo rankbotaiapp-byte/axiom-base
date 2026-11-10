@@ -45,6 +45,7 @@ export const PLUMBER_OUTREACH_HERO_VIDEO_MOBILE = "/media/axio-plumber-hero-mobi
 export const PLUMBER_OUTREACH_HERO_POSTER = "/media/axio-plumber-hero.jpg";
 export const PLUMBER_OUTREACH_GREETING_VIDEO =
   "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
+export const PLUMBER_OUTREACH_GREETING_VIDEO_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBER_OUTREACH_GREETING_POSTER = "/media/axiom-greeting-poster.jpg";
 export const PLUMBER_OUTREACH_FEATURE_VIDEO = "/media/plumbing-drain-ride.mp4";
 export const PLUMBER_OUTREACH_FEATURE_POSTER = "/media/plumbing-drain-ride-poster.jpg";

@@ -6,6 +6,7 @@ import { getShowcase, showcaseSrc } from "@/lib/axiom-landing/showcase";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
 import {
   PLUMBER_OUTREACH_GREETING_VIDEO,
+  PLUMBER_OUTREACH_GREETING_VIDEO_SAFE,
   PLUMBER_OUTREACH_HERO_POSTER,
   PLUMBER_OUTREACH_HERO_VIDEO,
   fillTemplate,
@@ -63,6 +64,7 @@ export const Route = createFileRoute("/t/$slug")({
         links: [
           { rel: "preload", as: "image", href: config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER, fetchPriority: "high" },
           { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
+          { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_GREETING_VIDEO_SAFE },
           { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_GREETING_VIDEO },
         ],
       };

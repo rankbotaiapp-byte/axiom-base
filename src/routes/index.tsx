@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { FounderIntroHero, FOUNDER_INTRO_VIDEO, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
+import { FounderIntroHero, FOUNDER_INTRO_VIDEO, FOUNDER_INTRO_VIDEO_SAFE, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
 import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
@@ -50,6 +50,7 @@ export const Route = createFileRoute("/")({
       links: [
         { rel: "preload", as: "image", href: config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER, fetchPriority: "high" },
         { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
+        { rel: "prefetch", as: "video", href: FOUNDER_INTRO_VIDEO_SAFE },
         { rel: "prefetch", as: "video", href: FOUNDER_INTRO_VIDEO },
       ],
     };

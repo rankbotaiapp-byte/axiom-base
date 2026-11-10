@@ -218,7 +218,6 @@ export const MASTER_DEFAULT_LOOP = "/media/master-defaults/leopard-loop.mp4";
 
 const KNOWN_MISSING_LOOPS = new Set([
   "/media/universal-hero-animation.mp4",
-  "/media/abyssal-hero-loop.mp4",
 ]);
 
 /** Remap known-missing catalog paths onto shipped master-default loops. */

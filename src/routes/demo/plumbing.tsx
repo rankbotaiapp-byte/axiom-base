@@ -44,6 +44,7 @@ export const Route = createFileRoute("/demo/plumbing")({
       links: [
         { rel: "preload", as: "image", href: loaderData.config.hero.posterUrl || PLUMBER_OUTREACH_HERO_POSTER },
         { rel: "prefetch", as: "video", href: PLUMBER_OUTREACH_HERO_VIDEO },
+        { rel: "prefetch", as: "video", href: "/media/axiom-24-7-booking-for-contractors.mp4" },
         { rel: "prefetch", as: "video", href: "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4" },
       ],
     };
