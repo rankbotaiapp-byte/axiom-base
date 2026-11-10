@@ -47,6 +47,7 @@ import { Route as ApiLeadRouteImport } from './routes/api/lead'
 import { Route as ApiLeadsRouteImport } from './routes/api/leads'
 import { Route as ApiTenantsRouteImport } from './routes/api/tenants'
 import { Route as AxiomAutoAdminRouteImport } from './routes/axiom-auto/admin'
+import { Route as AxiomAutoOutreachRouteImport } from './routes/axiom-auto/outreach'
 import { Route as DemoNicheRouteImport } from './routes/demo/$niche'
 import { Route as DemoAdminRouteImport } from './routes/demo/admin'
 import { Route as DemoPlumbingRouteImport } from './routes/demo/plumbing'
@@ -277,6 +278,11 @@ const ApiTenantsRoute = ApiTenantsRouteImport.update({
 const AxiomAutoAdminRoute = AxiomAutoAdminRouteImport.update({
   id: '/axiom-auto/admin',
   path: '/axiom-auto/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AxiomAutoOutreachRoute = AxiomAutoOutreachRouteImport.update({
+  id: '/axiom-auto/outreach',
+  path: '/axiom-auto/outreach',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoNicheRoute = DemoNicheRouteImport.update({
@@ -528,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/api/leads': typeof ApiLeadsRoute
   '/api/tenants': typeof ApiTenantsRouteWithChildren
   '/axiom-auto/admin': typeof AxiomAutoAdminRoute
+  '/axiom-auto/outreach': typeof AxiomAutoOutreachRoute
   '/demo/$niche': typeof DemoNicheRoute
   '/demo/admin': typeof DemoAdminRoute
   '/demo/plumbing': typeof DemoPlumbingRoute
@@ -608,6 +615,7 @@ export interface FileRoutesByTo {
   '/api/leads': typeof ApiLeadsRoute
   '/api/tenants': typeof ApiTenantsRouteWithChildren
   '/axiom-auto/admin': typeof AxiomAutoAdminRoute
+  '/axiom-auto/outreach': typeof AxiomAutoOutreachRoute
   '/demo/$niche': typeof DemoNicheRoute
   '/demo/admin': typeof DemoAdminRoute
   '/demo/plumbing': typeof DemoPlumbingRoute
@@ -690,6 +698,7 @@ export interface FileRoutesById {
   '/api/leads': typeof ApiLeadsRoute
   '/api/tenants': typeof ApiTenantsRouteWithChildren
   '/axiom-auto/admin': typeof AxiomAutoAdminRoute
+  '/axiom-auto/outreach': typeof AxiomAutoOutreachRoute
   '/demo/$niche': typeof DemoNicheRoute
   '/demo/admin': typeof DemoAdminRoute
   '/demo/plumbing': typeof DemoPlumbingRoute
@@ -773,6 +782,7 @@ export interface FileRouteTypes {
     | '/api/leads'
     | '/api/tenants'
     | '/axiom-auto/admin'
+    | '/axiom-auto/outreach'
     | '/demo/$niche'
     | '/demo/admin'
     | '/demo/plumbing'
@@ -853,6 +863,7 @@ export interface FileRouteTypes {
     | '/api/leads'
     | '/api/tenants'
     | '/axiom-auto/admin'
+    | '/axiom-auto/outreach'
     | '/demo/$niche'
     | '/demo/admin'
     | '/demo/plumbing'
@@ -934,6 +945,7 @@ export interface FileRouteTypes {
     | '/api/leads'
     | '/api/tenants'
     | '/axiom-auto/admin'
+    | '/axiom-auto/outreach'
     | '/demo/$niche'
     | '/demo/admin'
     | '/demo/plumbing'
@@ -1009,6 +1021,7 @@ export interface RootRouteChildren {
   ApiLeadsRoute: typeof ApiLeadsRoute
   ApiTenantsRoute: typeof ApiTenantsRouteWithChildren
   AxiomAutoAdminRoute: typeof AxiomAutoAdminRoute
+  AxiomAutoOutreachRoute: typeof AxiomAutoOutreachRoute
   DemoNicheRoute: typeof DemoNicheRoute
   DemoAdminRoute: typeof DemoAdminRoute
   DemoPlumbingRoute: typeof DemoPlumbingRoute
@@ -1309,6 +1322,13 @@ declare module '@tanstack/react-router' {
       path: '/axiom-auto/admin'
       fullPath: '/axiom-auto/admin'
       preLoaderRoute: typeof AxiomAutoAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/axiom-auto/outreach': {
+      id: '/axiom-auto/outreach'
+      path: '/axiom-auto/outreach'
+      fullPath: '/axiom-auto/outreach'
+      preLoaderRoute: typeof AxiomAutoOutreachRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/$niche': {
@@ -1724,6 +1744,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLeadsRoute: ApiLeadsRoute,
   ApiTenantsRoute: ApiTenantsRouteWithChildren,
   AxiomAutoAdminRoute: AxiomAutoAdminRoute,
+  AxiomAutoOutreachRoute: AxiomAutoOutreachRoute,
   DemoNicheRoute: DemoNicheRoute,
   DemoAdminRoute: DemoAdminRoute,
   DemoPlumbingRoute: DemoPlumbingRoute,

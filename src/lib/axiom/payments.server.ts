@@ -222,6 +222,11 @@ export async function createTerritoryCheckout(opts: {
   userId?: string;
   /** Name Your Price first-month charge (Tier 1). Enforced ≥ $1. */
   namedPriceCents?: number;
+  /**
+   * Stripe Embedded Checkout: the buyer pays inside a modal on the page they are on
+   * (no redirect), and the caller mounts the form with the returned `clientSecret`.
+   */
+  embedded?: boolean;
 }) {
   const { clampNamedPriceCents, STANDARD_MONTHLY_CENTS, FOUNDER_LIFETIME_CENTS } = await import(
     "@/lib/stripe/commercial"
@@ -229,8 +234,9 @@ export async function createTerritoryCheckout(opts: {
   const success = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1&session_id={CHECKOUT_SESSION_ID}`;
   const cancel = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1`;
   const params = new URLSearchParams({
-    success_url: success,
-    cancel_url: cancel,
+    ...(opts.embedded
+      ? { ui_mode: "embedded", redirect_on_completion: "never" }
+      : { success_url: success, cancel_url: cancel }),
     client_reference_id: opts.checkoutId,
     "metadata[kind]": "territory",
     "metadata[lead_slug]": opts.leadSlug,
@@ -291,8 +297,12 @@ export async function createTerritoryCheckout(opts: {
   }
 
   const session = await stripeFetch("checkout/sessions", params);
+  if (opts.embedded) {
+    if (!session.id || !session.client_secret) throw new Error("Stripe did not return a checkout session");
+    return { id: session.id, url: "", clientSecret: session.client_secret };
+  }
   if (!session.id || !session.url) throw new Error("Stripe did not return a checkout session");
-  return { id: session.id, url: session.url };
+  return { id: session.id, url: session.url, clientSecret: "" };
 }
 
 /**

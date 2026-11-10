@@ -136,6 +136,9 @@ export function PlumbingStudio({ initial }: { initial: StorefrontRead }) {
             </p>
           </div>
           {access?.reason === "local-dev" ? <span className="studio-chip">Local dev · open</span> : null}
+          <a className="studio-open" href="/axiom-auto/outreach">
+            Edit plumber outreach landing <ExternalLink size={13} />
+          </a>
         </header>
 
         <div className="studio-scroll">
@@ -615,7 +618,7 @@ export function PlumbingStudio({ initial }: { initial: StorefrontRead }) {
 
 /* ------------------------------------------------------------------ bits */
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <details className="studio-section" open>
       <summary>
@@ -627,7 +630,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+export function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <label className="studio-field">
       <span>{label}</span>
@@ -636,7 +639,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
   );
 }
 
-function Area({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
+export function Area({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
   return (
     <label className="studio-field">
       <span>{label}</span>
@@ -645,7 +648,7 @@ function Area({ label, value, onChange, rows = 3 }: { label: string; value: stri
   );
 }
 
-function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+export function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" className="studio-icon" aria-label={label} title={label} onClick={onClick}>
       {children}
@@ -653,7 +656,7 @@ function IconButton({ label, onClick, children }: { label: string; onClick: () =
   );
 }
 
-function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+export function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" className="studio-add" onClick={onClick}>
       <Plus size={14} /> {children}
@@ -661,7 +664,7 @@ function AddButton({ onClick, children }: { onClick: () => void; children: React
   );
 }
 
-function UnlockCard({ reason, onUnlocked }: { reason: string; onUnlocked: () => void }) {
+export function UnlockCard({ reason, onUnlocked }: { reason: string; onUnlocked: () => void }) {
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   if (reason === "no-key-configured") {
