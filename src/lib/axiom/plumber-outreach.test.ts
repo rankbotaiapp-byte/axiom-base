@@ -3,11 +3,15 @@ import test from "node:test";
 import {
   DEFAULT_PLUMBER_OUTREACH,
   PLUMBER_OUTREACH_HERO_VIDEO,
+  applyTenantReel,
+  inlayIsClean,
   TEST_DISPATCH_GAP_MS,
   TEST_DISPATCH_MAX,
   bidCents,
   businessFromSlug,
   callTarget,
+  isPlumbingCampaign,
+  plumberCampaignPath,
   checkDispatchMobile,
   emptyOutreachTenant,
   fillTemplate,
@@ -20,12 +24,16 @@ test("junk input falls back to the full default page", () => {
   const parsed = parsePlumberOutreach(null);
   assert.deepEqual(parsed, DEFAULT_PLUMBER_OUTREACH);
   assert.deepEqual(parsePlumberOutreach("{not json"), parsed);
-  assert.equal(parsed.hero.videoUrl, "/media/plumbers-outreach-hero-animation.mp4");
-  assert.equal(parsed.hero.headline, "24/7 Emergency Lead Capture for Local Plumbers");
-  assert.equal(parsed.ctas.trialLabel, "$1 Choose Your Price Trial");
+  assert.equal(parsed.hero.videoUrl, "/media/axio-plumber-hero.mp4");
+  assert.equal(parsed.hero.mobileVideoUrl, "");
+  assert.equal(parsed.hero.headline, "Never miss another emergency call in {city}.");
+  assert.equal(parsed.ctas.trialLabel, "Go live for $1");
   assert.equal(parsed.mobileLock.testLabel, "Test Live SMS Dispatch");
   assert.equal(parsed.feature.title, "Inside Your Lines: Real-Time Emergency Diagnostics & Obstruction Clearing");
   assert.equal(parsed.feature.videoUrl, "/media/plumbing-drain-ride.mp4");
+  assert.equal(parsed.reel.enabled, true);
+  assert.equal(parsed.reel.title, "Live Pipe Diagnostic Reel");
+  assert.equal(parsed.reel.videoUrl, "/media/drain-clog.mp4");
 });
 
 test("a parsed config round-trips unchanged", () => {
@@ -132,9 +140,53 @@ test("the call button dials the tenant's own line before the studio fallback", (
 test("copy is personalised from the tenant, with safe fallbacks for a bare slug", () => {
   assert.equal(businessFromSlug("rogue-rapid-plumbing"), "Rogue Rapid Plumbing");
   const bare = outreachVars(emptyOutreachTenant("valley-rooter"));
-  assert.deepEqual(bare, { business: "Valley Rooter", city: "your area", county: "your area" });
-  const full = outreachVars({ ...emptyOutreachTenant("x"), business: "Ace Drain", city: "Medford", county: "Jackson County" });
+  assert.equal(bare.business, "Valley Rooter");
+  assert.equal(bare.city, "your area");
+  assert.equal(bare.county, "your area");
+  assert.equal(bare.owner, "Valley Rooter");
+  const full = outreachVars({
+    ...emptyOutreachTenant("x"),
+    business: "Ace Drain",
+    city: "Medford",
+    county: "Jackson County",
+    phone: "5418901234",
+    reviewScore: 4.8,
+    reviewCount: 112,
+  });
   assert.equal(fillTemplate("Built for {business} in {city} · {county} · {unknown}", full), "Built for Ace Drain in Medford · Jackson County · {unknown}");
+  assert.equal(full.phone, "(541) 890-1234");
+  assert.equal(full.reviews, "4.8★ · 112 reviews");
+  const d = DEFAULT_PLUMBER_OUTREACH;
+  for (const text of [
+    fillTemplate(d.hero.headline, full),
+    fillTemplate(d.hero.subhead, full),
+    fillTemplate(d.hero.eyebrow, full),
+    fillTemplate(d.metric.line, full),
+    fillTemplate(d.feature.ctaLabel, full),
+    fillTemplate(d.booking.confirmBody, { ...full, service: "Drain", slot: "ASAP" }),
+    fillTemplate(d.closing.headline, full),
+    fillTemplate(d.closing.blurb, full),
+  ]) {
+    assert.equal(inlayIsClean(text), true, text);
+    assert.doesNotMatch(text, /undefined|null|\{[a-z]+\}/i);
+  }
+});
+
+test("tenant desk can swap or hide the diagnostic reel", () => {
+  const swapped = applyTenantReel(DEFAULT_PLUMBER_OUTREACH, { diagnosticReelUrl: "/media/plumbing-drain-ride.mp4" });
+  assert.equal(swapped.reel.videoUrl, "/media/plumbing-drain-ride.mp4");
+  assert.equal(swapped.feature.videoUrl, DEFAULT_PLUMBER_OUTREACH.feature.videoUrl);
+  const hidden = applyTenantReel(DEFAULT_PLUMBER_OUTREACH, { diagnosticReelEnabled: false });
+  assert.equal(hidden.reel.enabled, false);
+  const refused = applyTenantReel(DEFAULT_PLUMBER_OUTREACH, { diagnosticReelUrl: "javascript:alert(1)" });
+  assert.equal(refused.reel.videoUrl, "/media/drain-clog.mp4");
+});
+
+test("industrial plumbing campaign urls never route through otter demos", () => {
+  assert.equal(isPlumbingCampaign("plumbing"), true);
+  assert.equal(isPlumbingCampaign("Emergency Plumbing"), true);
+  assert.equal(isPlumbingCampaign("otter"), false);
+  assert.equal(plumberCampaignPath("accurate-plumbing"), "/t/accurate-plumbing?niche=plumbing&greet=1");
 });
 
 test("test dispatch is throttled per number", () => {

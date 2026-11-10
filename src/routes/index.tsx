@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { AxiomMasterLanding } from "@/components/axiom-landing/AxiomMasterLanding";
 import { buildAutonomousContentPlan, cinematicLandingMeta } from "@/lib/axiom/cinematic-content-seo";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -10,6 +10,7 @@ import { listMyShops } from "@/lib/axiom/server";
 import type { Shop } from "@/lib/axiom/types";
 import { OutreachStorefront } from "@/components/outreach-storefront";
 import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
+import { isPlumbingCampaign } from "@/lib/axiom/plumber-outreach";
 import { LeadTerritory } from "@/components/territory-offer";
 import { getReadyShowcaseIds } from "@/lib/axiom-landing/ready.functions";
 
@@ -107,6 +108,17 @@ function Home() {
   const leadSlug = search.b || search.lead_slug || "";
 
   if (isOutreachVisit(search) && !search.pitch) {
+    const slug = search.b || search.lead_slug || "";
+    if (slug && isPlumbingCampaign(search.trade || search.hero || "")) {
+      return (
+        <Navigate
+          to="/t/$slug"
+          params={{ slug }}
+          search={{ niche: "plumbing", greet: true, utm_source: search.utm_source, county: search.county }}
+          replace
+        />
+      );
+    }
     return <OutreachStorefront search={search} />;
   }
 

@@ -39,7 +39,12 @@ import {
   outreachNicheHero,
   outreachNicheLabel,
   OUTREACH_ACTIVE_VERTICAL,
+  PLUMBING_CAMPAIGN_GREETING,
+  PLUMBING_CAMPAIGN_HERO,
+  PLUMBING_CAMPAIGN_TEMPLATE,
+  PLUMBING_LEAD_DATASET_SIZE,
   pickNextNicheBatch,
+  plumbingStorefrontHref,
   tradeTypeMatchersForNiche,
   trimBatchToDailyCaps,
   type OutreachNicheId,
@@ -47,11 +52,28 @@ import {
 } from "./outreach-niche-batch";
 import { outreachTemplatesForNiche, PLUMBING_EMERGENCY_POSTER } from "./outreach-templates";
 import { nicheForLead } from "./directory";
-import { HOME_REGION_COUNTIES, type HomeCounty } from "./regional-roster";
+import { HOME_REGION_COUNTIES } from "./regional-roster";
 import { buildAutopilotDryRun, type AutopilotDryRun, type DryCue, type DryShop } from "./autopilot-dry-run";
 import { remainingCap } from "./outbound-engine";
 
 const BATCH_LIMIT = 24;
+
+function tradeMatchers(niche: OutreachNicheId): string {
+  return tradeTypeMatchersForNiche(niche).join("|");
+}
+
+function regionClause(sql: Sql, niche: OutreachNicheId) {
+  if (niche === OUTREACH_ACTIVE_VERTICAL) return sql`true`;
+  return sql`county = any(string_to_array(${[...HOME_REGION_COUNTIES].join("|")}, '|'))`;
+}
+
+function tradeClause(sql: Sql, niche: OutreachNicheId) {
+  const matchers = tradeMatchers(niche);
+  return sql`(
+    lower(trade_type) = any(string_to_array(${matchers}, '|'))
+    or lower(btrim(coalesce(trade_label, ''))) = any(string_to_array(${matchers}, '|'))
+  )`;
+}
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 
@@ -166,7 +188,6 @@ async function readActiveNiche(sql: Sql): Promise<string> {
 }
 
 async function readyCountsByTrade(sql: Sql): Promise<{ niche: string; ready: number }[]> {
-  const counties = [...HOME_REGION_COUNTIES];
   const aggregate = (
     rows: { trade_type: string; trade_label: string; ready: number }[],
   ): { niche: string; ready: number }[] => {
@@ -185,7 +206,6 @@ async function readyCountsByTrade(sql: Sql): Promise<{ niche: string; ready: num
         )::int as ready
       from preloaded_leads
       where claimed = false
-        and county = any(string_to_array(${counties.join("|")}, '|'))
         and not exists (
           select 1 from outreach_sequences s
           where s.lead_slug = preloaded_leads.lead_slug and s.status = 'active'
@@ -203,7 +223,6 @@ async function readyCountsByTrade(sql: Sql): Promise<{ niche: string; ready: num
           )::int as ready
         from preloaded_leads
         where claimed = false
-          and county = any(string_to_array(${counties.join("|")}, '|'))
         group by trade_type, trade_label
       `;
       return aggregate(rows);
@@ -219,68 +238,40 @@ async function nextNicheBatch(sql: Sql): Promise<NicheBatch | null> {
   const picked = pickNextNicheBatch(ready, OUTREACH_ACTIVE_VERTICAL);
   const niche: OutreachNicheId = picked?.niche ?? OUTREACH_ACTIVE_VERTICAL;
   if (!isOutreachNicheId(niche) || niche !== OUTREACH_ACTIVE_VERTICAL) return null;
-
-  const counties = [...HOME_REGION_COUNTIES];
-  const matchers = tradeTypeMatchersForNiche(niche);
-  let county = counties[0] ?? "";
-  let readyCount = 0;
-  try {
-    const rows = await sql<{ county: string; ready: number }>`
-      select county, count(*)::int as ready
-      from preloaded_leads
-      where claimed = false
-        and county = any(string_to_array(${counties.join("|")}, '|'))
-        and (
-          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
-          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
-        )
-        and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
-      group by county
-      order by count(*) desc, county asc
-      limit 1
-    `;
-    const nextCounty = rows[0]?.county;
-    if (nextCounty && (HOME_REGION_COUNTIES as readonly string[]).includes(nextCounty)) {
-      county = nextCounty as HomeCounty;
-    }
-    readyCount = Number(rows[0]?.ready ?? 0) || 0;
-  } catch {
-    /* keep default */
-  }
-  if (readyCount < 1) {
-    return nextNicheBatchForced(sql, OUTREACH_ACTIVE_VERTICAL);
-  }
+  const forced = await nextNicheBatchForced(sql, niche);
+  if (forced && forced.ready > 0) return forced;
   return {
     niche,
-    county,
-    ready: readyCount,
+    county: "National",
+    ready: picked?.ready ?? 0,
     heroVideoUrl: outreachNicheHero(niche),
   };
 }
 
 async function nextNicheBatchForced(sql: Sql, niche: OutreachNicheId): Promise<NicheBatch | null> {
-  const counties = [...HOME_REGION_COUNTIES];
-  const matchers = tradeTypeMatchersForNiche(niche);
   try {
-    const rows = await sql<{ county: string; ready: number }>`
-      select county, count(*)::int as ready
+    const totals = await sql<{ ready: number }>`
+      select count(*)::int as ready
       from preloaded_leads
       where claimed = false
-        and county = any(string_to_array(${counties.join("|")}, '|'))
-        and (
-          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
-          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
-        )
-        and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
-      group by county
-      order by count(*) desc, county asc
+        and ${tradeClause(sql, niche)}
+        and (btrim(coalesce(contact_email, '')) <> '' or btrim(coalesce(contact_phone, '')) <> '')
+    `;
+    const ready = Number(totals[0]?.ready ?? 0) || 0;
+    if (ready < 1) return null;
+    const densest = await sql<{ county: string }>`
+      select coalesce(nullif(btrim(county), ''), 'National') as county
+      from preloaded_leads
+      where claimed = false
+        and ${tradeClause(sql, niche)}
+      group by 1
+      order by count(*) desc, 1 asc
       limit 1
     `;
-    if (!rows[0] || Number(rows[0].ready) < 1) return null;
     return {
       niche,
-      county: rows[0].county,
-      ready: Number(rows[0].ready) || 0,
+      county: densest[0]?.county || "National",
+      ready,
       heroVideoUrl: outreachNicheHero(niche),
     };
   } catch {
@@ -294,8 +285,6 @@ function phoneLineOf(value: string | null | undefined): PhoneLine | "" {
 }
 
 async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<AutopilotLead[]> {
-  const counties = [...HOME_REGION_COUNTIES];
-  const matchers = tradeTypeMatchersForNiche(niche);
   const map = (
     rows: {
       id: string;
@@ -339,11 +328,8 @@ async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<Auto
              coalesce(contact_name, '') as contact_name, coalesce(phone_line, '') as phone_line
       from preloaded_leads
       where claimed = false
-        and county = any(string_to_array(${counties.join("|")}, '|'))
-        and (
-          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
-          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
-        )
+        and ${regionClause(sql, niche)}
+        and ${tradeClause(sql, niche)}
         and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
         and not exists (
           select 1 from outreach_sequences s
@@ -368,11 +354,8 @@ async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<Auto
       select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
       from preloaded_leads
       where claimed = false
-        and county = any(string_to_array(${counties.join("|")}, '|'))
-        and (
-          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
-          or lower(btrim(trade_label)) = any(string_to_array(${matchers.join("|")}, '|'))
-        )
+        and ${regionClause(sql, niche)}
+        and ${tradeClause(sql, niche)}
         and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
       order by county asc, lead_slug asc
       limit ${BATCH_LIMIT}
@@ -566,9 +549,11 @@ export async function dispatchAutopilot(request: Request): Promise<
       ${JSON.stringify({
         strategy: draft.id,
         channel: "split",
-        queue: "niche-day",
+        queue: "plumbing-dataset",
         niche,
-        hero: batch.heroVideoUrl,
+        hero: PLUMBING_CAMPAIGN_HERO,
+        greeting: PLUMBING_CAMPAIGN_GREETING,
+        template: PLUMBING_CAMPAIGN_TEMPLATE,
         mode,
         slots: config.slotLabels,
         caps: { sms: config.smsDailyCap, email: config.emailDailyCap },
@@ -742,6 +727,81 @@ export async function dispatchAutopilot(request: Request): Promise<
     .then((mod) => mod.queueAutopilotSocialClips())
     .catch(() => ({ queued: 0 }));
   return { ...confirmed, queued, sequences, niche, heroVideoUrl: batch.heroVideoUrl };
+}
+
+export type PlumbingQueueSnapshot = {
+  niche: "plumbing";
+  catalogSize: number;
+  loaded: number;
+  ready: number;
+  heroVideoUrl: string;
+  greetingVideoUrl: string;
+  template: string;
+  samples: Array<{ slug: string; business: string; city: string; href: string }>;
+};
+
+export async function readPlumbingQueue(sql?: Sql): Promise<PlumbingQueueSnapshot> {
+  const db = sql ?? (await getSql());
+  let loaded = 0;
+  let ready = 0;
+  let samples: PlumbingQueueSnapshot["samples"] = [];
+  try {
+    const totals = await db<{ loaded: number; ready: number }>`
+      select
+        count(*)::int as loaded,
+        count(*) filter (
+          where claimed = false
+            and (btrim(coalesce(contact_email, '')) <> '' or btrim(coalesce(contact_phone, '')) <> '')
+        )::int as ready
+      from preloaded_leads
+      where ${tradeClause(db, OUTREACH_ACTIVE_VERTICAL)}
+    `;
+    loaded = Number(totals[0]?.loaded ?? 0) || 0;
+    ready = Number(totals[0]?.ready ?? 0) || 0;
+    const rows = await db<{ lead_slug: string; business_name: string; city: string }>`
+      select lead_slug, business_name, coalesce(city, '') as city
+      from preloaded_leads
+      where ${tradeClause(db, OUTREACH_ACTIVE_VERTICAL)}
+      order by claimed asc, lead_slug asc
+      limit 8
+    `;
+    samples = rows.map((row) => ({
+      slug: row.lead_slug,
+      business: row.business_name,
+      city: row.city,
+      href: plumbingStorefrontHref(row.lead_slug),
+    }));
+  } catch {
+    loaded = 0;
+    ready = 0;
+  }
+  return {
+    niche: "plumbing",
+    catalogSize: Math.max(loaded, PLUMBING_LEAD_DATASET_SIZE),
+    loaded,
+    ready,
+    heroVideoUrl: PLUMBING_CAMPAIGN_HERO,
+    greetingVideoUrl: PLUMBING_CAMPAIGN_GREETING,
+    template: PLUMBING_CAMPAIGN_TEMPLATE,
+    samples,
+  };
+}
+
+/** Selecting Plumbing on the master desk: pin the 20k+ dataset as the live queue. */
+export async function activatePlumbingQueue(request: Request): Promise<PlumbingQueueSnapshot> {
+  await assertAutopilotDesk(request);
+  const sql = await getSql();
+  const engine = await import("./outbound-engine.server");
+  await engine.setActiveOutreachNiche(request, OUTREACH_ACTIVE_VERTICAL);
+  return readPlumbingQueue(sql);
+}
+
+/**
+ * One-click trickle: bind plumbing, enqueue today's cap, drain in parallel chunks of 6.
+ */
+export async function sendTrickleOutreach(request: Request) {
+  await activatePlumbingQueue(request);
+  return automateOutreach(request);
 }
 
 /**

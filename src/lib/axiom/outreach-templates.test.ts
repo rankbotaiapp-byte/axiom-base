@@ -27,9 +27,9 @@ test("plumbing campaign tokens resolve demo URL + greet + hero", () => {
   assert.equal(tokens.video, `https://axiom.example${PLUMBING_EMERGENCY_HERO}`);
   assert.match(tokens.url, /^https:\/\/axiom\.example\/t\/rogue-rapid-plumbing-medford\?/);
   assert.match(tokens.url, /greet=1/);
-  assert.match(tokens.url, /hero=%2Fmedia%2Faxiom-plumber-hero\.mp4/);
+  assert.match(tokens.url, /hero=%2Fmedia%2Faxio-plumber-hero\.mp4/);
   const sms = renderPlumbingOutreach("sms", tokens);
   assert.match(sms.body, /Rogue Rapid Plumbing/);
-  assert.match(sms.body, /axiom-plumber-hero\.mp4/);
+  assert.match(sms.body, /axio-plumber-hero\.mp4/);
   assert.match(sms.body, /face-to-camera greeting/i);
 });

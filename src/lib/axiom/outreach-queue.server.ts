@@ -4,7 +4,7 @@ import { newId } from "@/lib/utils";
 import { isDueNurtureStep, nurtureReleasePlan, splitOutreachEmail } from "./funnel-guard";
 import { finalizeOutreachBody } from "./legal-notices";
 import { isLeadSlug } from "./funnel";
-import { appendPreviewLink, isHomePreviewCounty, shouldSendUnactivatedFollowUp, tenantPreviewUrl } from "./preview-link";
+import { appendPreviewLink, shouldSendUnactivatedFollowUp, tenantPreviewUrl } from "./preview-link";
 import { toE164 } from "./notify-target";
 import {
   DEFAULT_EMAIL_DAILY_CAP,
@@ -266,6 +266,7 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
     } else {
       const notes: string[] = [];
       let failed = 0;
+      const pending: QueueMessage[] = [];
       for (const message of messages) {
         if (clicked.has(message.leadSlug)) {
           stopped.push(message.leadSlug);
@@ -276,16 +277,27 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
           notes.push(`${message.leadSlug}: phone is not dialable`);
           continue;
         }
-        const result = await deliverOutreachMessage({
-          channel,
-          to: message.to,
-          subject: message.subject,
-          body: message.body,
-        });
-        if (result.status === "sent") delivered.push(message.leadSlug);
-        else {
-          failed += 1;
-          notes.push(`${message.leadSlug}: ${result.detail || result.status}`);
+        pending.push(message);
+      }
+      const CONCURRENCY = 6;
+      for (let i = 0; i < pending.length; i += CONCURRENCY) {
+        const batch = pending.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          batch.map((message) =>
+            deliverOutreachMessage({
+              channel,
+              to: message.to,
+              subject: message.subject,
+              body: message.body,
+            }).then((result) => ({ message, result })),
+          ),
+        );
+        for (const { message, result } of results) {
+          if (result.status === "sent") delivered.push(message.leadSlug);
+          else {
+            failed += 1;
+            notes.push(`${message.leadSlug}: ${result.detail || result.status}`);
+          }
         }
       }
       if (delivered.length === 0 && failed === 0) status = "skipped";
@@ -436,7 +448,7 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
           city: touch.city ?? "",
         })
       : null;
-    const body = preview && isHomePreviewCounty(touch.county) ? appendPreviewLink(touch.body, preview) : touch.body;
+    const body = preview ? appendPreviewLink(touch.body, preview) : touch.body;
     const outcome = await releaseNurtureTouch({ ...touch, body }, touchChannel, plan);
     if (outcome === "sent") {
       sent += 1;
@@ -505,7 +517,7 @@ async function releaseNurtureTouch(
 }
 
 async function stampPreviewLinks(sql: Sql, county: string, origin: string, messages: QueueMessage[]): Promise<QueueMessage[]> {
-  if (!origin || !isHomePreviewCounty(county)) return messages;
+  if (!origin) return messages;
   const pending = messages.filter((message) => !message.body.includes("preview=true"));
   if (pending.length === 0) return messages;
   const slugs = slugList(pending.map((message) => message.leadSlug));

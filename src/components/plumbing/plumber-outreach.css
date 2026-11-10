@@ -132,6 +132,7 @@
   color: var(--po-amber); border: 1px solid color-mix(in srgb, var(--po-amber) 45%, transparent);
 }
 .po-metric-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin: 0; padding-top: 0.8rem; border-top: 1px solid var(--po-line); }
+.po-metric-stats-first { padding-top: 0; padding-bottom: 0.8rem; border-top: 0; border-bottom: 1px solid var(--po-line); }
 .po-metric-stats > div { display: flex; flex-direction: column-reverse; gap: 0.15rem; min-width: 0; }
 .po-metric-stats dd { margin: 0; font: 700 1.05rem/1.1 var(--font-display, inherit); letter-spacing: -0.01em; }
 .po-metric-stats dt { font-size: 0.7rem; line-height: 1.3; color: var(--po-mute); }
@@ -480,7 +481,7 @@
 
 /* Short landscape phones: keep both hero buttons on screen. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .po-metric-stats, .po-badges, .po-subhead { display: none; }
+  .po-badges { display: none; }
   .po-headline { font-size: clamp(1.5rem, 5vh + 1rem, 2.4rem); }
 }
 
@@ -505,6 +506,35 @@ body:has(.po-root) .avatar-help {
 .po-feature-head { max-width: 52rem; margin-bottom: clamp(1.2rem, 3vw, 2rem); }
 .po-feature-grid { display: grid; gap: clamp(1.2rem, 3vw, 2.5rem); align-items: start; }
 @media (min-width: 960px) { .po-feature-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); } }
+
+/* Slot wraps film + reel overlay so copy, CTAs, and booking never shift. */
+.po-feature-slot { position: relative; }
+.po-reel-card {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: 0.75rem;
+  z-index: 4;
+  display: grid;
+  gap: 0.4rem;
+  pointer-events: none;
+  max-width: 16.5rem;
+}
+.po-reel-title {
+  margin: 0;
+  font: 700 0.68rem/1 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--po-cyan);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--po-cyan) 65%, transparent);
+}
+.po-reel-card video {
+  display: block;
+  aspect-ratio: 16 / 9;
+  max-height: 7.25rem;
+  object-fit: cover;
+  background: #05070b;
+}
 
 /* Fixed 16:9 box + poster painted on the card itself: nothing moves when the film arrives. */
 .po-feature-card {
@@ -549,6 +579,44 @@ body:has(.po-root) .avatar-help {
 }
 @media (max-width: 640px) {
   .po-feature-copy .po-btn { display: flex; width: 100%; }
+}
+
+.po-market {
+  margin: 0.35rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--po-mute);
+}
+.po-oncall-place { color: var(--po-mute); font-weight: 500; }
+
+.po-greet {
+  position: fixed; inset: 0; z-index: 80;
+  display: grid; place-items: end stretch;
+  background: #05060a;
+}
+.po-greet-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+}
+.po-greet-copy {
+  position: relative; z-index: 1;
+  display: grid; gap: 0.7rem; justify-items: start;
+  padding: clamp(1.2rem, 4vw, 2.4rem);
+  background: linear-gradient(180deg, transparent, rgb(5 6 10 / 0.92) 42%);
+}
+.po-greet-kicker {
+  margin: 0;
+  font: 600 0.72rem/1.4 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--po-amber);
+}
+.po-greet-line { margin: 0; font-size: 1.15rem; font-weight: 650; max-width: 28rem; }
+.po-greet-phone { margin: 0; font: 600 0.92rem/1.4 var(--font-mono, ui-monospace, monospace); letter-spacing: 0.04em; color: var(--po-cyan); }
+.po-greet-skip {
+  margin-top: 0.4rem;
+  padding: 0.7rem 1.1rem; border-radius: 999px; cursor: pointer;
+  color: var(--po-ink); background: var(--po-cyan); border: 0;
+  font: 700 0.85rem/1 var(--font-sans, ui-sans-serif, system-ui, sans-serif);
 }
 
 /* Studio frame: keep the nav clear of the preview banner. */

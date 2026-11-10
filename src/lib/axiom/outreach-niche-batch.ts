@@ -5,12 +5,15 @@
 import { nicheForLead, nicheLabel } from "./directory.ts";
 import { verifiedPrimaryLoop } from "./niche-dataset-pairing.ts";
 import { previewNicheSlug } from "./preview-link.ts";
+import { plumberCampaignPath } from "./plumber-outreach.ts";
 import type { ShopNiche } from "./types.ts";
 
 /** Live campaign is plumbing-only (20,330 preloaded plumbing records). */
 export const OUTREACH_ACTIVE_VERTICAL = "plumbing" as const satisfies ShopNiche;
 export const PLUMBING_LEAD_DATASET_SIZE = 20_330;
-export const PLUMBING_CAMPAIGN_HERO = "/media/axiom-plumber-hero.mp4";
+export const PLUMBING_CAMPAIGN_HERO = "/media/axio-plumber-hero.mp4";
+export const PLUMBING_CAMPAIGN_GREETING = "/media/axiom-greeting.mp4";
+export const PLUMBING_CAMPAIGN_TEMPLATE = "/t/{slug}?niche=plumbing&greet=1";
 
 /**
  * Active Automate slate. Frozen on Emergency Plumbing until that dataset is exhausted.
@@ -48,7 +51,7 @@ export type OutreachNicheId = (typeof OUTREACH_NICHE_SEQUENCE)[number];
 
 /**
  * Explicit cinematic heroes for `/demo/[niche]` inlays.
- * Emergency Plumbing & Water Systems share the urgent otter loop.
+ * Plumbing is the industrial axio loop only. Water systems keep otter.
  */
 export const OUTREACH_NICHE_HERO_OVERRIDES: Partial<Record<OutreachNicheId, string>> = {
   plumbing: PLUMBING_CAMPAIGN_HERO,
@@ -124,10 +127,22 @@ export function demoStorefrontPath(input: {
   const hero = outreachNicheHero(niche, input.tradeLabel);
   params.set("hero", hero);
   if (niche === "plumbing" && tenantSlug) {
-    if (!params.get("trade")) params.set("trade", "plumbing");
-    return `/t/${tenantSlug}?${params.toString()}`;
+    const bound = plumberCampaignPath(tenantSlug, { greet: true });
+    const url = new URL(bound, "https://axiom.local");
+    for (const [key, value] of params.entries()) {
+      if (!url.searchParams.has(key)) url.searchParams.set(key, value);
+    }
+    url.searchParams.set("niche", "plumbing");
+    url.searchParams.set("greet", "1");
+    url.searchParams.set("hero", PLUMBING_CAMPAIGN_HERO);
+    return `${url.pathname}?${url.searchParams.toString()}`;
   }
   return `/demo/${niche}?${params.toString()}`;
+}
+
+/** Canonical industrial plumbing storefront every dispatch and desk preview uses. */
+export function plumbingStorefrontHref(slug: string): string {
+  return plumberCampaignPath(slug, { greet: true });
 }
 
 /** Public tenant path segment for a plumbing campaign lead. */

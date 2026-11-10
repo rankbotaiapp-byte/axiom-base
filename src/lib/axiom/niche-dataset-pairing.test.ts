@@ -12,8 +12,8 @@ describe("niche dataset pairing", () => {
     const water = bindingForTrade("water-systems");
     assert.equal(water.primaryLoop, "/media/otter-hero-animation.mp4");
     assert.ok(water.alternateLoops.includes("/media/shark-hero-animation.mp4"));
-    assert.equal(verifiedPrimaryLoop("plumbing"), "/media/axiom-plumber-hero.mp4");
-    assert.equal(verifiedPrimaryLoop("Emergency Plumbing"), "/media/axiom-plumber-hero.mp4");
+    assert.equal(verifiedPrimaryLoop("plumbing"), "/media/axio-plumber-hero.mp4");
+    assert.equal(verifiedPrimaryLoop("Emergency Plumbing"), "/media/axio-plumber-hero.mp4");
   });
 
   it("maps fabrication to polar-bear (universal is not on disk)", () => {

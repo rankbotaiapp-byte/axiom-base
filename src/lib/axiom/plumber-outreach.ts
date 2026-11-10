@@ -18,11 +18,36 @@ export const PLUMBER_OUTREACH_SLUG = "plumbers-outreach";
 export const PLUMBER_OUTREACH_DRAFT_CHANNEL = "axiom-plumber-outreach";
 export const PLUMBER_OUTREACH_DRAFT_MESSAGE = "axiom:plumber-outreach-draft";
 
-export const PLUMBER_OUTREACH_HERO_VIDEO = "/media/plumbers-outreach-hero-animation.mp4";
-export const PLUMBER_OUTREACH_HERO_VIDEO_MOBILE = "/media/plumbers-outreach-hero-animation-mobile.mp4";
-export const PLUMBER_OUTREACH_HERO_POSTER = "/media/plumbers-outreach-hero-poster.jpg";
+export const PLUMBER_OUTREACH_HERO_VIDEO = "/media/axio-plumber-hero.mp4";
+
+/** Industrial pipe-diagnostic campaign — never otter, bubbles, or generic FilmStage. */
+export function isPlumbingCampaign(value?: string | null): boolean {
+  const v = (value ?? "").trim().toLowerCase();
+  if (!v) return false;
+  return (
+    v === "plumbing" ||
+    v.includes("plumb") ||
+    v.includes("axio-plumber") ||
+    v.includes("axiom-plumber") ||
+    v.includes("pipe-diagnostic") ||
+    v.includes("plumbers-outreach")
+  );
+}
+
+export function plumberCampaignPath(slug: string, opts?: { greet?: boolean; studio?: boolean }): string {
+  const safe = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 64) || "accurate-plumbing";
+  const params = new URLSearchParams({ niche: "plumbing" });
+  if (opts?.greet !== false) params.set("greet", "1");
+  if (opts?.studio) params.set("studio", "1");
+  return `/t/${safe}?${params.toString()}`;
+}
+export const PLUMBER_OUTREACH_HERO_VIDEO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
+export const PLUMBER_OUTREACH_HERO_POSTER = "/media/axio-plumber-hero.jpg";
+export const PLUMBER_OUTREACH_GREETING_VIDEO = "/media/axiom-greeting.mp4";
+export const PLUMBER_OUTREACH_GREETING_POSTER = "/media/axiom-greeting-poster.jpg";
 export const PLUMBER_OUTREACH_FEATURE_VIDEO = "/media/plumbing-drain-ride.mp4";
 export const PLUMBER_OUTREACH_FEATURE_POSTER = "/media/plumbing-drain-ride-poster.jpg";
+export const PLUMBER_OUTREACH_REEL_VIDEO = "/media/drain-clog.mp4";
 export const PLUMBER_OUTREACH_TELEMETRY_VIDEO = "/media/plumbing-diagnostic-telemetry.mp4";
 export const PLUMBER_OUTREACH_TELEMETRY_POSTER = "/media/plumbing-diagnostic-telemetry-poster.jpg";
 
@@ -96,6 +121,12 @@ export type PlumberOutreachConfig = {
     /** Blank hides the button under the copy. */
     ctaLabel: string;
   };
+  /** Overlay player inside the diagnostic feature grid — never reflows hero, copy, or booking. */
+  reel: {
+    enabled: boolean;
+    title: string;
+    videoUrl: string;
+  };
   services: {
     kicker: string;
     headline: string;
@@ -138,41 +169,42 @@ export type PlumberOutreachConfig = {
 
 export const DEFAULT_PLUMBER_OUTREACH: PlumberOutreachConfig = {
   hero: {
-    eyebrow: "Built for {business}",
-    headline: "24/7 Emergency Lead Capture for Local Plumbers",
+    eyebrow: "Built for {business} · {city}",
+    headline: "Never miss another emergency call in {city}.",
     subhead:
-      "Every call you can't pick up gets an instant text back, a triage question, and a booked slot — while your crew stays on the job in {city}.",
+      "Missed calls become booked jobs in 9 seconds. Instant SMS dispatch for {business} — your crew stays on the truck.",
     videoUrl: PLUMBER_OUTREACH_HERO_VIDEO,
-    mobileVideoUrl: PLUMBER_OUTREACH_HERO_VIDEO_MOBILE,
+    // Blank on purpose: every screen plays the master file directly via <video src>.
+    mobileVideoUrl: "",
     posterUrl: PLUMBER_OUTREACH_HERO_POSTER,
     scrim: 70,
   },
   metric: {
     enabled: true,
     count: 14,
-    line: "emergency calls captured automatically this month while your crew was in the field",
-    sampleLabel: "Example shop",
+    line: "missed emergency calls captured this month for shops like {business} in {city}",
+    sampleLabel: "Modeled capture",
     stats: [
-      { id: "m1", value: "9 sec", label: "average text-back" },
-      { id: "m2", value: "24/7", label: "after-hours coverage" },
-      { id: "m3", value: "$0", label: "extra dispatcher payroll" },
+      { id: "m1", value: "9 sec", label: "SMS dispatch speed" },
+      { id: "m2", value: "24/7", label: "missed-call capture" },
+      { id: "m3", value: "$0", label: "extra dispatcher cost" },
     ],
   },
   badges: [
     { id: "b1", label: "Live in minutes" },
     { id: "b2", label: "No contract" },
-    { id: "b3", label: "Checkout on Stripe" },
+    { id: "b3", label: "Stripe $1 trial" },
   ],
   ctas: {
-    trialLabel: "$1 Choose Your Price Trial",
-    trialNote: "Name your first month from $1 · then $150/mo on day 31 · cancel anytime",
+    trialLabel: "Go live for $1",
+    trialNote: "$1 today · $150/mo after 30 days · cancel anytime",
     callLabel: "Call Now",
     fallbackPhone: "",
     dispatchLabel: "Emergency Dispatch",
   },
   checkout: {
-    title: "Choose your price",
-    blurb: "Pay what you want for month one — $1 minimum. Your territory locks to this link the moment the card clears.",
+    title: "Start dispatch for $1",
+    blurb: "Pay $1 now. {business} locks {city} the moment Stripe clears — desk, SMS routing, and this page go live together.",
     presets: [1, 5, 25],
     defaultDollars: 1,
     fallbackHref: "/onboard?niche=plumbing",
@@ -200,7 +232,12 @@ export const DEFAULT_PLUMBER_OUTREACH: PlumberOutreachConfig = {
       { id: "f2", title: "Grease clogs", detail: "Kitchen backups are tagged, quoted from your menu, and slotted into the next open window automatically." },
       { id: "f3", title: "Emergency backups", detail: "Sewage or standing water jumps the queue and texts your cell instantly, day or night." },
     ],
-    ctaLabel: "Put this on my phone for $1",
+    ctaLabel: "Turn on {city} capture for $1",
+  },
+  reel: {
+    enabled: true,
+    title: "Live Pipe Diagnostic Reel",
+    videoUrl: PLUMBER_OUTREACH_REEL_VIDEO,
   },
   services: {
     kicker: "Live service menu",
@@ -248,8 +285,8 @@ export const DEFAULT_PLUMBER_OUTREACH: PlumberOutreachConfig = {
     ],
   },
   closing: {
-    headline: "Lock {city} before the next shop does.",
-    blurb: "One plumbing territory per area. Start for $1 and your page, text-back, and dispatch alerts go live today.",
+    headline: "Lock {city} before the next plumber does.",
+    blurb: "One plumbing territory per market. $1 today opens {business}'s desk, SMS dispatch, and this page.",
   },
 };
 
@@ -343,6 +380,7 @@ export function parsePlumberOutreach(input: unknown): PlumberOutreachConfig {
   const lock = obj(raw.mobileLock);
   const services = obj(raw.services);
   const feature = obj(raw.feature);
+  const reel = obj(raw.reel);
   const booking = obj(raw.booking);
   const telemetry = obj(raw.telemetry);
   const proof = obj(raw.proof);
@@ -431,6 +469,11 @@ export function parsePlumberOutreach(input: unknown): PlumberOutreachConfig {
       ),
       ctaLabel: optional(feature.ctaLabel, d.feature.ctaLabel, 40),
     },
+    reel: {
+      enabled: flag(reel.enabled, d.reel.enabled),
+      title: text(reel.title, d.reel.title, 48),
+      videoUrl: safeMediaUrl(reel.videoUrl, d.reel.videoUrl),
+    },
     services: {
       kicker: optional(services.kicker, d.services.kicker, 40),
       headline: text(services.headline, d.services.headline, 100),
@@ -494,6 +537,20 @@ export function parsePlumberOutreach(input: unknown): PlumberOutreachConfig {
   };
 }
 
+/** Shop-desk override for the diagnostic reel; blank URL keeps the master clip. */
+export function applyTenantReel(
+  config: PlumberOutreachConfig,
+  tenant?: { diagnosticReelUrl?: string; diagnosticReelEnabled?: boolean },
+): PlumberOutreachConfig {
+  if (!tenant) return config;
+  const enabled = typeof tenant.diagnosticReelEnabled === "boolean" ? tenant.diagnosticReelEnabled : config.reel.enabled;
+  const videoUrl = tenant.diagnosticReelUrl?.trim()
+    ? safeMediaUrl(tenant.diagnosticReelUrl, config.reel.videoUrl)
+    : config.reel.videoUrl;
+  if (enabled === config.reel.enabled && videoUrl === config.reel.videoUrl) return config;
+  return { ...config, reel: { ...config.reel, enabled, videoUrl } };
+}
+
 /* ------------------------------------------------------------ tenant context */
 
 /** Who this link was built for. Everything is optional — a bare slug still renders. */
@@ -502,8 +559,15 @@ export type OutreachTenant = {
   business: string;
   city: string;
   county: string;
+  state: string;
+  zip: string;
+  address: string;
+  owner: string;
+  email: string;
   /** Tenant phone exactly as stored; may be blank. */
   phone: string;
+  reviewScore: number;
+  reviewCount: number;
   /** True once this territory has a settled activation. */
   live: boolean;
   /** True when the slug maps to a territory that card checkout can be bound to. */
@@ -511,7 +575,22 @@ export type OutreachTenant = {
 };
 
 export function emptyOutreachTenant(slug: string): OutreachTenant {
-  return { slug, business: "", city: "", county: "", phone: "", live: false, known: false };
+  return {
+    slug,
+    business: "",
+    city: "",
+    county: "",
+    state: "",
+    zip: "",
+    address: "",
+    owner: "",
+    email: "",
+    phone: "",
+    reviewScore: 0,
+    reviewCount: 0,
+    live: false,
+    known: false,
+  };
 }
 
 /** "rogue-rapid-plumbing-medford" → "Rogue Rapid Plumbing Medford" for links with no record behind them. */
@@ -525,9 +604,37 @@ export function businessFromSlug(slug: string): string {
 }
 
 export function outreachVars(tenant: OutreachTenant): Record<string, string> {
-  const business = tenant.business || businessFromSlug(tenant.slug) || "your shop";
-  const city = tenant.city || tenant.county || "your area";
-  return { business, city, county: tenant.county || city };
+  const business = (tenant.business || businessFromSlug(tenant.slug) || "your shop").trim();
+  const city = (tenant.city || tenant.county || "your area").trim();
+  const county = (tenant.county || city).trim();
+  const market = [city, tenant.state].filter(Boolean).join(", ") || county;
+  const address =
+    tenant.address ||
+    [city, tenant.county, tenant.state, tenant.zip].filter(Boolean).join(", ") ||
+    market;
+  const phone = formatPhone(tenant.phone || "");
+  const reviews =
+    tenant.reviewCount > 0 && tenant.reviewScore > 0
+      ? `${tenant.reviewScore.toFixed(1)}★ · ${tenant.reviewCount.toLocaleString("en-US")} reviews`
+      : "";
+  return {
+    business,
+    city,
+    county,
+    state: tenant.state || "",
+    zip: tenant.zip || "",
+    address,
+    market,
+    owner: tenant.owner || business,
+    phone,
+    email: tenant.email || "",
+    reviews,
+  };
+}
+
+/** True when filled copy has no leftover `{token}` holes for inlay keys. */
+export function inlayIsClean(text: string): boolean {
+  return !/\{(business|city|county|phone|address|market|owner|state|zip|email|reviews)\}/.test(text);
 }
 
 /** "(541) 890-1234" for 10-digit US numbers; anything else is shown as stored. */

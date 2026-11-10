@@ -45,6 +45,17 @@ test("a saved profile keeps owner cords and drops junk", () => {
   assert.equal(profile.radiusMiles, 150);
   assert.equal(profile.deliveryNote, "Stack off the porch.");
   assert.deepEqual(profile.serviceThumbs, ["", "", ""]);
+  assert.equal(profile.diagnosticReelUrl, "");
+  assert.equal(profile.diagnosticReelEnabled, true);
+});
+
+test("plumbing shops can pin a custom diagnostic reel clip", () => {
+  const profile = parseTradeProfile("plumbing", {
+    diagnosticReelUrl: "/media/drain-clog.mp4",
+    diagnosticReelEnabled: false,
+  });
+  assert.equal(profile.diagnosticReelUrl, "/media/drain-clog.mp4");
+  assert.equal(profile.diagnosticReelEnabled, false);
 });
 
 test("custom service thumbs survive a trade profile rewrite", () => {

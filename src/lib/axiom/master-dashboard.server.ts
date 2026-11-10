@@ -361,8 +361,8 @@ export async function commandMasterAutopilot(request: Request, action: Autopilot
     return readMasterAutopilotStatus(request);
   }
   if (action === "automate") {
-    const { automateOutreach } = await import("./autopilot.server");
-    await automateOutreach(request);
+    const { sendTrickleOutreach } = await import("./autopilot.server");
+    await sendTrickleOutreach(request);
     return readMasterAutopilotStatus(request);
   }
   await dispatchAutopilot(request);

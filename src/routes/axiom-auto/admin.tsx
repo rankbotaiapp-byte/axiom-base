@@ -1,19 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PlumbingStudio } from "@/components/plumbing/plumbing-studio";
-import { getPlumbingStorefront } from "@/lib/axiom/plumbing-storefront.functions";
+import { PlumberOutreachStudio } from "@/components/plumbing/plumber-outreach-studio";
+import { getPlumberOutreach } from "@/lib/axiom/plumber-outreach.functions";
 
-/** Axiom Master Admin Studio — edit the Emergency Plumbing storefront without touching code. */
+/** Master admin: industrial plumbing outreach is the only campaign template. */
 export const Route = createFileRoute("/axiom-auto/admin")({
-  loader: () => getPlumbingStorefront(),
+  loader: () => getPlumberOutreach(),
   head: () => ({
     meta: [
-      { title: "Axiom Studio · Emergency Plumbing" },
+      { title: "Master Admin Desk · Plumbing trickle" },
       { name: "robots", content: "noindex" },
       { name: "theme-color", content: "#08080A" },
     ],
   }),
   component: function AxiomAutoAdmin() {
-    const loaded = Route.useLoaderData();
-    return <PlumbingStudio initial={loaded} />;
+    const outreach = Route.useLoaderData();
+    return <PlumberOutreachStudio initial={outreach} />;
   },
 });

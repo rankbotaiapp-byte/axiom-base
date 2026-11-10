@@ -2,6 +2,7 @@ import { RIPPLE_THEMES, type RippleThemeId } from "./brand-studio.ts";
 import { classifyTrade, nicheForLead } from "./directory.ts";
 import { funnelUrl } from "./funnel.ts";
 import { PRESENTATION_STYLES, type PresentationStyle } from "./intro.ts";
+import { isPlumbingCampaign, plumberCampaignPath } from "./plumber-outreach.ts";
 import { HOME_REGION_COUNTIES } from "./regional-roster.ts";
 import { isShopNiche, type ShopNiche } from "./types.ts";
 
@@ -63,16 +64,29 @@ export type PreviewLead = {
 };
 
 /**
- * Personalized storefront for Jackson, Josephine, and Douglas leads.
- * Other counties stay on the homepage funnel.
+ * Personalized storefront. Plumbing always uses the industrial /t/{slug} campaign
+ * (hero + greeting), any county. Other trades stay on the Southern Oregon demo.
  */
 export function tenantPreviewUrl(origin: string, lead: PreviewLead): string | null {
-  if (!isHomePreviewCounty(lead.county)) return null;
   const business = lead.businessName.trim().slice(0, 80);
   if (!business) return null;
-  const niche = previewNicheSlug(lead.tradeType, lead.tradeLabel ?? "");
   const base = origin.trim().replace(/\/$/, "");
   if (!base) return null;
+  const tradeHint = `${lead.tradeType} ${lead.tradeLabel ?? ""} ${lead.trade ?? ""}`;
+  if (isPlumbingCampaign(tradeHint) || isPlumbingCampaign(lead.tradeType)) {
+    const slug = (lead.leadSlug ?? "").trim() || "accurate-plumbing";
+    const url = new URL(plumberCampaignPath(slug, { greet: true }), `${base}/`);
+    const leadId = (lead.leadId ?? "").trim();
+    if (leadId) url.searchParams.set("lead", leadId);
+    const county = lead.county.trim();
+    if (county) url.searchParams.set("county", county);
+    const city = (lead.city ?? "").trim().slice(0, 80);
+    if (city) url.searchParams.set("city", city);
+    if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+    return url.toString();
+  }
+  if (!isHomePreviewCounty(lead.county)) return null;
+  const niche = previewNicheSlug(lead.tradeType, lead.tradeLabel ?? "");
   const url = new URL(`/demo/${niche}`, `${base}/`);
   url.searchParams.set("preview", "true");
   url.searchParams.set("business", business);
@@ -105,7 +119,10 @@ export function outreachDestination(origin: string, lead: PreviewLead & { leadSl
 }
 
 export function bodyHasPreviewLink(body: string): boolean {
-  return body.includes("/demo/") && body.includes("preview=true");
+  return (
+    (body.includes("/demo/") && body.includes("preview=true")) ||
+    /\/t\/[a-z0-9-]+\?[^ \n]*niche=plumbing/.test(body)
+  );
 }
 
 /** Adds the preview link once. A body that already carries one is left as written. */

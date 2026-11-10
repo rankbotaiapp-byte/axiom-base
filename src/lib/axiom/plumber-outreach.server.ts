@@ -1,7 +1,9 @@
 import { getSql, isDatabaseUnavailable } from "@/lib/db";
+import type { OnboardSuccessRead } from "./onboard-success";
 import {
   DEFAULT_PLUMBER_OUTREACH,
   PLUMBER_OUTREACH_SLUG,
+  applyTenantReel,
   bidCents,
   checkDispatchMobile,
   emptyOutreachTenant,
@@ -102,12 +104,23 @@ export async function readOutreachTenant(rawSlug: string): Promise<OutreachTenan
     const { readLeadPreview } = await import("./territory.server");
     const lead = await readLeadPreview(slug);
     if (lead) {
+      const city = lead.city;
+      const county = lead.county;
+      const state = lead.state ?? "";
+      const zip = lead.zip ?? "";
       return {
         slug,
         business: lead.businessName,
-        city: lead.city,
-        county: lead.county,
+        city,
+        county,
+        state,
+        zip,
+        address: [city, county, state, zip].filter(Boolean).join(", "),
+        owner: lead.contactName || lead.businessName,
+        email: lead.contactEmail,
         phone: lead.contactPhone,
+        reviewScore: lead.reviewScore ?? 0,
+        reviewCount: lead.reviewCount ?? 0,
         live: Boolean(lead.activation) || lead.mode === "live",
         known: true,
       };
@@ -119,16 +132,60 @@ export async function readOutreachTenant(rawSlug: string): Promise<OutreachTenan
     const { getTenantBySlug } = await import("@/lib/axiom-landing/tenants/store");
     const record = await getTenantBySlug(slug);
     if (record && record.status !== "suspended") {
-      return { ...tenant, business: record.business_name, phone: record.phone, live: record.status === "active" };
+      return {
+        ...tenant,
+        business: record.business_name || tenant.business,
+        phone: record.phone || tenant.phone,
+        live: record.status === "active",
+        known: true,
+      };
     }
   } catch (err) {
     console.error("[plumber-outreach] tenant lookup failed", err);
   }
+  try {
+    const sql = await getSql();
+    const shops = await sql<{ name: string; address: string | null; notify_phone: string | null }>`
+      select name, address, notify_phone from shops where slug = ${slug} limit 1
+    `;
+    const shop = shops[0];
+    if (shop) {
+      return {
+        ...tenant,
+        business: tenant.business || shop.name,
+        address: tenant.address || shop.address || "",
+        phone: tenant.phone || shop.notify_phone || "",
+        known: true,
+      };
+    }
+  } catch (err) {
+    if (!isDatabaseUnavailable(err)) console.error("[plumber-outreach] shop overlay failed", err);
+  }
   return tenant;
 }
 
+async function readShopReel(slug: string): Promise<{ diagnosticReelUrl: string; diagnosticReelEnabled: boolean } | null> {
+  const safe = cleanSlug(slug);
+  if (!safe) return null;
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ trade_profile: unknown }>`
+      select trade_profile from shops where slug = ${safe} limit 1
+    `;
+    const raw = rows[0]?.trade_profile;
+    if (!raw) return null;
+    const { parseTradeProfile } = await import("./trade-layout");
+    const profile = parseTradeProfile("plumbing", raw);
+    return { diagnosticReelUrl: profile.diagnosticReelUrl, diagnosticReelEnabled: profile.diagnosticReelEnabled };
+  } catch (err) {
+    if (!isDatabaseUnavailable(err)) console.error("[plumber-outreach] shop reel lookup failed", err);
+    return null;
+  }
+}
+
 export async function readOutreachPage(slug: string): Promise<OutreachPage> {
-  const [read, tenant] = await Promise.all([readPlumberOutreach(), readOutreachTenant(slug)]);
+  const [read, tenant, shopReel] = await Promise.all([readPlumberOutreach(), readOutreachTenant(slug), readShopReel(slug)]);
+  const config = applyTenantReel(read.config, shopReel ?? undefined);
   let checkoutReady = false;
   try {
     const payments = await import("./payments.server");
@@ -136,7 +193,7 @@ export async function readOutreachPage(slug: string): Promise<OutreachPage> {
   } catch {
     checkoutReady = false;
   }
-  return { ...read, tenant, checkoutReady };
+  return { ...read, config, tenant, checkoutReady };
 }
 
 /* ---------------------------------------------------------------- checkout */
@@ -212,11 +269,110 @@ export async function confirmOutreachCheckout(input: { slug: string; sessionId: 
   const activation = await payments.settleTerritorySession(input.sessionId);
   if (activation.leadSlug !== slug) throw new Error("This payment belongs to a different territory");
   const locked = await readLockedNumber(slug, input.sessionId);
+  const shop =
+    activation.shop && typeof activation.shop === "object"
+      ? (activation.shop as { slug?: string; claimToken?: string })
+      : null;
   return {
     leadSlug: activation.leadSlug,
     businessName: activation.businessName,
     amountCents: activation.amountCents,
     lockedPhone: locked?.phone ?? "",
+    shopSlug: shop?.slug || slug,
+    claimToken: shop?.claimToken || "",
+  };
+}
+
+export async function readOnboardSuccess(sessionId: string): Promise<OnboardSuccessRead> {
+  if (!SESSION.test(sessionId)) throw new Error("Invalid session");
+  const payments = await import("./payments.server");
+  const activation = await payments.settleTerritorySession(sessionId);
+  const slug = cleanSlug(activation.leadSlug);
+  if (!slug) throw new Error("This payment is not tied to a territory");
+  const tenant = await readOutreachTenant(slug);
+  const locked = await readLockedNumber(slug, sessionId);
+  const shop =
+    activation.shop && typeof activation.shop === "object"
+      ? (activation.shop as { slug?: string; claimToken?: string })
+      : null;
+  return {
+    sessionId,
+    leadSlug: slug,
+    shopSlug: shop?.slug || slug,
+    claimToken: shop?.claimToken || "",
+    businessName: activation.businessName || tenant.business,
+    city: tenant.city,
+    phone: locked?.phone || tenant.phone,
+    email: tenant.email,
+  };
+}
+
+export async function grantOnboardLaunch(input: {
+  sessionId: string;
+  phone: string;
+  email: string;
+  sms: boolean;
+  emailChannel: boolean;
+  push: boolean;
+}): Promise<{ shopSlug: string; claimToken: string; deskPath: string }> {
+  const { assertSameSiteRequest } = await import("@/lib/auth/isolation.server");
+  assertSameSiteRequest();
+  const sessionId = input.sessionId.trim();
+  const page = await readOnboardSuccess(sessionId);
+  const locked = await lockDispatchMobile({ slug: page.leadSlug, sessionId, phone: input.phone });
+  const { isNotifyEmail } = await import("./notify-target");
+  const { shopAdminHref } = await import("./onboard-success");
+  const email = input.email.trim().toLowerCase();
+  if (!isNotifyEmail(email)) throw new Error("Enter a valid notification email");
+  const sql = await getSql();
+  const shops = await sql<{ id: string; slug: string; onboarding_json: unknown }>`
+    select id, slug, onboarding_json from shops where slug = ${page.shopSlug} limit 1
+  `;
+  const shop = shops[0];
+  if (shop) {
+    let extra: Record<string, unknown> = {};
+    try {
+      const raw = typeof shop.onboarding_json === "string" ? JSON.parse(shop.onboarding_json) : shop.onboarding_json;
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) extra = raw as Record<string, unknown>;
+    } catch {
+      extra = {};
+    }
+    extra.channels = {
+      sms: Boolean(input.sms),
+      email: Boolean(input.emailChannel),
+      push: Boolean(input.push),
+    };
+    extra.subdomain = page.shopSlug;
+    extra.deskPath = shopAdminHref(page.shopSlug, page.claimToken);
+    extra.onboardedAt = new Date().toISOString();
+    await sql`
+      update shops
+      set notify_email = ${email},
+          notify_phone = ${locked.phone},
+          onboarding_json = ${JSON.stringify(extra)},
+          onboarding_step = ${"complete"}
+      where id = ${shop.id}
+    `;
+  }
+  if (input.sms) {
+    void sendTestDispatch({ slug: page.leadSlug, sessionId }).catch(() => undefined);
+  }
+  if (input.emailChannel) {
+    void import("./notify.server")
+      .then((notify) =>
+        notify.deliverOutreachMessage({
+          channel: "email",
+          to: email,
+          subject: `${page.businessName} is live on Axiom`,
+          body: `Dispatch alerts for ${page.businessName} now land on this inbox. Your desk: ${shopAdminHref(page.shopSlug, page.claimToken)}`,
+        }),
+      )
+      .catch(() => undefined);
+  }
+  return {
+    shopSlug: page.shopSlug,
+    claimToken: page.claimToken,
+    deskPath: shopAdminHref(page.shopSlug, page.claimToken),
   };
 }
 

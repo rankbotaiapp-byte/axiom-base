@@ -78,10 +78,11 @@ import {
 } from "@/components/mission-desk";
 
 export const Route = createFileRoute("/$shopSlug/admin")({
-  validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master" } => {
+  validateSearch: (s: Record<string, unknown>): { stripe?: "return" | "refresh"; desk?: "master"; claim?: string } => {
     const stripe = s.stripe === "return" || s.stripe === "refresh" ? s.stripe : undefined;
     const desk = s.desk === "master" ? "master" : undefined;
-    return { ...(stripe ? { stripe } : {}), ...(desk ? { desk } : {}) };
+    const claim = typeof s.claim === "string" ? s.claim.trim().slice(0, 80) : "";
+    return { ...(stripe ? { stripe } : {}), ...(desk ? { desk } : {}), ...(claim ? { claim } : {}) };
   },
   component: AdminPage,
 });
@@ -100,13 +101,14 @@ export type OpData = {
   platformDesk?: boolean;
 };
 
-function operatorQuery(slug: string, desk?: "master") {
-  return desk === "master" ? { slug, desk } : slug;
+function operatorQuery(slug: string, desk?: "master", claim?: string) {
+  if (desk === "master" || claim) return { slug, ...(desk === "master" ? { desk } : {}), ...(claim ? { claim } : {}) };
+  return slug;
 }
 
 function AdminPage() {
   const { shopSlug } = Route.useParams();
-  const { stripe, desk } = Route.useSearch();
+  const { stripe, desk, claim } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const heroStudio =
@@ -121,7 +123,7 @@ function AdminPage() {
   useEffect(() => {
     if (isPending || !userId) return;
     let cancelled = false;
-    void getOperatorData({ data: operatorQuery(shopSlug, desk) })
+    void getOperatorData({ data: operatorQuery(shopSlug, desk, claim) })
       .then((next) => {
         if (!cancelled) {
           setError(null);
@@ -134,25 +136,25 @@ function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [desk, isPending, shopSlug, userId]);
+  }, [claim, desk, isPending, shopSlug, userId]);
 
   useEffect(() => {
     if (!user || !stripe) return;
     void refreshStripeConnect({ data: shopSlug })
-      .then(() => getOperatorData({ data: operatorQuery(shopSlug, desk) }))
+      .then(() => getOperatorData({ data: operatorQuery(shopSlug, desk, claim) }))
       .then(setData)
       .catch(() => undefined);
-  }, [desk, shopSlug, stripe, user]);
+  }, [claim, desk, shopSlug, stripe, user]);
 
   useEffect(() => {
     if (isPending || !userId) return;
     const id = window.setInterval(() => {
-      void getOperatorData({ data: operatorQuery(shopSlug, desk) })
+      void getOperatorData({ data: operatorQuery(shopSlug, desk, claim) })
         .then(setData)
         .catch(() => undefined);
     }, 12000);
     return () => window.clearInterval(id);
-  }, [desk, isPending, shopSlug, userId]);
+  }, [claim, desk, isPending, shopSlug, userId]);
 
   if (isPending) {
     return (
@@ -165,7 +167,7 @@ function AdminPage() {
     return (
       <RedirectToSignIn
         to="/login"
-        next={heroStudio ? `/${shopSlug}/admin/hero-studio` : `/${shopSlug}/admin`}
+        next={heroStudio ? `/${shopSlug}/admin/hero-studio` : `/${shopSlug}/admin${claim ? `?claim=${encodeURIComponent(claim)}` : ""}`}
       />
     );
   }
@@ -196,7 +198,7 @@ function AdminPage() {
   }
 
   return <AdminShell data={data} readonly={data.mode === "preview"} onReload={() => {
-    void getOperatorData({ data: operatorQuery(shopSlug, desk) }).then(setData);
+    void getOperatorData({ data: operatorQuery(shopSlug, desk, claim) }).then(setData);
   }} />;
 }
 
@@ -633,6 +635,8 @@ function BrandPanel({
       ? shop.heroVideoUrl
       : "";
   const [catalog, setCatalog] = useState(storedPin);
+  const [reelUrl, setReelUrl] = useState(shop.tradeProfile.diagnosticReelUrl || "/media/drain-clog.mp4");
+  const [reelOn, setReelOn] = useState(shop.tradeProfile.diagnosticReelEnabled !== false);
   const canIntro = !readonly || shop.isShowcase;
   const hero = resolveHeroMedia(shop);
   const previewVideo = localVideo ?? (catalog || hero.videoUrl);
@@ -688,6 +692,8 @@ function BrandPanel({
     setTheme(shop.tradeProfile.studio.theme);
     setHeader(shop.tradeProfile.studio.header || shop.name);
     setBrandLine(shop.tradeProfile.studio.tagline || shop.tagline);
+    setReelUrl(shop.tradeProfile.diagnosticReelUrl || "/media/drain-clog.mp4");
+    setReelOn(shop.tradeProfile.diagnosticReelEnabled !== false);
   }, [shop]);
 
   function studioPayload(next?: { theme?: RippleThemeId | ""; presentation?: IntroPreset }) {
@@ -945,6 +951,73 @@ function BrandPanel({
             disabled={readonly || uploading}
             onSelect={(value) => void onCatalog(value)}
           />
+          {shop.niche === "plumbing" ? (
+            <div className={`${HUD_CARD} mt-4 p-4`}>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Live Pipe Diagnostic Reel</p>
+              <p className="mt-1 text-xs text-muted">
+                Overlay clip on the plumbing feature grid. Swap in a job-site film without moving the rest of the page.
+              </p>
+              <label className="mt-3 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={reelOn}
+                  disabled={readonly}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setReelOn(next);
+                    void saveTradeProfile({
+                      data: {
+                        slug: shop.slug,
+                        profile: { ...shop.tradeProfile, diagnosticReelUrl: reelUrl, diagnosticReelEnabled: next },
+                      },
+                    }).then(() => onReload());
+                  }}
+                />
+                Show reel on /t/{shop.slug}?niche=plumbing
+              </label>
+              <Label htmlFor="diagnostic-reel" className="mt-3">
+                Clip URL
+              </Label>
+              <select
+                id="diagnostic-reel-preset"
+                className={`${HUD_SELECT} mt-2`}
+                disabled={readonly}
+                value={["/media/drain-clog.mp4", "/media/plumbing-drain-ride.mp4", "/media/plumbing-diagnostic-telemetry.mp4"].includes(reelUrl) ? reelUrl : "custom"}
+                onChange={(e) => {
+                  const next = e.target.value === "custom" ? reelUrl : e.target.value;
+                  setReelUrl(next);
+                  if (e.target.value === "custom") return;
+                  void saveTradeProfile({
+                    data: {
+                      slug: shop.slug,
+                      profile: { ...shop.tradeProfile, diagnosticReelUrl: next, diagnosticReelEnabled: reelOn },
+                    },
+                  }).then(() => onReload());
+                }}
+              >
+                <option value="/media/drain-clog.mp4">Master drain clog</option>
+                <option value="/media/plumbing-drain-ride.mp4">Line ride</option>
+                <option value="/media/plumbing-diagnostic-telemetry.mp4">Telemetry loop</option>
+                <option value="custom">Custom URL</option>
+              </select>
+              <Input
+                id="diagnostic-reel"
+                className="mt-2"
+                value={reelUrl}
+                disabled={readonly}
+                onChange={(e) => setReelUrl(e.target.value)}
+                onBlur={() => {
+                  if (readonly) return;
+                  void saveTradeProfile({
+                    data: {
+                      slug: shop.slug,
+                      profile: { ...shop.tradeProfile, diagnosticReelUrl: reelUrl, diagnosticReelEnabled: reelOn },
+                    },
+                  }).then(() => onReload());
+                }}
+              />
+            </div>
+          ) : null}
           <div className="mt-4">
             <Label htmlFor="intro-preset">Presentation</Label>
             <select

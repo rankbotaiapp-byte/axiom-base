@@ -231,7 +231,8 @@ export async function createTerritoryCheckout(opts: {
   const { clampNamedPriceCents, STANDARD_MONTHLY_CENTS, FOUNDER_LIFETIME_CENTS } = await import(
     "@/lib/stripe/commercial"
   );
-  const success = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1&session_id={CHECKOUT_SESSION_ID}`;
+  const { territoryCheckoutSuccessUrl } = await import("./onboard-success");
+  const success = territoryCheckoutSuccessUrl(opts.origin);
   const cancel = `${opts.origin}/?b=${encodeURIComponent(opts.leadSlug)}&pitch=1`;
   const params = new URLSearchParams({
     ...(opts.embedded
@@ -416,9 +417,8 @@ export async function settleTerritorySession(sessionId: string) {
     }
   }
   const ownerId = await territoryOwnerId(session);
-  if (!ownerId) return { ...activation, shop: null };
   const { provisionTerritoryForPayer } = await import("./shop-server.server");
-  const shop = await provisionTerritoryForPayer({ leadSlug, userId: ownerId });
+  const shop = await provisionTerritoryForPayer({ leadSlug, userId: ownerId ?? "" });
   return { ...activation, shop };
 }
 
@@ -698,7 +698,7 @@ export async function handleStripeWebhook(request: Request) {
       const territory = meta.kind === "territory";
       const status = object.payment_status;
       if (territory && (status === "paid" || status === "no_payment_required")) {
-        // Re-fetches the session from Stripe, marks the territory live, then opens the shop.
+        // Provisions the shop. The buyer is routed to /onboard/success?session_id=… by Stripe success_url / embedded client routing.
         await settleTerritorySession(object.id);
       } else if (meta.kind === "ai_credits" && (status === "paid" || status === "no_payment_required")) {
         const { settleAiCreditSession } = await import("./hero-motion-studio.server");

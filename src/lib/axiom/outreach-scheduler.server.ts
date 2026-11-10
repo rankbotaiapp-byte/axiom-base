@@ -71,10 +71,8 @@ export async function ensureDailyPlumbingOutreach(sql?: Sql): Promise<number> {
   const want = sms.remaining + email.remaining;
   if (want <= 0) return 0;
 
-  const { HOME_REGION_COUNTIES } = await import("./regional-roster");
   const { tradeTypeMatchersForNiche, OUTREACH_ACTIVE_VERTICAL } = await import("./outreach-niche-batch");
   const { hasListedPhone } = await import("./autopilot");
-  const counties = [...HOME_REGION_COUNTIES];
   const matchers = tradeTypeMatchersForNiche(OUTREACH_ACTIVE_VERTICAL);
   type Row = { lead_slug: string; business_name: string; contact_email: string | null; contact_phone: string | null };
   let rows: Row[] = [];
@@ -83,7 +81,6 @@ export async function ensureDailyPlumbingOutreach(sql?: Sql): Promise<number> {
       select lead_slug, business_name, contact_email, contact_phone
       from preloaded_leads
       where claimed = false
-        and county = any(string_to_array(${counties.join("|")}, '|'))
         and (
           lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
           or lower(btrim(coalesce(trade_label, ''))) = any(string_to_array(${matchers.join("|")}, '|'))
@@ -201,6 +198,7 @@ export async function processOutreachQueue(sql?: Sql): Promise<{
     throw err;
   }
 
+  const sendable: typeof due = [];
   for (const row of due) {
     tallies.processed += 1;
     const channel: OutreachQueueChannel = row.channel === "sms" ? "sms" : "email";
@@ -218,47 +216,58 @@ export async function processOutreachQueue(sql?: Sql): Promise<{
       tallies.rateLimited += 1;
       continue;
     }
+    sendable.push(row);
+    if (channel === "sms") smsSent += 1;
+    else emailSent += 1;
+  }
 
-    let status: "sent" | "failed" = "sent";
-    let detail = mode === "live" ? "Queued for live provider" : "Simulation — not sent to a carrier";
-    if (mode === "live") {
-      try {
-        const { missingOutreachCredentials, deliverOutreachMessage } = await import("./notify.server");
-        const missing = missingOutreachCredentials();
-        if (missing.length) {
-          status = "failed";
-          detail = `Live outreach needs ${missing.join(", ")}`;
-        } else {
-          const to = channel === "sms" ? row.phone : row.email;
-          const result = await deliverOutreachMessage({
-            channel,
-            to,
-            subject: `${row.business_name} · Axiom`,
-            body: `Hi — ${row.business_name} has a booking page ready.`,
-          });
-          if (result.status !== "sent") {
+  const CONCURRENCY = 6;
+  for (let i = 0; i < sendable.length; i += CONCURRENCY) {
+    const batch = sendable.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (row) => {
+        const channel: OutreachQueueChannel = row.channel === "sms" ? "sms" : "email";
+        let status: "sent" | "failed" = "sent";
+        let detail = mode === "live" ? "Queued for live provider" : "Simulation — not sent to a carrier";
+        if (mode === "live") {
+          try {
+            const { missingOutreachCredentials, deliverOutreachMessage } = await import("./notify.server");
+            const missing = missingOutreachCredentials();
+            if (missing.length) {
+              status = "failed";
+              detail = `Live outreach needs ${missing.join(", ")}`;
+            } else {
+              const to = channel === "sms" ? row.phone : row.email;
+              const result = await deliverOutreachMessage({
+                channel,
+                to,
+                subject: `${row.business_name} · Axiom`,
+                body: `Hi — ${row.business_name} has a booking page ready.`,
+              });
+              if (result.status !== "sent") {
+                status = "failed";
+                detail = result.detail || result.status;
+              }
+            }
+          } catch (err) {
             status = "failed";
-            detail = result.detail || result.status;
+            detail = err instanceof Error ? err.message.slice(0, 200) : "send failed";
           }
         }
-      } catch (err) {
-        status = "failed";
-        detail = err instanceof Error ? err.message.slice(0, 200) : "send failed";
-      }
+        await db`
+          update outreach_queue
+          set status = ${status},
+              sent_at = ${status === "sent" ? new Date().toISOString() : null},
+              detail = ${detail.slice(0, 400)}
+          where id = ${row.id} and status in ('pending', 'rate_limited')
+        `;
+        return status;
+      }),
+    );
+    for (const status of results) {
+      if (status === "sent") tallies.sent += 1;
+      else tallies.failed += 1;
     }
-
-    await db`
-      update outreach_queue
-      set status = ${status},
-          sent_at = ${status === "sent" ? new Date().toISOString() : null},
-          detail = ${detail.slice(0, 400)}
-      where id = ${row.id} and status in ('pending', 'rate_limited')
-    `;
-    if (status === "sent") {
-      tallies.sent += 1;
-      if (channel === "sms") smsSent += 1;
-      else emailSent += 1;
-    } else tallies.failed += 1;
   }
 
   return tallies;

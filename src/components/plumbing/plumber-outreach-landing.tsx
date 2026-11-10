@@ -20,9 +20,13 @@ import {
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { ensureFunnelSession, recordFunnelHit } from "@/lib/axiom/master";
 import {
+  PLUMBER_OUTREACH_DRAFT_CHANNEL,
+  PLUMBER_OUTREACH_DRAFT_MESSAGE,
+  PLUMBER_OUTREACH_GREETING_POSTER,
   callTarget,
   fillTemplate,
   outreachVars,
+  parsePlumberOutreach,
   type OutreachTenant,
   type PlumberOutreachConfig,
 } from "@/lib/axiom/plumber-outreach";
@@ -42,12 +46,14 @@ import "./plumber-outreach.css";
  * `poster` — so the first frame is on screen before a single video byte arrives
  * and the box never changes size (zero layout shift, no reload flicker).
  */
-const HeroLoop = memo(function HeroLoop({ src, mobileSrc, poster }: { src: string; mobileSrc: string; poster: string }) {
+const HERO_FILM = "/media/axio-plumber-hero.mp4";
+
+const HeroLoop = memo(function HeroLoop({ poster }: { poster: string }) {
   return (
     <div className="po-film" aria-hidden="true" style={{ backgroundImage: `url("${poster}")` }}>
       <video
-        key={`${src}|${mobileSrc}`}
         className="po-film-video"
+        src={HERO_FILM}
         autoPlay
         muted
         loop
@@ -57,13 +63,48 @@ const HeroLoop = memo(function HeroLoop({ src, mobileSrc, poster }: { src: strin
         disablePictureInPicture
         disableRemotePlayback
         tabIndex={-1}
-      >
-        {mobileSrc && mobileSrc !== src ? <source src={mobileSrc} type="video/mp4" media="(max-width: 768px)" /> : null}
-        <source src={src} type="video/mp4" />
-      </video>
+      />
     </div>
   );
 });
+
+function GreetingPreroll({
+  business,
+  city,
+  phone,
+  onDone,
+}: {
+  business: string;
+  city: string;
+  phone: string;
+  onDone: () => void;
+}) {
+  return (
+    <div className="po-greet" role="dialog" aria-modal="true" aria-label={`Intro for ${business}`} data-axiom-pre-roll="avatar-greeting">
+      <video
+        className="po-greet-video"
+        src="/media/axiom-greeting.mp4"
+        poster={PLUMBER_OUTREACH_GREETING_POSTER}
+        autoPlay
+        muted
+        playsInline
+        preload="auto"
+        onEnded={onDone}
+      />
+      <div className="po-greet-copy">
+        <p className="po-greet-kicker">A note from Eric</p>
+        <p className="po-greet-line">
+          {business}
+          {city ? ` · ${city}` : ""} — missed calls already route to your desk.
+        </p>
+        {phone ? <p className="po-greet-phone">{phone}</p> : null}
+        <button type="button" className="po-greet-skip" onClick={onDone}>
+          Skip intro
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -231,6 +272,26 @@ function FeatureFilm({ src, poster, caption }: { src: string; poster: string; ca
   );
 }
 
+/** PIP card inside the feature film box — overlay only, so the grid never reflows. */
+function DiagnosticReel({ title, src }: { title: string; src: string }) {
+  return (
+    <aside className="po-reel-card" aria-label={title}>
+      <p className="po-reel-title">{title}</p>
+      <video
+        className="w-full rounded-xl border border-cyan-500/30 shadow-2xl"
+        src={src}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        disablePictureInPicture
+        tabIndex={-1}
+      />
+    </aside>
+  );
+}
+
 /* ------------------------------------------------------------ booking widget */
 
 function BookingWidget({ config, vars }: { config: PlumberOutreachConfig; vars: Record<string, string> }) {
@@ -268,6 +329,13 @@ function BookingWidget({ config, vars }: { config: PlumberOutreachConfig; vars: 
 
   return (
     <form className="po-book po-glass" onSubmit={submit}>
+      {vars.business ? (
+        <p className="po-market">
+          Dispatch for {vars.business}
+          {vars.address ? <span> · {vars.address}</span> : null}
+          {vars.phone ? <span> · {vars.phone}</span> : null}
+        </p>
+      ) : null}
       <fieldset>
         <legend>1 · What's wrong?</legend>
         <div className="po-chips">
@@ -307,18 +375,22 @@ export function PlumberOutreachLanding({
   config,
   tenant,
   studio = false,
+  greet = false,
   tracking,
 }: {
   config: PlumberOutreachConfig;
   tenant: OutreachTenant;
   /** Admin live-preview frame: checkout is simulated and visits are not recorded. */
   studio?: boolean;
+  /** `?greet=1` plays the founder intro before the hero loop. */
+  greet?: boolean;
   tracking?: { utmSource?: string; county?: string; stopToken?: string };
 }) {
   const vars = useMemo(() => outreachVars(tenant), [tenant]);
   const call = callTarget(tenant, config);
   const tel = call ? `tel:${call.dial}` : undefined;
   const root = useReveal(config);
+  const [introOpen, setIntroOpen] = useState(() => greet && !studio);
 
   const [checkout, setCheckout] = useState(false);
   const [resume, setResume] = useState<string | null>(null);
@@ -395,10 +467,13 @@ export function PlumberOutreachLanding({
   return (
     <div ref={root} className="po-root" style={{ "--po-scrim": config.hero.scrim / 100 } as CSSProperties}>
       {studio ? <div className="po-studio-flag">Studio preview · unsaved edits show here live</div> : null}
+      {introOpen ? (
+        <GreetingPreroll business={vars.business} city={vars.city} phone={vars.phone} onDone={() => setIntroOpen(false)} />
+      ) : null}
 
       {/* ------------------------------------------------------------ hero */}
       <section id="top" className="po-hero">
-        <HeroLoop src={config.hero.videoUrl} mobileSrc={config.hero.mobileVideoUrl} poster={config.hero.posterUrl} />
+        <HeroLoop poster={config.hero.posterUrl} />
         <div className="po-scrim" aria-hidden="true" />
 
         <header className="po-nav">
@@ -410,6 +485,7 @@ export function PlumberOutreachLanding({
           </a>
           <span className="po-oncall">
             <span className="po-dot" /> 24/7 capture
+            {vars.market ? <span className="po-oncall-place"> · {vars.market}</span> : null}
           </span>
         </header>
 
@@ -422,18 +498,17 @@ export function PlumberOutreachLanding({
           ) : null}
           <h1 className="po-headline">{fillTemplate(config.hero.headline, vars)}</h1>
           {config.hero.subhead ? <p className="po-subhead">{fillTemplate(config.hero.subhead, vars)}</p> : null}
+          {vars.address || vars.phone ? (
+            <p className="po-market">
+              {vars.address}
+              {vars.phone ? <span> · {vars.phone}</span> : null}
+            </p>
+          ) : null}
 
           {config.metric.enabled ? (
             <div className="po-metric po-glass">
-              <div className="po-metric-main">
-                <CountUp to={config.metric.count} />
-                <p>
-                  {fillTemplate(config.metric.line, { ...vars, count: String(config.metric.count) })}
-                  {config.metric.sampleLabel ? <span className="po-sample">{config.metric.sampleLabel}</span> : null}
-                </p>
-              </div>
               {config.metric.stats.length ? (
-                <dl className="po-metric-stats">
+                <dl className="po-metric-stats po-metric-stats-first">
                   {config.metric.stats.map((s) => (
                     <div key={s.id}>
                       <dt>{s.label}</dt>
@@ -442,6 +517,14 @@ export function PlumberOutreachLanding({
                   ))}
                 </dl>
               ) : null}
+              <div className="po-metric-main">
+                <CountUp to={config.metric.count} />
+                <p>
+                  {fillTemplate(config.metric.line, { ...vars, count: String(config.metric.count) })}
+                  {config.metric.sampleLabel && !tenant.known ? <span className="po-sample">{config.metric.sampleLabel}</span> : null}
+                  {tenant.known && vars.reviews ? <span className="po-sample">{vars.reviews}</span> : null}
+                </p>
+              </div>
             </div>
           ) : null}
 
@@ -476,8 +559,9 @@ export function PlumberOutreachLanding({
               <h2 className="po-h2">{fillTemplate(config.feature.title, vars)}</h2>
             </div>
             <div className="po-feature-grid">
-              <div data-reveal>
+              <div className="po-feature-slot" data-reveal>
                 <FeatureFilm src={config.feature.videoUrl} poster={config.feature.posterUrl} caption={config.feature.caption} />
+                {config.reel.enabled ? <DiagnosticReel title={config.reel.title} src={config.reel.videoUrl} /> : null}
               </div>
               <div className="po-feature-copy" data-reveal>
                 {config.feature.blurb ? <p className="po-lede">{fillTemplate(config.feature.blurb, vars)}</p> : null}
@@ -496,7 +580,7 @@ export function PlumberOutreachLanding({
                 ) : null}
                 {config.feature.ctaLabel ? (
                   <KineticButton variant="glass" size="md" icon={<Zap size={17} />} onPress={openCheckout}>
-                    {config.feature.ctaLabel}
+                    {fillTemplate(config.feature.ctaLabel, vars)}
                   </KineticButton>
                 ) : null}
               </div>
@@ -643,4 +727,50 @@ export function PlumberOutreachLanding({
       />
     </div>
   );
+}
+
+/** Shared shell for `/t/{slug}` and `/demo/plumbing` — drafts, greet pre-roll, lead overlays. */
+export function PlumberOutreachLive({
+  initial,
+  tenant,
+  studio,
+  greet,
+  tracking,
+}: {
+  initial: PlumberOutreachConfig;
+  tenant: OutreachTenant;
+  studio: boolean;
+  greet: boolean;
+  tracking?: { utmSource?: string; county?: string; stopToken?: string };
+}) {
+  const [config, setConfig] = useState<PlumberOutreachConfig>(initial);
+  useEffect(() => setConfig(initial), [initial]);
+
+  useEffect(() => {
+    if (!studio) return;
+    const accept = (data: unknown) => {
+      if (!data || typeof data !== "object") return;
+      const msg = data as { type?: string; config?: unknown };
+      if (msg.type === PLUMBER_OUTREACH_DRAFT_MESSAGE) setConfig(parsePlumberOutreach(msg.config));
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      accept(event.data);
+    };
+    window.addEventListener("message", onMessage);
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel(PLUMBER_OUTREACH_DRAFT_CHANNEL);
+      channel.onmessage = (event) => accept(event.data);
+    } catch {
+      channel = null;
+    }
+    window.parent?.postMessage({ type: `${PLUMBER_OUTREACH_DRAFT_MESSAGE}:ready` }, window.location.origin);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      channel?.close();
+    };
+  }, [studio]);
+
+  return <PlumberOutreachLanding config={config} tenant={tenant} studio={studio} greet={greet} tracking={tracking} />;
 }

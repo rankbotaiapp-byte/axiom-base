@@ -86,6 +86,29 @@ export const lockDispatchMobile = createServerFn({ method: "POST" })
     return loaded.lockDispatchMobile(data);
   });
 
+/** Paid session → shop overlays for the post-checkout PWA handshake. */
+export const getOnboardSuccess = createServerFn({ method: "GET" })
+  .validator((sessionId: string) => sessionOf(sessionId))
+  .handler(async ({ data }) => {
+    const loaded = await import("./plumber-outreach.server");
+    return loaded.readOnboardSuccess(data);
+  });
+
+/** Lock phone, store notify channels, fire Twilio/Resend in the background, return the desk path. */
+export const grantOnboardLaunch = createServerFn({ method: "POST" })
+  .validator((input: { sessionId?: string; phone?: string; email?: string; sms?: boolean; emailChannel?: boolean; push?: boolean }) => ({
+    sessionId: sessionOf(input?.sessionId),
+    phone: String(input?.phone ?? "").slice(0, 40),
+    email: String(input?.email ?? "").trim().slice(0, 120),
+    sms: input?.sms !== false,
+    emailChannel: input?.emailChannel !== false,
+    push: Boolean(input?.push),
+  }))
+  .handler(async ({ data }) => {
+    const loaded = await import("./plumber-outreach.server");
+    return loaded.grantOnboardLaunch(data);
+  });
+
 /** "Test Live SMS Dispatch" — one real Twilio text to the locked number. */
 export const sendTestDispatch = createServerFn({ method: "POST" })
   .validator((input: { slug?: string; sessionId?: string }) => ({

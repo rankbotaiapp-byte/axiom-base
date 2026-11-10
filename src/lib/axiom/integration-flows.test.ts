@@ -45,7 +45,7 @@ test("connect standing and card quotes fall back when a merchant price is absent
 });
 
 test("niche keywords and area codes select filings in memory and do not send them", () => {
-  assert.equal(classifyTrade("Plumbing").tradeType, "contractor");
+  assert.equal(classifyTrade("Plumbing").tradeType, "plumbing");
   assert.equal(classifyTrade("Private hunting guide").tradeType, "hunting");
   assert.equal(classifyTrade("AI prompt engineering and creation").tradeType, "prompt");
 

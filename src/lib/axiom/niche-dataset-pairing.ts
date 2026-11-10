@@ -32,15 +32,15 @@ export type VerifiedLoopBinding = {
 const SPECIAL_LOOP_BINDINGS: Partial<
   Record<CatalogNiche, { primary: string; alternates: readonly string[] }>
 > = {
-  // Emergency Plumbing & Water Systems share the urgent otter cinematic.
   "water-systems": {
     primary: "otter-hero-animation.mp4",
-    alternates: ["shark-hero-animation.mp4", "master-defaults/sharks-loop.mp4", "plumbers-hero-animation.mp4"],
+    alternates: ["shark-hero-animation.mp4", "master-defaults/sharks-loop.mp4"],
   },
   plumbing: {
-    primary: "axiom-plumber-hero.mp4",
+    primary: "axio-plumber-hero.mp4",
     alternates: [
-      "axio-plumber-hero.mp4",
+      "axiom-plumber-hero.mp4",
+      "plumbers-outreach-hero-animation.mp4",
       "axiom-plumber-hero.mp4.mp4",
       "axiom-plumber-hero-mobile.mp4",
       "axio-plumber-hero-mobile.mp4",

@@ -60,7 +60,7 @@ function HeroFilm({ config }: { config: PlumbingStorefront }) {
   const blurPx = useTransform(scrollYProgress, [0.2, 1], [0, 10]);
   const filter = useMotionTemplate`blur(${blurPx}px) saturate(1.08) contrast(1.06)`;
 
-  const src = policy?.mobile ? config.hero.mobileVideoUrl || config.hero.videoUrl : config.hero.videoUrl;
+  const src = "/media/axio-plumber-hero.mp4";
 
   // Stop decoding when the hero is off screen or the tab is hidden; resume on return.
   useEffect(() => {

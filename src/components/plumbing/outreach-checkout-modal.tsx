@@ -4,6 +4,7 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { CheckCircle2, LoaderCircle, Lock, MessageSquareText, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
 import { ensureFunnelSession } from "@/lib/axiom/master";
+import { onboardSuccessHref } from "@/lib/axiom/onboard-success";
 import {
   checkDispatchMobile,
   fillTemplate,
@@ -86,6 +87,8 @@ export function OutreachCheckoutModal({
   preview?: boolean;
 }) {
   const slug = tenant.slug;
+  const [deskSlug, setDeskSlug] = useState(tenant.slug);
+  const [claimToken, setClaimToken] = useState("");
   const [stage, setStage] = useState<Stage>({ kind: "loading" });
   const [dollars, setDollars] = useState(config.checkout.defaultDollars);
   const [custom, setCustom] = useState("");
@@ -127,7 +130,13 @@ export function OutreachCheckoutModal({
       try {
         const res = await confirmOutreachCheckout({ data: { slug, sessionId } });
         if (id !== run.current) return;
+        if (res.shopSlug) setDeskSlug(res.shopSlug);
+        if (res.claimToken) setClaimToken(res.claimToken);
         remember(slug, sessionId);
+        if (!preview) {
+          window.location.assign(onboardSuccessHref(sessionId));
+          return;
+        }
         if (res.lockedPhone) {
           const check = checkDispatchMobile(res.lockedPhone);
           setStage({ kind: "test", sessionId, display: check.ok ? check.display : res.lockedPhone });
@@ -152,8 +161,11 @@ export function OutreachCheckoutModal({
     wasOpen.current = true;
     setTest({ kind: "idle" });
     setPhoneError("");
-    if (resumeSessionId && !preview) void confirm(resumeSessionId);
-    else void start(config.checkout.defaultDollars);
+    if (resumeSessionId && !preview) {
+      window.location.assign(onboardSuccessHref(resumeSessionId));
+      return;
+    }
+    void start(config.checkout.defaultDollars);
   }, [open, resumeSessionId, preview, confirm, start, config.checkout.defaultDollars]);
 
   const mustFinish = stage.kind === "confirming" || stage.kind === "mobile";
@@ -348,7 +360,7 @@ export function OutreachCheckoutModal({
             {stage.kind === "confirming" && (
               <div className="po-modal-wait">
                 <LoaderCircle className="po-btn-spin" size={22} aria-hidden />
-                Confirming payment with Stripe…
+                Payment cleared — opening your shop desk…
               </div>
             )}
 
@@ -428,9 +440,19 @@ export function OutreachCheckoutModal({
                   Use a different number
                 </button>
                 {test.kind === "sent" || test.kind === "note" ? (
-                  <KineticButton size="md" variant="glass" block onPress={close}>
-                    Done
-                  </KineticButton>
+                  <>
+                    <KineticButton
+                      size="md"
+                      variant="primary"
+                      block
+                      href={`/${encodeURIComponent(deskSlug)}/admin${claimToken ? `?claim=${encodeURIComponent(claimToken)}` : ""}`}
+                    >
+                      Open your shop desk
+                    </KineticButton>
+                    <KineticButton size="md" variant="glass" block onPress={close}>
+                      Done
+                    </KineticButton>
+                  </>
                 ) : null}
               </div>
             )}

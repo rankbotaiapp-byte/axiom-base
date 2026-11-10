@@ -186,16 +186,20 @@ export async function setOutreachCronEnabled(request: Request, enabled: boolean)
 }
 
 async function metrics(sql: Sql, state: Awaited<ReturnType<typeof loadState>>): Promise<OutboundEngineMetrics> {
-  const counties = [...HOME_REGION_COUNTIES];
   let queued = 0;
   let sent = 0;
   let failed = 0;
   let clicks = 0;
   let onboarded = 0;
   try {
+    const matchers = tradeTypeMatchersForNiche(OUTREACH_ACTIVE_VERTICAL).join("|");
     const rows = await sql<{ n: number }>`
       select count(*)::int as n from preloaded_leads
-      where claimed = false and county = any(string_to_array(${counties.join("|")}, '|'))
+      where claimed = false
+        and (
+          lower(trade_type) = any(string_to_array(${matchers}, '|'))
+          or lower(btrim(coalesce(trade_label, ''))) = any(string_to_array(${matchers}, '|'))
+        )
     `;
     queued = Number(rows[0]?.n ?? 0);
   } catch {
@@ -431,6 +435,7 @@ export async function readOutboundEngine(request: Request) {
       cronEnabled: state.cronEnabled,
       scheduleStartedOn: state.scheduleStartedOn || null,
     },
+    plumbingQueue: await (await import("./autopilot.server")).readPlumbingQueue(sql).catch(() => null),
   };
 }
 
@@ -481,8 +486,18 @@ export async function runOutboundEngine(request: Request) {
     await setOutreachCronEnabled(request, body.enabled === true || body.cronEnabled === true);
     return readOutboundEngine(request);
   }
-  if (action === "dispatch_today" || action === "send_outreach") {
-    const { dispatchAutopilot } = await import("./autopilot.server");
+  if (action === "activate_plumbing" || action === "select_niche") {
+    const niche = String(body.niche ?? "plumbing").trim().toLowerCase();
+    if (niche && niche !== "plumbing" && niche !== "emergency plumbing") {
+      throw new AutopilotError(409, "Live outreach is locked to Emergency Plumbing until that dataset is exhausted");
+    }
+    const { activatePlumbingQueue } = await import("./autopilot.server");
+    const plumbingQueue = await activatePlumbingQueue(request);
+    const snapshot = await readOutboundEngine(request);
+    return { ...snapshot, plumbingQueue };
+  }
+  if (action === "dispatch_today" || action === "send_outreach" || action === "send_trickle") {
+    const { sendTrickleOutreach } = await import("./autopilot.server");
     const today = pacificDay();
     await saveState(sql, {
       scheduleStartedOn: (await loadState(sql)).scheduleStartedOn || today,
@@ -490,7 +505,7 @@ export async function runOutboundEngine(request: Request) {
       cronEnabled: true,
       paused: false,
     });
-    const dispatched = await dispatchAutopilot(request);
+    const dispatched = await sendTrickleOutreach(request);
     const snapshot = await readOutboundEngine(request);
     return { ...snapshot, dispatch: dispatched };
   }

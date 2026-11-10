@@ -42,6 +42,7 @@ import { Route as ShopSlugGateRouteImport } from './routes/$shopSlug/gate'
 import { Route as AdminAutopilotRouteImport } from './routes/admin.autopilot'
 import { Route as AdminCyberStingerRouteImport } from './routes/admin.cyber-stinger'
 import { Route as AdminMasterDashboardRouteImport } from './routes/admin.master-dashboard'
+import { Route as AdminTenantRouteImport } from './routes/admin.tenant'
 import { Route as ApiGetAvatarTokenRouteImport } from './routes/api/get-avatar-token'
 import { Route as ApiLeadRouteImport } from './routes/api/lead'
 import { Route as ApiLeadsRouteImport } from './routes/api/leads'
@@ -54,6 +55,8 @@ import { Route as DemoPlumbingRouteImport } from './routes/demo/plumbing'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MasterAdminIndexRouteImport } from './routes/master-admin/index'
 import { Route as ObsidianCoreCoreRouteImport } from './routes/obsidian-core.core'
+import { Route as OnboardIndexRouteImport } from './routes/onboard.index'
+import { Route as OnboardSuccessRouteImport } from './routes/onboard.success'
 import { Route as SecurityCyberStingerRouteImport } from './routes/security.cyber-stinger'
 import { Route as TSlugRouteImport } from './routes/t/$slug'
 import { Route as ShopSlugAdminAutopilotRouteImport } from './routes/$shopSlug/admin.autopilot'
@@ -63,6 +66,8 @@ import { Route as ShopSlugStaffEmployeeIdRouteImport } from './routes/$shopSlug/
 import { Route as AdminBrandingHeroLibraryRouteImport } from './routes/admin.branding.hero-library'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAutopilotCronRouteImport } from './routes/api/autopilot.cron'
+import { Route as ApiAxiomLockDispatchRouteImport } from './routes/api/axiom.lock-dispatch'
+import { Route as ApiAxiomTestDispatchRouteImport } from './routes/api/axiom.test-dispatch'
 import { Route as ApiBusinessBrandRouteImport } from './routes/api/business.brand'
 import { Route as ApiBusinessBrandsRouteImport } from './routes/api/business.brands'
 import { Route as ApiBusinessPreviewLinksRouteImport } from './routes/api/business.preview-links'
@@ -80,15 +85,19 @@ import { Route as ApiOutreachCronRouteImport } from './routes/api/outreach.cron'
 import { Route as ApiOutreachInboundRouteImport } from './routes/api/outreach.inbound'
 import { Route as ApiShopMediaAssetIdRouteImport } from './routes/api/shop-media.$assetId'
 import { Route as ApiShopsCreateRouteImport } from './routes/api/shops.create'
+import { Route as ApiSocialOauthRouteImport } from './routes/api/social.oauth'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe.webhook'
 import { Route as ApiTenantLogoFileRouteImport } from './routes/api/tenant-logo.$file'
 import { Route as ApiTenantsSlugRouteImport } from './routes/api/tenants.$slug'
+import { Route as ApiWebhooksGbpRouteImport } from './routes/api/webhooks.gbp'
+import { Route as ApiWebhooksMetaRouteImport } from './routes/api/webhooks.meta'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
 import { Route as ApiWebhooksVapiRouteImport } from './routes/api/webhooks.vapi'
 import { Route as ShopSlugAdminBrandingHeroLibraryRouteImport } from './routes/$shopSlug/admin.branding.hero-library'
 import { Route as ApiAdminHeroStudioGenerateRouteImport } from './routes/api/admin/hero-studio/generate'
 import { Route as ApiAdminMediaUploadRouteImport } from './routes/api/admin/media/upload'
 import { Route as ApiHeroBrandShopIdRouteImport } from './routes/api/hero/brand.$shopId'
+import { Route as ApiSocialOauthCallbackRouteImport } from './routes/api/social.oauth.callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -255,6 +264,11 @@ const AdminMasterDashboardRoute = AdminMasterDashboardRouteImport.update({
   path: '/master-dashboard',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTenantRoute = AdminTenantRouteImport.update({
+  id: '/tenant',
+  path: '/tenant',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiGetAvatarTokenRoute = ApiGetAvatarTokenRouteImport.update({
   id: '/api/get-avatar-token',
   path: '/api/get-avatar-token',
@@ -315,6 +329,16 @@ const ObsidianCoreCoreRoute = ObsidianCoreCoreRouteImport.update({
   path: '/core',
   getParentRoute: () => ObsidianCoreRoute,
 } as any)
+const OnboardIndexRoute = OnboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OnboardRoute,
+} as any)
+const OnboardSuccessRoute = OnboardSuccessRouteImport.update({
+  id: '/success',
+  path: '/success',
+  getParentRoute: () => OnboardRoute,
+} as any)
 const SecurityCyberStingerRoute = SecurityCyberStingerRouteImport.update({
   id: '/security/cyber-stinger',
   path: '/security/cyber-stinger',
@@ -360,6 +384,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 const ApiAutopilotCronRoute = ApiAutopilotCronRouteImport.update({
   id: '/api/autopilot/cron',
   path: '/api/autopilot/cron',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAxiomLockDispatchRoute = ApiAxiomLockDispatchRouteImport.update({
+  id: '/api/axiom/lock-dispatch',
+  path: '/api/axiom/lock-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAxiomTestDispatchRoute = ApiAxiomTestDispatchRouteImport.update({
+  id: '/api/axiom/test-dispatch',
+  path: '/api/axiom/test-dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBusinessBrandRoute = ApiBusinessBrandRouteImport.update({
@@ -448,6 +482,11 @@ const ApiShopsCreateRoute = ApiShopsCreateRouteImport.update({
   path: '/api/shops/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSocialOauthRoute = ApiSocialOauthRouteImport.update({
+  id: '/api/social/oauth',
+  path: '/api/social/oauth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
@@ -462,6 +501,16 @@ const ApiTenantsSlugRoute = ApiTenantsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ApiTenantsRoute,
+} as any)
+const ApiWebhooksGbpRoute = ApiWebhooksGbpRouteImport.update({
+  id: '/api/webhooks/gbp',
+  path: '/api/webhooks/gbp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksMetaRoute = ApiWebhooksMetaRouteImport.update({
+  id: '/api/webhooks/meta',
+  path: '/api/webhooks/meta',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   id: '/api/webhooks/stripe',
@@ -495,6 +544,11 @@ const ApiHeroBrandShopIdRoute = ApiHeroBrandShopIdRouteImport.update({
   path: '/$shopId',
   getParentRoute: () => ApiHeroBrandRoute,
 } as any)
+const ApiSocialOauthCallbackRoute = ApiSocialOauthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => ApiSocialOauthRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -513,7 +567,7 @@ export interface FileRoutesByFullPath {
   '/master': typeof MasterRoute
   '/moto-elite': typeof MotoEliteRoute
   '/obsidian-core': typeof ObsidianCoreRouteWithChildren
-  '/onboard': typeof OnboardRoute
+  '/onboard': typeof OnboardRouteWithChildren
   '/otter-adventures': typeof OtterAdventuresRoute
   '/privacy': typeof PrivacyRoute
   '/shops': typeof ShopsRoute
@@ -529,6 +583,7 @@ export interface FileRoutesByFullPath {
   '/admin/autopilot': typeof AdminAutopilotRoute
   '/admin/cyber-stinger': typeof AdminCyberStingerRoute
   '/admin/master-dashboard': typeof AdminMasterDashboardRoute
+  '/admin/tenant': typeof AdminTenantRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/api/lead': typeof ApiLeadRoute
   '/api/leads': typeof ApiLeadsRoute
@@ -540,10 +595,12 @@ export interface FileRoutesByFullPath {
   '/demo/plumbing': typeof DemoPlumbingRoute
   '/invite/$token': typeof InviteTokenRoute
   '/obsidian-core/core': typeof ObsidianCoreCoreRoute
+  '/onboard/success': typeof OnboardSuccessRoute
   '/security/cyber-stinger': typeof SecurityCyberStingerRoute
   '/t/$slug': typeof TSlugRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
+  '/onboard/': typeof OnboardIndexRoute
   '/$shopSlug/admin/autopilot': typeof ShopSlugAdminAutopilotRoute
   '/$shopSlug/admin/brand-studio': typeof ShopSlugAdminBrandStudioRoute
   '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
@@ -551,6 +608,8 @@ export interface FileRoutesByFullPath {
   '/admin/branding/hero-library': typeof AdminBrandingHeroLibraryRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autopilot/cron': typeof ApiAutopilotCronRoute
+  '/api/axiom/lock-dispatch': typeof ApiAxiomLockDispatchRoute
+  '/api/axiom/test-dispatch': typeof ApiAxiomTestDispatchRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
   '/api/business/brands': typeof ApiBusinessBrandsRoute
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
@@ -568,15 +627,19 @@ export interface FileRoutesByFullPath {
   '/api/outreach/inbound': typeof ApiOutreachInboundRoute
   '/api/shop-media/$assetId': typeof ApiShopMediaAssetIdRoute
   '/api/shops/create': typeof ApiShopsCreateRoute
+  '/api/social/oauth': typeof ApiSocialOauthRouteWithChildren
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/tenant-logo/$file': typeof ApiTenantLogoFileRoute
   '/api/tenants/$slug': typeof ApiTenantsSlugRoute
+  '/api/webhooks/gbp': typeof ApiWebhooksGbpRoute
+  '/api/webhooks/meta': typeof ApiWebhooksMetaRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/webhooks/vapi': typeof ApiWebhooksVapiRoute
   '/$shopSlug/admin/branding/hero-library': typeof ShopSlugAdminBrandingHeroLibraryRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
   '/api/admin/media/upload': typeof ApiAdminMediaUploadRoute
   '/api/hero/brand/$shopId': typeof ApiHeroBrandShopIdRoute
+  '/api/social/oauth/callback': typeof ApiSocialOauthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -594,7 +657,6 @@ export interface FileRoutesByTo {
   '/master': typeof MasterRoute
   '/moto-elite': typeof MotoEliteRoute
   '/obsidian-core': typeof ObsidianCoreRouteWithChildren
-  '/onboard': typeof OnboardRoute
   '/otter-adventures': typeof OtterAdventuresRoute
   '/privacy': typeof PrivacyRoute
   '/shops': typeof ShopsRoute
@@ -610,6 +672,7 @@ export interface FileRoutesByTo {
   '/admin/autopilot': typeof AdminAutopilotRoute
   '/admin/cyber-stinger': typeof AdminCyberStingerRoute
   '/admin/master-dashboard': typeof AdminMasterDashboardRoute
+  '/admin/tenant': typeof AdminTenantRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/api/lead': typeof ApiLeadRoute
   '/api/leads': typeof ApiLeadsRoute
@@ -621,10 +684,12 @@ export interface FileRoutesByTo {
   '/demo/plumbing': typeof DemoPlumbingRoute
   '/invite/$token': typeof InviteTokenRoute
   '/obsidian-core/core': typeof ObsidianCoreCoreRoute
+  '/onboard/success': typeof OnboardSuccessRoute
   '/security/cyber-stinger': typeof SecurityCyberStingerRoute
   '/t/$slug': typeof TSlugRoute
   '/$shopSlug': typeof ShopSlugIndexRoute
   '/master-admin': typeof MasterAdminIndexRoute
+  '/onboard': typeof OnboardIndexRoute
   '/$shopSlug/admin/autopilot': typeof ShopSlugAdminAutopilotRoute
   '/$shopSlug/admin/brand-studio': typeof ShopSlugAdminBrandStudioRoute
   '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
@@ -632,6 +697,8 @@ export interface FileRoutesByTo {
   '/admin/branding/hero-library': typeof AdminBrandingHeroLibraryRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autopilot/cron': typeof ApiAutopilotCronRoute
+  '/api/axiom/lock-dispatch': typeof ApiAxiomLockDispatchRoute
+  '/api/axiom/test-dispatch': typeof ApiAxiomTestDispatchRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
   '/api/business/brands': typeof ApiBusinessBrandsRoute
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
@@ -649,15 +716,19 @@ export interface FileRoutesByTo {
   '/api/outreach/inbound': typeof ApiOutreachInboundRoute
   '/api/shop-media/$assetId': typeof ApiShopMediaAssetIdRoute
   '/api/shops/create': typeof ApiShopsCreateRoute
+  '/api/social/oauth': typeof ApiSocialOauthRouteWithChildren
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/tenant-logo/$file': typeof ApiTenantLogoFileRoute
   '/api/tenants/$slug': typeof ApiTenantsSlugRoute
+  '/api/webhooks/gbp': typeof ApiWebhooksGbpRoute
+  '/api/webhooks/meta': typeof ApiWebhooksMetaRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/webhooks/vapi': typeof ApiWebhooksVapiRoute
   '/$shopSlug/admin/branding/hero-library': typeof ShopSlugAdminBrandingHeroLibraryRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
   '/api/admin/media/upload': typeof ApiAdminMediaUploadRoute
   '/api/hero/brand/$shopId': typeof ApiHeroBrandShopIdRoute
+  '/api/social/oauth/callback': typeof ApiSocialOauthCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -677,7 +748,7 @@ export interface FileRoutesById {
   '/master': typeof MasterRoute
   '/moto-elite': typeof MotoEliteRoute
   '/obsidian-core': typeof ObsidianCoreRouteWithChildren
-  '/onboard': typeof OnboardRoute
+  '/onboard': typeof OnboardRouteWithChildren
   '/otter-adventures': typeof OtterAdventuresRoute
   '/privacy': typeof PrivacyRoute
   '/shops': typeof ShopsRoute
@@ -693,6 +764,7 @@ export interface FileRoutesById {
   '/admin/autopilot': typeof AdminAutopilotRoute
   '/admin/cyber-stinger': typeof AdminCyberStingerRoute
   '/admin/master-dashboard': typeof AdminMasterDashboardRoute
+  '/admin/tenant': typeof AdminTenantRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
   '/api/lead': typeof ApiLeadRoute
   '/api/leads': typeof ApiLeadsRoute
@@ -704,10 +776,12 @@ export interface FileRoutesById {
   '/demo/plumbing': typeof DemoPlumbingRoute
   '/invite/$token': typeof InviteTokenRoute
   '/obsidian-core/core': typeof ObsidianCoreCoreRoute
+  '/onboard/success': typeof OnboardSuccessRoute
   '/security/cyber-stinger': typeof SecurityCyberStingerRoute
   '/t/$slug': typeof TSlugRoute
   '/$shopSlug/': typeof ShopSlugIndexRoute
   '/master-admin/': typeof MasterAdminIndexRoute
+  '/onboard/': typeof OnboardIndexRoute
   '/$shopSlug/admin/autopilot': typeof ShopSlugAdminAutopilotRoute
   '/$shopSlug/admin/brand-studio': typeof ShopSlugAdminBrandStudioRoute
   '/$shopSlug/admin/hero-studio': typeof ShopSlugAdminHeroStudioRoute
@@ -715,6 +789,8 @@ export interface FileRoutesById {
   '/admin/branding/hero-library': typeof AdminBrandingHeroLibraryRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autopilot/cron': typeof ApiAutopilotCronRoute
+  '/api/axiom/lock-dispatch': typeof ApiAxiomLockDispatchRoute
+  '/api/axiom/test-dispatch': typeof ApiAxiomTestDispatchRoute
   '/api/business/brand': typeof ApiBusinessBrandRoute
   '/api/business/brands': typeof ApiBusinessBrandsRoute
   '/api/business/preview-links': typeof ApiBusinessPreviewLinksRoute
@@ -732,15 +808,19 @@ export interface FileRoutesById {
   '/api/outreach/inbound': typeof ApiOutreachInboundRoute
   '/api/shop-media/$assetId': typeof ApiShopMediaAssetIdRoute
   '/api/shops/create': typeof ApiShopsCreateRoute
+  '/api/social/oauth': typeof ApiSocialOauthRouteWithChildren
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/tenant-logo/$file': typeof ApiTenantLogoFileRoute
   '/api/tenants/$slug': typeof ApiTenantsSlugRoute
+  '/api/webhooks/gbp': typeof ApiWebhooksGbpRoute
+  '/api/webhooks/meta': typeof ApiWebhooksMetaRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/webhooks/vapi': typeof ApiWebhooksVapiRoute
   '/$shopSlug/admin/branding/hero-library': typeof ShopSlugAdminBrandingHeroLibraryRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
   '/api/admin/media/upload': typeof ApiAdminMediaUploadRoute
   '/api/hero/brand/$shopId': typeof ApiHeroBrandShopIdRoute
+  '/api/social/oauth/callback': typeof ApiSocialOauthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -777,6 +857,7 @@ export interface FileRouteTypes {
     | '/admin/autopilot'
     | '/admin/cyber-stinger'
     | '/admin/master-dashboard'
+    | '/admin/tenant'
     | '/api/get-avatar-token'
     | '/api/lead'
     | '/api/leads'
@@ -788,10 +869,12 @@ export interface FileRouteTypes {
     | '/demo/plumbing'
     | '/invite/$token'
     | '/obsidian-core/core'
+    | '/onboard/success'
     | '/security/cyber-stinger'
     | '/t/$slug'
     | '/$shopSlug/'
     | '/master-admin/'
+    | '/onboard/'
     | '/$shopSlug/admin/autopilot'
     | '/$shopSlug/admin/brand-studio'
     | '/$shopSlug/admin/hero-studio'
@@ -799,6 +882,8 @@ export interface FileRouteTypes {
     | '/admin/branding/hero-library'
     | '/api/auth/$'
     | '/api/autopilot/cron'
+    | '/api/axiom/lock-dispatch'
+    | '/api/axiom/test-dispatch'
     | '/api/business/brand'
     | '/api/business/brands'
     | '/api/business/preview-links'
@@ -816,15 +901,19 @@ export interface FileRouteTypes {
     | '/api/outreach/inbound'
     | '/api/shop-media/$assetId'
     | '/api/shops/create'
+    | '/api/social/oauth'
     | '/api/stripe/webhook'
     | '/api/tenant-logo/$file'
     | '/api/tenants/$slug'
+    | '/api/webhooks/gbp'
+    | '/api/webhooks/meta'
     | '/api/webhooks/stripe'
     | '/api/webhooks/vapi'
     | '/$shopSlug/admin/branding/hero-library'
     | '/api/admin/hero-studio/generate'
     | '/api/admin/media/upload'
     | '/api/hero/brand/$shopId'
+    | '/api/social/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -842,7 +931,6 @@ export interface FileRouteTypes {
     | '/master'
     | '/moto-elite'
     | '/obsidian-core'
-    | '/onboard'
     | '/otter-adventures'
     | '/privacy'
     | '/shops'
@@ -858,6 +946,7 @@ export interface FileRouteTypes {
     | '/admin/autopilot'
     | '/admin/cyber-stinger'
     | '/admin/master-dashboard'
+    | '/admin/tenant'
     | '/api/get-avatar-token'
     | '/api/lead'
     | '/api/leads'
@@ -869,10 +958,12 @@ export interface FileRouteTypes {
     | '/demo/plumbing'
     | '/invite/$token'
     | '/obsidian-core/core'
+    | '/onboard/success'
     | '/security/cyber-stinger'
     | '/t/$slug'
     | '/$shopSlug'
     | '/master-admin'
+    | '/onboard'
     | '/$shopSlug/admin/autopilot'
     | '/$shopSlug/admin/brand-studio'
     | '/$shopSlug/admin/hero-studio'
@@ -880,6 +971,8 @@ export interface FileRouteTypes {
     | '/admin/branding/hero-library'
     | '/api/auth/$'
     | '/api/autopilot/cron'
+    | '/api/axiom/lock-dispatch'
+    | '/api/axiom/test-dispatch'
     | '/api/business/brand'
     | '/api/business/brands'
     | '/api/business/preview-links'
@@ -897,15 +990,19 @@ export interface FileRouteTypes {
     | '/api/outreach/inbound'
     | '/api/shop-media/$assetId'
     | '/api/shops/create'
+    | '/api/social/oauth'
     | '/api/stripe/webhook'
     | '/api/tenant-logo/$file'
     | '/api/tenants/$slug'
+    | '/api/webhooks/gbp'
+    | '/api/webhooks/meta'
     | '/api/webhooks/stripe'
     | '/api/webhooks/vapi'
     | '/$shopSlug/admin/branding/hero-library'
     | '/api/admin/hero-studio/generate'
     | '/api/admin/media/upload'
     | '/api/hero/brand/$shopId'
+    | '/api/social/oauth/callback'
   id:
     | '__root__'
     | '/'
@@ -940,6 +1037,7 @@ export interface FileRouteTypes {
     | '/admin/autopilot'
     | '/admin/cyber-stinger'
     | '/admin/master-dashboard'
+    | '/admin/tenant'
     | '/api/get-avatar-token'
     | '/api/lead'
     | '/api/leads'
@@ -951,10 +1049,12 @@ export interface FileRouteTypes {
     | '/demo/plumbing'
     | '/invite/$token'
     | '/obsidian-core/core'
+    | '/onboard/success'
     | '/security/cyber-stinger'
     | '/t/$slug'
     | '/$shopSlug/'
     | '/master-admin/'
+    | '/onboard/'
     | '/$shopSlug/admin/autopilot'
     | '/$shopSlug/admin/brand-studio'
     | '/$shopSlug/admin/hero-studio'
@@ -962,6 +1062,8 @@ export interface FileRouteTypes {
     | '/admin/branding/hero-library'
     | '/api/auth/$'
     | '/api/autopilot/cron'
+    | '/api/axiom/lock-dispatch'
+    | '/api/axiom/test-dispatch'
     | '/api/business/brand'
     | '/api/business/brands'
     | '/api/business/preview-links'
@@ -979,15 +1081,19 @@ export interface FileRouteTypes {
     | '/api/outreach/inbound'
     | '/api/shop-media/$assetId'
     | '/api/shops/create'
+    | '/api/social/oauth'
     | '/api/stripe/webhook'
     | '/api/tenant-logo/$file'
     | '/api/tenants/$slug'
+    | '/api/webhooks/gbp'
+    | '/api/webhooks/meta'
     | '/api/webhooks/stripe'
     | '/api/webhooks/vapi'
     | '/$shopSlug/admin/branding/hero-library'
     | '/api/admin/hero-studio/generate'
     | '/api/admin/media/upload'
     | '/api/hero/brand/$shopId'
+    | '/api/social/oauth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1007,7 +1113,7 @@ export interface RootRouteChildren {
   MasterRoute: typeof MasterRoute
   MotoEliteRoute: typeof MotoEliteRoute
   ObsidianCoreRoute: typeof ObsidianCoreRouteWithChildren
-  OnboardRoute: typeof OnboardRoute
+  OnboardRoute: typeof OnboardRouteWithChildren
   OtterAdventuresRoute: typeof OtterAdventuresRoute
   PrivacyRoute: typeof PrivacyRoute
   ShopsRoute: typeof ShopsRoute
@@ -1031,6 +1137,8 @@ export interface RootRouteChildren {
   MasterAdminIndexRoute: typeof MasterAdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutopilotCronRoute: typeof ApiAutopilotCronRoute
+  ApiAxiomLockDispatchRoute: typeof ApiAxiomLockDispatchRoute
+  ApiAxiomTestDispatchRoute: typeof ApiAxiomTestDispatchRoute
   ApiBusinessBrandRoute: typeof ApiBusinessBrandRoute
   ApiBusinessBrandsRoute: typeof ApiBusinessBrandsRoute
   ApiBusinessPreviewLinksRoute: typeof ApiBusinessPreviewLinksRoute
@@ -1048,8 +1156,11 @@ export interface RootRouteChildren {
   ApiOutreachInboundRoute: typeof ApiOutreachInboundRoute
   ApiShopMediaAssetIdRoute: typeof ApiShopMediaAssetIdRoute
   ApiShopsCreateRoute: typeof ApiShopsCreateRoute
+  ApiSocialOauthRoute: typeof ApiSocialOauthRouteWithChildren
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiTenantLogoFileRoute: typeof ApiTenantLogoFileRoute
+  ApiWebhooksGbpRoute: typeof ApiWebhooksGbpRoute
+  ApiWebhooksMetaRoute: typeof ApiWebhooksMetaRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   ApiWebhooksVapiRoute: typeof ApiWebhooksVapiRoute
   ApiAdminHeroStudioGenerateRoute: typeof ApiAdminHeroStudioGenerateRoute
@@ -1289,6 +1400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMasterDashboardRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/tenant': {
+      id: '/admin/tenant'
+      path: '/tenant'
+      fullPath: '/admin/tenant'
+      preLoaderRoute: typeof AdminTenantRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/get-avatar-token': {
       id: '/api/get-avatar-token'
       path: '/api/get-avatar-token'
@@ -1373,6 +1491,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObsidianCoreCoreRouteImport
       parentRoute: typeof ObsidianCoreRoute
     }
+    '/onboard/': {
+      id: '/onboard/'
+      path: '/'
+      fullPath: '/onboard/'
+      preLoaderRoute: typeof OnboardIndexRouteImport
+      parentRoute: typeof OnboardRoute
+    }
+    '/onboard/success': {
+      id: '/onboard/success'
+      path: '/success'
+      fullPath: '/onboard/success'
+      preLoaderRoute: typeof OnboardSuccessRouteImport
+      parentRoute: typeof OnboardRoute
+    }
     '/security/cyber-stinger': {
       id: '/security/cyber-stinger'
       path: '/security/cyber-stinger'
@@ -1434,6 +1566,20 @@ declare module '@tanstack/react-router' {
       path: '/api/autopilot/cron'
       fullPath: '/api/autopilot/cron'
       preLoaderRoute: typeof ApiAutopilotCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/axiom/lock-dispatch': {
+      id: '/api/axiom/lock-dispatch'
+      path: '/api/axiom/lock-dispatch'
+      fullPath: '/api/axiom/lock-dispatch'
+      preLoaderRoute: typeof ApiAxiomLockDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/axiom/test-dispatch': {
+      id: '/api/axiom/test-dispatch'
+      path: '/api/axiom/test-dispatch'
+      fullPath: '/api/axiom/test-dispatch'
+      preLoaderRoute: typeof ApiAxiomTestDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/business/brand': {
@@ -1555,6 +1701,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiShopsCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/social/oauth': {
+      id: '/api/social/oauth'
+      path: '/api/social/oauth'
+      fullPath: '/api/social/oauth'
+      preLoaderRoute: typeof ApiSocialOauthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
       path: '/api/stripe/webhook'
@@ -1575,6 +1728,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/tenants/$slug'
       preLoaderRoute: typeof ApiTenantsSlugRouteImport
       parentRoute: typeof ApiTenantsRoute
+    }
+    '/api/webhooks/gbp': {
+      id: '/api/webhooks/gbp'
+      path: '/api/webhooks/gbp'
+      fullPath: '/api/webhooks/gbp'
+      preLoaderRoute: typeof ApiWebhooksGbpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/meta': {
+      id: '/api/webhooks/meta'
+      path: '/api/webhooks/meta'
+      fullPath: '/api/webhooks/meta'
+      preLoaderRoute: typeof ApiWebhooksMetaRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/webhooks/stripe': {
       id: '/api/webhooks/stripe'
@@ -1617,6 +1784,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/hero/brand/$shopId'
       preLoaderRoute: typeof ApiHeroBrandShopIdRouteImport
       parentRoute: typeof ApiHeroBrandRoute
+    }
+    '/api/social/oauth/callback': {
+      id: '/api/social/oauth/callback'
+      path: '/callback'
+      fullPath: '/api/social/oauth/callback'
+      preLoaderRoute: typeof ApiSocialOauthCallbackRouteImport
+      parentRoute: typeof ApiSocialOauthRoute
     }
   }
 }
@@ -1665,6 +1839,7 @@ interface AdminRouteChildren {
   AdminAutopilotRoute: typeof AdminAutopilotRoute
   AdminCyberStingerRoute: typeof AdminCyberStingerRoute
   AdminMasterDashboardRoute: typeof AdminMasterDashboardRoute
+  AdminTenantRoute: typeof AdminTenantRoute
   AdminBrandingHeroLibraryRoute: typeof AdminBrandingHeroLibraryRoute
 }
 
@@ -1672,6 +1847,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAutopilotRoute: AdminAutopilotRoute,
   AdminCyberStingerRoute: AdminCyberStingerRoute,
   AdminMasterDashboardRoute: AdminMasterDashboardRoute,
+  AdminTenantRoute: AdminTenantRoute,
   AdminBrandingHeroLibraryRoute: AdminBrandingHeroLibraryRoute,
 }
 
@@ -1688,6 +1864,19 @@ const ObsidianCoreRouteChildren: ObsidianCoreRouteChildren = {
 const ObsidianCoreRouteWithChildren = ObsidianCoreRoute._addFileChildren(
   ObsidianCoreRouteChildren,
 )
+
+interface OnboardRouteChildren {
+  OnboardSuccessRoute: typeof OnboardSuccessRoute
+  OnboardIndexRoute: typeof OnboardIndexRoute
+}
+
+const OnboardRouteChildren: OnboardRouteChildren = {
+  OnboardSuccessRoute: OnboardSuccessRoute,
+  OnboardIndexRoute: OnboardIndexRoute,
+}
+
+const OnboardRouteWithChildren =
+  OnboardRoute._addFileChildren(OnboardRouteChildren)
 
 interface ApiTenantsRouteChildren {
   ApiTenantsSlugRoute: typeof ApiTenantsSlugRoute
@@ -1713,6 +1902,18 @@ const ApiHeroBrandRouteWithChildren = ApiHeroBrandRoute._addFileChildren(
   ApiHeroBrandRouteChildren,
 )
 
+interface ApiSocialOauthRouteChildren {
+  ApiSocialOauthCallbackRoute: typeof ApiSocialOauthCallbackRoute
+}
+
+const ApiSocialOauthRouteChildren: ApiSocialOauthRouteChildren = {
+  ApiSocialOauthCallbackRoute: ApiSocialOauthCallbackRoute,
+}
+
+const ApiSocialOauthRouteWithChildren = ApiSocialOauthRoute._addFileChildren(
+  ApiSocialOauthRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShopSlugRouteRoute: ShopSlugRouteRouteWithChildren,
@@ -1730,7 +1931,7 @@ const rootRouteChildren: RootRouteChildren = {
   MasterRoute: MasterRoute,
   MotoEliteRoute: MotoEliteRoute,
   ObsidianCoreRoute: ObsidianCoreRouteWithChildren,
-  OnboardRoute: OnboardRoute,
+  OnboardRoute: OnboardRouteWithChildren,
   OtterAdventuresRoute: OtterAdventuresRoute,
   PrivacyRoute: PrivacyRoute,
   ShopsRoute: ShopsRoute,
@@ -1754,6 +1955,8 @@ const rootRouteChildren: RootRouteChildren = {
   MasterAdminIndexRoute: MasterAdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutopilotCronRoute: ApiAutopilotCronRoute,
+  ApiAxiomLockDispatchRoute: ApiAxiomLockDispatchRoute,
+  ApiAxiomTestDispatchRoute: ApiAxiomTestDispatchRoute,
   ApiBusinessBrandRoute: ApiBusinessBrandRoute,
   ApiBusinessBrandsRoute: ApiBusinessBrandsRoute,
   ApiBusinessPreviewLinksRoute: ApiBusinessPreviewLinksRoute,
@@ -1771,8 +1974,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOutreachInboundRoute: ApiOutreachInboundRoute,
   ApiShopMediaAssetIdRoute: ApiShopMediaAssetIdRoute,
   ApiShopsCreateRoute: ApiShopsCreateRoute,
+  ApiSocialOauthRoute: ApiSocialOauthRouteWithChildren,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiTenantLogoFileRoute: ApiTenantLogoFileRoute,
+  ApiWebhooksGbpRoute: ApiWebhooksGbpRoute,
+  ApiWebhooksMetaRoute: ApiWebhooksMetaRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   ApiWebhooksVapiRoute: ApiWebhooksVapiRoute,
   ApiAdminHeroStudioGenerateRoute: ApiAdminHeroStudioGenerateRoute,

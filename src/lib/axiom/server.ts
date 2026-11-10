@@ -369,15 +369,19 @@ export const getOperatorData = createServerFn({
 }).middleware([authMiddleware]).validator((input: string | {
   slug: string;
   desk?: "master";
+  claim?: string;
 }) => {
   if (typeof input === "string") return {
     slug: input,
-    desk: undefined as "master" | undefined
+    desk: undefined as "master" | undefined,
+    claim: undefined as string | undefined
   };
   if (!input || typeof input.slug !== "string") throw new Error("Shop not found");
+  const claim = typeof input.claim === "string" ? input.claim.trim().slice(0, 80) : "";
   return {
     slug: input.slug,
-    desk: input.desk === "master" ? "master" as const : undefined
+    desk: input.desk === "master" ? "master" as const : undefined,
+    claim: claim || undefined
   };
 }).handler(async (ctx: any) => {
   const loaded = await import("./shop-server.server");

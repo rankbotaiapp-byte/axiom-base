@@ -84,6 +84,10 @@ export type TradeProfile = {
   studioIdentity: StudioIdentity;
   /** Closed storefront HUD. Stored in the existing trade_profile JSON. */
   hud: StorefrontHud;
+  /** Plumbing outreach overlay clip. Blank keeps `/media/drain-clog.mp4`. */
+  diagnosticReelUrl: string;
+  /** When false, the Live Pipe Diagnostic Reel is hidden on the plumbing page. */
+  diagnosticReelEnabled: boolean;
 };
 
 export type NicheLayout = {
@@ -259,6 +263,8 @@ const EMPTY: TradeProfile = {
   studio: { ...EMPTY_BRAND_STUDIO },
   studioIdentity: emptyStudioIdentity(),
   hud: { ...DEFAULT_HUD },
+  diagnosticReelUrl: "",
+  diagnosticReelEnabled: true,
 };
 
 const DEFAULT_KINDS: Partial<Record<ShopNiche, string[]>> = {
@@ -401,6 +407,8 @@ export function parseTradeProfile(niche: ShopNiche, raw: unknown): TradeProfile 
     studio: parseBrandStudio(record.studio),
     studioIdentity: parseStudioIdentity(record.studioIdentity),
     hud: parseHud(record.hud ?? base.hud),
+    diagnosticReelUrl: sanitizeLogoUrl(record.diagnosticReelUrl),
+    diagnosticReelEnabled: typeof record.diagnosticReelEnabled === "boolean" ? record.diagnosticReelEnabled : base.diagnosticReelEnabled,
   };
 }
 

@@ -37,6 +37,22 @@ test("demo slugs accept niche ids and film names such as auto-repair", () => {
   assert.equal(resolveDemoNiche("not-a-real-trade-xyz"), null);
 });
 
+test("plumbing leads always bind the industrial /t storefront with greet=1", () => {
+  const url = new URL(
+    tenantPreviewUrl(ORIGIN, {
+      businessName: "Rogue Rapid Plumbing",
+      tradeType: "plumbing",
+      county: "Lane County",
+      leadSlug: "rogue-rapid-plumbing",
+      city: "Eugene",
+    }) ?? "",
+  );
+  assert.equal(url.pathname, "/t/rogue-rapid-plumbing");
+  assert.equal(url.searchParams.get("niche"), "plumbing");
+  assert.equal(url.searchParams.get("greet"), "1");
+  assert.equal(url.searchParams.get("city"), "Eugene");
+});
+
 test("home counties get a personalized demo preview link", () => {
   for (const county of ["Jackson County", "josephine county", "DOUGLAS COUNTY"]) {
     const url = new URL(
@@ -133,9 +149,15 @@ test("every preloaded category resolves to a demo niche", () => {
         county: "Jackson County",
       }) ?? "",
     );
-    assert.equal(url.pathname, `/demo/${niche}`);
-    assert.equal(url.searchParams.get("preview"), "true");
-    assert.equal(url.searchParams.get("business"), `${vertical.craft} Shop`);
+    if (niche === "plumbing") {
+      assert.equal(url.pathname, "/t/accurate-plumbing");
+      assert.equal(url.searchParams.get("niche"), "plumbing");
+      assert.equal(url.searchParams.get("greet"), "1");
+    } else {
+      assert.equal(url.pathname, `/demo/${niche}`);
+      assert.equal(url.searchParams.get("preview"), "true");
+      assert.equal(url.searchParams.get("business"), `${vertical.craft} Shop`);
+    }
   }
 });
 

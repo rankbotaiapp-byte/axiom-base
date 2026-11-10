@@ -1,26 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Laptop, Lock, RotateCcw, Smartphone, Trash2, UploadCloud } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { DispatchControlPanel } from "@/components/master/DispatchControlPanel";
 import {
   DEFAULT_PLUMBER_OUTREACH,
   PLUMBER_OUTREACH_DRAFT_CHANNEL,
   PLUMBER_OUTREACH_DRAFT_MESSAGE,
   checkDispatchMobile,
+  emptyOutreachTenant,
   parsePlumberOutreach,
+  type OutreachTenant,
   type PlumberOutreachConfig,
 } from "@/lib/axiom/plumber-outreach";
-import { plumberOutreachAccess, savePlumberOutreach } from "@/lib/axiom/plumber-outreach.functions";
+import { getPlumberOutreachPage, plumberOutreachAccess, savePlumberOutreach } from "@/lib/axiom/plumber-outreach.functions";
 import type { OutreachRead } from "@/lib/axiom/plumber-outreach.server";
 import { AddButton, Area, Field, IconButton, Section, UnlockCard } from "./plumbing-studio";
 
 const DRAFT_KEY = "axiom:plumber-outreach-studio-draft";
-const DEFAULT_PREVIEW_SLUG = "studio-preview";
+const DEFAULT_PREVIEW_SLUG = "accurate-plumbing";
 
 const HERO_CHOICES = [
   {
-    label: "Plumbers outreach (Axiom contractor film)",
+    label: "Axio plumber hero (master cinematic)",
+    url: "/media/axio-plumber-hero.mp4",
+    mobile: "/media/axio-plumber-hero-mobile.mp4",
+    poster: "/media/axio-plumber-hero.jpg",
+  },
+  {
+    label: "Plumbers outreach loop",
     url: "/media/plumbers-outreach-hero-animation.mp4",
-    mobile: "/media/plumbers-outreach-hero-animation-mobile.mp4",
+    mobile: "",
     poster: "/media/plumbers-outreach-hero-poster.jpg",
   },
   { label: "Axiom plumber hero", url: "/media/axiom-plumber-hero.mp4", mobile: "/media/axiom-plumber-hero-mobile.mp4", poster: "/media/axiom-plumber-hero.jpg" },
@@ -49,7 +58,7 @@ function writeLocalDraft(cfg: PlumberOutreachConfig | null) {
 
 function previewPath(slug: string, studio: boolean) {
   const safe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : DEFAULT_PREVIEW_SLUG;
-  return `/t/${safe}?niche=plumbing${studio ? "&studio=1" : ""}`;
+  return `/t/${safe}?niche=plumbing&greet=1${studio ? "&studio=1" : ""}`;
 }
 
 /**
@@ -64,6 +73,8 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
   const [access, setAccess] = useState<Access>(null);
   const [saving, setSaving] = useState(false);
   const [slug, setSlug] = useState(DEFAULT_PREVIEW_SLUG);
+  const [lead, setLead] = useState<OutreachTenant>(() => emptyOutreachTenant(DEFAULT_PREVIEW_SLUG));
+  const campaignUrl = previewPath(slug, false);
   const frame = useRef<HTMLIFrameElement>(null);
   const channel = useRef<BroadcastChannel | null>(null);
   const draftRef = useRef(draft);
@@ -75,6 +86,21 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
     if (local) setDraft(local);
     void plumberOutreachAccess().then(setAccess).catch(() => setAccess({ ok: false, reason: "locked" }));
   }, []);
+
+  useEffect(() => {
+    const safe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : DEFAULT_PREVIEW_SLUG;
+    let cancelled = false;
+    void getPlumberOutreachPage({ data: safe })
+      .then((page) => {
+        if (!cancelled) setLead(page.tenant);
+      })
+      .catch(() => {
+        if (!cancelled) setLead(emptyOutreachTenant(safe));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   const push = useCallback((cfg: PlumberOutreachConfig) => {
     const msg = { type: PLUMBER_OUTREACH_DRAFT_MESSAGE, config: cfg };
@@ -139,8 +165,8 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
         <aside className="studio-panel">
           <header className="studio-head">
             <div>
-              <p className="studio-kicker">Axiom Master Admin Studio</p>
-              <h1 className="studio-title">Plumber outreach landing</h1>
+              <p className="studio-kicker">Axiom Master Admin Desk</p>
+              <h1 className="studio-title">Plumbing trickle outreach</h1>
               <p className="studio-status">
                 <span className={`studio-dot ${dirty ? "is-draft" : "is-live"}`} />
                 {dirty
@@ -156,15 +182,26 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
           <div className="studio-scroll">
             {locked ? <UnlockCard reason={access.reason} onUnlocked={() => void plumberOutreachAccess().then(setAccess)} /> : null}
 
-            <Section title="Preview link" hint="Not saved">
+            <DispatchControlPanel />
+
+            <Section title="Campaign URL" hint="From the leads table">
               <Field
-                label="Territory slug to preview (the part after /t/)"
+                label="Territory slug (the part after /t/)"
                 value={slug}
                 placeholder={DEFAULT_PREVIEW_SLUG}
                 onChange={(v) => setSlug(v.trim().toLowerCase())}
               />
               <p className="studio-status">
-                Use {"{business}"}, {"{city}"} and {"{county}"} in any text below — each link fills in its own plumber.
+                {lead.known
+                  ? `${lead.business || "Shop"} · ${lead.phone || "no phone on file"} · ${lead.address || lead.city || lead.county}`
+                  : "No matching lead yet — the page still renders from the slug."}
+              </p>
+              <p className="studio-status font-mono">{campaignUrl}</p>
+              <a className="studio-open" href={campaignUrl} target="_blank" rel="noreferrer">
+                Open personalized link <ExternalLink size={13} />
+              </a>
+              <p className="studio-status">
+                Use {"{business}"}, {"{city}"}, {"{county}"}, {"{phone}"} and {"{address}"} in copy — each link fills in its own plumber.
               </p>
             </Section>
 
@@ -326,6 +363,20 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
               <Field label="Caption on the video card" value={draft.feature.caption} onChange={(v) => edit((d) => void (d.feature.caption = v))} />
               <Field label="Video URL" value={draft.feature.videoUrl} onChange={(v) => edit((d) => void (d.feature.videoUrl = v))} />
               <Field label="Poster URL" value={draft.feature.posterUrl} onChange={(v) => edit((d) => void (d.feature.posterUrl = v))} />
+            </Section>
+
+            <Section title="Live Pipe Diagnostic Reel" hint="Overlay on the feature grid">
+              <label className="studio-toggle">
+                <input type="checkbox" checked={draft.reel.enabled} onChange={(e) => edit((d) => void (d.reel.enabled = e.target.checked))} />
+                Show the diagnostic reel card
+              </label>
+              <Field label="Title" value={draft.reel.title} onChange={(v) => edit((d) => void (d.reel.title = v))} />
+              <Field
+                label="Job-site clip URL"
+                value={draft.reel.videoUrl}
+                onChange={(v) => edit((d) => void (d.reel.videoUrl = v))}
+              />
+              <p className="studio-status">Default is /media/drain-clog.mp4. Tenants can also swap this clip from /[shop]/admin.</p>
             </Section>
 
             <Section title="Service menu" hint="Up to 8">

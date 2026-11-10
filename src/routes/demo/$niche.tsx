@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { FilmStage } from "@/app/[shopSlug]/page";
 import { DemoRetentionStack } from "@/components/demo-retention-stack";
 import { FounderWelcomeStage } from "@/components/founder-welcome-stage";
@@ -24,9 +24,15 @@ export const Route = createFileRoute("/demo/$niche")({
     return id ? { ...parsed, id } : parsed;
   },
   loader: ({ params }) => {
+    if (params.niche === "plumbing" || params.niche === "emergency-plumbing") {
+      throw redirect({ href: "/demo/plumbing" });
+    }
     if (params.niche === "admin") return { niche: "contractor" as const, desk: "admin" as const };
     const niche = resolveDemoNiche(params.niche);
     if (!niche) throw notFound();
+    if (niche === "plumbing") {
+      throw redirect({ href: "/demo/plumbing" });
+    }
     return { niche, desk: null };
   },
   component: NicheDemo,

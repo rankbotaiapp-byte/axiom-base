@@ -25,9 +25,9 @@ export const PLUMBING_STOREFRONT_SLUG = "demo-plumbing";
 export const PLUMBING_DRAFT_CHANNEL = "axiom-plumbing-storefront";
 export const PLUMBING_DRAFT_MESSAGE = "axiom:plumbing-draft";
 
-export const PLUMBING_HERO_VIDEO = "/media/axiom-plumber-hero.mp4";
-export const PLUMBING_HERO_VIDEO_MOBILE = "/media/axiom-plumber-hero-mobile.mp4";
-export const PLUMBING_HERO_POSTER = "/media/axiom-plumber-hero.jpg";
+export const PLUMBING_HERO_VIDEO = "/media/axio-plumber-hero.mp4";
+export const PLUMBING_HERO_VIDEO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
+export const PLUMBING_HERO_POSTER = "/media/axio-plumber-hero.jpg";
 
 export type TrustBadge = { id: string; icon: TrustIcon; label: string };
 export type TrustIcon = "shield" | "clock" | "badge" | "dollar" | "star" | "truck";

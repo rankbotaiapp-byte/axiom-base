@@ -20,11 +20,14 @@ type LeadRow = {
   business_name: string;
   city: string;
   county: string;
+  state: string;
+  zip_code: string;
   trade_type: string;
   trade_label: string;
   contact_name: string;
   contact_phone: string;
   contact_email: string;
+  phone_line: string;
   review_score: unknown;
   review_count: unknown;
   account_mode: string;
@@ -53,8 +56,8 @@ export async function readLeadPreview(leadSlug: string) {
     payment_ref: string | null;
     activated_at: unknown;
   }>`
-    select l.business_name, l.city, l.county, l.trade_type, l.trade_label, l.contact_name,
-      l.contact_phone, l.contact_email, l.review_score, l.review_count, l.account_mode,
+    select l.business_name, l.city, l.county, l.state, l.zip_code, l.trade_type, l.trade_label, l.contact_name,
+      l.contact_phone, l.contact_email, l.phone_line, l.review_score, l.review_count, l.account_mode,
       a.plan_id, a.plan_name, a.amount_cents, a.renewal_cents, a.renews_at,
       a.payment_ref, a.created_at as activated_at
     from preloaded_leads l
@@ -69,10 +72,12 @@ export async function readLeadPreview(leadSlug: string) {
     businessName: row.business_name,
     city: row.city,
     county: row.county,
+    state: row.state ?? "",
+    zip: row.zip_code ?? "",
     tradeType: row.trade_type,
     tradeLabel: row.trade_label ?? "",
     contactName: row.contact_name ?? "",
-    contactPhone: row.contact_phone ?? "",
+    contactPhone: row.contact_phone || row.phone_line || "",
     contactEmail: row.contact_email ?? "",
     reviewScore: num(row.review_score),
     reviewCount: num(row.review_count),

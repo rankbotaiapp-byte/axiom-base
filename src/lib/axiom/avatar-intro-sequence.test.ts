@@ -18,20 +18,20 @@ describe("avatar intro sequence", () => {
   });
 
   it("keeps FounderWelcomeStage above the niche trade stage in outreach layout", () => {
-    const tenant = readFileSync(join(root, "src/app/[shopSlug]/page.tsx"), "utf8");
-    const founderIdx = tenant.indexOf("<FounderWelcomeStage");
-    const tradeIdx = tenant.indexOf('id="trade-stage"');
-    assert.ok(founderIdx >= 0, "FounderWelcomeStage missing");
-    assert.ok(tradeIdx > founderIdx, "avatar intro must precede #trade-stage");
+    const tenant = readFileSync(join(root, "src/routes/t/$slug.tsx"), "utf8");
+    assert.match(tenant, /greet=\{Boolean\(search\.greet\)\}/);
+    assert.match(tenant, /PlumberOutreachLive/);
+    const landing = readFileSync(join(root, "src/components/plumbing/plumber-outreach-landing.tsx"), "utf8");
+    assert.match(landing, /src="\/media\/axiom-greeting\.mp4"/);
+    assert.match(landing, /src="\/media\/axio-plumber-hero\.mp4"|HERO_FILM = "\/media\/axio-plumber-hero\.mp4"/);
   });
 
   it("keeps avatar greeting above the emergency plumbing storefront", () => {
     const demo = readFileSync(join(root, "src/routes/demo/plumbing.tsx"), "utf8");
-    const founderIdx = demo.indexOf("<FounderWelcomeStage");
-    const storefrontIdx = demo.lastIndexOf("<EmergencyPlumbingStorefront");
-    assert.ok(founderIdx >= 0, "plumbing demo missing FounderWelcomeStage");
-    assert.ok(storefrontIdx > founderIdx, "avatar intro must precede EmergencyPlumbingStorefront");
-    assert.match(demo, /id="trade-stage"/);
+    assert.match(demo, /PlumberOutreachLive/);
+    assert.match(demo, /greet=\{Boolean\(search\.greet\)\}/);
+    assert.doesNotMatch(demo, /EmergencyPlumbingStorefront/);
+    assert.doesNotMatch(demo, /OutreachStorefront/);
   });
 
   it("injects greet=1 on every demo storefront outreach URL", () => {
@@ -42,7 +42,7 @@ describe("avatar intro sequence", () => {
       city: "Medford",
     });
     assert.match(path, /greet=1/);
-    assert.match(path, /hero=%2Fmedia%2Faxiom-plumber-hero\.mp4/);
+    assert.match(path, /hero=%2Fmedia%2Faxio-plumber-hero\.mp4/);
 
     const tokens = plumbingCampaignTokens({
       origin: "https://axiom.example",

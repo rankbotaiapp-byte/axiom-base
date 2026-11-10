@@ -16,7 +16,7 @@ import type { StorefrontRead } from "@/lib/axiom/plumbing-storefront.server";
 import { DispatchControlPanel } from "@/components/master/DispatchControlPanel";
 
 const DRAFT_KEY = "axiom:plumbing-studio-draft";
-const PREVIEW_PATH = "/demo/plumbing?studio=1";
+const PREVIEW_PATH = "/demo/plumbing?studio=1&greet=1";
 
 const VIDEO_CHOICES = [
   { label: "Axiom plumber hero", url: "/media/axiom-plumber-hero.mp4", mobile: "/media/axiom-plumber-hero-mobile.mp4", poster: "/media/axiom-plumber-hero.jpg" },

@@ -1,4 +1,5 @@
 import { appendMessagingNotice } from "./legal-notices.ts";
+import { isPlumbingCampaign, plumberCampaignPath } from "./plumber-outreach.ts";
 import { sanitizeAccent, sanitizeContactLine, sanitizeLogoUrl } from "./prospect-brand.ts";
 
 /** Saved on the visitor's browser until onboarding claims the business. */
@@ -498,6 +499,16 @@ export function funnelUrl(
   },
 ): string {
   const base = origin.replace(/\/$/, "");
+  if (isPlumbingCampaign(lead.trade)) {
+    const path = plumberCampaignPath(lead.leadSlug);
+    const url = new URL(path, `${base}/`);
+    const leadId = parseLeadId(lead.leadId);
+    if (leadId) url.searchParams.set("lead", leadId);
+    if (lead.county) url.searchParams.set("county", lead.county);
+    url.searchParams.set("utm_source", "regional");
+    if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+    return url.toString();
+  }
   const url = new URL("/", base.endsWith("/") ? base : `${base}/`);
   url.searchParams.set("b", lead.leadSlug);
   const leadId = parseLeadId(lead.leadId);
@@ -537,5 +548,8 @@ export function deskPreviewPath(lead: {
   if (city) params.set("city", city);
   if (business) params.set("biz", business);
   if (trade) params.set("trade", trade);
+  if (isPlumbingCampaign(trade)) {
+    return plumberCampaignPath(lead.leadSlug);
+  }
   return `/?${params.toString()}`;
 }

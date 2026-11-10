@@ -878,6 +878,33 @@ export const listMyShopsHandler = async ({
   return rows.map(row => mapShop(row, false, row.owner_user_id === context.userId));
 };
 type ShopSql = Awaited<ReturnType<typeof getSql>>;
+async function readShopClaimToken(sql: ShopSql, shopId: string): Promise<string | undefined> {
+  try {
+    const rows = await sql<{ onboarding_json: unknown }>`
+      select onboarding_json from shops where id = ${shopId} limit 1
+    `;
+    const raw = rows[0]?.onboarding_json;
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const token = parsed && typeof parsed === "object" ? String((parsed as { claimToken?: unknown }).claimToken ?? "") : "";
+    return token || undefined;
+  } catch {
+    return undefined;
+  }
+}
+async function claimShopWithToken(sql: ShopSql, row: ShopRow, userId: string, token: string): Promise<ShopRow> {
+  if (!token || !userId || userId === "dev-user" || row.owner_user_id) return row;
+  const saved = await readShopClaimToken(sql, row.id);
+  if (!saved || saved !== token) return row;
+  await sql`update shops set owner_user_id = ${userId} where id = ${row.id} and owner_user_id is null`;
+  await sql`
+    insert into shop_members (shop_id, user_id, role)
+    values (${row.id}, ${userId}, 'owner')
+    on conflict (shop_id, user_id) do nothing
+  `;
+  const flags = parseOnboarding(row.onboarding_json);
+  await sql`update shops set onboarding_json = ${JSON.stringify(flags)} where id = ${row.id}`;
+  return (await loadShopRow(row.slug)) ?? row;
+}
 async function claimPreloadedLead(sql: ShopSql, leadSlug: string, shopId: string) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(leadSlug)) return;
   const claimed = await sql<{
@@ -917,33 +944,38 @@ export async function provisionShopFromNiche(input: {
   customNiche?: string;
   /** Optional pin to a verified `*-hero-animation.mp4` from the public catalog. */
   heroFilm?: string;
+  /** Territory checkout may open the shop before the buyer has an account. */
+  unowned?: boolean;
 }): Promise<{
   slug: string;
   shopId: string;
   created: boolean;
+  claimToken?: string;
 }> {
   const niche = assertCatalogNiche(input.niche);
   const template = NICHES[niche];
   if (!template) throw new Error("Unknown niche");
-  if (!input.userId) throw new Error("Sign in before opening this shop");
+  if (!input.userId && !input.unowned) throw new Error("Sign in before opening this shop");
   const sql = await getSql();
-  const existing = await sql<{
-    id: string;
-    slug: string;
-  }>`
+  const leadSlug = (input.leadSlug ?? "").trim().toLowerCase();
+  if (input.userId) {
+    const existing = await sql<{
+      id: string;
+      slug: string;
+    }>`
     select s.id, s.slug from shops s
     join shop_members m on m.shop_id = s.id
     where m.user_id = ${input.userId} and m.role = 'owner'
     order by s.created_at desc limit 1
   `;
-  const leadSlug = (input.leadSlug ?? "").trim().toLowerCase();
-  if (existing[0]) {
-    await claimPreloadedLead(sql, leadSlug, existing[0].id);
-    return {
-      slug: existing[0].slug,
-      shopId: existing[0].id,
-      created: false
-    };
+    if (existing[0]) {
+      await claimPreloadedLead(sql, leadSlug, existing[0].id);
+      return {
+        slug: existing[0].slug,
+        shopId: existing[0].id,
+        created: false
+      };
+    }
   }
   const customNiche = cleanCustomNiche(input.customNiche ?? "");
   const { resolveProvisionFilm } = await import("./niche-dataset-pairing");
@@ -957,7 +989,11 @@ export async function provisionShopFromNiche(input: {
   }) || tradeLoopUrl(niche);
   const name = input.name.trim() || customNiche || template.defaultName;
   const { publicShopSlug } = await import("./shop-slug");
-  let slug = publicShopSlug(slugify(name)) ?? `shop-${crypto.randomUUID().slice(0, 8)}`;
+  const claimToken = crypto.randomUUID();
+  let slug =
+    (leadSlug && publicShopSlug(leadSlug)) ||
+    publicShopSlug(slugify(name)) ||
+    `shop-${crypto.randomUUID().slice(0, 8)}`;
   const taken = await sql<{
     slug: string;
   }>`select slug from shops where slug = ${slug}`;
@@ -997,18 +1033,21 @@ export async function provisionShopFromNiche(input: {
         ${template.description}, ${template.ringColor}, ${heroImageUrl},
         ${heroVideoUrl}, ${template.heroBlendPercent}, ${primary?.id ?? null},
         ${template.introPreset ?? "kenburns"}, ${template.introSpeed ?? 40}, ${template.introIntensity ?? 45},
-        ${input.userId}, false, 'tour', ${JSON.stringify({
+        ${input.userId || null}, false, 'tour', ${JSON.stringify({
     hero: false,
     service: false,
     employee: solo,
-    testBooked: false
+    testBooked: false,
+    claimToken,
   })}, ${JSON.stringify(template.hours ?? DEFAULT_HOURS)}, ${template.address}, ${solo}
       )
     `;
-  await sql`
+  if (input.userId) {
+    await sql`
       insert into shop_members (shop_id, user_id, role)
       values (${shopId}, ${input.userId}, 'owner')
     `;
+  }
   await sql`
       insert into shop_billing (shop_id, plan, status, price_cents, gear_guardian_bps)
       values (${shopId}, 'axiom_pro', 'trialing', 4900, 150)
@@ -1057,7 +1096,8 @@ export async function provisionShopFromNiche(input: {
   return {
     slug,
     shopId,
-    created: true
+    created: true,
+    claimToken,
   };
 }
 export const createShopFromNicheHandler = async ({
@@ -1083,8 +1123,9 @@ export async function provisionTerritoryForPayer(input: {
   slug: string;
   shopId: string;
   created: boolean;
+  claimToken?: string;
 } | null> {
-  if (!input.userId || input.userId === "dev-user") return null;
+  const ownerId = input.userId && input.userId !== "dev-user" ? input.userId : "";
   const sql = await getSql();
   const leads = await sql<{
     business_name: string;
@@ -1109,26 +1150,30 @@ export async function provisionTerritoryForPayer(input: {
     `;
     const shop = shops[0];
     if (!shop) return null;
-    if (shop.owner_user_id && shop.owner_user_id !== input.userId) return null;
-    if (!shop.owner_user_id) {
-      await sql`update shops set owner_user_id = ${input.userId} where id = ${shop.id}`;
+    if (shop.owner_user_id && ownerId && shop.owner_user_id !== ownerId) return null;
+    if (!shop.owner_user_id && ownerId) {
+      await sql`update shops set owner_user_id = ${ownerId} where id = ${shop.id}`;
       await sql`
         insert into shop_members (shop_id, user_id, role)
-        values (${shop.id}, ${input.userId}, 'owner')
+        values (${shop.id}, ${ownerId}, 'owner')
         on conflict (shop_id, user_id) do nothing
       `;
     }
     return {
       slug: shop.slug,
       shopId: shop.id,
-      created: false
+      created: false,
+      claimToken: shop.owner_user_id || ownerId ? undefined : await readShopClaimToken(sql, shop.id),
     };
   }
+  const niche = nicheForLead(lead.trade_type, lead.trade_label ?? "");
   const created = await provisionShopFromNiche({
-    userId: input.userId,
-    niche: nicheForLead(lead.trade_type, lead.trade_label ?? ""),
+    userId: ownerId,
+    niche,
     name: lead.business_name,
-    leadSlug: input.leadSlug
+    leadSlug: input.leadSlug,
+    heroFilm: niche === "plumbing" ? "/media/axio-plumber-hero.mp4" : undefined,
+    unowned: !ownerId,
   });
   if (created?.shopId) {
     try {
@@ -1882,8 +1927,12 @@ export const getOperatorDataHandler = async ({
   context
 }: any) => {
   const slug = data.slug;
-  const row = await loadShopRow(slug);
+  let row = await loadShopRow(slug);
   if (!row) throw new Error("Shop not found");
+  if (typeof data.claim === "string" && data.claim && context.userId) {
+    const sql = await getSql();
+    row = await claimShopWithToken(sql, row, context.userId, data.claim);
+  }
   const mem = await membership(row.id, context.userId);
   let stripeAccountId: string | null = null;
   let chargesEnabled = false;

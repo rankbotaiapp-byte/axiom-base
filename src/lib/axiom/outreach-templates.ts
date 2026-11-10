@@ -9,9 +9,9 @@ import {
 } from "./outreach-niche-batch.ts";
 import { renderOutreachMessage } from "./funnel.ts";
 
-export const PLUMBING_EMERGENCY_HERO = "/media/axiom-plumber-hero.mp4";
-export const PLUMBING_EMERGENCY_HERO_MOBILE = "/media/axiom-plumber-hero-mobile.mp4";
-export const PLUMBING_EMERGENCY_POSTER = "/media/axiom-plumber-hero.jpg";
+export const PLUMBING_EMERGENCY_HERO = "/media/axio-plumber-hero.mp4";
+export const PLUMBING_EMERGENCY_HERO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
+export const PLUMBING_EMERGENCY_POSTER = "/media/axio-plumber-hero.jpg";
 
 export type OutreachTemplateDraft = {
   text: string;

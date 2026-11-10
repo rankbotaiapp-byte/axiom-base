@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   OUTREACH_ACTIVE_VERTICAL,
   OUTREACH_DAILY_NICHE_SCHEDULE,
+  PLUMBING_CAMPAIGN_GREETING,
   PLUMBING_CAMPAIGN_HERO,
+  PLUMBING_CAMPAIGN_TEMPLATE,
   PLUMBING_LEAD_DATASET_SIZE,
   demoStorefrontPath,
   nicheForScheduleDay,
@@ -11,6 +13,7 @@ import {
   outreachNicheHero,
   outreachNicheLabel,
   pickNextNicheBatch,
+  plumbingStorefrontHref,
   scheduleDayForNiche,
   tenantPreviewSlug,
   trimBatchToDailyCaps,
@@ -27,10 +30,13 @@ test("live campaign slate is plumbing-only", () => {
   assert.equal(nextScheduledNiche("electrical"), "plumbing");
 });
 
-test("Emergency Plumbing locks to axiom-plumber-hero", () => {
+test("Emergency Plumbing locks to axio-plumber-hero", () => {
   assert.equal(outreachNicheHero("plumbing"), PLUMBING_CAMPAIGN_HERO);
-  assert.equal(outreachNicheHero("plumbing"), "/media/axiom-plumber-hero.mp4");
-  assert.equal(outreachNicheHero("Emergency Plumbing"), "/media/axiom-plumber-hero.mp4");
+  assert.equal(outreachNicheHero("plumbing"), "/media/axio-plumber-hero.mp4");
+  assert.equal(outreachNicheHero("Emergency Plumbing"), "/media/axio-plumber-hero.mp4");
+  assert.equal(PLUMBING_CAMPAIGN_GREETING, "/media/axiom-greeting.mp4");
+  assert.equal(PLUMBING_CAMPAIGN_TEMPLATE, "/t/{slug}?niche=plumbing&greet=1");
+  assert.equal(plumbingStorefrontHref("rogue-pipe-co"), "/t/rogue-pipe-co?niche=plumbing&greet=1");
   assert.match(outreachNicheLabel("plumbing"), /Plumbing/);
 });
 
@@ -43,9 +49,10 @@ test("demo storefront path carries niche, business inlay, and plumbing hero pin"
     county: "Jackson County",
   });
   assert.match(path, /^\/t\/rogue-pipe-co-medford\?/);
+  assert.match(path, /niche=plumbing/);
   assert.match(path, /business=Rogue\+Pipe\+Co/);
   assert.match(path, /b=rogue-pipe-co-medford/);
-  assert.match(path, /hero=%2Fmedia%2Faxiom-plumber-hero\.mp4/);
+  assert.match(path, /hero=%2Fmedia%2Faxio-plumber-hero\.mp4/);
   assert.match(path, /greet=1/);
   assert.match(path, /utm_source=desk/);
 });

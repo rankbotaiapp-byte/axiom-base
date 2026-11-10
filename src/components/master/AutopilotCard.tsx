@@ -166,7 +166,7 @@ export function AutopilotCard({
           onClick={() => void automate()}
         >
           <Zap className="size-4" aria-hidden />
-          {busy === "automate" ? "Automating…" : "Automate"}
+          {busy === "automate" ? "Automating…" : "Master Autopilot"}
         </Button>
         <Button type="button" variant="secondary" disabled={busy !== null} onClick={() => void engage()}>
           {busy === "read" ? "Reading the desk" : "Engage Autopilot"}
