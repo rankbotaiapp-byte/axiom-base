@@ -36,6 +36,8 @@
   --color-panel: #121821;
   --color-volt: #3fd8ff;
   --color-mist: #9aa7b8;
+  /* Obsidian HUD neon from the studio reference plate */
+  --color-hud: #00f2fe;
 
   --radius-sm: 8px;
   --radius-md: 12px;

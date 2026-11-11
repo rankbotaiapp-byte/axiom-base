@@ -95,6 +95,40 @@ export async function readLeadPreview(leadSlug: string) {
   };
 }
 
+/** Walk-up HUD checkout: mint a territory row so Stripe can bind the slug. */
+export async function ensureTerritoryLead(
+  leadSlug: string,
+  opts: { businessName?: string; tradeType?: string; tradeLabel?: string } = {},
+): Promise<string> {
+  const sql = await getSql();
+  const existing = await sql<{ lead_slug: string }>`
+    select lead_slug from preloaded_leads where lead_slug = ${leadSlug} limit 1
+  `;
+  if (existing[0]) return leadSlug;
+  const businessName = (opts.businessName ?? "").trim().slice(0, 80) || leadSlug.replace(/-/g, " ");
+  const tradeType = (opts.tradeType ?? "plumbing").trim().slice(0, 40) || "plumbing";
+  const tradeLabel = (opts.tradeLabel ?? "").trim().slice(0, 80) || tradeType;
+  const id = newId("lead");
+  try {
+    await sql`
+      insert into preloaded_leads (
+        id, business_name, trade_type, trade_label, city, county, lead_slug, claimed, source
+      ) values (
+        ${id}, ${businessName}, ${tradeType}, ${tradeLabel}, ${"Medford"}, ${"Jackson"},
+        ${leadSlug}, false, ${"studio"}
+      )
+      on conflict (lead_slug) do nothing
+    `;
+  } catch {
+    await sql`
+      insert into preloaded_leads (id, business_name, trade_type, city, county, lead_slug, claimed)
+      values (${id}, ${businessName}, ${tradeType}, ${"Medford"}, ${"Jackson"}, ${leadSlug}, false)
+      on conflict (lead_slug) do nothing
+    `;
+  }
+  return leadSlug;
+}
+
 export async function openTerritoryCheckout(
   leadSlug: string,
   planId: string,

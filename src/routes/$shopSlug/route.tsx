@@ -3,6 +3,8 @@ import { createFileRoute, isNotFound, Link, Outlet, notFound, useRouterState } f
 import { AxiomRing, AxiomRingProvider, useAxiomRing } from "@/components/axiom-ring";
 import { rippleTheme } from "@/lib/axiom/brand-studio";
 import { localStorefront } from "@/lib/axiom/autopilot";
+import { shopCity } from "@/lib/axiom/avatar";
+import { buildTenantLocalSeo, cinematicLandingMeta } from "@/lib/axiom/cinematic-content-seo";
 import { materializeDatasetShop } from "@/lib/axiom/autopilot-shop";
 import { getBusinessBrand } from "@/lib/axiom/business-lookup";
 import { isProspectShopId } from "@/lib/axiom/outreach-visit";
@@ -115,6 +117,18 @@ export const Route = createFileRoute("/$shopSlug")({
     }
     throw notFound();
   },
+  head: ({ loaderData }) => {
+    if (!loaderData) return {};
+    const shop = loaderData.shop;
+    const plan = buildTenantLocalSeo({
+      slug: shop.slug,
+      businessName: shop.name,
+      niche: shop.customNiche || shop.niche,
+      city: shopCity(shop.address),
+      image: shop.heroImageUrl,
+    });
+    return { meta: [...cinematicLandingMeta(plan)] };
+  },
   component: ShopLayout,
   notFoundComponent: () => (
     <main className="grid min-h-dvh place-items-center bg-obsidian px-6 text-center text-fg">
@@ -166,10 +180,28 @@ function ShopLayout() {
         watchEmployeeId={employeeId}
       >
         {onFilm ? null : <AxiomRing />}
+        <ShopLocalSeo />
         <AcceptBar mode={mode} />
         <Outlet />
       </AxiomRingProvider>
     </LiveShopContext.Provider>
+  );
+}
+
+function ShopLocalSeo() {
+  const data = useShopPageData();
+  const plan = buildTenantLocalSeo({
+    slug: data.shop.slug,
+    businessName: data.shop.name,
+    niche: data.shop.customNiche || data.shop.niche,
+    city: shopCity(data.shop.address),
+    image: data.shop.heroImageUrl,
+  });
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(plan.localBusinessJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(plan.breadcrumbJsonLd) }} />
+    </>
   );
 }
 

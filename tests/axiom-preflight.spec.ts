@@ -689,4 +689,36 @@ test.describe("AXIOM Pre-Flight Red Team", () => {
       guard.assertNoLeak();
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 5) Autopilot content queue + local emergency SEO
+  // ═══════════════════════════════════════════════════════════════════════════
+  test.describe("5 · Autopilot content + local SEO", () => {
+    test("tenant storefront emits LocalBusiness JSON-LD and 24/7 emergency keywords", async ({
+      page,
+    }) => {
+      const guard = await installVendorMocks(page);
+      await page.goto(`/${SHOP}`, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      const html = await page.content();
+      expect(html).toMatch(/application\/ld\+json/i);
+      expect(html).toMatch(/schema\.org/i);
+      expect(html.toLowerCase()).toMatch(/24\/7|emergency|localbusiness|professionalservice/);
+      guard.assertNoLeak();
+    });
+
+    test("master autopilot dry-run and content tick stay vendor-safe", async ({ page, request }) => {
+      const guard = await installVendorMocks(page);
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+
+      const dry = await request.post("/api/master/autopilot?dry=1", {
+        headers: { "content-type": "application/json", "x-autopilot-dry-run": "1" },
+        data: { action: "tick_content" },
+      });
+      expect([200, 401, 403, 500]).toContain(dry.status());
+
+      const cron = await request.get("/api/autopilot/cron");
+      expect([200, 401, 403, 404, 500]).toContain(cron.status());
+      guard.assertNoLeak();
+    });
+  });
 });

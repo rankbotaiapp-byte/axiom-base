@@ -4,6 +4,7 @@ import {
   CINEMATIC_HERO_FALLBACKS,
   CINEMATIC_HERO_VIDEO,
   buildAutonomousContentPlan,
+  buildTenantLocalSeo,
   cinematicLandingMeta,
 } from "./cinematic-content-seo.ts";
 
@@ -25,7 +26,9 @@ describe("cinematic content + SEO architecture", () => {
       origin: "https://axiom.example",
     });
     assert.match(plan.seoTitle, /Medford/);
+    assert.match(plan.seoTitle, /24\/7 emergency plumber in Medford/i);
     assert.match(plan.seoDescription, /Rogue Rapid Plumbing/);
+    assert.ok(plan.keywords.some((k) => /24\/7 emergency plumber in Medford/i.test(k)));
     assert.ok(plan.keywords.some((k) => /medford/i.test(k)));
     assert.equal(plan.posts.length, 5);
     assert.ok(plan.posts.every((p) => p.channel && p.cadence && p.caption));
@@ -36,11 +39,26 @@ describe("cinematic content + SEO architecture", () => {
     assert.ok(plan.posts[0]?.caption.includes("Rogue Rapid Plumbing"));
   });
 
+  it("builds tenant storefront SEO for emergency ranking on /[shopSlug]", () => {
+    const seo = buildTenantLocalSeo({
+      slug: "rogue-rapid",
+      businessName: "Rogue Rapid Plumbing",
+      niche: "plumbing",
+      city: "Medford",
+      origin: "https://axiom.example",
+    });
+    assert.match(seo.seoTitle, /24\/7 emergency plumber in Medford/i);
+    assert.equal(seo.localBusinessJsonLd.openingHours, "Mo-Su 00:00-23:59");
+    assert.match(JSON.stringify(seo.localBusinessJsonLd.makesOffer), /24\/7 emergency plumber/);
+  });
+
   it("emits head meta for the cinematic landing", () => {
     const plan = buildAutonomousContentPlan({ niche: "auto", city: "Grants Pass" });
     const meta = cinematicLandingMeta(plan);
     assert.ok(meta.some((m) => "title" in m));
     assert.ok(meta.some((m) => "name" in m && m.name === "description"));
     assert.ok(meta.some((m) => "property" in m && m.property === "og:title"));
+    assert.ok(meta.some((m) => "name" in m && m.name === "geo.placename"));
+    assert.ok(meta.some((m) => "name" in m && m.name === "keywords"));
   });
 });

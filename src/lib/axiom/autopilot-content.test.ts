@@ -6,6 +6,7 @@ import {
   brandedStockPosterSvg,
   composeBrandedStock,
   curatedStockImage,
+  emergencySearchPhrase,
   curatedStockVideo,
   daySeedFromDate,
   framedStockSvg,
@@ -36,6 +37,8 @@ describe("autopilot content sourcing + branding", () => {
     assert.equal(overlay.city, "Medford");
     assert.match(overlay.cta, /Book in Medford/);
     assert.match(overlay.tradeLabel, /Plumbing/i);
+    assert.ok(overlay.hashtags.some((tag) => /EmergencyPlumber/i.test(tag)));
+    assert.equal(overlay.accent, "#00FFCC");
 
     const base = curatedStockImage("plumbing", 0);
     assert.equal(base.kind, "image");
@@ -48,12 +51,19 @@ describe("autopilot content sourcing + branding", () => {
       city: "Medford",
       bookUrl: "/rogue-plumbing/book",
       niche: "plumbing",
+      logoUrl: "/media/rogue-mark.png",
+      accent: "#00F2FE",
     });
     assert.match(composition.caption, /Rogue Plumbing/);
     assert.match(composition.caption, /Medford/);
     assert.match(composition.caption, /Book in Medford/);
+    assert.match(composition.caption, /24\/7 emergency plumber in Medford/i);
+    assert.match(composition.caption, /#247Emergency/);
     assert.match(composition.posterSvg, /Rogue Plumbing/);
+    assert.match(composition.posterSvg, /stroke="#00F2FE"/);
+    assert.match(composition.posterSvg, /\/media\/rogue-mark\.png/);
     assert.match(composition.framedSvg, /Rogue Plumbing/);
+    assert.match(composition.framedSvg, /stroke="#00F2FE"/);
     assert.match(composition.framedSvg, /images\.unsplash\.com|href=/);
     assert.equal(composition.metadata.version, 1);
     assert.equal(composition.metadata.niche, "plumbing");
@@ -87,6 +97,13 @@ describe("autopilot content sourcing + branding", () => {
       video,
     ), /Night Circuit/);
     assert.ok(daySeedFromDate() > 0);
+  });
+
+  it("emits 24/7 emergency search phrases for plumbing, electrical, HVAC, and auto", () => {
+    assert.match(emergencySearchPhrase("plumbing", "Medford"), /24\/7 emergency plumber in Medford/);
+    assert.match(emergencySearchPhrase("electrical", "Ashland"), /electrician/);
+    assert.match(emergencySearchPhrase("hvac", "Grants Pass"), /HVAC/i);
+    assert.match(emergencySearchPhrase("auto", "Klamath Falls"), /auto repair/i);
   });
 
   it("rotates keyword picks by day seed for fresh daily queries", () => {

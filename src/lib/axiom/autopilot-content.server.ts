@@ -27,6 +27,10 @@ type TenantShop = {
   niche: string;
   address: string;
   owner_user_id: string | null;
+  neon_accent?: string | null;
+  ring_color?: string | null;
+  hero_image_url?: string | null;
+  trade_profile?: string | null;
 };
 
 export type StockBrandTickResult = {
@@ -385,10 +389,36 @@ async function fillProofFromStock(shop: TenantShop, imageUrl: string, caption: s
   }
 }
 
+function brandFromShop(shop: TenantShop): { logoUrl?: string; accent?: string } {
+  let logoUrl = "";
+  let accent = String(shop.neon_accent || shop.ring_color || "").trim();
+  const raw = shop.trade_profile;
+  if (raw) {
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === "object") {
+        const rec = parsed as Record<string, unknown>;
+        if (typeof rec.logoUrl === "string") logoUrl = rec.logoUrl.trim();
+      }
+    } catch {
+      /* trade_profile may be legacy text */
+    }
+  }
+  if (!logoUrl) {
+    const hero = String(shop.hero_image_url || "").trim();
+    if (/^(\/media\/|\/api\/|https?:\/\/)/i.test(hero)) logoUrl = hero;
+  }
+  return {
+    logoUrl: logoUrl.slice(0, 400) || undefined,
+    accent: accent || undefined,
+  };
+}
+
 /** Source → brand-stamp → persist for one armed tenant. */
 export async function sourceBrandedContentForShop(shop: TenantShop): Promise<StockBrandTickResult> {
   const city = shopCity(shop.address);
   const seed = daySeedFromDate() + shop.slug.length;
+  const brand = brandFromShop(shop);
   // Daily cycle prefers Pixabay (then Pexels) trade MP4s; stills remain a proof companion.
   const base = await fetchLegalStockMedia({ niche: shop.niche, kind: "video", seed });
   const composition = composeBrandedStock({
@@ -397,6 +427,8 @@ export async function sourceBrandedContentForShop(shop: TenantShop): Promise<Sto
     city,
     bookUrl: `/${shop.slug}/book`,
     niche: shop.niche,
+    logoUrl: brand.logoUrl,
+    accent: brand.accent,
   });
 
   const stored = await persistBrandedStill(shop, composition);
@@ -419,6 +451,8 @@ export async function sourceBrandedContentForShop(shop: TenantShop): Promise<Sto
       city,
       bookUrl: `/${shop.slug}/book`,
       niche: shop.niche,
+      logoUrl: brand.logoUrl,
+      accent: brand.accent,
     });
     const stillStored = await persistBrandedStill(shop, stillComposition);
     if (still.license.provider !== "curated" || stillStored) {
@@ -453,23 +487,28 @@ export async function tickAutopilotStockBranding(): Promise<{
   let rows: TenantShop[] = [];
   try {
     rows = await sql<TenantShop>`
-      select id, slug, name, niche, address, owner_user_id
+      select id, slug, name, niche, address, owner_user_id, neon_accent, ring_color,
+             hero_image_url, trade_profile
       from shops
-      where coalesce(autopilot_active, false) = true
+      where owner_user_id is not null
+         or coalesce(autopilot_active, false) = true
          or coalesce(ai_content_autopilot, false) = true
       order by slug asc
-      limit 8
+      limit 16
     `;
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (!/autopilot_active|ai_content_autopilot/i.test(message)) throw err;
+    if (!/autopilot_active|ai_content_autopilot|neon_accent|ring_color|trade_profile|hero_image_url/i.test(message)) {
+      throw err;
+    }
     try {
       rows = await sql<TenantShop>`
         select id, slug, name, niche, address, owner_user_id
         from shops
-        where coalesce(ai_content_autopilot, false) = true
+        where owner_user_id is not null
+           or coalesce(ai_content_autopilot, false) = true
         order by slug asc
-        limit 8
+        limit 16
       `;
     } catch (inner) {
       const innerMessage = inner instanceof Error ? inner.message : "";

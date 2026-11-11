@@ -60,7 +60,13 @@ export const startTenantStorefrontCheckout = createServerFn({ method: "POST" })
         namedPriceCents = clampNamedPriceCents(NAME_YOUR_PRICE_MIN_CENTS);
       }
     }
-    return { leadSlug, planId, namedPriceCents } as const;
+    const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+    const nested = raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : raw;
+    const businessName = String(nested.businessName ?? "").trim().slice(0, 80);
+    const tradeType = String(nested.tradeType ?? nested.niche ?? "").trim().slice(0, 40);
+    const logoUrl = String(nested.logoUrl ?? "").trim().slice(0, 400);
+    const accent = String(nested.accent ?? "").trim().slice(0, 16);
+    return { leadSlug, planId, namedPriceCents, businessName, tradeType, logoUrl, accent } as const;
   })
   .handler(async ({ data }) => {
     const payments = await import("./payments.server");
@@ -68,7 +74,11 @@ export const startTenantStorefrontCheckout = createServerFn({ method: "POST" })
     const origin = payments.requestOrigin();
     try {
       const { ensureTerritoryLead } = await import("./territory.server");
-      await ensureTerritoryLead(data.leadSlug);
+      await ensureTerritoryLead(data.leadSlug, {
+        businessName: data.businessName,
+        tradeType: data.tradeType || "plumbing",
+        tradeLabel: data.tradeType,
+      });
     } catch {
       /* Stripe session still opens with the storefront slug as lead_slug. */
     }
@@ -84,6 +94,9 @@ export const startTenantStorefrontCheckout = createServerFn({ method: "POST" })
       origin,
       planId: data.planId,
       namedPriceCents: data.namedPriceCents,
+      businessName: data.businessName,
+      niche: data.tradeType,
+      logoUrl: data.logoUrl,
     });
     return { processor: "stripe" as const, url: session.url, checkoutId: session.id };
   });

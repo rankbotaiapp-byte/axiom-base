@@ -1,5 +1,6 @@
 "use client";
 
+import { ObsidianStudioWidget } from "@/components/landing/ObsidianStudioWidget";
 import { FounderIntroHero, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { DEFAULT_PLUMBER_OUTREACH, emptyOutreachTenant } from "@/lib/axiom/plumber-outreach";
@@ -13,6 +14,7 @@ export default function Page() {
   return (
     <>
       <FounderIntroHero />
+      <ObsidianStudioWidget />
       <PlumberOutreachLive
         initial={DEFAULT_PLUMBER_OUTREACH}
         tenant={emptyOutreachTenant(DEFAULT_TENANT_SLUG)}

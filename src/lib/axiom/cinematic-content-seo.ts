@@ -6,7 +6,7 @@
  */
 
 import { composeAutopilotClip, tradeCopyForNiche } from "../../config/AutopilotContentEngine.ts";
-import { tradeKeywordsForNiche } from "./autopilot-content.ts";
+import { emergencySearchPhrase, tradeHashtags, tradeKeywordsForNiche } from "./autopilot-content.ts";
 
 export const CINEMATIC_HERO_VIDEO = "/media/heroes/axiom-landing.mp4";
 export const CINEMATIC_HERO_POSTER = "/media/hero-poster.jpg";
@@ -65,10 +65,12 @@ export function buildAutonomousContentPlan(input: {
   const { tradeLabel, tradeLine } = tradeCopyForNiche(niche);
   const origin = (input.origin || "https://axiom.shop").replace(/\/$/, "");
   const bookUrl = `${origin}${input.bookPath || "/onboard"}`;
-  const seoTitle = `${tradeLabel} in ${city} · 24/7 booking powered by Axiom`;
-  const seoDescription = `${business} runs automated booking, missed-call text-back, and branded content for ${tradeLabel.toLowerCase()} crews in ${city}. Live in minutes — no coding.`;
+  const emergency = emergencySearchPhrase(niche, city);
+  const seoTitle = `${emergency} · 24/7 booking powered by Axiom`;
+  const seoDescription = `${business} is the ${emergency}. Automated booking, missed-call text-back, and branded content for ${tradeLabel.toLowerCase()} crews. Live in minutes — no coding.`;
   const tradeKeys = tradeKeywordsForNiche(niche);
   const keywords = [
+    emergency,
     `${tradeLabel.toLowerCase()} ${city}`,
     `best ${tradeLabel.toLowerCase()} near me`,
     `${city} ${tradeLabel.toLowerCase()} booking`,
@@ -76,6 +78,7 @@ export function buildAutonomousContentPlan(input: {
     "missed call text back",
     "local SEO storefront",
     ...tradeKeys.slice(0, 4),
+    ...tradeHashtags({ niche, city, shopName: business }),
   ];
 
   const clip = composeAutopilotClip({
@@ -104,10 +107,11 @@ export function buildAutonomousContentPlan(input: {
     image: `${origin}${CINEMATIC_HERO_VIDEO}`,
     priceRange: "$$",
     slogan: tradeLine,
-    knowsAbout: keywords.slice(0, 6),
+    knowsAbout: keywords.slice(0, 8),
+    openingHours: "Mo-Su 00:00-23:59",
     makesOffer: {
       "@type": "Offer",
-      name: "24/7 automated booking storefront",
+      name: emergency,
       description: tradeLine,
       url: bookUrl,
     },
@@ -140,6 +144,28 @@ export function buildAutonomousContentPlan(input: {
   };
 }
 
+/** Per-tenant storefront SEO for `/[shopSlug]` emergency ranking. */
+export function buildTenantLocalSeo(input: {
+  slug: string;
+  businessName: string;
+  niche: string;
+  city: string;
+  origin?: string;
+  image?: string;
+  phone?: string;
+}) {
+  const origin = (input.origin || "").replace(/\/$/, "");
+  const path = `/${input.slug}`;
+  const url = origin ? `${origin}${path}` : path;
+  return buildAutonomousContentPlan({
+    niche: input.niche,
+    city: input.city,
+    businessName: input.businessName,
+    origin: origin || "https://axiom.shop",
+    bookPath: `${path}/book`,
+  });
+}
+
 /** Head meta tags for the cinematic landing (TanStack `head` / document meta). */
 export function cinematicLandingMeta(plan: AutonomousContentPlan) {
   return [
@@ -148,6 +174,7 @@ export function cinematicLandingMeta(plan: AutonomousContentPlan) {
     { name: "keywords", content: plan.keywords.join(", ") },
     { name: "robots", content: "index,follow,max-image-preview:large" },
     { name: "geo.placename", content: plan.city },
+    { name: "geo.region", content: plan.city },
     { property: "og:title", content: plan.seoTitle },
     { property: "og:description", content: plan.seoDescription },
     { property: "og:type", content: "website" },

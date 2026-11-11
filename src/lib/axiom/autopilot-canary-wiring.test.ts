@@ -12,9 +12,14 @@ test("cron path ticks shop autopilot, outreach drain, and outbound engine togeth
   const route = readFileSync(join(root, "src/routes/api/autopilot.cron.ts"), "utf8");
   const queueServer = readFileSync(join(root, "src/lib/axiom/outreach-queue.server.ts"), "utf8");
   assert.match(route, /handleOutreachCron/);
+  assert.match(route, /GET:/);
   assert.match(cron, /drainOutreachQueue/);
   assert.match(cron, /drainNurtureTouches/);
   assert.match(cron, /tickShopAutopilot/);
+  const masterRoute = readFileSync(join(root, "src/app/api/master/autopilot/route.ts"), "utf8");
+  assert.match(masterRoute, /tick_content/);
+  assert.match(masterRoute, /cronTokenValid/);
+  assert.match(masterRoute, /tickShopAutopilot/);
   assert.match(cron, /tickOutboundFromCron/);
   assert.match(cron, /maybeEvaluateOutreachHealthHourly/);
   assert.match(cron, /requireCronSecret/);
@@ -65,6 +70,8 @@ test("stock branding module sources legal media and stamps tenant brand plate", 
   assert.match(server, /fetchPixabayTradeVideo/);
   assert.match(server, /tickAutopilotStockBranding/);
   assert.match(server, /sourceBrandedContentForShop/);
+  assert.match(pure, /emergencySearchPhrase/);
+  assert.match(pure, /tradeHashtags/);
   assert.match(pixabay, /pixabay\.com\/api\/videos/);
   assert.match(cron, /stockBranded/);
 });

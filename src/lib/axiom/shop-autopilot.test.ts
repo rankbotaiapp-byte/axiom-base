@@ -15,6 +15,14 @@ test("autopilot_active is the armed flag; AI content is a fallback", () => {
   assert.equal(parseAutopilotActive({ autopilot_active: true, ai_content_autopilot: false }), true);
   assert.equal(parseAutopilotActive({ autopilot_active: false, ai_content_autopilot: true }), true);
   assert.equal(parseAutopilotActive({ autopilot_active: false, ai_content_autopilot: false }), false);
+  assert.equal(
+    parseAutopilotActive({
+      autopilot_active: false,
+      ai_content_autopilot: false,
+      owner_user_id: "usr_provisioned",
+    }),
+    true,
+  );
 });
 
 test("owner test cron tick is session-auth and composites the city token", () => {

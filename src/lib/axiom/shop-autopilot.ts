@@ -7,7 +7,9 @@ export function isAutopilotArmed(value: unknown): boolean {
 export function parseAutopilotActive(row: {
   autopilot_active?: unknown;
   ai_content_autopilot?: unknown;
+  owner_user_id?: string | null;
 }): boolean {
+  if (String(row.owner_user_id ?? "").trim()) return true;
   return isAutopilotArmed(row.autopilot_active) || isAutopilotArmed(row.ai_content_autopilot);
 }
 

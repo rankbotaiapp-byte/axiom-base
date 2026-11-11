@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { ObsidianStudioWidget } from "@/components/landing/ObsidianStudioWidget";
 import { FounderIntroHero, FOUNDER_INTRO_VIDEO, FOUNDER_INTRO_VIDEO_SAFE, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { LEAD_STORAGE_KEY, parseFunnelSearch } from "@/lib/axiom/funnel";
@@ -83,6 +84,7 @@ function Home() {
   return (
     <>
       <FounderIntroHero />
+      <ObsidianStudioWidget />
       <PlumberOutreachLive
         key={slug}
         initial={page.config}

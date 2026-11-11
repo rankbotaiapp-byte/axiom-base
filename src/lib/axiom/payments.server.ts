@@ -306,6 +306,40 @@ export async function createTerritoryCheckout(opts: {
   return { id: session.id, url: session.url, clientSecret: "" };
 }
 
+/** Direct Stripe session for a walk-up tenant slug (HUD / storefront $1 trial). */
+export async function createTenantLicenseCheckout(opts: {
+  slug: string;
+  origin: string;
+  planId?: string;
+  namedPriceCents?: number;
+  businessName?: string;
+  niche?: string;
+  logoUrl?: string;
+}) {
+  const planId = opts.planId === "lifetime" ? "lifetime" : "trial";
+  const { territoryPlan } = await import("./pricing");
+  const plan = territoryPlan(planId);
+  if (!plan) throw new Error("Unknown plan");
+  const { openTerritoryCheckout } = await import("./territory.server");
+  const opened = await openTerritoryCheckout(
+    opts.slug,
+    plan.id,
+    "stripe",
+    opts.namedPriceCents ?? plan.amountCents,
+  );
+  const session = await createTerritoryCheckout({
+    leadSlug: opts.slug,
+    checkoutId: opened.checkoutId,
+    planId: plan.id,
+    planName: plan.name,
+    amountCents: opts.namedPriceCents ?? plan.amountCents,
+    cadence: plan.cadence,
+    origin: opts.origin,
+    namedPriceCents: opts.namedPriceCents,
+  });
+  return { id: session.id, url: session.url, checkoutId: opened.checkoutId };
+}
+
 /**
  * Landing-page launch plan, sold inside the slide-up drawer with Stripe Embedded Checkout.
  * redirect_on_completion=never keeps the buyer on the page so the drawer can run the success state.

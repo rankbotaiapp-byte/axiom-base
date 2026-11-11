@@ -3,6 +3,10 @@
   "buildCommand": "npm run build",
   "framework": null,
   "trailingSlash": false,
+  "crons": [
+    { "path": "/api/autopilot/cron", "schedule": "12 15 * * *" },
+    { "path": "/api/master/autopilot", "schedule": "42 15 * * *" }
+  ],
   "rewrites": [
     { "source": "/showcase/:dir/:page", "destination": "/showcase/:dir/:page/index.html" },
     { "source": "/showcase/:dir", "destination": "/showcase/:dir/index.html" }

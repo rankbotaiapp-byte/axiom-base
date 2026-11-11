@@ -52,6 +52,9 @@ export type BrandOverlayStamp = {
   tradeLabel: string;
   tradeLine: string;
   bookUrl: string;
+  logoUrl: string;
+  accent: string;
+  hashtags: string[];
 };
 
 export type BrandedStockComposition = {
@@ -74,21 +77,21 @@ export type BrandedStockComposition = {
 
 /** Search phrases for commercially free stock APIs, keyed by catalog niche. */
 const TRADE_KEYWORDS: Record<CatalogNiche, readonly string[]> = {
-  auto: ["auto repair garage", "car mechanic workshop", "vehicle detailing bay"],
+  auto: ["auto repair garage", "emergency auto repair", "car mechanic workshop", "24/7 vehicle roadside"],
   barber: ["barbershop chair", "barber fade haircut", "classic barbershop interior"],
   "beauty-salon": ["beauty salon studio", "hair color salon", "spa treatment room"],
   "bow-tech": ["archery bow workshop", "compound bow bench", "custom bow crafting"],
   canine: ["dog grooming salon", "pet boarding kennel", "dog walking outdoors"],
   contractor: ["home construction site", "general contractor tools", "residential remodel"],
-  electrical: ["electrician panel work", "electrical service call", "wiring installation"],
+  electrical: ["emergency electrician", "24/7 electrical service call", "electrician panel work", "wiring installation"],
   fabrication: ["metal fabrication shop", "welding workshop", "custom steel build"],
   forestry: ["forestry logging work", "firewood splitting", "tree service crew"],
   glasswork: ["glassblowing studio", "stained glass workshop", "glass artisan bench"],
-  hvac: ["hvac technician service", "air conditioning install", "furnace repair"],
+  hvac: ["emergency hvac repair", "24/7 air conditioning service", "furnace repair", "hvac technician service"],
   landscaping: ["landscaping garden design", "lawn care crew", "outdoor hardscape"],
   machining: ["cnc machining shop", "precision mill work", "machine shop tools"],
   "personal-trainer": ["personal trainer gym", "fitness coaching session", "strength training"],
-  plumbing: ["plumber under sink", "plumbing pipe repair", "residential plumber tools"],
+  plumbing: ["24/7 emergency plumber", "burst pipe plumber", "plumbing pipe repair", "residential plumber tools"],
   "power-sports": ["atv repair shop", "motorcycle service bay", "power sports garage"],
   roofing: ["roofing contractor install", "residential roof shingles", "roofer on rooftop"],
   security: ["home security install", "security camera technician", "locksmith service"],
@@ -113,19 +116,62 @@ export function pickTradeKeyword(niche: string | null | undefined, daySeed = 0):
   return keys[index] ?? "local trade workshop";
 }
 
+const EMERGENCY_NOUN: Partial<Record<CatalogNiche, string>> = {
+  plumbing: "plumber",
+  electrical: "electrician",
+  hvac: "HVAC technician",
+  auto: "auto repair shop",
+};
+
+/** Local SERP phrase when someone searches an after-hours trade in a city. */
+export function emergencySearchPhrase(niche: string | null | undefined, city: string): string {
+  const id = resolveCatalogNiche(niche);
+  const place = city.replace(/\s+/g, " ").trim() || "your city";
+  const noun = EMERGENCY_NOUN[id] ?? `${CATALOG_BY_ID[id]?.label ?? "trade"} crew`.toLowerCase();
+  return `24/7 emergency ${noun} in ${place}`;
+}
+
+export function tradeHashtags(input: { niche?: string | null; city: string; shopName: string }): string[] {
+  const id = resolveCatalogNiche(input.niche);
+  const cityTag = input.city.replace(/[^a-zA-Z0-9]+/g, "");
+  const shopTag = input.shopName.replace(/[^a-zA-Z0-9]+/g, "").slice(0, 24);
+  const tags = [`#247Emergency`, `#${id.replace(/-/g, "")}`, cityTag ? `#${cityTag}` : "", shopTag ? `#${shopTag}` : ""];
+  if (id === "plumbing") tags.push("#EmergencyPlumber");
+  if (id === "electrical") tags.push("#EmergencyElectrician");
+  if (id === "hvac") tags.push("#EmergencyHVAC");
+  if (id === "auto") tags.push("#EmergencyAutoRepair");
+  return [...new Set(tags.filter(Boolean))].slice(0, 8);
+}
+
 export function brandOverlayStamp(input: {
   shopName: string;
   city: string;
   bookUrl?: string;
   niche?: string | null;
   cta?: string;
+  logoUrl?: string;
+  accent?: string;
 }): BrandOverlayStamp {
   const shopName = input.shopName.replace(/\s+/g, " ").trim().slice(0, 48) || "Local shop";
   const city = input.city.replace(/\s+/g, " ").trim().slice(0, 40) || "Your city";
   const bookUrl = (input.bookUrl ?? "/book").trim().slice(0, 240) || "/book";
   const { tradeLabel, tradeLine } = tradeCopyForNiche(input.niche);
   const cta = (input.cta ?? bookingCta(city)).replace(/\s+/g, " ").trim().slice(0, 48);
-  return { shopName, city, cta, tradeLabel, tradeLine, bookUrl };
+  const logoUrl = (input.logoUrl ?? "").trim().slice(0, 400);
+  const accent = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test((input.accent ?? "").trim())
+    ? input.accent!.trim().toUpperCase()
+    : "#00FFCC";
+  return {
+    shopName,
+    city,
+    cta,
+    tradeLabel,
+    tradeLine,
+    bookUrl,
+    logoUrl,
+    accent,
+    hashtags: tradeHashtags({ niche: input.niche, city, shopName }),
+  };
 }
 
 export function curatedStockImage(niche: string | null | undefined, slot = 0): StockMediaAsset {
@@ -204,12 +250,16 @@ export function composeBrandedStock(input: {
   bookUrl: string;
   niche?: string | null;
   stampedAt?: string;
+  logoUrl?: string;
+  accent?: string;
 }): BrandedStockComposition {
   const overlay = brandOverlayStamp({
     shopName: input.shopName,
     city: input.city,
     bookUrl: input.bookUrl,
     niche: input.niche,
+    logoUrl: input.logoUrl,
+    accent: input.accent,
   });
   const clip = composeAutopilotClip({
     loopUrl: input.base.kind === "video" ? input.base.src : "",
@@ -223,9 +273,11 @@ export function composeBrandedStock(input: {
   const framedSvg = framedStockSvg(overlay, input.base);
   const caption = [
     `${overlay.shopName} · ${overlay.tradeLabel} in ${overlay.city}.`,
+    emergencySearchPhrase(input.niche, overlay.city) + ".",
     overlay.tradeLine,
     overlay.cta,
     overlay.bookUrl,
+    overlay.hashtags.join(" "),
     input.base.license.attribution,
   ]
     .join(" ")
@@ -270,23 +322,35 @@ export function brandedStockPosterSvg(overlay: BrandOverlayStamp, base?: StockMe
   const line = escapeXml(overlay.tradeLine);
   const cta = escapeXml(overlay.cta);
   const credit = escapeXml(base?.license.attribution ?? "Stock media");
+  const neon = escapeXml(overlay.accent || "#00FFCC");
+  const logo = overlay.logoUrl ? escapeXml(overlay.logoUrl) : "";
+  const logoNode =
+    logo && /^(https?:\/\/|\/media\/)/i.test(overlay.logoUrl)
+      ? `<image href="${logo}" x="72" y="1280" width="120" height="72" preserveAspectRatio="xMidYMid meet"/>`
+      : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
   <defs>
     <linearGradient id="veil" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#05070a" stop-opacity="0.2"/>
-      <stop offset="0.5" stop-color="#05070a" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#05070a" stop-opacity="0.88"/>
+      <stop offset="0" stop-color="#030712" stop-opacity="0.2"/>
+      <stop offset="0.5" stop-color="#030712" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#030712" stop-opacity="0.88"/>
     </linearGradient>
   </defs>
-  <rect width="1080" height="1920" fill="#0b1220"/>
+  <rect width="1080" height="1920" fill="#030712"/>
+  <rect x="28" y="28" width="1024" height="1864" fill="none" stroke="${neon}" stroke-width="3"/>
+  <path d="M28 108 L28 28 L108 28" fill="none" stroke="${neon}" stroke-width="8"/>
+  <path d="M972 28 L1052 28 L1052 108" fill="none" stroke="${neon}" stroke-width="8"/>
+  <path d="M28 1812 L28 1892 L108 1892" fill="none" stroke="${neon}" stroke-width="8"/>
+  <path d="M972 1892 L1052 1892 L1052 1812" fill="none" stroke="${neon}" stroke-width="8"/>
   <rect width="1080" height="1920" fill="url(#veil)"/>
-  <text x="72" y="1420" fill="#00ffcc" font-family="ui-monospace, monospace" font-size="26">${trade}</text>
+  ${logoNode}
+  <text x="72" y="1420" fill="${neon}" font-family="ui-monospace, monospace" font-size="26">${trade}</text>
   <text x="72" y="1505" fill="#f3f1eb" font-family="Georgia, serif" font-size="64">${name}</text>
   <text x="72" y="1570" fill="#a8b0b8" font-family="ui-sans-serif, system-ui, sans-serif" font-size="32">${city}</text>
   <text x="72" y="1624" fill="#c8cdd3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26">${line}</text>
-  <rect x="72" y="1672" width="440" height="72" rx="16" fill="#f3f1eb"/>
-  <text x="92" y="1720" fill="#05070a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28">${cta}</text>
+  <rect x="72" y="1672" width="440" height="72" rx="16" fill="${neon}"/>
+  <text x="92" y="1720" fill="#030712" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28">${cta}</text>
   <text x="72" y="1860" fill="#6b7280" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20">${credit}</text>
 </svg>`;
 }
@@ -299,7 +363,13 @@ export function framedStockSvg(overlay: BrandOverlayStamp, base: StockMediaAsset
   const cta = escapeXml(overlay.cta);
   const credit = escapeXml(base.license.attribution);
   const href = escapeXml(base.previewSrc || base.src);
+  const neon = escapeXml(overlay.accent || "#00FFCC");
   const isImage = base.kind === "image" && /^https:\/\//i.test(base.src);
+  const logo = overlay.logoUrl ? escapeXml(overlay.logoUrl) : "";
+  const logoNode =
+    logo && /^(https?:\/\/|\/media\/)/i.test(overlay.logoUrl)
+      ? `<image href="${logo}" x="64" y="1088" width="96" height="64" preserveAspectRatio="xMidYMid meet"/>`
+      : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1200 1500" width="1200" height="1500">
   <defs>
@@ -314,14 +384,20 @@ export function framedStockSvg(overlay: BrandOverlayStamp, base: StockMediaAsset
     ${
       isImage
         ? `<image href="${href}" xlink:href="${href}" width="1200" height="1500" preserveAspectRatio="xMidYMid slice"/>`
-        : `<rect width="1200" height="1500" fill="#0b1220"/>`
+        : `<rect width="1200" height="1500" fill="#030712"/>`
     }
     <rect width="1200" height="1500" fill="url(#plate)"/>
   </g>
-  <text x="64" y="1180" fill="#00ffcc" font-family="ui-monospace, monospace" font-size="28">${trade}</text>
+  <rect x="24" y="24" width="1152" height="1452" fill="none" stroke="${neon}" stroke-width="3"/>
+  <path d="M24 96 L24 24 L96 24" fill="none" stroke="${neon}" stroke-width="8"/>
+  <path d="M1104 24 L1176 24 L1176 96" fill="none" stroke="${neon}" stroke-width="8"/>
+  <path d="M24 1404 L24 1476 L96 1476" fill="none" stroke="${neon}" stroke-width="8"/>
+  <path d="M1104 1476 L1176 1476 L1176 1404" fill="none" stroke="${neon}" stroke-width="8"/>
+  ${logoNode}
+  <text x="64" y="1180" fill="${neon}" font-family="ui-monospace, monospace" font-size="28">${trade}</text>
   <text x="64" y="1260" fill="#f8fafc" font-family="Georgia, serif" font-size="56">${name}</text>
   <text x="64" y="1320" fill="#94a3b8" font-family="ui-sans-serif, system-ui, sans-serif" font-size="30">${city}</text>
-  <rect x="64" y="1360" width="380" height="64" rx="14" fill="#f8fafc"/>
+  <rect x="64" y="1360" width="380" height="64" rx="14" fill="${neon}"/>
   <text x="84" y="1404" fill="#030712" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26">${cta}</text>
   <text x="64" y="1470" fill="#64748b" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18">${credit}</text>
 </svg>`;

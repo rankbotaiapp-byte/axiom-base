@@ -32,10 +32,11 @@ async function selectArmedShops() {
       select id, slug, name, niche, address, owner_user_id, hero_image_url, hero_video_url,
              trade_profile, autopilot_active, ai_content_autopilot
       from shops
-      where coalesce(autopilot_active, false) = true
+      where owner_user_id is not null
+         or coalesce(autopilot_active, false) = true
          or coalesce(ai_content_autopilot, false) = true
       order by slug asc
-      limit 8
+      limit 16
     `;
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
@@ -44,9 +45,10 @@ async function selectArmedShops() {
       select id, slug, name, niche, address, owner_user_id, hero_image_url, hero_video_url,
              trade_profile, ai_content_autopilot
       from shops
-      where coalesce(ai_content_autopilot, false) = true
+      where owner_user_id is not null
+         or coalesce(ai_content_autopilot, false) = true
       order by slug asc
-      limit 8
+      limit 16
     `;
   }
 }
@@ -171,6 +173,8 @@ export async function tickShopAutopilot(): Promise<{ ran: number; results: Autop
       niche: row.niche,
       address: row.address,
       owner_user_id: row.owner_user_id,
+      hero_image_url: row.hero_image_url,
+      trade_profile: row.trade_profile,
     }).catch((err: unknown) => ({
       shopId: row.id,
       slug: row.slug,

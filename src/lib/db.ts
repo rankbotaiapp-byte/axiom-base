@@ -156,16 +156,67 @@ async function withDbRetry<T>(run: () => Promise<T>): Promise<T> {
 
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
 
-/** Wrap a query runner in the tagged-template + `.query()` `Sql` surface. */
+const SQL_FRAGMENT = Symbol("sqlFragment");
+
+type SqlFragment = {
+  readonly [SQL_FRAGMENT]: true;
+  readonly text: string;
+  readonly params: unknown[];
+};
+
+function isSqlFragment(value: unknown): value is SqlFragment {
+  return Boolean(value && typeof value === "object" && SQL_FRAGMENT in value);
+}
+
+function compileSql(strings: TemplateStringsArray, values: unknown[]): { text: string; params: unknown[] } {
+  let text = strings[0] ?? "";
+  const params: unknown[] = [];
+  for (let i = 0; i < values.length; i += 1) {
+    const value = values[i];
+    if (isSqlFragment(value)) {
+      const offset = params.length;
+      text += value.text.replace(/\$(\d+)/g, (_, n: string) => `$${offset + Number(n)}`);
+      params.push(...value.params);
+    } else {
+      params.push(value);
+      text += `$${params.length}`;
+    }
+    text += strings[i + 1] ?? "";
+  }
+  return { text, params };
+}
+
+/**
+ * Wrap a query runner in the tagged-template + `.query()` `Sql` surface.
+ * Nested `sql`…`` values are inlined (lazy fragments) so helpers like
+ * `sql`(lower(trade_type) = …)` compose instead of running as their own query.
+ */
 function toSql(run: Run): Sql {
-  const sql = (async <T = Record<string, unknown>>(
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<T[]> => {
-    // Rebuild with $1, $2, … placeholders so values stay parameterized.
-    let text = strings[0];
-    for (let i = 0; i < values.length; i += 1) text += `$${i + 1}${strings[i + 1]}`;
-    return run<T>(text, values);
+  const sql = (<T = Record<string, unknown>>(strings: TemplateStringsArray, ...values: unknown[]) => {
+    const compiled = compileSql(strings, values);
+    let pending: Promise<T[]> | undefined;
+    const execute = () => {
+      pending ??= run<T>(compiled.text, compiled.params);
+      return pending;
+    };
+    const fragment: SqlFragment & Promise<T[]> = {
+      [SQL_FRAGMENT]: true,
+      text: compiled.text,
+      params: compiled.params,
+      then(onFulfilled, onRejected) {
+        return execute().then(onFulfilled, onRejected);
+      },
+      catch(onRejected) {
+        return execute().catch(onRejected);
+      },
+      finally(onFinally) {
+        return execute().finally(onFinally);
+      },
+      get [Symbol.toStringTag]() {
+        return "Promise";
+      },
+    } as SqlFragment & Promise<T[]>;
+    return fragment;
   }) as unknown as Sql;
   sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
     run<T>(text, params);

@@ -15,6 +15,11 @@ function fail(err: unknown): Response {
  */
 export async function GET(request: Request): Promise<Response> {
   try {
+    const { cronTokenValid } = await import("@/lib/axiom/cron-auth.server");
+    if (cronTokenValid(request)) {
+      const { tickShopAutopilot } = await import("@/lib/axiom/shop-autopilot.server");
+      await tickShopAutopilot().catch(() => undefined);
+    }
     const { readAutopilotCombined } = await import("@/lib/axiom/master-dashboard.server");
     return Response.json(await readAutopilotCombined(request));
   } catch (err) {
@@ -27,10 +32,12 @@ function dryRunRequested(request: Request): boolean {
   return url.searchParams.get("dry") === "1" || request.headers.get("x-autopilot-dry-run") === "1";
 }
 
-function parseAction(body: unknown): "start" | "pause" | "run_batch" | "automate" | "" {
+function parseAction(body: unknown): "start" | "pause" | "run_batch" | "automate" | "tick_content" | "" {
   if (!body || typeof body !== "object") return "";
   const action = (body as { action?: unknown }).action;
-  if (action === "start" || action === "pause" || action === "run_batch" || action === "automate") return action;
+  if (action === "start" || action === "pause" || action === "run_batch" || action === "automate" || action === "tick_content") {
+    return action;
+  }
   return "";
 }
 
@@ -38,7 +45,7 @@ function parseAction(body: unknown): "start" | "pause" | "run_batch" | "automate
 export async function POST(request: Request): Promise<Response> {
   try {
     const snapshot = request.clone();
-    let action: "start" | "pause" | "run_batch" | "automate" | "" = "";
+    let action: "start" | "pause" | "run_batch" | "automate" | "tick_content" | "" = "";
     try {
       action = parseAction(await request.json());
     } catch {
