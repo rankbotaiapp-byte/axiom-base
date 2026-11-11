@@ -6,8 +6,8 @@ import { INTRO_CAPTION_CUES, captionAtTime } from "@/lib/axiom/intro-captions";
 import "./founder-intro-hero.css";
 
 export const FOUNDER_INTRO_VIDEO = "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
-/** Space-free alias so production CDNs resolve the same film. */
-export const FOUNDER_INTRO_VIDEO_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
+/** Root-relative public path — same 24/7 film, no spaces, Vercel-safe. */
+export const FOUNDER_INTRO_VIDEO_SAFE = "/media/heroes/intro-welcome.mp4";
 export const PLUMBING_DEMO_ANCHOR = "plumbing-demo";
 
 export function explorePlumbingDemo() {
@@ -73,17 +73,17 @@ export function FounderIntroHero() {
     <section className="founder-intro" aria-label="Welcome from Eric">
       <div className="founder-intro-film">
         <video
-          key="/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4"
+          key="/media/heroes/intro-welcome.mp4"
           ref={videoRef}
-          className="founder-intro-video"
-          src="/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4"
           autoPlay
           muted={muted}
           loop
           playsInline
+          className="founder-intro-video absolute inset-0 w-full h-full object-cover"
+          src="/media/heroes/intro-welcome.mp4"
           preload="auto"
         >
-          <source src="/media/axiom-24-7-booking-for-contractors.mp4" type="video/mp4" />
+          <source src="/media/heroes/intro-welcome.mp4" type="video/mp4" />
           <source src="/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4" type="video/mp4" />
           <track
             kind="captions"
