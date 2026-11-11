@@ -500,6 +500,7 @@ function DeskView({
                       Preview <ArrowUpRight className="size-4" aria-hidden />
                     </Link>
                   ) : (
+                    <div className="flex flex-wrap gap-2">
                     <Link
                       to="/$shopSlug/admin"
                       params={{ shopSlug: shop.slug }}
@@ -511,6 +512,14 @@ function DeskView({
                     >
                       Open desk <ArrowUpRight className="size-4" aria-hidden />
                     </Link>
+                    <Link
+                      to="/$shopSlug/admin/hero-studio"
+                      params={{ shopSlug: shop.slug }}
+                      className="inline-flex h-11 items-center rounded-xl border border-line px-3 text-sm text-muted hover:text-fg"
+                    >
+                      Hero studio
+                    </Link>
+                    </div>
                   )}
                 </li>
               ))

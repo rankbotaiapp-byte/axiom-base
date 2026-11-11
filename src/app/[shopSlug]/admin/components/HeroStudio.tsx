@@ -8,6 +8,7 @@ import { HeroOtterInteractive } from "@/components/HeroOtterInteractive";
 import { HeroSharkInteractive } from "@/components/HeroSharkInteractive";
 import { HeroCustomizer } from "@/components/admin/HeroCustomizer";
 import { CyberCompanionHud } from "@/components/CyberCompanionHud";
+import { TemplateAssetTracker } from "@/components/funnel/TemplateAssetTracker";
 import { defaultNicheFilm } from "@/config/catalog";
 import { isOtterHeroFilm, isSharkHeroFilm } from "@/lib/axiom/hero-films";
 import { HeroLoopVideo } from "@/components/loop-video";
@@ -207,6 +208,13 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
           Back to the desk
         </Link>
         <AiContentAutopilotToggle shop={shop} readonly={readonly} />
+        <TemplateAssetTracker
+          heroLoop={video}
+          brandedPlate={still}
+          logoUrl={shop.frontendTemplate?.logoUrl}
+          serviceOnboarded={shop.onboarding.service}
+          serviceCount={shop.primaryServiceId ? 1 : 0}
+        />
         <DefaultAssetStudioPanel shop={shop} readonly={readonly} />
 
         <div className={`motion-preview${look.glow ? " is-ring" : ""}`}>
@@ -336,6 +344,8 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         environment="hero-studio"
         shopName={shop.name}
         shopSlug={shop.slug}
+        niche={shop.customNiche || shop.niche}
+        city=""
         onFocusArchive={() => {
           document.getElementById("hero-archive")?.scrollIntoView({ behavior: "smooth", block: "start" });
         }}

@@ -725,7 +725,13 @@ export async function handleStripeWebhook(request: Request) {
       if (known[0]) await syncConnectAccount(object.id);
     }
     if (event.type === "payment_intent.succeeded" && object?.id?.startsWith("pi_")) {
-      await settlePaidIntent(object.id);
+      const meta = object.metadata ?? {};
+      if (meta.kind === "ai_credits_reload") {
+        const { settleAiCreditReload } = await import("./hero-motion-studio.server");
+        await settleAiCreditReload(object.id);
+      } else {
+        await settlePaidIntent(object.id);
+      }
     }
     if (event.type === "checkout.session.completed" && object?.id) {
       const meta = object.metadata ?? {};
@@ -734,7 +740,7 @@ export async function handleStripeWebhook(request: Request) {
       if (territory && (status === "paid" || status === "no_payment_required")) {
         // Provisions the shop. The buyer is routed to /onboard/success?session_id=… by Stripe success_url / embedded client routing.
         await settleTerritorySession(object.id);
-      } else if (meta.kind === "ai_credits" && (status === "paid" || status === "no_payment_required")) {
+      } else if (meta.kind === "ai_credits" || meta.kind === "ai_credits_setup") {
         const { settleAiCreditSession } = await import("./hero-motion-studio.server");
         await settleAiCreditSession(object.id);
       } else if (!territory && status === "paid" && meta.appointment_id && meta.shop_id) {

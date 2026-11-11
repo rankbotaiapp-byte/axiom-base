@@ -1,5 +1,5 @@
-import { CATALOG, type CatalogNiche } from "@/config/catalog";
-import type { ShopNiche } from "@/lib/axiom/types";
+import { CATALOG, type CatalogNiche } from "./catalog.ts";
+import type { ShopNiche } from "../lib/axiom/types.ts";
 
 /** One tap choice on an audit question. The value is what gets saved. */
 export interface AuditChoice {

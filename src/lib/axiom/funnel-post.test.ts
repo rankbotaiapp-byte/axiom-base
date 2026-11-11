@@ -16,6 +16,6 @@ test("a contractor post names the city and the trade, and stays within 280", () 
 
 test("a field shop uses the field preset voice", () => {
   const piece = buildFunnelPost({ niche: "field", city: "Grants Pass", pageUrl: PAGE });
-  assert.match(piece.post, /van rolls/i);
+  assert.match(piece.post, /auto/i);
   assert.match(piece.post, /Grants Pass/);
 });

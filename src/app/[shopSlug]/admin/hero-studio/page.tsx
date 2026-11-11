@@ -6,6 +6,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { localStorefront } from "@/lib/axiom/autopilot";
 import { materializeDatasetShop } from "@/lib/axiom/autopilot-shop";
 import { getOperatorData } from "@/lib/axiom/server";
+import { rememberHeroStudioSlug } from "@/lib/axiom/hero-studio-route";
 import type { AccessMode, Shop } from "@/lib/axiom/types";
 
 export default function HeroStudioPage() {
@@ -15,6 +16,10 @@ export default function HeroStudioPage() {
   const [mode, setMode] = useState<AccessMode>("none");
   const [error, setError] = useState<string | null>(null);
   const userId = user?.id;
+
+  useEffect(() => {
+    rememberHeroStudioSlug(shopSlug);
+  }, [shopSlug]);
 
   useEffect(() => {
     if (isPending || !userId) return;

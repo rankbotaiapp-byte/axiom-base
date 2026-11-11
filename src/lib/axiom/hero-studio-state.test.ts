@@ -92,7 +92,8 @@ test("auto and wildlife niches use the new animation loops", () => {
     fallbackVideoUrl: "/media/orb-explosion-hero-animation.mp4",
     shopTagline: "Water",
   });
-  assert.equal(unbound.hero_video_url, tradeLoopUrl("forestry"));
+  assert.equal(unbound.source, "shop");
+  assert.equal(unbound.hero_video_url, "/media/heroes/legacy-guide.mp4");
   const uploaded = resolveStorefrontFilm({
     draft: {
       hero_video_url: "/api/hero-video/shop_demo?v=4",

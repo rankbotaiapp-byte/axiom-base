@@ -701,6 +701,26 @@ export const startAiCreditPack = createServerFn({
     return loaded.startAiCreditPackHandler(ctx);
   });
 
+export const saveRenderWallet = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string; monthlySpendLimitCents: number; autoReload: boolean }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.saveRenderWalletHandler(ctx);
+  });
+
+export const startRenderCardSetup = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .validator((d: { slug: string; shopId: string }) => d)
+  .handler(async (ctx: any) => {
+    const loaded = await import("./hero-motion-studio.server");
+    return loaded.startRenderCardSetupHandler(ctx);
+  });
+
 export const listAppointmentRequests = createServerFn({
   method: "POST",
 })

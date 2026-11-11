@@ -1,5 +1,5 @@
-import { getSql } from "@/lib/db";
-import { newId } from "@/lib/utils";
+import { getSql } from "../db.ts";
+import { newId } from "../utils.ts";
 import { haltLeadDrip } from "./funnel-guard.server";
 import { finalizeOutreachBody, isMessagingOptOut, OPT_OUT_CONFIRMATION } from "./legal-notices";
 import { toE164 } from "./notify-target";

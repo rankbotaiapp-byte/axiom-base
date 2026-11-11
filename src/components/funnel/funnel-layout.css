@@ -1,0 +1,93 @@
+.funnel-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.funnel-grid {
+  display: grid;
+  gap: 0;
+}
+
+.asset-tracker {
+  border: 1px solid color-mix(in srgb, var(--color-hud) 28%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian) 82%, transparent);
+  padding: 1rem 1.1rem;
+}
+
+.asset-tracker__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.asset-tracker__kicker,
+.asset-tracker__count {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-hud);
+}
+
+.asset-tracker__list {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.asset-tracker__list li {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  gap: 0.65rem;
+  align-items: start;
+  border: 1px solid var(--color-line);
+  padding: 0.65rem 0.75rem;
+}
+
+.asset-tracker__list li.is-open {
+  border-color: color-mix(in srgb, var(--color-hud-crimson) 45%, transparent);
+}
+
+.asset-tracker__list li.is-filled {
+  border-color: color-mix(in srgb, var(--color-hud) 35%, transparent);
+}
+
+.asset-tracker__list p {
+  margin: 0;
+  color: var(--color-fg);
+  font-size: 0.9rem;
+}
+
+.asset-tracker__list small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.asset-tracker__mark {
+  font-family: var(--font-mono);
+  color: var(--color-hud);
+}
+
+.asset-tracker__list li.is-open .asset-tracker__mark {
+  color: var(--color-hud-crimson);
+}
+
+.asset-tracker__ok,
+.asset-tracker__gap {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+}
+
+.asset-tracker__ok {
+  color: var(--color-hud);
+}
+
+.asset-tracker__gap {
+  color: var(--color-hud-crimson);
+}

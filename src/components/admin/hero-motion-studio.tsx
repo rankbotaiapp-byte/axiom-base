@@ -18,6 +18,7 @@ import {
   type BrandDna,
   type BrandFont,
 } from "@/lib/axiom/shop-branding";
+import { HeroAnimationStudio } from "@/components/admin/HeroAnimationStudio";
 import type { Shop } from "@/lib/axiom/types";
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -146,6 +147,7 @@ export function HeroMotionStudio({
 
   return (
     <section className="hud-studio" aria-label="Hero motion studio">
+      <HeroAnimationStudio shop={shop} readonly={readonly} />
       <div className="hero-studio-head">
         <div>
           <p className="motion-kicker">Brand DNA</p>

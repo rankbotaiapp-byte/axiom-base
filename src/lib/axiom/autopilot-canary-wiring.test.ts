@@ -18,8 +18,11 @@ test("cron path ticks shop autopilot, outreach drain, and outbound engine togeth
   assert.match(cron, /tickShopAutopilot/);
   const masterRoute = readFileSync(join(root, "src/app/api/master/autopilot/route.ts"), "utf8");
   assert.match(masterRoute, /tick_content/);
+  assert.match(masterRoute, /tick_blender/);
   assert.match(masterRoute, /cronTokenValid/);
   assert.match(masterRoute, /tickShopAutopilot/);
+  assert.match(masterRoute, /status: 202/);
+  assert.match(masterRoute, /kickAutopilotTick/);
   assert.match(cron, /tickOutboundFromCron/);
   assert.match(cron, /maybeEvaluateOutreachHealthHourly/);
   assert.match(cron, /requireCronSecret/);

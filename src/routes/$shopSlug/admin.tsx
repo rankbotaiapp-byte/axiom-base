@@ -56,7 +56,9 @@ import { AiVoiceManager } from "@/components/AiVoiceManager";
 import { AskEricAvatar } from "@/components/AskEricAvatar";
 import { DesignCopilot } from "@/components/design-copilot";
 import { setAvatarScreen } from "@/components/avatar-help-state";
+import { rememberHeroStudioSlug } from "@/lib/axiom/hero-studio-route";
 import { CyberCompanionHud } from "@/components/CyberCompanionHud";
+import { ObsidianHudChrome } from "@/components/ObsidianHudChrome";
 import { AlertsPanel, PaymentsPanel, ServicesPanel, SettingsPanel } from "@/components/operator-panels";
 import { NotificationPrefsCard } from "@/components/admin/notification-prefs-card";
 import { ProspectScan } from "@/components/prospect-scan";
@@ -113,6 +115,9 @@ function operatorQuery(slug: string, desk?: "master", claim?: string) {
 
 function AdminPage() {
   const { shopSlug } = Route.useParams();
+  useEffect(() => {
+    rememberHeroStudioSlug(shopSlug);
+  }, [shopSlug]);
   const { stripe, desk, claim } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -232,7 +237,8 @@ export function AdminShell({
   const needsSetup = !readonly && (!setup.hero || !setup.service || !setup.employee);
 
   return (
-    <main className="neon-shell admin-hud bg-slate-950">
+    <main className="neon-shell admin-hud relative bg-obsidian">
+      <ObsidianHudChrome />
       <header className={`${HUD_CARD} relative mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 overflow-hidden px-5 py-4 sm:mx-6 sm:px-6`}>
         <span className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
         <div>
@@ -267,6 +273,13 @@ export function AdminShell({
             className="inline-flex h-11 items-center rounded-xl border border-cyan-300 bg-cyan-400 px-4 text-sm font-semibold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.5)] hover:bg-cyan-300"
           >
             View Customer-Facing Site
+          </Link>
+          <Link
+            to="/$shopSlug/admin/hero-studio"
+            params={{ shopSlug: data.shop.slug }}
+            className="inline-flex h-11 items-center rounded-xl border border-cyan-500/30 bg-slate-900/60 px-3 font-mono text-xs uppercase tracking-[0.14em] text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200"
+          >
+            Hero studio
           </Link>
           <Link
             to="/$shopSlug/admin/brand-studio"
@@ -355,6 +368,13 @@ export function AdminShell({
         ) : null}
         {tab === "hero" ? (
           <div className="grid gap-6">
+            <Link
+              to="/$shopSlug/admin/hero-studio"
+              params={{ shopSlug: data.shop.slug }}
+              className="inline-flex min-h-11 w-fit items-center rounded-xl border border-hud/40 bg-obsidian px-4 font-mono text-xs uppercase tracking-[0.16em] text-hud"
+            >
+              Open full Hero Studio
+            </Link>
             <HeroStudioMobile shop={data.shop} readonly={readonly} onReload={onReload} />
             <HeroLibraryBench shop={data.shop} readonly={readonly} onReload={onReload} />
             <details className="mission-more">
@@ -446,6 +466,8 @@ export function AdminShell({
         environment="admin"
         shopName={data.shop.name}
         shopSlug={data.shop.slug}
+        niche={data.shop.customNiche || data.shop.niche}
+        city={shopCity(data.shop.address)}
       />
     </main>
   );

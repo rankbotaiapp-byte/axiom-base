@@ -14,7 +14,7 @@ export const STYLE_FIELDS = [
 
 /** Every generated hero prompt carries these constraints. */
 export const HERO_STAGE_RULES =
-  "Obsidian background #050507. Soft alpha-edge feathering. Subject sits on the z-space hero plane with no hard rectangular frame.";
+  "Obsidian background #050507. Soft alpha-edge feathering. Subject sits on the z-space hero plane with no hard rectangular frame. Neon cyan #00f2fe HUD, volumetric smoke, tactical corner crosshairs, tenant brand on surfaces.";
 
 export type StyleField = (typeof STYLE_FIELDS)[number];
 

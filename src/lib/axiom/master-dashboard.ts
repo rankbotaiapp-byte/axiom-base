@@ -49,7 +49,7 @@ export type TenantsResponse = {
 };
 
 export type AutopilotState = "idle" | "running" | "paused" | "error";
-export type AutopilotAction = "start" | "pause" | "run_batch" | "automate" | "tick_content";
+export type AutopilotAction = "start" | "pause" | "run_batch" | "automate" | "tick_content" | "tick_blender";
 export type LogLevel = "info" | "success" | "warn" | "error";
 export type Channel = "sms" | "email" | "system";
 

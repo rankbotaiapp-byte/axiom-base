@@ -7,6 +7,18 @@ import { sniffHeroAsset } from "./hero-brand";
 import { shopHeroVideoPath } from "./hero-video";
 import { requestOrigin, stripeConfigured, stripePublishableKey } from "./payments.server";
 import {
+  RENDER_AUTO_RELOAD_THRESHOLD,
+  RENDER_CREDIT_PACK,
+  RENDER_CREDIT_PACK_CENTS,
+  assertRenderProfit,
+  canPurchasePack,
+  clampMonthlySpendLimitCents,
+  currentSpendMonth,
+  needsAutoReload,
+  renderMarginCents,
+  type RenderKind,
+} from "./render-credits";
+import {
   AI_CREDIT_PACK,
   AI_CREDIT_PACK_CENTS,
   AI_IMAGE_UNITS,
@@ -56,7 +68,33 @@ async function loadDna(shopId: string): Promise<BrandDna> {
   }
 }
 
-async function loadCredits(shopId: string): Promise<number> {
+type CreditWallet = {
+  balance: number;
+  monthlySpendLimitCents: number;
+  monthSpendCents: number;
+  spendMonth: string;
+  autoReload: boolean;
+  autoReloadThreshold: number;
+  stripeCustomerId: string;
+  stripePaymentMethodId: string;
+  hasCard: boolean;
+};
+
+function emptyWallet(): CreditWallet {
+  return {
+    balance: 0,
+    monthlySpendLimitCents: RENDER_CREDIT_PACK_CENTS,
+    monthSpendCents: 0,
+    spendMonth: currentSpendMonth(),
+    autoReload: false,
+    autoReloadThreshold: RENDER_AUTO_RELOAD_THRESHOLD,
+    stripeCustomerId: "",
+    stripePaymentMethodId: "",
+    hasCard: false,
+  };
+}
+
+async function loadWallet(shopId: string): Promise<CreditWallet> {
   const sql = await getSql();
   try {
     await sql`
@@ -64,24 +102,91 @@ async function loadCredits(shopId: string): Promise<number> {
       values (${shopId}, 0, now())
       on conflict (shop_id) do nothing
     `;
-    const rows = await sql<{ balance: number }>`select balance from shop_ai_credits where shop_id = ${shopId} limit 1`;
-    return Number(rows[0]?.balance ?? 0);
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     if (!/shop_ai_credits/i.test(message)) throw err;
-    return 0;
+    return emptyWallet();
+  }
+  try {
+    const month = currentSpendMonth();
+    const rows = await sql<{
+      balance: number;
+      monthly_spend_limit_cents: number;
+      month_spend_cents: number;
+      spend_month: string;
+      auto_reload: boolean;
+      auto_reload_threshold: number;
+      stripe_customer_id: string;
+      stripe_payment_method_id: string;
+    }>`
+      select balance, monthly_spend_limit_cents, month_spend_cents, spend_month, auto_reload,
+             auto_reload_threshold, stripe_customer_id, stripe_payment_method_id
+      from shop_ai_credits where shop_id = ${shopId} limit 1
+    `;
+    const row = rows[0];
+    if (!row) return emptyWallet();
+    let monthSpend = Number(row.month_spend_cents ?? 0);
+    if ((row.spend_month || "") !== month) {
+      monthSpend = 0;
+      await sql`
+        update shop_ai_credits
+        set month_spend_cents = 0, spend_month = ${month}, updated_at = now()
+        where shop_id = ${shopId}
+      `.catch(() => undefined);
+    }
+    const pm = String(row.stripe_payment_method_id ?? "").trim();
+    return {
+      balance: Number(row.balance ?? 0),
+      monthlySpendLimitCents: clampMonthlySpendLimitCents(row.monthly_spend_limit_cents),
+      monthSpendCents: monthSpend,
+      spendMonth: month,
+      autoReload: Boolean(row.auto_reload),
+      autoReloadThreshold: Number(row.auto_reload_threshold ?? RENDER_AUTO_RELOAD_THRESHOLD) || RENDER_AUTO_RELOAD_THRESHOLD,
+      stripeCustomerId: String(row.stripe_customer_id ?? "").trim(),
+      stripePaymentMethodId: pm,
+      hasCard: pm.startsWith("pm_"),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/monthly_spend_limit|auto_reload|stripe_payment_method/i.test(message)) throw err;
+    const rows = await sql<{ balance: number; stripe_customer_id?: string }>`
+      select balance, stripe_customer_id from shop_ai_credits where shop_id = ${shopId} limit 1
+    `;
+    return { ...emptyWallet(), balance: Number(rows[0]?.balance ?? 0), stripeCustomerId: String(rows[0]?.stripe_customer_id ?? "") };
   }
 }
 
-async function spendCredits(shopId: string, kind: "image" | "video", units: number, stripeRef = "") {
+async function loadCredits(shopId: string): Promise<number> {
+  return (await loadWallet(shopId)).balance;
+}
+
+async function recordMonthSpend(shopId: string, cents: number) {
   const sql = await getSql();
+  const month = currentSpendMonth();
+  await sql`
+    update shop_ai_credits
+    set month_spend_cents = case when spend_month = ${month} then month_spend_cents else 0 end + ${cents},
+        spend_month = ${month},
+        updated_at = now()
+    where shop_id = ${shopId}
+  `.catch(() => undefined);
+}
+
+async function spendCredits(shopId: string, kind: RenderKind, units: number, stripeRef = "") {
+  assertRenderProfit(kind, units);
+  const sql = await getSql();
+  let wallet = await loadWallet(shopId);
+  if (wallet.balance < units && needsAutoReload(wallet.balance, wallet.autoReload, wallet.autoReloadThreshold)) {
+    await chargeSavedRenderPack(shopId).catch(() => undefined);
+    wallet = await loadWallet(shopId);
+  }
   const rows = await sql<{ balance: number }>`
     update shop_ai_credits
     set balance = balance - ${units}, updated_at = now()
     where shop_id = ${shopId} and balance >= ${units}
     returning balance
   `;
-  if (!rows[0]) throw new Error("Buy an AI credit pack to generate");
+  if (!rows[0]) throw new Error("Buy a $15 render pack (20 hero animations) to generate");
   try {
     await sql`
       insert into shop_ai_usage (id, shop_id, kind, units, stripe_ref)
@@ -91,7 +196,11 @@ async function spendCredits(shopId: string, kind: "image" | "video", units: numb
     /* usage table is telemetry */
   }
   await reportMeter(shopId, units);
-  return rows[0].balance;
+  const next = Number(rows[0].balance);
+  if (needsAutoReload(next, wallet.autoReload, wallet.autoReloadThreshold)) {
+    void chargeSavedRenderPack(shopId).catch(() => undefined);
+  }
+  return next;
 }
 
 async function refundCredits(shopId: string, units: number) {
@@ -161,17 +270,23 @@ export async function readMotionStudioHandler(ctx: { data: { slug: string; shopI
   const row = await assertCanModifyShopById(ctx.data.shopId, ctx.context.userId);
   if (row.slug !== ctx.data.slug) throw new Error("Shop not found");
   const dna = await loadDna(row.id);
-  const credits = await loadCredits(row.id);
+  const wallet = await loadWallet(row.id);
   return {
     dna,
     complete: brandDnaComplete(dna),
-    credits,
+    credits: wallet.balance,
     available: Boolean(xaiKey()),
     billing: stripeConfigured(),
     imageUnits: AI_IMAGE_UNITS,
     videoUnits: AI_VIDEO_UNITS,
     packSize: AI_CREDIT_PACK,
     packCents: AI_CREDIT_PACK_CENTS,
+    monthlySpendLimitCents: wallet.monthlySpendLimitCents,
+    monthSpendCents: wallet.monthSpendCents,
+    autoReload: wallet.autoReload,
+    autoReloadThreshold: wallet.autoReloadThreshold,
+    hasCard: wallet.hasCard,
+    marginCents: renderMarginCents("video"),
   };
 }
 
@@ -309,7 +424,7 @@ export async function generateArmedHeroForShop(shopId: string, userId: string): 
   const scene = await stillBytes(shop.hero_image_url);
   if (!scene) return { ok: false, detail: "Drop a still in Hero Studio so Autopilot has a scene to brand." };
   const credits = await loadCredits(shop.id);
-  if (credits < AI_IMAGE_UNITS) return { ok: false, detail: "Buy AI credits to generate." };
+  if (credits < AI_IMAGE_UNITS) return { ok: false, detail: "Buy a $15 render pack to generate." };
   const actor = userId || shop.owner_user_id || "";
   if (!actor) return { ok: false, detail: "No owner on this shop." };
   const logo = dna.logoDataUrl ? decodeDataUrl(dna.logoDataUrl) : null;
@@ -320,12 +435,26 @@ export async function generateArmedHeroForShop(shopId: string, userId: string): 
     if (balance >= AI_VIDEO_UNITS) {
       await spendCredits(shop.id, "video", AI_VIDEO_UNITS);
       try {
-        await startHeroIntro(actor, shop.id, "obsidian_carbon", scene.bytes, shop.niche);
+        const { renderAutopilotHeroLoop } = await import("../blender/render-hero.server");
+        const loop = await renderAutopilotHeroLoop({
+          shopId: shop.id,
+          director: {
+            businessName: shop.name,
+            niche: shop.niche,
+            logoGeometry: dna.logoDataUrl,
+            seed: shop.slug.length,
+          },
+          stillBytes: scene.bytes,
+          logoBytes: logo?.bytes ?? null,
+        });
+        if (!loop.ok) {
+          await startHeroIntro(actor, shop.id, "obsidian_carbon", scene.bytes, shop.niche);
+        }
       } catch {
         await refundCredits(shop.id, AI_VIDEO_UNITS);
       }
     }
-    return { ok: true, detail: "Autopilot branded a new still from locked DNA." };
+    return { ok: true, detail: "Autopilot branded a Cyber-Obsidian still and queued a hero loop." };
   } catch (err) {
     await refundCredits(shop.id, AI_IMAGE_UNITS);
     return { ok: false, detail: err instanceof Error ? err.message : "Generation failed." };
@@ -367,6 +496,22 @@ export async function tickArmedAiHeroes(): Promise<number> {
   return ran;
 }
 
+async function stripeForm(path: string, body: URLSearchParams, method: "POST" | "GET" = "POST") {
+  const key = env("STRIPE_SECRET_KEY");
+  if (!key) throw new Error("Card payments are not configured");
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${key}`,
+      ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+    },
+    body: method === "POST" ? body : undefined,
+  });
+  const json = (await res.json()) as Record<string, unknown> & { error?: { message?: string }; url?: string; id?: string };
+  if (!res.ok) throw new Error(json.error?.message || "Stripe request failed");
+  return json;
+}
+
 export async function startAiCreditPackHandler(ctx: {
   data: { slug: string; shopId: string };
   context: { userId: string };
@@ -374,55 +519,82 @@ export async function startAiCreditPackHandler(ctx: {
   const row = await assertCanModifyShopById(ctx.data.shopId, ctx.context.userId);
   if (row.slug !== ctx.data.slug) throw new Error("Shop not found");
   if (!stripeConfigured()) throw new Error("Card payments are not configured");
+  const wallet = await loadWallet(row.id);
+  if (!canPurchasePack(wallet.monthSpendCents, wallet.monthlySpendLimitCents)) {
+    throw new Error("Monthly render spend limit reached. Raise the slider to buy another pack.");
+  }
   const origin = requestOrigin();
-  const key = env("STRIPE_SECRET_KEY");
   const params = new URLSearchParams({
     mode: "payment",
     success_url: `${origin}/${row.slug}/admin/hero-studio?credits=1`,
     cancel_url: `${origin}/${row.slug}/admin/hero-studio`,
     "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][product_data][name]": "Axiom AI credits",
+    "line_items[0][price_data][product_data][name]": "Axiom render credits · 20 hero animations",
     "line_items[0][price_data][unit_amount]": String(AI_CREDIT_PACK_CENTS),
     "line_items[0][quantity]": "1",
+    "payment_intent_data[setup_future_usage]": "off_session",
     "metadata[kind]": "ai_credits",
     "metadata[shop_id]": row.id,
     "metadata[units]": String(AI_CREDIT_PACK),
   });
-  const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params,
-  });
-  const json = (await res.json()) as { id?: string; url?: string; error?: { message?: string } };
-  if (!res.ok || !json.url) throw new Error(json.error?.message || "Could not start the credit pack");
-  return { url: json.url, publishableKey: stripePublishableKey() };
+  if (wallet.stripeCustomerId.startsWith("cus_")) params.set("customer", wallet.stripeCustomerId);
+  const json = await stripeForm("checkout/sessions", params);
+  if (!json.url) throw new Error("Could not start the credit pack");
+  return { url: String(json.url), publishableKey: stripePublishableKey() };
 }
 
-export async function settleAiCreditSession(sessionId: string) {
-  const key = env("STRIPE_SECRET_KEY");
-  if (!key) throw new Error("Card payments are not configured");
-  const res = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  const session = (await res.json()) as {
-    id?: string;
-    payment_status?: string;
-    customer?: string | { id?: string } | null;
-    metadata?: Record<string, string> | null;
-  };
-  if (!res.ok || session.metadata?.kind !== "ai_credits") throw new Error("This payment is not an AI credit pack");
-  if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
-    throw new Error("Payment is not complete");
+export async function saveRenderWalletHandler(ctx: {
+  data: { slug: string; shopId: string; monthlySpendLimitCents: number; autoReload: boolean };
+  context: { userId: string };
+}) {
+  const row = await assertCanModifyShopById(ctx.data.shopId, ctx.context.userId);
+  if (row.slug !== ctx.data.slug) throw new Error("Shop not found");
+  const limit = clampMonthlySpendLimitCents(ctx.data.monthlySpendLimitCents);
+  const autoReload = Boolean(ctx.data.autoReload);
+  const sql = await getSql();
+  await sql`
+    insert into shop_ai_credits (shop_id, balance, monthly_spend_limit_cents, auto_reload, updated_at)
+    values (${row.id}, 0, ${limit}, ${autoReload}, now())
+    on conflict (shop_id) do update
+      set monthly_spend_limit_cents = ${limit},
+          auto_reload = ${autoReload},
+          updated_at = now()
+  `;
+  const wallet = await loadWallet(row.id);
+  if (autoReload && !wallet.hasCard) {
+    const setup = await startRenderCardSetupHandler(ctx);
+    return { ...wallet, setupUrl: setup.url, publishableKey: setup.publishableKey };
   }
-  const shopId = session.metadata.shop_id ?? "";
-  const units = Math.max(1, Number(session.metadata.units ?? AI_CREDIT_PACK) || AI_CREDIT_PACK);
-  const customer = typeof session.customer === "string" ? session.customer : session.customer?.id ?? "";
+  return { ...wallet, setupUrl: "", publishableKey: stripePublishableKey() };
+}
+
+export async function startRenderCardSetupHandler(ctx: {
+  data: { slug: string; shopId: string };
+  context: { userId: string };
+}) {
+  const row = await assertCanModifyShopById(ctx.data.shopId, ctx.context.userId);
+  if (row.slug !== ctx.data.slug) throw new Error("Shop not found");
+  if (!stripeConfigured()) throw new Error("Card payments are not configured");
+  const wallet = await loadWallet(row.id);
+  const origin = requestOrigin();
+  const params = new URLSearchParams({
+    mode: "setup",
+    success_url: `${origin}/${row.slug}/admin/hero-studio?card=1`,
+    cancel_url: `${origin}/${row.slug}/admin/hero-studio`,
+    "metadata[kind]": "ai_credits_setup",
+    "metadata[shop_id]": row.id,
+  });
+  if (wallet.stripeCustomerId.startsWith("cus_")) params.set("customer", wallet.stripeCustomerId);
+  else params.set("customer_creation", "always");
+  const json = await stripeForm("checkout/sessions", params);
+  if (!json.url) throw new Error("Could not open card setup");
+  return { url: String(json.url), publishableKey: stripePublishableKey() };
+}
+
+async function creditPack(shopId: string, units: number, customer: string, stripeRef: string, spendCents: number) {
   const sql = await getSql();
   const claimed = await sql<{ stripe_ref: string }>`
-    select stripe_ref from shop_ai_usage where stripe_ref = ${session.id ?? ""} limit 1
+    select stripe_ref from shop_ai_usage where stripe_ref = ${stripeRef} limit 1
   `.catch(() => [] as { stripe_ref: string }[]);
   if (claimed[0]) return { shopId, already: true };
   await sql`
@@ -435,7 +607,107 @@ export async function settleAiCreditSession(sessionId: string) {
   `;
   await sql`
     insert into shop_ai_usage (id, shop_id, kind, units, stripe_ref)
-    values (${newId("aiu")}, ${shopId}, 'pack', ${units}, ${session.id ?? ""})
+    values (${newId("aiu")}, ${shopId}, 'pack', ${units}, ${stripeRef})
   `;
+  if (spendCents > 0) await recordMonthSpend(shopId, spendCents);
   return { shopId, already: false };
+}
+
+export async function chargeSavedRenderPack(shopId: string) {
+  if (!stripeConfigured()) throw new Error("Card payments are not configured");
+  const wallet = await loadWallet(shopId);
+  if (!wallet.hasCard || !wallet.stripeCustomerId.startsWith("cus_")) {
+    throw new Error("Save a card to auto-reload credits");
+  }
+  if (!canPurchasePack(wallet.monthSpendCents, wallet.monthlySpendLimitCents)) {
+    throw new Error("Monthly render spend limit reached");
+  }
+  const params = new URLSearchParams({
+    amount: String(RENDER_CREDIT_PACK_CENTS),
+    currency: "usd",
+    customer: wallet.stripeCustomerId,
+    payment_method: wallet.stripePaymentMethodId,
+    off_session: "true",
+    confirm: "true",
+    "metadata[kind]": "ai_credits_reload",
+    "metadata[shop_id]": shopId,
+    "metadata[units]": String(RENDER_CREDIT_PACK),
+  });
+  const json = await stripeForm("payment_intents", params);
+  const status = String(json.status ?? "");
+  if (status !== "succeeded") throw new Error("Auto-reload charge did not settle");
+  return creditPack(shopId, RENDER_CREDIT_PACK, wallet.stripeCustomerId, String(json.id ?? ""), RENDER_CREDIT_PACK_CENTS);
+}
+
+export async function settleAiCreditSession(sessionId: string) {
+  const session = await stripeForm(
+    `checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=setup_intent&expand[]=payment_intent.payment_method`,
+    new URLSearchParams(),
+    "GET",
+  );
+  const meta = (session.metadata ?? {}) as Record<string, string>;
+  const kind = String(meta.kind ?? "");
+  if (kind === "ai_credits_setup" || session.mode === "setup") {
+    return settleAiCreditSetupFromSession(session);
+  }
+  if (kind !== "ai_credits") throw new Error("This payment is not an AI credit pack");
+  const status = String(session.payment_status ?? "");
+  if (status !== "paid" && status !== "no_payment_required") throw new Error("Payment is not complete");
+  const shopId = meta.shop_id ?? "";
+  const units = Math.max(1, Number(meta.units ?? AI_CREDIT_PACK) || AI_CREDIT_PACK);
+  const customer = typeof session.customer === "string" ? session.customer : String((session.customer as { id?: string } | null)?.id ?? "");
+  const paymentIntent = session.payment_intent as { payment_method?: string | { id?: string } } | string | null;
+  const pm =
+    typeof paymentIntent === "string"
+      ? ""
+      : typeof paymentIntent?.payment_method === "string"
+        ? paymentIntent.payment_method
+        : paymentIntent?.payment_method?.id ?? "";
+  if (pm.startsWith("pm_")) {
+    const sql = await getSql();
+    await sql`
+      update shop_ai_credits
+      set stripe_payment_method_id = ${pm},
+          stripe_customer_id = case when ${customer} <> '' then ${customer} else stripe_customer_id end,
+          updated_at = now()
+      where shop_id = ${shopId}
+    `.catch(() => undefined);
+  }
+  return creditPack(shopId, units, customer, String(session.id ?? ""), AI_CREDIT_PACK_CENTS);
+}
+
+async function settleAiCreditSetupFromSession(session: Record<string, unknown>) {
+  const meta = (session.metadata ?? {}) as Record<string, string>;
+  const shopId = meta.shop_id ?? "";
+  const customer = typeof session.customer === "string" ? session.customer : String((session.customer as { id?: string } | null)?.id ?? "");
+  const setup = session.setup_intent as { payment_method?: string | { id?: string } } | string | null;
+  const pm =
+    typeof setup === "string"
+      ? ""
+      : typeof setup?.payment_method === "string"
+        ? setup.payment_method
+        : setup?.payment_method?.id ?? "";
+  if (!shopId || !pm.startsWith("pm_")) throw new Error("Card setup did not return a payment method");
+  const sql = await getSql();
+  await sql`
+    insert into shop_ai_credits (shop_id, balance, stripe_customer_id, stripe_payment_method_id, auto_reload, updated_at)
+    values (${shopId}, 0, ${customer}, ${pm}, true, now())
+    on conflict (shop_id) do update
+      set stripe_customer_id = case when excluded.stripe_customer_id <> '' then excluded.stripe_customer_id else shop_ai_credits.stripe_customer_id end,
+          stripe_payment_method_id = excluded.stripe_payment_method_id,
+          auto_reload = true,
+          updated_at = now()
+  `;
+  return { shopId, already: false, setup: true as const };
+}
+
+export async function settleAiCreditReload(paymentIntentId: string) {
+  const pi = await stripeForm(`payment_intents/${encodeURIComponent(paymentIntentId)}`, new URLSearchParams(), "GET");
+  const meta = (pi.metadata ?? {}) as Record<string, string>;
+  if (meta.kind !== "ai_credits_reload") throw new Error("This charge is not a credit reload");
+  if (String(pi.status ?? "") !== "succeeded") throw new Error("Reload is not complete");
+  const shopId = meta.shop_id ?? "";
+  const units = Math.max(1, Number(meta.units ?? RENDER_CREDIT_PACK) || RENDER_CREDIT_PACK);
+  const customer = String(pi.customer ?? "");
+  return creditPack(shopId, units, customer, String(pi.id ?? ""), RENDER_CREDIT_PACK_CENTS);
 }

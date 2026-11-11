@@ -42,6 +42,15 @@ test("shop_hero_config is readable publicly, writable only by owners, and keyed 
   assert.match(server, /ai_content_autopilot/);
   assert.match(page, /getOperatorData\(\{ data: shopSlug \}\)/);
   assert.match(page, /readonly=\{mode === "preview" \|\| shop\.isShowcase\}/);
+  assert.match(page, /rememberHeroStudioSlug/);
+  const redirect = read("src/routes/admin.hero-studio.tsx");
+  assert.match(redirect, /createFileRoute\("\/admin\/hero-studio"\)/);
+  assert.match(redirect, /\/\$shopSlug\/admin\/hero-studio/);
+  assert.match(redirect, /resolveHeroStudioSlug/);
+  const gate = read("src/routes/admin.tsx");
+  assert.match(gate, /\/admin\/hero-studio/);
+  const desk = read("src/routes/$shopSlug/admin.tsx");
+  assert.match(desk, /to="\/\$shopSlug\/admin\/hero-studio"/);
 });
 
 test("0073 adds geo and autopilot columns instead of indexing a missing active flag", () => {

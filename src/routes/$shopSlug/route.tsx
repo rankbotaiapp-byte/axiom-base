@@ -16,6 +16,7 @@ import { isClientAbort } from "@/lib/client-abort";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type { AccessMode, ShopPublic } from "@/lib/axiom/types";
 import { Button } from "@/components/ui/button";
+import { ObsidianHudChrome } from "@/components/ObsidianHudChrome";
 
 const LiveShopContext = createContext<ShopPublic | null>(null);
 
@@ -180,6 +181,7 @@ function ShopLayout() {
         watchEmployeeId={employeeId}
       >
         {onFilm ? null : <AxiomRing />}
+        <ObsidianHudChrome />
         <ShopLocalSeo />
         <AcceptBar mode={mode} />
         <Outlet />

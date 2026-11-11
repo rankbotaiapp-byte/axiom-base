@@ -22,6 +22,7 @@ function AdminGate() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   if (
     pathname.includes("/admin/branding/hero-library") ||
+    pathname.endsWith("/admin/hero-studio") ||
     pathname.endsWith("/admin/autopilot") ||
     pathname.includes("/admin/cyber-stinger") ||
     pathname.includes("/admin/master-dashboard")

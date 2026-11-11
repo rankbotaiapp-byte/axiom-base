@@ -1,5 +1,7 @@
 /** One-click hero intros. A short, cheap clip so a single click does not run a long render. */
 
+import { withAxiomVisualLock } from "./visual-design.ts";
+
 export const HERO_ANIMATOR_PRESETS = ["liquid_chrome", "frosted_glass", "obsidian_carbon"] as const;
 
 export type HeroAnimatorPreset = (typeof HERO_ANIMATOR_PRESETS)[number];
@@ -29,7 +31,7 @@ const PROMPTS: Record<HeroAnimatorPreset, string> = {
   frosted_glass:
     "Frosted glass gathers light and becomes the product in the photo. Soft refraction, a quiet rise. No words, no logo type, no watermark.",
   obsidian_carbon:
-    "Obsidian carbon splits and reveals the product in the photo. Dark facets, a slow push-in. No words, no logo type, no watermark.",
+    "Obsidian carbon splits and reveals the product in the photo. Dark facets, cyan #00f2fe rim, smoke, corner crosshairs, slow push-in. No words, no logo type, no watermark.",
 };
 
 export function canonicalHeroStyle(value: unknown): HeroAnimatorPreset | null {
@@ -44,7 +46,7 @@ export function isHeroAnimatorPreset(value: unknown): value is HeroAnimatorStyle
 
 export function heroAnimatorPrompt(preset: HeroAnimatorStyle): string {
   const style = canonicalHeroStyle(preset);
-  return style ? PROMPTS[style] : PROMPTS.liquid_chrome;
+  return withAxiomVisualLock(style ? PROMPTS[style] : PROMPTS.liquid_chrome);
 }
 
 export function clipHeroTagline(value: unknown): string {

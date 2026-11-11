@@ -41,6 +41,7 @@ import { Route as ShopSlugEmployeeRouteImport } from './routes/$shopSlug/employe
 import { Route as ShopSlugGateRouteImport } from './routes/$shopSlug/gate'
 import { Route as AdminAutopilotRouteImport } from './routes/admin.autopilot'
 import { Route as AdminCyberStingerRouteImport } from './routes/admin.cyber-stinger'
+import { Route as AdminHeroStudioRouteImport } from './routes/admin.hero-studio'
 import { Route as AdminMasterDashboardRouteImport } from './routes/admin.master-dashboard'
 import { Route as AdminTenantRouteImport } from './routes/admin.tenant'
 import { Route as ApiGetAvatarTokenRouteImport } from './routes/api/get-avatar-token'
@@ -259,6 +260,11 @@ const AdminAutopilotRoute = AdminAutopilotRouteImport.update({
 const AdminCyberStingerRoute = AdminCyberStingerRouteImport.update({
   id: '/cyber-stinger',
   path: '/cyber-stinger',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHeroStudioRoute = AdminHeroStudioRouteImport.update({
+  id: '/hero-studio',
+  path: '/hero-studio',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMasterDashboardRoute = AdminMasterDashboardRouteImport.update({
@@ -594,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/$shopSlug/gate': typeof ShopSlugGateRoute
   '/admin/autopilot': typeof AdminAutopilotRoute
   '/admin/cyber-stinger': typeof AdminCyberStingerRoute
+  '/admin/hero-studio': typeof AdminHeroStudioRoute
   '/admin/master-dashboard': typeof AdminMasterDashboardRoute
   '/admin/tenant': typeof AdminTenantRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
@@ -685,6 +692,7 @@ export interface FileRoutesByTo {
   '/$shopSlug/gate': typeof ShopSlugGateRoute
   '/admin/autopilot': typeof AdminAutopilotRoute
   '/admin/cyber-stinger': typeof AdminCyberStingerRoute
+  '/admin/hero-studio': typeof AdminHeroStudioRoute
   '/admin/master-dashboard': typeof AdminMasterDashboardRoute
   '/admin/tenant': typeof AdminTenantRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
@@ -779,6 +787,7 @@ export interface FileRoutesById {
   '/$shopSlug/gate': typeof ShopSlugGateRoute
   '/admin/autopilot': typeof AdminAutopilotRoute
   '/admin/cyber-stinger': typeof AdminCyberStingerRoute
+  '/admin/hero-studio': typeof AdminHeroStudioRoute
   '/admin/master-dashboard': typeof AdminMasterDashboardRoute
   '/admin/tenant': typeof AdminTenantRoute
   '/api/get-avatar-token': typeof ApiGetAvatarTokenRoute
@@ -874,6 +883,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/gate'
     | '/admin/autopilot'
     | '/admin/cyber-stinger'
+    | '/admin/hero-studio'
     | '/admin/master-dashboard'
     | '/admin/tenant'
     | '/api/get-avatar-token'
@@ -965,6 +975,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/gate'
     | '/admin/autopilot'
     | '/admin/cyber-stinger'
+    | '/admin/hero-studio'
     | '/admin/master-dashboard'
     | '/admin/tenant'
     | '/api/get-avatar-token'
@@ -1058,6 +1069,7 @@ export interface FileRouteTypes {
     | '/$shopSlug/gate'
     | '/admin/autopilot'
     | '/admin/cyber-stinger'
+    | '/admin/hero-studio'
     | '/admin/master-dashboard'
     | '/admin/tenant'
     | '/api/get-avatar-token'
@@ -1417,6 +1429,13 @@ declare module '@tanstack/react-router' {
       path: '/cyber-stinger'
       fullPath: '/admin/cyber-stinger'
       preLoaderRoute: typeof AdminCyberStingerRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hero-studio': {
+      id: '/admin/hero-studio'
+      path: '/hero-studio'
+      fullPath: '/admin/hero-studio'
+      preLoaderRoute: typeof AdminHeroStudioRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/master-dashboard': {
@@ -1878,6 +1897,7 @@ const ShopSlugRouteRouteWithChildren = ShopSlugRouteRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminAutopilotRoute: typeof AdminAutopilotRoute
   AdminCyberStingerRoute: typeof AdminCyberStingerRoute
+  AdminHeroStudioRoute: typeof AdminHeroStudioRoute
   AdminMasterDashboardRoute: typeof AdminMasterDashboardRoute
   AdminTenantRoute: typeof AdminTenantRoute
   AdminBrandingHeroLibraryRoute: typeof AdminBrandingHeroLibraryRoute
@@ -1886,6 +1906,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAutopilotRoute: AdminAutopilotRoute,
   AdminCyberStingerRoute: AdminCyberStingerRoute,
+  AdminHeroStudioRoute: AdminHeroStudioRoute,
   AdminMasterDashboardRoute: AdminMasterDashboardRoute,
   AdminTenantRoute: AdminTenantRoute,
   AdminBrandingHeroLibraryRoute: AdminBrandingHeroLibraryRoute,

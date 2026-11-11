@@ -1,0 +1,145 @@
+.cinematic-hero-canvas {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-height: 16rem;
+  height: min(55dvh, 28rem);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 38%, transparent);
+  background: var(--color-obsidian);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--color-hud) 18%, transparent);
+}
+
+.cinematic-hero-canvas__film {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--color-obsidian);
+}
+
+.cinematic-hero-canvas__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.42;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.cinematic-hero-canvas__hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  padding: 1.25rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--color-hud);
+}
+
+.cinematic-hero-canvas__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.cinematic-hero-canvas__row--foot {
+  align-items: flex-end;
+  opacity: 1;
+}
+
+.cinematic-hero-canvas__brand {
+  padding: 0.55rem 0.7rem 0.45rem;
+  border-left: 2px solid var(--color-hud);
+  border-bottom: 2px solid var(--color-hud);
+  background: color-mix(in srgb, var(--color-obsidian) 55%, transparent);
+}
+
+.cinematic-hero-canvas__brand p {
+  margin: 0;
+  color: var(--color-hud);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cinematic-hero-canvas__brand span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+}
+
+.cinematic-hero-canvas__status {
+  text-align: right;
+  color: color-mix(in srgb, var(--color-hud) 72%, transparent);
+}
+
+.cinematic-hero-canvas__status strong {
+  display: block;
+  color: var(--color-hud-crimson);
+  font-weight: 500;
+}
+
+.cinematic-hero-canvas__bracket {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: var(--color-hud);
+  border-style: solid;
+  pointer-events: none;
+}
+
+.cinematic-hero-canvas__bracket--tl {
+  top: 8px;
+  left: 8px;
+  border-width: 2px 0 0 2px;
+}
+
+.cinematic-hero-canvas__bracket--tr {
+  top: 8px;
+  right: 8px;
+  border-width: 2px 2px 0 0;
+}
+
+.cinematic-hero-canvas__bracket--bl {
+  bottom: 8px;
+  left: 8px;
+  border-width: 0 0 2px 2px;
+  border-color: var(--color-hud-crimson);
+}
+
+.cinematic-hero-canvas__bracket--br {
+  bottom: 8px;
+  right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+@media (max-width: 480px) {
+  .cinematic-hero-canvas {
+    min-height: 14rem;
+    height: 16.5rem;
+  }
+
+  .cinematic-hero-canvas__row--head span:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-hero-canvas {
+    box-shadow: none;
+  }
+}

@@ -8,6 +8,14 @@ Prompts are often short and casual — read intent generously and ship a
 **Depth lives in `.grok/references/*.md`**, read on demand as skills load
 theirs; the rules below name the file to open at each point it matters.
 
+**Visual lock:** image prompts, video parameters, and media-processing scripts
+follow `AxiomVisualDesignSystem.md` (Cyber-Obsidian HUD, neon cyan `#00f2fe`,
+volumetric smoke, tactical corner crosshairs, tenant branding — never generic stock).
+
+**Visual lock:** image prompts, video parameters, and media-processing scripts
+follow `AxiomVisualDesignSystem.md` (Cyber-Obsidian HUD, neon cyan `#00f2fe`,
+volumetric smoke, tactical corner crosshairs, tenant branding — never generic stock).
+
 ---
 
 ## Skills (in `.grok/skills/` — consult BEFORE building)

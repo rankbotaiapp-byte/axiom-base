@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { env } from "@/lib/env.server";
+import { env } from "../env.server.ts";
 
 /**
  * Shared gate for automated queue / cron endpoints.

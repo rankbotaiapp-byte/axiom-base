@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { CalendarCheck, MapPin, Phone } from "lucide-react";
+import { AvatarSpeakerPhone } from "@/components/ai/AvatarSpeakerPhone";
+import { FunnelLayout } from "@/components/funnel/FunnelLayout";
 import { getNicheActions } from "@/config/niche-actions";
 import { shopCity } from "@/lib/axiom/avatar";
 import { callHrefFor, mapsSearchUrl } from "@/lib/axiom/frontend-template";
@@ -58,53 +59,16 @@ export function ImmutableStorefront({ data }: { data: ShopPublic }) {
   }, [data.services, shop.niche]);
 
   return (
-    <div
-      className="immutable-storefront min-h-dvh bg-bg text-fg"
-      style={{ ["--shop-accent" as string]: accent }}
-    >
-      <header className="immutable-sticky">
-        <div className="immutable-sticky-inner">
-          <div className="min-w-0">
-            {template?.logoUrl ? (
-              <img src={template.logoUrl} alt="" className="h-9 w-auto max-w-[10rem] object-contain" />
-            ) : (
-              <p className={cn("truncate text-lg tracking-tight", font)}>{name}</p>
-            )}
-            <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
-              {city}
-              {address && address !== city ? ` · ${address}` : ""}
-            </p>
-          </div>
-          <nav className="immutable-cta-row" aria-label="Locked actions">
-            <button type="button" className="immutable-cta immutable-cta-primary" onClick={() => setBookOpen(true)}>
-              <CalendarCheck className="size-4" aria-hidden />
-              Book Now
-            </button>
-            {callHref ? (
-              <a className="immutable-cta" href={callHref}>
-                <Phone className="size-4" aria-hidden />
-                Call Now
-              </a>
-            ) : (
-              <span className="immutable-cta is-off">
-                <Phone className="size-4" aria-hidden />
-                Call Now
-              </span>
-            )}
-            {mapsUrl ? (
-              <a className="immutable-cta" href={mapsUrl} target="_blank" rel="noreferrer">
-                <MapPin className="size-4" aria-hidden />
-                Get Directions
-              </a>
-            ) : (
-              <span className="immutable-cta is-off">
-                <MapPin className="size-4" aria-hidden />
-                Get Directions
-              </span>
-            )}
-          </nav>
-        </div>
-      </header>
+    <div className="immutable-storefront" style={{ ["--shop-accent" as string]: accent }}>
+      <FunnelLayout
+        name={name}
+        city={city}
+        logoUrl={template?.logoUrl}
+        bookPath={bookPath}
+        callHref={callHref}
+        mapsUrl={mapsUrl}
+        onBook={() => setBookOpen(true)}
+      >
 
       <section className="immutable-hero" aria-label="Hero">
         {playFilm ? (
@@ -183,9 +147,18 @@ export function ImmutableStorefront({ data }: { data: ShopPublic }) {
         environment="storefront"
         shopName={name}
         shopSlug={shop.slug}
+        niche={shop.customNiche || shop.niche}
+        city={city}
         bookHref={bookPath}
         onBook={() => setBookOpen(true)}
       />
+      <AvatarSpeakerPhone
+        shopName={name}
+        shopSlug={shop.slug}
+        niche={shop.customNiche || shop.niche}
+        city={city}
+      />
+      </FunnelLayout>
     </div>
   );
 }

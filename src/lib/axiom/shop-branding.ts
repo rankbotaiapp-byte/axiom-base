@@ -1,3 +1,11 @@
+import {
+  RENDER_CREDIT_PACK,
+  RENDER_CREDIT_PACK_CENTS,
+  RENDER_IMAGE_UNITS,
+  RENDER_VIDEO_UNITS,
+} from "./render-credits.ts";
+import { AXIOM_VISUAL_LOCK, withAxiomVisualLock } from "./visual-design.ts";
+
 export const BRAND_FONTS = ["display", "sans", "mono"] as const;
 export type BrandFont = (typeof BRAND_FONTS)[number];
 
@@ -61,17 +69,20 @@ export function brandDnaComplete(dna: BrandDna): boolean {
 }
 
 export function brandPromptLayer(dna: BrandDna, shopName: string): string {
-  return [
-    `Brand lock: business name "${shopName}".`,
-    `Tagline "${dna.tagline}".`,
-    `Primary ${dna.primary}, secondary ${dna.secondary}.`,
-    `Typography feel: ${BRAND_FONT_LABEL[dna.font]}.`,
-    "Weave the logo and palette into real surfaces in the photo: trucks, tools, glass, walls, uniforms, or signage.",
-    "Keep the original scene and lighting. No extra people. No watermark. No fake UI.",
-  ].join(" ");
+  return withAxiomVisualLock(
+    [
+      AXIOM_VISUAL_LOCK,
+      `Brand lock: business name "${shopName}".`,
+      `Tagline "${dna.tagline}".`,
+      `Primary ${dna.primary}, secondary ${dna.secondary}, HUD cyan #00f2fe.`,
+      `Typography feel: ${BRAND_FONT_LABEL[dna.font]}.`,
+      "Weave the logo, cyan HUD edges, and tactical corner crosshairs into trucks, tools, glass, walls, uniforms, or signage.",
+      "Keep the original scene and lighting. Volumetric smoke in the deep field. No extra people. No generic stock.",
+    ].join(" "),
+  );
 }
 
-export const AI_CREDIT_PACK = 40;
-export const AI_CREDIT_PACK_CENTS = 2000;
-export const AI_IMAGE_UNITS = 1;
-export const AI_VIDEO_UNITS = 4;
+export const AI_CREDIT_PACK = RENDER_CREDIT_PACK;
+export const AI_CREDIT_PACK_CENTS = RENDER_CREDIT_PACK_CENTS;
+export const AI_IMAGE_UNITS = RENDER_IMAGE_UNITS;
+export const AI_VIDEO_UNITS = RENDER_VIDEO_UNITS;

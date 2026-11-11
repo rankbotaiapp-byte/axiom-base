@@ -365,7 +365,7 @@ export async function commandMasterAutopilot(request: Request, action: Autopilot
     await sendTrickleOutreach(request);
     return readMasterAutopilotStatus(request);
   }
-  if (action === "tick_content") {
+  if (action === "tick_content" || action === "tick_blender") {
     const { tickShopAutopilot } = await import("./shop-autopilot.server");
     await tickShopAutopilot();
     return readMasterAutopilotStatus(request);

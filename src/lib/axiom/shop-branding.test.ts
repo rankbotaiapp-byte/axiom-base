@@ -19,4 +19,8 @@ test("brand DNA requires a logo, palette, and tagline before generation", () => 
   assert.equal(brandDnaComplete(locked), true);
   assert.match(brandPromptLayer(locked, "Ridge Cut"), /Ridge Cut/);
   assert.match(brandPromptLayer(locked, "Ridge Cut"), /#1A2B3C/);
+  assert.match(brandPromptLayer(locked, "Ridge Cut"), /#00f2fe/);
+  assert.match(brandPromptLayer(locked, "Ridge Cut"), /crosshair/i);
+  assert.match(brandPromptLayer(locked, "Ridge Cut"), /#00f2fe/);
+  assert.match(brandPromptLayer(locked, "Ridge Cut"), /crosshair/i);
 });
