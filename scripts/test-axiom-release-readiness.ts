@@ -73,6 +73,27 @@ function verifyAutopilotRouting() {
   assert(S, remainingCap(0, 40) === 40 && remainingCap(40, 40) === 0, "Caps · remaining room depletes to zero");
   assert(S, throttleCount(5, remainingCap(38, 40)) === 2, "Caps · tick respects remaining SMS room");
 
+  const limits = read("src/lib/axiom/autopilot-limits.ts");
+  assert(S, limits.includes("export function canDispatchNow"), "Guardrails · canDispatchNow exported");
+  assert(S, limits.includes("export function getNextTrickleDelayMs"), "Guardrails · getNextTrickleDelayMs exported");
+  assert(S, limits.includes("AUTOPILOT_SMS_DAILY_CAP = 40"), "Guardrails · 40 SMS per number");
+  assert(S, limits.includes("AUTOPILOT_EMAIL_DAILY_CAP = 80"), "Guardrails · 80 emails per inbox");
+  assert(S, limits.includes("TRICKLE_DELAY_MIN_SECONDS = 45") && limits.includes("TRICKLE_DELAY_MAX_SECONDS = 90"), "Guardrails · 45–90s trickle");
+  const queueWorker = read("src/lib/axiom/outreach-queue.server.ts");
+  const schedulerWorker = read("src/lib/axiom/outreach-scheduler.server.ts");
+  assert(S, queueWorker.includes("canDispatchNow") && queueWorker.includes("getNextTrickleDelayMs"), "Worker · drain loop uses dispatch gate");
+  assert(S, schedulerWorker.includes("canDispatchNow") && schedulerWorker.includes("getNextTrickleDelayMs"), "Worker · outreach queue uses dispatch gate");
+
+  const health = read("src/lib/axiom/self-correction.ts");
+  const healthServer = read("src/lib/axiom/self-correction.server.ts");
+  const healthRoute = read("src/routes/api/webhooks.telemetry.ts");
+  assert(S, existsSync(join(ROOT, "migrations/0092_outreach_telemetry.sql")), "Health · outreach_telemetry_logs migration");
+  assert(S, healthRoute.includes("/api/webhooks/telemetry"), "Health · telemetry webhook route");
+  assert(S, health.includes("evaluateOutreachHealth") && health.includes("30007"), "Health · assessment + Twilio 30007");
+  assert(S, healthServer.includes("maybeEvaluateOutreachHealthHourly"), "Health · hourly evaluator");
+  assert(S, read("src/components/master/system-health-widget.tsx").includes("System Health & Autonomous Adjustments"), "Health · master desk widget");
+  assert(S, read("src/lib/axiom/outreach-cron.server.ts").includes("maybeEvaluateOutreachHealthHourly"), "Health · cron hourly wire");
+
   assert(S, parseOutreachMode("live") === "live", "Mode · live token enables providers");
   assert(S, parseOutreachMode("simulation") === "simulation", "Mode · non-live stays simulation");
   assert(S, outreachMayCallProviders(parseOutreachMode("simulation")) === false, "Mode · simulation never calls Twilio/Resend");

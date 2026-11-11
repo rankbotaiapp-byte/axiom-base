@@ -32,10 +32,10 @@ test("outreach mode defaults to simulation unless the value is live", () => {
   assert.equal(outreachMayCallProviders("live"), true);
 });
 
-test("trickle spacing stays inside 30 to 60 seconds and chunks do not dump together", () => {
+test("trickle spacing stays inside 45 to 90 seconds and chunks do not dump together", () => {
   assert.equal(parseTrickleSeconds(undefined), 45);
-  assert.equal(parseTrickleSeconds("10"), 30);
-  assert.equal(parseTrickleSeconds("90"), 60);
+  assert.equal(parseTrickleSeconds("10"), 45);
+  assert.equal(parseTrickleSeconds("90"), 90);
   assert.equal(parseTrickleSeconds("45"), 45);
   assert.equal(parseChunkSize(undefined), 5);
   assert.equal(parseChunkSize("0"), 1);
@@ -61,31 +61,36 @@ test("trickle spacing stays inside 30 to 60 seconds and chunks do not dump toget
   assert.equal(trickleMayRelease(null, now, 45), true);
 });
 
-test("weekday window holds nights and weekends until Monday morning Pacific", () => {
-  const mondayMorning = new Date("2026-10-05T15:00:00.000Z");
+test("weekday window is Monday–Friday 9:00 AM–4:00 PM Pacific and blocks weekends", () => {
+  const mondayEight = new Date("2026-10-05T15:00:00.000Z");
+  const mondayNine = new Date("2026-10-05T16:00:00.000Z");
   const mondayNoon = new Date("2026-10-05T19:00:00.000Z");
+  const mondayFour = new Date("2026-10-05T23:00:00.000Z");
   const mondayClose = new Date("2026-10-06T02:00:00.000Z");
   const fridayAfternoon = new Date("2026-10-09T22:00:00.000Z");
-  const winterFriday = new Date("2026-01-09T20:00:00.000Z");
+  const saturdayNoon = new Date("2026-10-10T19:00:00.000Z");
 
-  assert.equal(insideSendWindow(mondayMorning, "immediate", "general"), true);
+  assert.equal(insideSendWindow(mondayEight, "immediate", "general"), false);
+  assert.equal(insideSendWindow(mondayNine, "immediate", "general"), true);
   assert.equal(insideSendWindow(mondayNoon, "immediate", "general"), true);
+  assert.equal(insideSendWindow(mondayFour, "immediate", "general"), true);
   assert.equal(insideSendWindow(mondayClose, "immediate", "general"), false);
-  assert.equal(insideSendWindow(fridayAfternoon, "immediate", "general"), false);
+  assert.equal(insideSendWindow(fridayAfternoon, "immediate", "general"), true);
+  assert.equal(insideSendWindow(saturdayNoon, "immediate", "general"), false);
   assert.equal(nextSendInstant(mondayNoon, "immediate", "general").toISOString(), mondayNoon.toISOString());
-  assert.equal(nextSendInstant(fridayAfternoon, "immediate", "general").toISOString(), "2026-10-12T15:00:00.000Z");
-  assert.equal(nextSendInstant(mondayClose, "immediate", "general").toISOString(), "2026-10-06T15:00:00.000Z");
-  assert.equal(nextSendInstant(winterFriday, "immediate", "general").toISOString(), "2026-01-12T16:00:00.000Z");
+  assert.equal(nextSendInstant(mondayEight, "immediate", "general").toISOString(), "2026-10-05T16:00:00.000Z");
+  assert.equal(nextSendInstant(mondayClose, "immediate", "general").toISOString(), "2026-10-06T16:00:00.000Z");
+  assert.equal(nextSendInstant(saturdayNoon, "immediate", "general").toISOString(), "2026-10-12T16:00:00.000Z");
 
   const held = planWindowedChunks(["a", "b"], {
     chunkSize: 1,
     intervalSeconds: 45,
-    start: fridayAfternoon,
+    start: saturdayNoon,
     timing: "immediate",
     profile: "general",
   });
-  assert.equal(held[0]?.scheduledAt, "2026-10-12T15:00:00.000Z");
-  assert.equal(held[1]?.scheduledAt, "2026-10-12T15:00:45.000Z");
+  assert.equal(held[0]?.scheduledAt, "2026-10-12T16:00:00.000Z");
+  assert.equal(held[1]?.scheduledAt, "2026-10-12T16:00:45.000Z");
 
   const late = new Date("2026-10-09T01:59:00.000Z");
   const rolled = planWindowedChunks(["a", "b", "c"], {
@@ -95,9 +100,9 @@ test("weekday window holds nights and weekends until Monday morning Pacific", ()
     timing: "immediate",
     profile: "general",
   });
-  assert.equal(rolled[0]?.scheduledAt, late.toISOString());
-  assert.equal(rolled[1]?.scheduledAt, "2026-10-09T01:59:45.000Z");
-  assert.equal(rolled[2]?.scheduledAt, "2026-10-12T15:00:00.000Z");
+  assert.equal(rolled[0]?.scheduledAt, "2026-10-09T16:00:00.000Z");
+  assert.equal(rolled[1]?.scheduledAt, "2026-10-09T16:00:45.000Z");
+  assert.equal(rolled[2]?.scheduledAt, "2026-10-09T16:01:30.000Z");
 });
 
 test("custom trickle slots default to 9 AM, 1 PM, and 4 PM Pacific", () => {

@@ -65,8 +65,8 @@ test("niche keywords and area codes select filings in memory and do not send the
 });
 
 test("trickle spacing and plan tiers hold outreach unless the plan and mode allow it", () => {
-  assert.equal(parseTrickleSeconds("1"), 30);
-  assert.equal(parseTrickleSeconds("120"), 60);
+  assert.equal(parseTrickleSeconds("1"), 45);
+  assert.equal(parseTrickleSeconds("120"), 90);
   const start = new Date("2026-10-14T15:00:00.000Z");
   const chunks = planTrickleChunks(["a", "b", "c", "d"], {
     chunkSize: 2,

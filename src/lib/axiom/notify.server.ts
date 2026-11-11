@@ -10,6 +10,7 @@ import {
 import { toE164 } from "./notify-target";
 import { resolveShopLeadAlerts, type ShopNotifyPrefs } from "./notify-prefs";
 import { twilioSmsFailureDetail } from "./notify-twilio";
+import { resolvePublicAppOrigin } from "./public-app-url";
 
 export { twilioSmsFailureDetail } from "./notify-twilio";
 
@@ -88,6 +89,21 @@ async function sendEmail(to: string, subject: string, body: string): Promise<Sen
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return { status: "failed", detail: "Email provider rejected the message" };
+    try {
+      const payload = (await res.json()) as { id?: string };
+      const { persistTelemetryEvent } = await import("./self-correction.server");
+      await persistTelemetryEvent({
+        provider: "resend",
+        channel: "email",
+        eventType: "sent",
+        errorCode: "",
+        identity: from,
+        destination: to.slice(0, 160),
+        messageSid: String(payload.id ?? ""),
+      });
+    } catch {
+      /* telemetry table may be missing */
+    }
     return { status: "sent", detail: "" };
   } catch {
     return { status: "failed", detail: "Email request failed" };
@@ -114,7 +130,27 @@ export function missingOutreachCredentials(): string[] {
 }
 
 function twilioFromNumber(): string | undefined {
-  return env("TWILIO_FROM_NUMBER") || env("TWILIO_PHONE_NUMBER");
+  return env("TWILIO_FROM_NUMBER") || env("TWILIO_PHONE_NUMBER") || env("TWILIO_FROM_NUMBER_BACKUP");
+}
+
+async function resolveSmsFrom(): Promise<string | undefined> {
+  try {
+    const { resolveActiveSmsIdentity } = await import("./self-correction.server");
+    const active = await resolveActiveSmsIdentity();
+    if (active) return active;
+  } catch {
+    /* identity table may be missing on a fresh snapshot */
+  }
+  return twilioFromNumber();
+}
+
+function telemetryCallbackUrl(): string | undefined {
+  try {
+    const origin = resolvePublicAppOrigin();
+    return origin ? `${origin.replace(/\/$/, "")}/api/webhooks/telemetry` : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Provider send used only by the live outreach queue. Simulation must not call this. */
@@ -131,19 +167,22 @@ export async function deliverOutreachMessage(input: {
 async function sendSms(to: string, body: string): Promise<SendResult> {
   const sid = env("TWILIO_ACCOUNT_SID");
   const token = env("TWILIO_AUTH_TOKEN");
-  const from = twilioFromNumber();
+  const from = await resolveSmsFrom();
   if (!sid || !token || !from) return { status: "skipped", detail: "SMS provider is not configured" };
   const dest = toE164(to) || to.trim();
   if (!dest || dest.length < 8) return { status: "failed", detail: "Invalid destination phone number" };
   try {
     const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const params: Record<string, string> = { To: dest, From: from, Body: body.slice(0, 640) };
+    const callback = telemetryCallbackUrl();
+    if (callback) params.StatusCallback = callback;
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ To: dest, From: from, Body: body.slice(0, 640) }),
+      body: new URLSearchParams(params),
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
@@ -154,6 +193,21 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
         payload = null;
       }
       return { status: "failed", detail: twilioSmsFailureDetail(res.status, payload) };
+    }
+    try {
+      const payload = (await res.json()) as { sid?: string };
+      const { persistTelemetryEvent } = await import("./self-correction.server");
+      await persistTelemetryEvent({
+        provider: "twilio",
+        channel: "sms",
+        eventType: "sent",
+        errorCode: "",
+        identity: from,
+        destination: dest.slice(0, 40),
+        messageSid: String(payload.sid ?? ""),
+      });
+    } catch {
+      /* telemetry table may be missing */
     }
     return { status: "sent", detail: "" };
   } catch {

@@ -45,6 +45,7 @@ import { HOME_REGION_COUNTIES, HOME_REGION_LABEL } from "@/lib/axiom/regional-ro
 import { isShopNiche, type ShopNiche } from "@/lib/axiom/types";
 import { AutopilotCard } from "@/components/master/AutopilotCard";
 import { DispatchControlPanel } from "@/components/master/DispatchControlPanel";
+import { SystemHealthWidget } from "@/components/master/system-health-widget";
 import { GlobalMasterDashboard } from "@/components/master/global-master-dashboard";
 import { MASTER_GLASS, MasterCyberFrame } from "@/components/master/master-cyber-frame";
 import { FunnelStrategyControl } from "@/components/master/FunnelStrategyControl";
@@ -537,6 +538,7 @@ function DeskView({
       </div>
 
       <DispatchControlPanel onChanged={onRefresh} />
+      <SystemHealthWidget />
       <AutopilotCard mode={desk.outreach.mode} onDispatched={onRefresh} />
       <FunnelStrategyControl onChanged={onRefresh} />
       <HeroFilmPanel />
@@ -817,7 +819,7 @@ function OutreachEngine({
       const hours =
         result.timing === "smart"
           ? "Smart timing holds each trade for its own hours."
-          : "Weekday hours hold the queue until Monday–Thursday, 8:00 AM–7:00 PM Pacific.";
+          : "Weekday hours hold the queue until Monday–Friday, 9:00 AM–4:00 PM Pacific.";
       setNote(
         `Queued ${result.leadCount} ${kind} in ${result.county} with ${hook}. ${loops} scheduled through Day 7. ${chunks}, ${result.intervalSeconds} seconds apart. ${safety} ${hours} ${first}${skipped}${looping}`,
       );

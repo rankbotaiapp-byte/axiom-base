@@ -1,24 +1,33 @@
+import {
+  AUTOPILOT_EMAIL_DAILY_CAP,
+  AUTOPILOT_SMS_DAILY_CAP,
+  AUTOPILOT_WINDOW_END_MINUTES,
+  AUTOPILOT_WINDOW_START_MINUTES,
+  TRICKLE_DELAY_MAX_SECONDS,
+  TRICKLE_DELAY_MIN_SECONDS,
+} from "./autopilot-limits.ts";
+
 export type OutreachMode = "simulation" | "live";
 
-export const DEFAULT_TRICKLE_SECONDS = 45;
+export const DEFAULT_TRICKLE_SECONDS = TRICKLE_DELAY_MIN_SECONDS;
 export const DEFAULT_CHUNK_SIZE = 5;
 /** Pacific wall-clock releases: 9:00 AM, 1:00 PM, 4:00 PM. */
 export const DEFAULT_TRICKLE_SLOT_MINUTES = [9 * 60, 13 * 60, 16 * 60] as const;
-export const DEFAULT_SMS_DAILY_CAP = 40;
-export const DEFAULT_EMAIL_DAILY_CAP = 80;
+export const DEFAULT_SMS_DAILY_CAP = AUTOPILOT_SMS_DAILY_CAP;
+export const DEFAULT_EMAIL_DAILY_CAP = AUTOPILOT_EMAIL_DAILY_CAP;
 
 /** Anything other than an explicit live value stays in simulation. */
 export function parseOutreachMode(value: string | undefined | null): OutreachMode {
   return value?.trim().toLowerCase() === "live" ? "live" : "simulation";
 }
 
-/** Configurable gap between chunks. Values outside 30–60 seconds clamp into that range. */
+/** Configurable gap between consecutive sends. Values outside 45–90 seconds clamp into that range. */
 export function parseTrickleSeconds(value: string | undefined | null): number {
   const raw = String(value ?? "").trim();
   if (!raw) return DEFAULT_TRICKLE_SECONDS;
   const n = Number(raw);
   if (!Number.isFinite(n)) return DEFAULT_TRICKLE_SECONDS;
-  return Math.min(60, Math.max(30, Math.round(n)));
+  return Math.min(TRICKLE_DELAY_MAX_SECONDS, Math.max(TRICKLE_DELAY_MIN_SECONDS, Math.round(n)));
 }
 
 /** Leads released together. Defaults to 5, and stays between 1 and 20. */
@@ -115,7 +124,7 @@ export type TimingProfile = "trades" | "salon" | "general";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-/** Start is inclusive. End is exclusive, so 7:00 PM is the close of the weekday window. */
+/** Start is inclusive. End is exclusive, so 4:01 PM is the first closed minute. */
 type MinuteRange = { start: number; end: number };
 
 type SendClock = {
@@ -123,9 +132,10 @@ type SendClock = {
   ranges: MinuteRange[];
 };
 
+/** Weekdays 9:00 AM–4:00 PM Pacific. Saturday and Sunday never open. */
 const GUARDRAIL: SendClock = {
-  days: new Set([1, 2, 3, 4]),
-  ranges: [{ start: 8 * 60, end: 19 * 60 }],
+  days: new Set([1, 2, 3, 4, 5]),
+  ranges: [{ start: AUTOPILOT_WINDOW_START_MINUTES, end: AUTOPILOT_WINDOW_END_MINUTES + 1 }],
 };
 
 const PROFILE_CLOCKS: Record<TimingProfile, SendClock> = {
@@ -179,7 +189,7 @@ export function timingProfileFor(tradeType: string): TimingProfile {
 
 export function sendWindowBlurb(timing: SendTiming, profile?: TimingProfile | "mixed"): string {
   if (timing === "immediate") {
-    return "Monday–Thursday, 8:00 AM–7:00 PM Pacific. A launch outside that window stays queued until it opens.";
+    return "Monday–Friday, 9:00 AM–4:00 PM Pacific. Weekends stay queued. A launch outside that window waits until it opens.";
   }
   if (profile === "trades") return "Home services wait for 7:00–8:30 AM or 4:30–6:00 PM, Monday–Thursday.";
   if (profile === "salon") return "Salons and beauty wait for Monday or Tuesday, 8:00–11:00 AM.";
@@ -275,7 +285,7 @@ export function insideSendWindow(
 
 /**
  * The next moment a chunk may leave. Inside the window, that moment is `now`.
- * Nights, Fridays, and weekends move to the next open morning.
+ * Nights and weekends move to the next weekday 9:00 AM.
  */
 export function nextSendInstant(
   now: Date,
@@ -393,8 +403,8 @@ export function nextTrickleSlotInstant(
   const parts = zonedParts(now, timeZone);
   for (let add = 0; add < 14; add += 1) {
     const day = addCalendarDays(parts.year, parts.month, parts.day, add);
-    // Match the weekday guardrail: Mon–Thu only.
-    if (day.weekday < 1 || day.weekday > 4) continue;
+    // Weekdays only — Saturday and Sunday never release.
+    if (day.weekday < 1 || day.weekday > 5) continue;
     for (const minutes of slots) {
       if (add === 0 && parts.minutes > minutes) continue;
       const instant = zonedDateTime(day.year, day.month, day.day, minutes, timeZone);

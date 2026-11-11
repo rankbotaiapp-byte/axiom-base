@@ -7,26 +7,24 @@ import { isLeadSlug } from "./funnel";
 import { appendPreviewLink, shouldSendUnactivatedFollowUp, tenantPreviewUrl } from "./preview-link";
 import { toE164 } from "./notify-target";
 import {
+  canDispatchNow,
+  evaluateDispatchGate,
+  getNextTrickleDelayMs,
+  type AutopilotChannel,
+} from "./autopilot-limits.ts";
+import {
   DEFAULT_EMAIL_DAILY_CAP,
   DEFAULT_SMS_DAILY_CAP,
   DEFAULT_TRICKLE_SLOT_MINUTES,
   formatSlotLabel,
-  insideSendWindow,
-  nextSendInstant,
   nextTrickleSlotInstant,
   outreachMayCallProviders,
   parseChunkSize,
   parseDailyCap,
   parseOutreachMode,
-  parseSendTiming,
-  parseTimingProfile,
   parseTrickleSeconds,
   parseTrickleSlots,
-  timingProfileFor,
-  trickleMayRelease,
   type OutreachMode,
-  type SendTiming,
-  type TimingProfile,
 } from "./outreach-queue";
 
 export type QueueMessage = {
@@ -130,23 +128,46 @@ async function tickOutreachQueue(): Promise<void> {
       /* engine state may be missing in local snapshots */
     }
     await processOutreachQueue(sql).catch(() => undefined);
+    await import("./self-correction.server")
+      .then((mod) => mod.maybeEvaluateOutreachHealthHourly())
+      .catch(() => undefined);
   } catch (err) {
     if (missingRelation(err, "outreach_dispatches") || missingRelation(err, "outreach_touches") || missingRelation(err, "attempts")) return;
     console.error("outreach queue", err instanceof Error ? err.message : err);
   }
 }
 
-function dispatchWindow(row: { timing: string; profile: string }): { timing: SendTiming; profile: TimingProfile } {
-  const timing = parseSendTiming(row.timing);
-  return { timing, profile: timing === "smart" ? parseTimingProfile(row.profile) : "general" };
+function asIso(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  const text = String(value);
+  return text || null;
+}
+
+async function lastReleaseAt(sql: Sql): Promise<string | null> {
+  const recent = await sql<{ sent_at: unknown }>`
+    select sent_at from (
+      select sent_at from outreach_dispatches
+      where sent_at is not null
+        and status in ('logged', 'sent', 'failed', 'skipped')
+      union all
+      select created_at as sent_at from outreach_events
+      where status in ('logged', 'sent', 'failed')
+    ) releases
+    order by sent_at desc
+    limit 1
+  `.catch(() => [] as { sent_at: unknown }[]);
+  return asIso(recent[0]?.sent_at);
 }
 
 /**
- * Release at most one due chunk. Overdue chunks stay queued until a full
- * interval has passed since the previous release, so a restart cannot dump the backlog.
- * Nights, Fridays, and weekends push the chunk to the next open window.
+ * Release at most one due send. Overdue chunks stay queued until the 45s
+ * trickle floor has passed, so a restart cannot dump the backlog.
+ * Nights and weekends push the chunk to the next weekday 9:00 AM window.
  */
 export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ released: boolean }> {
+  const { isDatasetChunkPaused } = await import("./self-correction.server");
+  if (await isDatasetChunkPaused()) return { released: false };
   await sql`
     update outreach_dispatches
     set status = 'queued'
@@ -162,53 +183,36 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
     limit 12
   `;
   const now = new Date();
+  const lastSentAt = await lastReleaseAt(sql);
+  const smsSentToday = await channelSentToday(sql, "sms");
+  const emailSentToday = await channelSentToday(sql, "email");
   let row: DueDispatch | undefined;
   for (const candidate of due) {
-    const window = dispatchWindow(candidate);
-    if (insideSendWindow(now, window.timing, window.profile)) {
+    const channel: AutopilotChannel = candidate.channel === "sms" ? "sms" : "email";
+    const gateInput = { now, channel, smsSentToday, emailSentToday, lastSentAt };
+    if (canDispatchNow(gateInput)) {
       row = candidate;
       break;
     }
-    const next = nextSendInstant(now, window.timing, window.profile).toISOString();
+    const gate = evaluateDispatchGate(gateInput);
+    if (gate.reason === "trickle_gap") return { released: false };
+    const next = (gate.retryAt ?? nextTrickleSlotInstant(new Date(now.getTime() + 18 * 3600_000), readOutreachConfig().slots)).toISOString();
+    const capNote =
+      gate.reason === "sms_cap" || gate.reason === "email_cap"
+        ? `Held for daily ${channel} cap.`
+        : gate.reason === "weekend"
+          ? "Held: weekend dispatch blocked."
+          : "Held: outside 9:00 AM–4:00 PM window.";
     await sql`
       update outreach_dispatches
-      set scheduled_at = ${next}
+      set scheduled_at = ${next},
+          detail = ${capNote}
       where id = ${candidate.id} and status = 'queued'
     `;
   }
   if (!row) return { released: false };
-  const intervalSeconds = parseTrickleSeconds(String(row.interval_seconds));
-  const recent = await sql<{ sent_at: unknown }>`
-    select sent_at from (
-      select sent_at from outreach_dispatches
-      where sent_at is not null
-        and status in ('logged', 'sent', 'failed', 'skipped')
-      union all
-      select created_at as sent_at from outreach_events
-      where status in ('logged', 'sent', 'failed')
-    ) releases
-    order by sent_at desc
-    limit 1
-  `;
-  const lastSent = recent[0]?.sent_at;
-  const lastSentAt = lastSent == null ? null : lastSent instanceof Date ? lastSent.toISOString() : String(lastSent);
-  if (!trickleMayRelease(lastSentAt, new Date(), intervalSeconds)) return { released: false };
 
   const channel = row.channel === "sms" ? "sms" : "email";
-  const config = readOutreachConfig();
-  const dailyCap = channel === "sms" ? config.smsDailyCap : config.emailDailyCap;
-  const sentToday = await channelSentToday(sql, channel);
-  if (sentToday >= dailyCap) {
-    // Hold until the next day's first trickle slot so we never blow the daily ceiling.
-    const next = nextTrickleSlotInstant(new Date(Date.now() + 18 * 3600_000), config.slots).toISOString();
-    await sql`
-      update outreach_dispatches
-      set scheduled_at = ${next},
-          detail = ${`Held for daily ${channel} cap (${sentToday}/${dailyCap}).`}
-      where id = ${row.id} and status = 'queued'
-    `;
-    return { released: false };
-  }
 
   const claimed = await sql<{ id: string }>`
     update outreach_dispatches
@@ -279,26 +283,34 @@ export async function drainOutreachQueue(sql: Sql, origin = ""): Promise<{ relea
         }
         pending.push(message);
       }
-      const CONCURRENCY = 6;
-      for (let i = 0; i < pending.length; i += CONCURRENCY) {
-        const batch = pending.slice(i, i + CONCURRENCY);
-        const results = await Promise.all(
-          batch.map((message) =>
-            deliverOutreachMessage({
-              channel,
-              to: message.to,
-              subject: message.subject,
-              body: message.body,
-            }).then((result) => ({ message, result })),
-          ),
-        );
-        for (const { message, result } of results) {
-          if (result.status === "sent") delivered.push(message.leadSlug);
-          else {
-            failed += 1;
-            notes.push(`${message.leadSlug}: ${result.detail || result.status}`);
-          }
+      const [first, ...rest] = pending;
+      if (first) {
+        const result = await deliverOutreachMessage({
+          channel,
+          to: first.to,
+          subject: first.subject,
+          body: first.body,
+        });
+        if (result.status === "sent") delivered.push(first.leadSlug);
+        else {
+          failed += 1;
+          notes.push(`${first.leadSlug}: ${result.detail || result.status}`);
         }
+      }
+      if (rest.length > 0) {
+        const delayMs = getNextTrickleDelayMs();
+        const next = new Date(Date.now() + delayMs).toISOString();
+        await sql`
+          update outreach_dispatches
+          set status = 'queued',
+              payload = ${JSON.stringify(rest)},
+              lead_count = ${rest.length},
+              scheduled_at = ${next},
+              detail = ${`Trickle remainder ${rest.length}; next in ${Math.round(delayMs / 1000)}s`}
+          where id = ${row.id}
+        `;
+        if (delivered.length > 0) await markDayZero(sql, row.campaign_id, delivered, "sent");
+        return { released: true };
       }
       if (delivered.length === 0 && failed === 0) status = "skipped";
       else if (failed > 0) status = "failed";
@@ -365,39 +377,31 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
     limit 24
   `;
   const now = new Date();
+  const lastSentAt = await lastReleaseAt(sql);
+  const smsSentToday = await channelSentToday(sql, "sms");
+  const emailSentToday = await channelSentToday(sql, "email");
   const batch: DueTouch[] = [];
   for (const row of due) {
     if (!isDueNurtureStep(numStep(row.step))) continue;
-    const timing = parseSendTiming(row.timing);
-    const profile = timing === "smart" ? timingProfileFor(row.trade_type) : "general";
-    if (!insideSendWindow(now, timing, profile)) {
-      const next = nextSendInstant(now, timing, profile).toISOString();
-      await sql`
-        update outreach_touches
-        set scheduled_at = ${next}
-        where id = ${row.id} and status = 'scheduled'
-      `;
+    const channel: AutopilotChannel = row.channel === "sms" ? "sms" : "email";
+    const gateInput = { now, channel, smsSentToday, emailSentToday, lastSentAt };
+    if (!canDispatchNow(gateInput)) {
+      const gate = evaluateDispatchGate(gateInput);
+      if (gate.reason === "trickle_gap") return { released: 0 };
+      if (gate.retryAt) {
+        await sql`
+          update outreach_touches
+          set scheduled_at = ${gate.retryAt.toISOString()}
+          where id = ${row.id} and status = 'scheduled'
+        `;
+      }
       continue;
     }
     batch.push(row);
+    if (plan === "send") break;
     if (batch.length >= config.chunkSize) break;
   }
   if (batch.length === 0) return { released: 0 };
-
-  const recent = await sql<{ sent_at: unknown }>`
-    select sent_at from (
-      select sent_at from outreach_dispatches
-      where sent_at is not null and status in ('logged', 'sent', 'failed', 'skipped')
-      union all
-      select created_at as sent_at from outreach_events
-      where status in ('logged', 'sent', 'failed')
-    ) releases
-    order by sent_at desc
-    limit 1
-  `;
-  const lastSent = recent[0]?.sent_at;
-  const lastSentAt = lastSent == null ? null : lastSent instanceof Date ? lastSent.toISOString() : String(lastSent);
-  if (!trickleMayRelease(lastSentAt, new Date(), config.intervalSeconds)) return { released: 0 };
 
   let sent = 0;
   let failed = 0;
@@ -469,7 +473,7 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
       if (attempts >= 3) {
         await sql`update outreach_touches set status = 'skipped' where id = ${touch.id} and status = 'scheduled'`;
       } else {
-        const next = new Date(Date.now() + config.intervalSeconds * 1000).toISOString();
+        const next = new Date(Date.now() + getNextTrickleDelayMs()).toISOString();
         await sql`
           update outreach_touches
           set scheduled_at = ${next}

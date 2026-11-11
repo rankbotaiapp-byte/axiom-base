@@ -16,11 +16,14 @@ test("cron path ticks shop autopilot, outreach drain, and outbound engine togeth
   assert.match(cron, /drainNurtureTouches/);
   assert.match(cron, /tickShopAutopilot/);
   assert.match(cron, /tickOutboundFromCron/);
+  assert.match(cron, /maybeEvaluateOutreachHealthHourly/);
   assert.match(cron, /requireCronSecret/);
   assert.match(queueServer, /readOutreachConfig/);
   assert.match(queueServer, /OUTREACH_MODE/);
   assert.match(queueServer, /OUTREACH_TRICKLE_SECONDS/);
   assert.match(queueServer, /OUTREACH_CHUNK_SIZE/);
+  assert.match(queueServer, /canDispatchNow/);
+  assert.match(queueServer, /getNextTrickleDelayMs/);
 });
 
 test("simulation is the default outreach mode; live requires an explicit toggle", () => {
@@ -68,10 +71,14 @@ test("stock branding module sources legal media and stamps tenant brand plate", 
 
 test("outbound engine respects daily SMS/email caps and OUTREACH_MODE gate", () => {
   const engine = readFileSync(join(root, "src/lib/axiom/outbound-engine.server.ts"), "utf8");
+  const scheduler = readFileSync(join(root, "src/lib/axiom/outreach-scheduler.server.ts"), "utf8");
   assert.match(engine, /smsDailyCap/);
   assert.match(engine, /emailDailyCap/);
   assert.match(engine, /remainingCap/);
   assert.match(engine, /parseOutreachMode\(env\("OUTREACH_MODE"\)\)/);
+  assert.match(scheduler, /canDispatchNow/);
+  assert.match(scheduler, /getNextTrickleDelayMs/);
+  assert.match(scheduler, /processOutreachQueue/);
 });
 
 test("automate preloads slot queue, enrolls sequences, and stays simulation-safe", () => {

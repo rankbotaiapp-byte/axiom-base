@@ -41,6 +41,12 @@ const MODULES: {
   },
   { id: "seed", label: "Seed axiom-auto tenant", script: "scripts/seed-test-shop.ts", envFile: true },
   { id: "local-auth", label: "Local-dev auth smoke", script: "scripts/test-local-dev-auth.ts", optional: true },
+  {
+    id: "telemetry-loop",
+    label: "Telemetry self-correction simulation",
+    script: "scripts/test-telemetry-loop.ts",
+    envFile: true,
+  },
 ];
 
 function parseCheckLine(text: string): { checks: number; passed: number; failed: number } | null {

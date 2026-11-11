@@ -1,9 +1,16 @@
 /** Anti-spam caps and staggered send times for the outreach_queue worker. */
 
-export const OUTREACH_SMS_DAILY_CAP = 40;
-export const OUTREACH_EMAIL_DAILY_CAP = 80;
-export const OUTREACH_JITTER_MIN_SECONDS = 8;
-export const OUTREACH_JITTER_MAX_SECONDS = 42;
+import {
+  AUTOPILOT_EMAIL_DAILY_CAP,
+  AUTOPILOT_SMS_DAILY_CAP,
+  TRICKLE_DELAY_MAX_SECONDS,
+  TRICKLE_DELAY_MIN_SECONDS,
+} from "./autopilot-limits.ts";
+
+export const OUTREACH_SMS_DAILY_CAP = AUTOPILOT_SMS_DAILY_CAP;
+export const OUTREACH_EMAIL_DAILY_CAP = AUTOPILOT_EMAIL_DAILY_CAP;
+export const OUTREACH_JITTER_MIN_SECONDS = TRICKLE_DELAY_MIN_SECONDS;
+export const OUTREACH_JITTER_MAX_SECONDS = TRICKLE_DELAY_MAX_SECONDS;
 
 export type OutreachQueueChannel = "sms" | "email";
 export type OutreachQueueStatus = "pending" | "sent" | "failed" | "rate_limited";

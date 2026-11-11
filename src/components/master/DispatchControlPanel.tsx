@@ -269,7 +269,7 @@ export function DispatchControlPanel({ onChanged }: { onChanged?: () => void }) 
       </div>
       <p className="mt-2 text-xs text-muted">
         {cronOn
-          ? "Hands-free trickle is on. Chunks of 6 leave under 40 SMS / 80 email caps with 8–42s jitter."
+          ? "Hands-free trickle is on. Messages leave under 40 SMS / 80 email caps, weekdays 9:00 AM–4:00 PM, with 45–90s jitter."
           : "Send Trickle Outreach queues today's plumbing batch and starts the worker in the background."}
       </p>
       {note ? <p className="mt-2 text-sm text-ok">{note}</p> : null}

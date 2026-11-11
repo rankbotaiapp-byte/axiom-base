@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Laptop, Lock, RotateCcw, Smartphone, Trash2, UploadCloud } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { DispatchControlPanel } from "@/components/master/DispatchControlPanel";
+import { SystemHealthWidget } from "@/components/master/system-health-widget";
 import {
   DEFAULT_PLUMBER_OUTREACH,
   PLUMBER_OUTREACH_DRAFT_CHANNEL,
@@ -183,6 +184,7 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
             {locked ? <UnlockCard reason={access.reason} onUnlocked={() => void plumberOutreachAccess().then(setAccess)} /> : null}
 
             <DispatchControlPanel />
+            <SystemHealthWidget />
 
             <Section title="Campaign URL" hint="From the leads table">
               <Field

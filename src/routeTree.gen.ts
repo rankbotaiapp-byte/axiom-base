@@ -79,6 +79,7 @@ import { Route as ApiHyperMotoConsultationRouteImport } from './routes/api/hyper
 import { Route as ApiHyperMotoPingRouteImport } from './routes/api/hyper-moto.ping'
 import { Route as ApiMasterAutopilotRouteImport } from './routes/api/master.autopilot'
 import { Route as ApiMasterOutboundEngineRouteImport } from './routes/api/master.outbound-engine'
+import { Route as ApiMasterOutreachHealthRouteImport } from './routes/api/master.outreach-health'
 import { Route as ApiMasterTelemetryRouteImport } from './routes/api/master.telemetry'
 import { Route as ApiMasterTenantsRouteImport } from './routes/api/master.tenants'
 import { Route as ApiOutreachCronRouteImport } from './routes/api/outreach.cron'
@@ -92,6 +93,7 @@ import { Route as ApiTenantsSlugRouteImport } from './routes/api/tenants.$slug'
 import { Route as ApiWebhooksGbpRouteImport } from './routes/api/webhooks.gbp'
 import { Route as ApiWebhooksMetaRouteImport } from './routes/api/webhooks.meta'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
+import { Route as ApiWebhooksTelemetryRouteImport } from './routes/api/webhooks.telemetry'
 import { Route as ApiWebhooksVapiRouteImport } from './routes/api/webhooks.vapi'
 import { Route as ShopSlugAdminBrandingHeroLibraryRouteImport } from './routes/$shopSlug/admin.branding.hero-library'
 import { Route as ApiAdminHeroStudioGenerateRouteImport } from './routes/api/admin/hero-studio/generate'
@@ -452,6 +454,11 @@ const ApiMasterOutboundEngineRoute = ApiMasterOutboundEngineRouteImport.update({
   path: '/api/master/outbound-engine',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMasterOutreachHealthRoute = ApiMasterOutreachHealthRouteImport.update({
+  id: '/api/master/outreach-health',
+  path: '/api/master/outreach-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMasterTelemetryRoute = ApiMasterTelemetryRouteImport.update({
   id: '/api/master/telemetry',
   path: '/api/master/telemetry',
@@ -515,6 +522,11 @@ const ApiWebhooksMetaRoute = ApiWebhooksMetaRouteImport.update({
 const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   id: '/api/webhooks/stripe',
   path: '/api/webhooks/stripe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksTelemetryRoute = ApiWebhooksTelemetryRouteImport.update({
+  id: '/api/webhooks/telemetry',
+  path: '/api/webhooks/telemetry',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWebhooksVapiRoute = ApiWebhooksVapiRouteImport.update({
@@ -621,6 +633,7 @@ export interface FileRoutesByFullPath {
   '/api/hyper-moto/ping': typeof ApiHyperMotoPingRoute
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/master/outbound-engine': typeof ApiMasterOutboundEngineRoute
+  '/api/master/outreach-health': typeof ApiMasterOutreachHealthRoute
   '/api/master/telemetry': typeof ApiMasterTelemetryRoute
   '/api/master/tenants': typeof ApiMasterTenantsRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
@@ -634,6 +647,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/gbp': typeof ApiWebhooksGbpRoute
   '/api/webhooks/meta': typeof ApiWebhooksMetaRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/api/webhooks/telemetry': typeof ApiWebhooksTelemetryRoute
   '/api/webhooks/vapi': typeof ApiWebhooksVapiRoute
   '/$shopSlug/admin/branding/hero-library': typeof ShopSlugAdminBrandingHeroLibraryRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
@@ -710,6 +724,7 @@ export interface FileRoutesByTo {
   '/api/hyper-moto/ping': typeof ApiHyperMotoPingRoute
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/master/outbound-engine': typeof ApiMasterOutboundEngineRoute
+  '/api/master/outreach-health': typeof ApiMasterOutreachHealthRoute
   '/api/master/telemetry': typeof ApiMasterTelemetryRoute
   '/api/master/tenants': typeof ApiMasterTenantsRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
@@ -723,6 +738,7 @@ export interface FileRoutesByTo {
   '/api/webhooks/gbp': typeof ApiWebhooksGbpRoute
   '/api/webhooks/meta': typeof ApiWebhooksMetaRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/api/webhooks/telemetry': typeof ApiWebhooksTelemetryRoute
   '/api/webhooks/vapi': typeof ApiWebhooksVapiRoute
   '/$shopSlug/admin/branding/hero-library': typeof ShopSlugAdminBrandingHeroLibraryRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
@@ -802,6 +818,7 @@ export interface FileRoutesById {
   '/api/hyper-moto/ping': typeof ApiHyperMotoPingRoute
   '/api/master/autopilot': typeof ApiMasterAutopilotRoute
   '/api/master/outbound-engine': typeof ApiMasterOutboundEngineRoute
+  '/api/master/outreach-health': typeof ApiMasterOutreachHealthRoute
   '/api/master/telemetry': typeof ApiMasterTelemetryRoute
   '/api/master/tenants': typeof ApiMasterTenantsRoute
   '/api/outreach/cron': typeof ApiOutreachCronRoute
@@ -815,6 +832,7 @@ export interface FileRoutesById {
   '/api/webhooks/gbp': typeof ApiWebhooksGbpRoute
   '/api/webhooks/meta': typeof ApiWebhooksMetaRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/api/webhooks/telemetry': typeof ApiWebhooksTelemetryRoute
   '/api/webhooks/vapi': typeof ApiWebhooksVapiRoute
   '/$shopSlug/admin/branding/hero-library': typeof ShopSlugAdminBrandingHeroLibraryRoute
   '/api/admin/hero-studio/generate': typeof ApiAdminHeroStudioGenerateRoute
@@ -895,6 +913,7 @@ export interface FileRouteTypes {
     | '/api/hyper-moto/ping'
     | '/api/master/autopilot'
     | '/api/master/outbound-engine'
+    | '/api/master/outreach-health'
     | '/api/master/telemetry'
     | '/api/master/tenants'
     | '/api/outreach/cron'
@@ -908,6 +927,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/gbp'
     | '/api/webhooks/meta'
     | '/api/webhooks/stripe'
+    | '/api/webhooks/telemetry'
     | '/api/webhooks/vapi'
     | '/$shopSlug/admin/branding/hero-library'
     | '/api/admin/hero-studio/generate'
@@ -984,6 +1004,7 @@ export interface FileRouteTypes {
     | '/api/hyper-moto/ping'
     | '/api/master/autopilot'
     | '/api/master/outbound-engine'
+    | '/api/master/outreach-health'
     | '/api/master/telemetry'
     | '/api/master/tenants'
     | '/api/outreach/cron'
@@ -997,6 +1018,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/gbp'
     | '/api/webhooks/meta'
     | '/api/webhooks/stripe'
+    | '/api/webhooks/telemetry'
     | '/api/webhooks/vapi'
     | '/$shopSlug/admin/branding/hero-library'
     | '/api/admin/hero-studio/generate'
@@ -1075,6 +1097,7 @@ export interface FileRouteTypes {
     | '/api/hyper-moto/ping'
     | '/api/master/autopilot'
     | '/api/master/outbound-engine'
+    | '/api/master/outreach-health'
     | '/api/master/telemetry'
     | '/api/master/tenants'
     | '/api/outreach/cron'
@@ -1088,6 +1111,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/gbp'
     | '/api/webhooks/meta'
     | '/api/webhooks/stripe'
+    | '/api/webhooks/telemetry'
     | '/api/webhooks/vapi'
     | '/$shopSlug/admin/branding/hero-library'
     | '/api/admin/hero-studio/generate'
@@ -1150,6 +1174,7 @@ export interface RootRouteChildren {
   ApiHyperMotoPingRoute: typeof ApiHyperMotoPingRoute
   ApiMasterAutopilotRoute: typeof ApiMasterAutopilotRoute
   ApiMasterOutboundEngineRoute: typeof ApiMasterOutboundEngineRoute
+  ApiMasterOutreachHealthRoute: typeof ApiMasterOutreachHealthRoute
   ApiMasterTelemetryRoute: typeof ApiMasterTelemetryRoute
   ApiMasterTenantsRoute: typeof ApiMasterTenantsRoute
   ApiOutreachCronRoute: typeof ApiOutreachCronRoute
@@ -1162,6 +1187,7 @@ export interface RootRouteChildren {
   ApiWebhooksGbpRoute: typeof ApiWebhooksGbpRoute
   ApiWebhooksMetaRoute: typeof ApiWebhooksMetaRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
+  ApiWebhooksTelemetryRoute: typeof ApiWebhooksTelemetryRoute
   ApiWebhooksVapiRoute: typeof ApiWebhooksVapiRoute
   ApiAdminHeroStudioGenerateRoute: typeof ApiAdminHeroStudioGenerateRoute
   ApiAdminMediaUploadRoute: typeof ApiAdminMediaUploadRoute
@@ -1659,6 +1685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMasterOutboundEngineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/master/outreach-health': {
+      id: '/api/master/outreach-health'
+      path: '/api/master/outreach-health'
+      fullPath: '/api/master/outreach-health'
+      preLoaderRoute: typeof ApiMasterOutreachHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/master/telemetry': {
       id: '/api/master/telemetry'
       path: '/api/master/telemetry'
@@ -1748,6 +1781,13 @@ declare module '@tanstack/react-router' {
       path: '/api/webhooks/stripe'
       fullPath: '/api/webhooks/stripe'
       preLoaderRoute: typeof ApiWebhooksStripeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/telemetry': {
+      id: '/api/webhooks/telemetry'
+      path: '/api/webhooks/telemetry'
+      fullPath: '/api/webhooks/telemetry'
+      preLoaderRoute: typeof ApiWebhooksTelemetryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/webhooks/vapi': {
@@ -1968,6 +2008,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHyperMotoPingRoute: ApiHyperMotoPingRoute,
   ApiMasterAutopilotRoute: ApiMasterAutopilotRoute,
   ApiMasterOutboundEngineRoute: ApiMasterOutboundEngineRoute,
+  ApiMasterOutreachHealthRoute: ApiMasterOutreachHealthRoute,
   ApiMasterTelemetryRoute: ApiMasterTelemetryRoute,
   ApiMasterTenantsRoute: ApiMasterTenantsRoute,
   ApiOutreachCronRoute: ApiOutreachCronRoute,
@@ -1980,6 +2021,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWebhooksGbpRoute: ApiWebhooksGbpRoute,
   ApiWebhooksMetaRoute: ApiWebhooksMetaRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
+  ApiWebhooksTelemetryRoute: ApiWebhooksTelemetryRoute,
   ApiWebhooksVapiRoute: ApiWebhooksVapiRoute,
   ApiAdminHeroStudioGenerateRoute: ApiAdminHeroStudioGenerateRoute,
   ApiAdminMediaUploadRoute: ApiAdminMediaUploadRoute,

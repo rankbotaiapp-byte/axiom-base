@@ -31,6 +31,9 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
     ticked: 0,
     paused: true as const,
   }));
+  const health = await import("./self-correction.server")
+    .then((mod) => mod.maybeEvaluateOutreachHealthHourly())
+    .catch(() => ({ ran: false, slot: null as string | null }));
   return Response.json({
     batchReleased: batch.released,
     nurtureReleased: nurture.released,
@@ -38,6 +41,8 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
     stockBranded: stockBrand,
     outboundTicked: outbound.ticked,
     outboundPaused: outbound.paused,
+    healthEvaluated: health.ran,
+    healthSlot: health.slot,
     cronEnabled,
   });
 }

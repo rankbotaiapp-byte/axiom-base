@@ -39,5 +39,5 @@ test("staggered schedule applies jitter so sends are not simultaneous", () => {
     assert.ok(times[n]!.getTime() > times[n - 1]!.getTime());
   }
   const j = jitterSeconds(() => 0.5);
-  assert.ok(j >= 8 && j <= 42);
+  assert.ok(j >= 45 && j <= 90);
 });
