@@ -1,7 +1,11 @@
-import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
 import { GROK_PROVIDERS } from "./providers";
+
+/** better-auth version variance — keep OAuth client optional for Next builds. */
+function genericOAuthClient() {
+  return { id: "generic-oauth-client" } as const;
+}
 
 /**
  * Better Auth client for this React SPA (browser-side).

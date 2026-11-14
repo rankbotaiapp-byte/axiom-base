@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ShopFilmPage } from "@/app/[shopSlug]/page";
+import { ShopFilmPage } from "@/components/shop-film-stage";
 import { OutreachStorefront } from "@/components/outreach-storefront";
 import { LoopOverlay, TourOverlay } from "@/components/tour-overlay";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";

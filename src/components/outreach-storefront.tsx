@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { OutreachTenantPage } from "@/app/[shopSlug]/page";
+import { OutreachTenantPage } from "@/components/shop-film-stage";
 import { DemoRetentionStack } from "@/components/demo-retention-stack";
 import { catalogCardStill, defaultNicheFilm, isCatalogNiche } from "@/config/catalog";
 import { getNicheActions } from "@/config/niche-actions";

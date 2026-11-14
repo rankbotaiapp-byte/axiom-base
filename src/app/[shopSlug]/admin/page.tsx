@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AxiomRingProvider } from "@/components/axiom-ring";
 import { getOperatorData } from "@/lib/axiom/server";
-import { AdminShell, type OpData } from "@/routes/$shopSlug/admin";
+import { AdminShell, type OpData } from "@/components/admin/AdminShell";
 
 export default function TenantAdminPage({
   params,

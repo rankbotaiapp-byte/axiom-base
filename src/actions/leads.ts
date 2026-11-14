@@ -1,4 +1,4 @@
-import { createServerFn, createMiddleware } from "@tanstack/react-start";
+﻿import { createServerFn, createMiddleware } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import {
   isLeadReader,
@@ -106,7 +106,7 @@ async function assertCanReadLeads(userId: string): Promise<void> {
  * `context.userId` and any id or role on the search payload are not read.
  */
 async function sessionUserId(bearerToken?: string): Promise<string> {
-  const { getRequest } = await import("@tanstack/react-start/server");
+  const { getRequest } = await import("@/lib/tanstack-start-server-shim");
   const { UnauthorizedError } = await import("@/lib/auth/verify.server");
   const { gateIdentityEnabled } = await import("@/lib/auth/gate-identity.server");
   const { auth, authConfigured } = await import("@/lib/auth/server");

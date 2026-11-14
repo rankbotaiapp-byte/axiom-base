@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@/lib/tanstack-start-server-shim";
 import {
   assertSameSiteRequest,
   CrossSiteRequestError,

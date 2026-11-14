@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import Link from "next/link";
 import { HeroLibraryBench } from "@/components/admin/hero-library-bench";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -47,7 +49,7 @@ export default function MasterHeroLibraryPage() {
         <div className="film-glass max-w-md rounded-2xl px-6 py-8">
           <p className="film-kicker">Hero library</p>
           <p className="mt-3 font-mono text-3xl text-fg">{error || "No shop on this desk."}</p>
-          <Link to="/onboard" className="film-link mt-5">
+          <Link href="/onboard" className="film-link mt-5">
             Create a shop
           </Link>
         </div>
@@ -58,7 +60,7 @@ export default function MasterHeroLibraryPage() {
   return (
     <main className="min-h-dvh bg-obsidian px-5 py-8 sm:px-10">
       <div className="mx-auto max-w-6xl">
-        <Link to="/$shopSlug/admin" params={{ shopSlug: shop.slug }} className="text-sm text-muted hover:text-fg">
+        <Link href={`/${shop.slug}/admin`} className="text-sm text-muted hover:text-fg">
           {shop.name} desk
         </Link>
         <HeroLibraryBench shop={shop} readonly={false} />

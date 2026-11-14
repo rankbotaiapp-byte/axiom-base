@@ -1,4 +1,4 @@
-import { getRequest, setCookie } from "@tanstack/react-start/server";
+import { getRequest, setCookie } from "@/lib/tanstack-start-server-shim";
 import { env } from "@/lib/env.server";
 import { masterKeyUsable, masterKeysMatch, signMasterPass, verifyMasterPass } from "./master-bypass";
 import { MASTER_COOKIE, MASTER_MAX_AGE_SECONDS } from "./master-owner";

@@ -31,8 +31,7 @@
  */
 import { betterAuth } from "better-auth";
 import { bearer, genericOAuth } from "better-auth/plugins";
-import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { getCookie } from "@tanstack/react-start/server";
+import { getCookie } from "@/lib/tanstack-start-server-shim";
 import { randomBytes } from "node:crypto";
 import { ensureDbReady, getHostedPgPool, getPglite } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
@@ -282,9 +281,7 @@ export const auth = betterAuth({
     // (deployed apps) is unaffected.
     bearer(),
 
-    // Bridges Better Auth's Set-Cookie into TanStack Start responses. MUST be
-    // last so it runs after every other plugin's hooks.
-    tanstackStartCookies(),
+    // Next.js App Router handles Set-Cookie on the response; no TanStack bridge.
   ],
 });
 

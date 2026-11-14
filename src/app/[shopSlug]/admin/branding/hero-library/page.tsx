@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { Link, Navigate, useParams } from "@tanstack/react-router";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { HeroLibraryBench } from "@/components/admin/hero-library-bench";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -9,7 +12,9 @@ import { getOperatorData } from "@/lib/axiom/server";
 import type { AccessMode, Shop } from "@/lib/axiom/types";
 
 export default function HeroLibraryPage() {
-  const { shopSlug } = useParams({ from: "/$shopSlug/admin/branding/hero-library" });
+  const params = useParams<{ shopSlug: string }>();
+  const shopSlug = params.shopSlug || "demo";
+  const router = useRouter();
   const { user, isPending } = useCurrentUserState();
   const [shop, setShop] = useState<Shop | null>(null);
   const [mode, setMode] = useState<AccessMode>("none");
@@ -43,6 +48,10 @@ export default function HeroLibraryPage() {
     };
   }, [isPending, shopSlug, userId]);
 
+  useEffect(() => {
+    if (mode === "employee") router.replace(`/${shopSlug}/employee`);
+  }, [mode, router, shopSlug]);
+
   if (isPending || (user && !shop && !error)) {
     return (
       <main className="grid min-h-dvh place-items-center bg-obsidian">
@@ -51,14 +60,14 @@ export default function HeroLibraryPage() {
     );
   }
   if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/admin/branding/hero-library`} />;
-  if (mode === "employee") return <Navigate to="/$shopSlug/employee" params={{ shopSlug }} />;
+  if (mode === "employee") return null;
   if (error || !shop) {
     return (
       <main className="grid min-h-dvh place-items-center bg-obsidian px-6 text-center">
         <div className="film-glass max-w-md rounded-2xl px-6 py-8">
           <p className="film-kicker">Hero library</p>
           <p className="mt-3 font-mono text-3xl text-fg">This studio is locked.</p>
-          <Link to="/$shopSlug/admin" params={{ shopSlug }} className="film-link mt-5">
+          <Link href={`/${shopSlug}/admin`} className="film-link mt-5">
             Back to the desk
           </Link>
         </div>
@@ -69,7 +78,7 @@ export default function HeroLibraryPage() {
   return (
     <main className="min-h-dvh bg-obsidian px-5 py-8 sm:px-10">
       <div className="mx-auto max-w-6xl">
-        <Link to="/$shopSlug/admin" params={{ shopSlug }} className="text-sm text-muted hover:text-fg">
+        <Link href={`/${shopSlug}/admin`} className="text-sm text-muted hover:text-fg">
           Mission control
         </Link>
         <HeroLibraryBench shop={shop} readonly={mode === "preview" || shop.isShowcase} />

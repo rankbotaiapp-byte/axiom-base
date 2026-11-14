@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { Link, Navigate, useParams } from "@tanstack/react-router";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { HeroStudio } from "@/components/studio/HeroStudio";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -10,7 +13,9 @@ import { rememberHeroStudioSlug } from "@/lib/axiom/hero-studio-route";
 import type { AccessMode, Shop } from "@/lib/axiom/types";
 
 export default function HeroStudioPage() {
-  const { shopSlug } = useParams({ from: "/$shopSlug/admin/hero-studio" });
+  const params = useParams<{ shopSlug: string }>();
+  const shopSlug = params.shopSlug || "demo";
+  const router = useRouter();
   const { user, isPending } = useCurrentUserState();
   const [shop, setShop] = useState<Shop | null>(null);
   const [mode, setMode] = useState<AccessMode>("none");
@@ -48,6 +53,10 @@ export default function HeroStudioPage() {
     };
   }, [isPending, shopSlug, userId]);
 
+  useEffect(() => {
+    if (mode === "employee") router.replace(`/${shopSlug}/employee`);
+  }, [mode, router, shopSlug]);
+
   if (isPending || (user && !shop && !error)) {
     return (
       <main className="grid min-h-dvh place-items-center bg-obsidian">
@@ -56,14 +65,14 @@ export default function HeroStudioPage() {
     );
   }
   if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/admin/hero-studio`} />;
-  if (mode === "employee") return <Navigate to="/$shopSlug/employee" params={{ shopSlug }} />;
+  if (mode === "employee") return null;
   if (error || !shop) {
     return (
       <main className="grid min-h-dvh place-items-center bg-obsidian px-6 text-center">
         <div className="film-glass max-w-md rounded-2xl px-6 py-8">
           <p className="film-kicker">Hero studio</p>
           <p className="mt-3 font-mono text-3xl text-fg">This studio is locked.</p>
-          <Link to="/$shopSlug/admin" params={{ shopSlug }} className="film-link mt-5">
+          <Link href={`/${shopSlug}/admin`} className="film-link mt-5">
             Back to the desk
           </Link>
         </div>

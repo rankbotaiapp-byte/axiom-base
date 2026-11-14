@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
-import { FilmStage } from "@/app/[shopSlug]/page";
+import { FilmStage } from "@/components/shop-film-stage";
 import { DemoRetentionStack } from "@/components/demo-retention-stack";
 import { FounderWelcomeStage } from "@/components/founder-welcome-stage";
 import { OutreachStorefront } from "@/components/outreach-storefront";

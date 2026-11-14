@@ -8,6 +8,8 @@ export const metadata: Metadata = {
     "Instant booking sites for local service businesses. Start for $1, then $150/mo — or lock Founder's Lifetime for $1000.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark antialiased" style={{ colorScheme: "dark" }}>

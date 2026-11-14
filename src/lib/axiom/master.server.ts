@@ -1,4 +1,4 @@
-import { dbSource, getSql } from "@/lib/db";
+﻿import { dbSource, getSql } from "@/lib/db";
 import { cleanLead } from "./master";
 import { newId } from "@/lib/utils";
 import { channelFromPackage, followUpBody, followUpSchedule, deskPreviewPath, isEmailReady, isLeadSlug, isSmsReady, leadSlugFrom, nurtureStatus, outreachPublicTokens, outreachStrategy, packOutreachPackage, renderOutreachMessage, parseFunnelQuery, parseHasWebsite, parsePhoneLine, parseReviewCount, parseReviewScore, publicLeadFromRow, strategyLabelFromPackage, type PhoneLine } from "./funnel";
@@ -16,7 +16,7 @@ function stamp(value: unknown): string {
 async function requestOrigin(): Promise<string> {
   const { resolvePublicAppOrigin } = await import("./public-app-url");
   try {
-    const { getRequest } = await import("@tanstack/react-start/server");
+    const { getRequest } = await import("@/lib/tanstack-start-server-shim");
     return resolvePublicAppOrigin(new URL(getRequest().url).origin);
   } catch {
     return resolvePublicAppOrigin(null);
@@ -98,7 +98,7 @@ async function loadCampaigns(sql: Awaited<ReturnType<typeof getSql>>): Promise<W
       return {
         id: row.id,
         type,
-        shopName: parts.join(" · "),
+        shopName: parts.join(" Â· "),
         slug: "",
         createdAt: stamp(row.created_at)
       };
@@ -135,7 +135,7 @@ async function loadDispatchWire(sql: Awaited<ReturnType<typeof getSql>>): Promis
       return {
         id: row.id,
         type: "outreach_log",
-        shopName: `${row.county} · ${channel} chunk ${index}/${count} · ${leads} ${leads === 1 ? "lead" : "leads"} · ${outcome}`,
+        shopName: `${row.county} Â· ${channel} chunk ${index}/${count} Â· ${leads} ${leads === 1 ? "lead" : "leads"} Â· ${outcome}`,
         slug: "",
         createdAt: stamp(row.sent_at)
       };
@@ -166,7 +166,7 @@ async function loadNurtureWire(sql: Awaited<ReturnType<typeof getSql>>): Promise
       return {
         id: row.id,
         type: "nurture_dispatch",
-        shopName: `${row.county} · ${channel} nurture · ${outcome} · ${row.summary}`,
+        shopName: `${row.county} Â· ${channel} nurture Â· ${outcome} Â· ${row.summary}`,
         slug: "",
         createdAt: stamp(row.created_at)
       };
@@ -321,7 +321,7 @@ export const getMasterDeskHandler = async ({
     events: mergeWire(events, [...(await loadCampaigns(sql)), ...(await loadDispatchWire(sql)), ...(await loadNurtureWire(sql)), ...activations.map(activation => ({
       id: activation.id,
       type: "territory_live",
-      shopName: `${activation.businessName} · ${activation.planName} · live`,
+      shopName: `${activation.businessName} Â· ${activation.planName} Â· live`,
       slug: activation.leadSlug,
       createdAt: activation.createdAt
     }))]),
@@ -1336,7 +1336,7 @@ export const recordFunnelHitHandler = async ({
   if (!data.leadSlug && !data.utmSource && !data.county) return quietHit;
   const {
     getRequest
-  } = await import("@tanstack/react-start/server");
+  } = await import("@/lib/tanstack-start-server-shim");
   const guard = await import("./funnel-guard.server");
   const request = getRequest();
   if (!guard.requestHasFunnelSession(request)) return quietHit;
@@ -1424,7 +1424,7 @@ export const beginTerritoryCheckoutHandler = async ({
 }: any) => {
   const {
     getRequest
-  } = await import("@tanstack/react-start/server");
+  } = await import("@/lib/tanstack-start-server-shim");
   const guard = await import("./funnel-guard.server");
   if (!guard.requestHasFunnelSession(getRequest())) {
     throw new Error("Reload this page, then choose a plan again");
@@ -1488,7 +1488,7 @@ export const finishTerritoryCheckoutHandler = async ({
 }: any) => {
   const {
     getRequest
-  } = await import("@tanstack/react-start/server");
+  } = await import("@/lib/tanstack-start-server-shim");
   const guard = await import("./funnel-guard.server");
   if (!guard.requestHasFunnelSession(getRequest())) {
     throw new Error("Reload this page, then choose a plan again");

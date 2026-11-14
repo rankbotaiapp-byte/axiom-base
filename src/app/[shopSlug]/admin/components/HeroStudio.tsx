@@ -1,5 +1,8 @@
+"use client";
+
 import { useState } from "react";
-import { Link, useRouter } from "@tanstack/react-router";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
 import { HeroButtonStudio } from "@/components/admin/hero-button-studio";
 import { HeroMotionStudio } from "@/components/admin/hero-motion-studio";
@@ -120,7 +123,7 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
       }
       const book = await persistHeroToSupabase(shop.slug, draft);
       await revalidateStorefront({ data: shop.slug });
-      await router.invalidate();
+      router.refresh();
       setStatus(
         book === "saved"
           ? "Hero background loop is live on the storefront (shops.hero_background_loop)."
@@ -211,7 +214,7 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
         <p className="motion-help">
           Drop a still or a short MP4. The still sits on the film. The MP4 becomes the background loop.
         </p>
-        <Link to="/$shopSlug/admin" params={{ shopSlug: shop.slug }} className="studio-back">
+        <Link href={`/${shop.slug}/admin`} className="studio-back">
           Back to the desk
         </Link>
         <AiContentAutopilotToggle shop={shop} readonly={readonly} />

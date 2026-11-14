@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
 import { SyncedHeroPlayer } from "@/components/studio/SyncedHeroPlayer";
-import { saveHeroStudioJob } from "@/lib/actions/studio-actions";
+import { saveHeroStudioJob } from "@/lib/actions/studio-client";
 import { defaultNicheFilm } from "@/config/catalog";
 import { MEDIA_FILE_MAX_BYTES } from "@/lib/axiom/media-slots";
 import {

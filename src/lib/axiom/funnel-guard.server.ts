@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { getRequest, setCookie } from "@tanstack/react-start/server";
+import { getRequest, setCookie } from "@/lib/tanstack-start-server-shim";
 import { getSql } from "@/lib/db";
 import { env } from "@/lib/env.server";
 import { FUNNEL_IP_LIMIT, FUNNEL_SLUG_LIMIT, funnelBucketOpen, hashStopToken, tokenHashMatches } from "./funnel-guard";

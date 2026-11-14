@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { masterAccessMiddleware } from "./master-access.ts";
 import { parseBusinessRef, type BusinessBrandRecord } from "./business-brand.ts";
 
@@ -10,7 +10,7 @@ export const getBusinessBrand = createServerFn({ method: "GET" })
     return readBusinessBrand(data);
   });
 
-/** Paged business list. Master desk only — this includes contact lines. */
+/** Paged business list. Master desk only â€” this includes contact lines. */
 export const listBusinessBrands = createServerFn({ method: "GET" })
   .middleware([masterAccessMiddleware])
   .validator((input: { limit?: number; cursor?: string; q?: string } | undefined) => ({
@@ -41,7 +41,7 @@ export const createBusinessPreviewLinks = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }) => {
     const { previewLinksForDesk } = await import("./business-lookup.server");
-    const { getRequest } = await import("@tanstack/react-start/server");
+    const { getRequest } = await import("@/lib/tanstack-start-server-shim");
     const origin = new URL(getRequest().url).origin;
     return previewLinksForDesk(context.userId, origin, data);
   });

@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "better-auth";
+﻿import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import {
   parseSetCookieHeader,
@@ -67,7 +67,7 @@ async function emitSessionCookie(
 
   // Primary path: TanStack Start's response cookie store (reaches the browser).
   try {
-    const { setCookie } = await import("@tanstack/react-start/server");
+    const { setCookie } = await import("@/lib/tanstack-start-server-shim");
     setCookie(sessionTokenName, sessionValue, {
       path: cookieOptions.path ?? "/",
       httpOnly: cookieOptions.httpOnly ?? true,
@@ -110,7 +110,7 @@ async function expireSessionDataCookie(
   const path = cookie.attributes.path ?? "/";
   const secure = cookie.attributes.secure ?? true;
   try {
-    const { setCookie } = await import("@tanstack/react-start/server");
+    const { setCookie } = await import("@/lib/tanstack-start-server-shim");
     setCookie(cookie.name, "", {
       path,
       httpOnly: true,
@@ -153,7 +153,7 @@ async function writeGateMarkerCookie(
       : undefined;
   const value = clear ? "" : "1";
   try {
-    const { setCookie } = await import("@tanstack/react-start/server");
+    const { setCookie } = await import("@/lib/tanstack-start-server-shim");
     setCookie(GATE_SESSION_MARKER_COOKIE, value, {
       path: "/",
       httpOnly: false,
@@ -219,7 +219,7 @@ export function gateIdentitySessions() {
               console.error(`${LOG} no request headers on /get-session`);
               return;
             }
-            // Bearer auth (live-preview popup) already carries a session — leave it alone.
+            // Bearer auth (live-preview popup) already carries a session â€” leave it alone.
             if (inbound.get("authorization")) return;
             if (!inbound.get(GATE_IDENTITY_HEADER)) {
               await clearGateMarkerIfPresent(ctx, inbound);
@@ -298,7 +298,7 @@ export function gateIdentitySessions() {
               // Persist session rows + internal newSession state.
               await setSessionCookie(ctx, result.data);
 
-              // Explicitly sign the token and emit Set-Cookie — do NOT rely on
+              // Explicitly sign the token and emit Set-Cookie â€” do NOT rely on
               // reading it back from ctx.context.responseHeaders (often empty
               // here, which previously caused a silent signed-out render).
               const sessionValue = await emitSessionCookie(

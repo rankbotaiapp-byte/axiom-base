@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { AxiomRingProvider } from "@/components/axiom-ring";
 import { getOperatorData } from "@/lib/axiom/server";
-import { AdminShell, type OpData } from "@/routes/$shopSlug/admin";
+import { AdminShell, type OpData } from "@/components/admin/AdminShell";
 
 /**
  * Operator desk for `/{shop-slug}/admin`.

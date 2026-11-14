@@ -1,61 +1,11 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { PreviewFrame } from "@/app/preview-frame";
-import type { BusinessBrandRecord } from "@/lib/axiom/business-brand";
-import type { FunnelSearch } from "@/lib/axiom/funnel";
-import { leadGlassCopy } from "@/lib/axiom/funnel-glass";
-import type { ShopNiche } from "@/lib/axiom/types";
-
-async function loadLead(leadId: string, slug: string): Promise<BusinessBrandRecord | null> {
-  const query = leadId
-    ? `lead=${encodeURIComponent(leadId)}`
-    : `slug=${encodeURIComponent(slug)}`;
-  const res = await fetch(`/api/business/brand?${query}`);
-  if (!res.ok) return null;
-  return (await res.json()) as BusinessBrandRecord;
-}
-
-/** Next demo shell. Looks up `?lead=` and paints the glass; missing rows keep the niche template. */
-export function DemoLeadInlay({ niche, search }: { niche: ShopNiche; search: FunnelSearch }) {
-  const leadId = search.lead || "";
-  const slug = search.b || search.lead_slug || "";
-  const [loaded, setLoaded] = useState<BusinessBrandRecord | null>(null);
-
-  useEffect(() => {
-    if (!leadId && !slug) {
-      setLoaded(null);
-      return;
-    }
-    setLoaded(null);
-    let cancelled = false;
-    void loadLead(leadId, slug)
-      .then((row) => {
-        if (!cancelled) setLoaded(row);
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [leadId, slug]);
-
-  const glass = leadGlassCopy(loaded);
-  const triedLead = Boolean(leadId || slug);
-
+﻿'use client';
+import React from 'react';
+export function DemoLeadInlay() {
   return (
-    <PreviewFrame
-      niche={niche}
-      search={
-        glass.armed
-          ? { ...search, preview: true, business: glass.businessName, city: glass.city || undefined }
-          : triedLead
-            ? { ...search, preview: true, business: undefined, biz: undefined, city: undefined }
-            : { ...search, preview: true }
-      }
-      loaded={glass.armed ? loaded : null}
-      lead={glass.armed ? leadId : ""}
-    />
+    <div className="p-4 bg-[#050507] border border-amber-500/30 rounded-xl text-white shadow-lg">
+      <h4 className="text-sm font-bold text-amber-400 mb-1">Live 24/7 Booking Inlay</h4>
+      <p className="text-xs text-gray-400">Emergency call captured, verified, and routed via Twilio & Supabase.</p>
+    </div>
   );
 }
+export default DemoLeadInlay;

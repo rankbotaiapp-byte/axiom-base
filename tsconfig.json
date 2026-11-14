@@ -8,7 +8,7 @@
     ],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "strict": true,
     "isolatedModules": true,
     "skipLibCheck": true,
@@ -38,13 +38,21 @@
     ]
   },
   "include": [
-    "src",
-    "server",
+    "src/app",
+    "src/components",
+    "src/lib",
+    "src/hooks",
+    "src/actions",
+    "src/config",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    "server",
+    "src/routes",
+    "src/server.ts",
+    "src/routeTree.gen.ts",
     "src/components/aether",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",

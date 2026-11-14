@@ -1,4 +1,4 @@
-import { getRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@/lib/tanstack-start-server-shim";
 
 /**
  * Fetch-Metadata sibling isolation — **server-only** (`.server.ts` suffix).

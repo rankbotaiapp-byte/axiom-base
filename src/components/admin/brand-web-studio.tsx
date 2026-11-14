@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Sparkles, Wand2 } from "lucide-react";
 import { HUD_CARD, NeonBadge } from "@/components/admin/admin-hud";
@@ -140,8 +140,7 @@ export function BrandWebStudio({ shop, readonly }: { shop: Shop; readonly: boole
       <header className={`${HUD_CARD} relative mx-3 mt-3 flex items-center justify-between gap-3 px-4 py-3 sm:mx-6`}>
         <div className="min-w-0">
           <Link
-            to="/$shopSlug/admin"
-            params={{ shopSlug: shop.slug }}
+            href={`/${shop.slug}/admin`}
             className="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-400/80"
           >
             Back to desk
