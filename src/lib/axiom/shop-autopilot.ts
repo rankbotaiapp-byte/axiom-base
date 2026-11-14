@@ -1,0 +1,26 @@
+/** Tenant Autopilot: one server flag, not a localStorage switch. */
+
+export function isAutopilotArmed(value: unknown): boolean {
+  return value === true || value === 1 || value === "t" || value === "true";
+}
+
+export function parseAutopilotActive(row: {
+  autopilot_active?: unknown;
+  ai_content_autopilot?: unknown;
+  owner_user_id?: string | null;
+}): boolean {
+  if (String(row.owner_user_id ?? "").trim()) return true;
+  return isAutopilotArmed(row.autopilot_active) || isAutopilotArmed(row.ai_content_autopilot);
+}
+
+export type AutopilotTickResult = {
+  shopId: string;
+  slug: string;
+  hero: boolean;
+  proof: boolean;
+  social: boolean;
+  /** Fresh legal stock still/video + brand stamp from the daily content sourcer. */
+  stockBrand: boolean;
+  notice: boolean;
+  detail: string;
+};

@@ -1,0 +1,154 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Abyssal Sanctuary</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#020709">
+<meta name="description" content="Guided reef dives. A live, touchable reef feed: ripple the water, lock on to the shark, make the octopus ink.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+
+
+<!-- Full-viewport ocean: the uploaded MP4, refracted through WebGL water, with a HUD drawn on top. -->
+<div class="ocean" id="ocean" aria-hidden="true">
+  <video id="feed" src="shark-hero-animation.mp4" muted loop playsinline autoplay preload="auto" disablepictureinpicture></video>
+  <canvas id="ocean-gl"></canvas>
+  <canvas id="ocean-hud"></canvas>
+  <div class="hud-frame">
+    <i class="hf hf-tl"></i><i class="hf hf-tr"></i><i class="hf hf-bl"></i><i class="hf hf-br"></i>
+    <div class="hud-bearing" id="hud-bearing"></div>
+    <div class="hud-cross"></div>
+    <div class="hud-scan"></div>
+  </div>
+</div>
+
+<header class="nav panel" id="nav" data-ui>
+  <a class="brand" href="#top" aria-label="Abyssal Sanctuary home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 14.5c2.7-2.2 5.3-2.2 8 0s5.3 2.2 8 0M8 18.5c2.7-2.2 5.3-2.2 8 0s5.3 2.2 8 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+    <span>Abyssal<b>Sanctuary</b></span>
+  </a>
+  <div class="feed-status" aria-hidden="true"><i class="rec"></i><span>CAM-03 LIVE</span><span id="feed-tc">00:00:00</span></div>
+  <nav class="nav-links" id="nav-links" aria-label="Primary">
+    <a href="#encounters">Encounters</a>
+    <a href="#dive-day">Dive day</a>
+    <a href="#book">Book</a>
+  </nav>
+  <a class="btn btn-primary nav-cta" href="#book">Book a dive</a>
+  <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">Menu</button>
+</header>
+
+<main id="top">
+  <section class="hero" id="hero">
+    <div class="hero-card panel" id="hero-card" data-ui>
+      <p class="eyebrow"><span class="tag">Reef ops</span> Guided dives · 6–42 m</p>
+      <h1>The reef <em>notices</em> you.</h1>
+      <p class="lede">Touch the water and it moves. Lock on to the shark. Tap the octopus and it inks.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#book">Book a dive</a>
+        <a class="btn btn-ghost" href="#encounters">See encounters</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="encounters" aria-labelledby="enc-h">
+    <div class="band-head panel" data-ui>
+      <p class="eyebrow"><span class="tag">01</span> Encounters</p>
+      <h2 id="enc-h">Three dives. Three temperaments.</h2>
+    </div>
+    <div class="cards">
+      <article class="card panel" data-ui>
+        <p class="card-id">ENC-01 · <span>Carcharodon carcharias</span></p>
+        <h3>Great white cruise</h3>
+        <dl class="specs"><div><dt>Depth</dt><dd>18–24 m</dd></div><div><dt>Time</dt><dd>45 min</dd></div><div><dt>Cert</dt><dd>AOW</dd></div></dl>
+        <p>Hang off the reef wall while a resident white patrols the drop-off. Guides keep the group tight and the shark keeps its distance.</p>
+        <p class="price">$189 <span>per diver</span></p>
+      </article>
+      <article class="card panel" data-ui>
+        <p class="card-id">ENC-02 · <span>Octopus vulgaris</span></p>
+        <h3>Octopus garden</h3>
+        <dl class="specs"><div><dt>Depth</dt><dd>8–14 m</dd></div><div><dt>Time</dt><dd>60 min</dd></div><div><dt>Cert</dt><dd>OW</dd></div></dl>
+        <p>A slow crawl over the boulder field where three day octopus hunt. Bring patience; they change color when they decide you're boring.</p>
+        <p class="price">$129 <span>per diver</span></p>
+      </article>
+      <article class="card panel" data-ui>
+        <p class="card-id">ENC-03 · <span>Bioluminescence</span></p>
+        <h3>Glow dive</h3>
+        <dl class="specs"><div><dt>Depth</dt><dd>6–12 m</dd></div><div><dt>Time</dt><dd>50 min</dd></div><div><dt>Cert</dt><dd>Night</dd></div></dl>
+        <p>Lights off at the safety stop. Wave a hand and the plankton lights up around it. The most requested dive we run.</p>
+        <p class="price">$149 <span>per diver</span></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="band" id="dive-day" aria-labelledby="day-h">
+    <div class="band-head panel" data-ui>
+      <p class="eyebrow"><span class="tag">02</span> Dive day</p>
+      <h2 id="day-h">From the dock to the drop-off.</h2>
+    </div>
+    <ol class="steps panel" data-ui>
+      <li><span class="step-time">07:30</span><h3>Briefing</h3><p>Site map, currents, hand signals, and who you're buddied with.</p></li>
+      <li><span class="step-time">08:15</span><h3>Gear check</h3><p>Weights, air, computer. We fit rental gear on the boat.</p></li>
+      <li><span class="step-time">09:00</span><h3>Descent</h3><p>Down the mooring line to the reef. First dive runs about 45 minutes.</p></li>
+      <li><span class="step-time">10:10</span><h3>Surface interval</h3><p>Hot drinks, logbooks, and a second site if the swell allows.</p></li>
+    </ol>
+  </section>
+
+  <section class="band" id="book" aria-labelledby="book-h">
+    <form class="book panel" id="book-form" data-ui novalidate>
+      <div>
+        <p class="eyebrow"><span class="tag">03</span> Reserve</p>
+        <h2 id="book-h">Pick a dive and a day.</h2>
+      </div>
+      <div class="fields">
+        <label for="f-dive">Dive
+          <select id="f-dive" name="dive">
+            <option>Great white cruise</option>
+            <option selected>Octopus garden</option>
+            <option>Glow dive</option>
+          </select>
+        </label>
+        <label for="f-date">Date
+          <input id="f-date" name="date" type="date">
+        </label>
+        <label for="f-divers">Divers
+          <select id="f-divers" name="divers">
+            <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+          </select>
+        </label>
+      </div>
+      <div class="book-row">
+        <button class="btn btn-primary" type="submit">Check availability</button>
+        <p class="book-out" id="book-out" aria-live="polite"></p>
+      </div>
+    </form>
+  </section>
+
+  <footer class="foot panel" data-ui>
+    <span>Abyssal Sanctuary is a demo brand.</span>
+    <span>Interactive build by New Era Apps</span>
+  </footer>
+</main>
+
+<aside class="contacts panel" id="contacts" data-ui aria-label="Tracked contacts">
+  <p class="contacts-h"><span>Contacts</span><span id="contacts-n">4 tracked</span></p>
+  <ul id="contact-list"></ul>
+</aside>
+
+<div class="dock panel" id="dock" data-ui>
+  <div class="gauge" title="Your depth as you scroll">
+    <span class="gauge-k">Depth</span><span id="g-depth">06 m</span><span class="gauge-sep">/</span><span id="g-temp">14 °C</span>
+  </div>
+  <button class="chip" id="t-sound" type="button" aria-pressed="false" title="Play the feed's sound">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg><span>Sound</span>
+  </button>
+  <button class="chip" id="t-trail" type="button" aria-pressed="true" title="Bioluminescent trail">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="10" width="3" height="3" fill="currentColor"/><rect x="7" y="6.5" width="2.4" height="2.4" fill="currentColor" opacity=".8"/><rect x="11.2" y="3.2" width="1.8" height="1.8" fill="currentColor" opacity=".6"/></svg><span>Glow</span>
+  </button>
+  <button class="chip" id="t-quality" type="button" title="Render quality">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12a6 6 0 1 1 12 0" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 12l3-4" stroke="currentColor" stroke-width="1.6"/></svg><span id="t-quality-l">Auto</span>
+  </button>
+</div>
+
+<script src="main.js"></script>
+
+</body></html>

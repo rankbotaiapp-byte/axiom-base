@@ -1,0 +1,18 @@
+{
+  "installCommand": "(git lfs pull || true) && npm install --omit=dev --no-audit --no-fund",
+  "buildCommand": "npm run build",
+  "framework": null,
+  "trailingSlash": false,
+  "crons": [
+    { "path": "/api/autopilot/cron", "schedule": "12 15 * * *" },
+    { "path": "/api/master/autopilot", "schedule": "42 15 * * *" }
+  ],
+  "rewrites": [
+    { "source": "/:shopSlug/media/:path*", "destination": "/media/:path*" },
+    { "source": "/:shopSlug/:page/media/:path*", "destination": "/media/:path*" },
+    { "source": "/:shopSlug/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/:shopSlug/:page/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/showcase/:dir/:page", "destination": "/showcase/:dir/:page/index.html" },
+    { "source": "/showcase/:dir", "destination": "/showcase/:dir/index.html" }
+  ]
+}

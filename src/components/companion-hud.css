@@ -1,0 +1,383 @@
+.obsidian-hud-chrome {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+}
+
+.obsidian-hud-chrome__smoke {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 12% 88%, color-mix(in srgb, var(--color-hud) 12%, transparent), transparent 46%),
+    radial-gradient(90% 70% at 88% 8%, color-mix(in srgb, var(--color-neon-red) 10%, transparent), transparent 42%),
+    linear-gradient(180deg, rgba(3, 7, 18, 0.12), transparent 28%, rgba(3, 7, 18, 0.28));
+  opacity: 0.85;
+}
+
+.obsidian-hud-chrome__bracket {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-color: var(--color-hud);
+  border-style: solid;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-hud) 55%, transparent));
+}
+
+.obsidian-hud-chrome__bracket--tl {
+  top: 10px;
+  left: 10px;
+  border-width: 2px 0 0 2px;
+}
+
+.obsidian-hud-chrome__bracket--tr {
+  top: 10px;
+  right: 10px;
+  border-width: 2px 2px 0 0;
+}
+
+.obsidian-hud-chrome__bracket--bl {
+  bottom: 10px;
+  left: 10px;
+  border-width: 0 0 2px 2px;
+  border-color: var(--color-neon-red);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-neon-red) 45%, transparent));
+}
+
+.obsidian-hud-chrome__bracket--br {
+  bottom: 10px;
+  right: 10px;
+  border-width: 0 2px 2px 0;
+}
+
+.companion-hud-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--color-obsidian) 72%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.companion-hud-stage {
+  --hud-depth: 42px;
+  position: relative;
+  width: min(42rem, calc(100vw - 1.5rem));
+  height: min(36rem, calc(100dvh - 2rem));
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+
+.companion-hud-plate {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--color-hud) 55%, #8a93a0 20%);
+  background:
+    linear-gradient(145deg, rgba(120, 128, 140, 0.16), transparent 34%),
+    linear-gradient(180deg, #121821 0%, #070b14 48%, #05070d 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-neon-red) 28%, transparent),
+    0 0 28px color-mix(in srgb, var(--color-hud) 22%, transparent),
+    0 0 48px color-mix(in srgb, var(--color-neon-red) 12%, transparent),
+    0 24px 80px rgba(0, 0, 0, 0.55);
+  transform-style: preserve-3d;
+}
+
+.companion-hud-plate::before,
+.companion-hud-plate::after {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  z-index: 6;
+  pointer-events: none;
+  border: 2px solid var(--color-hud);
+}
+
+.companion-hud-plate::before {
+  top: 8px;
+  left: 8px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.companion-hud-plate::after {
+  right: 8px;
+  bottom: 8px;
+  border-left: 0;
+  border-top: 0;
+  border-color: var(--color-neon-red);
+}
+
+.companion-hud-layer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.companion-hud-layer--bg {
+  transform: translateZ(-48px) scale(1.04);
+}
+
+.companion-hud-layer--avatar {
+  transform: translateZ(0);
+}
+
+.companion-hud-layer--ui {
+  pointer-events: none;
+  transform: translateZ(var(--hud-depth));
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 1rem 1rem 0.85rem;
+}
+
+.companion-hud-layer--ui > * {
+  pointer-events: auto;
+}
+
+.companion-hud-terminal {
+  height: 100%;
+  padding: 1.1rem 1rem 5rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-hud) 78%, white);
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 13px,
+      color-mix(in srgb, var(--color-hud) 6%, transparent) 13px 14px
+    ),
+    radial-gradient(80% 60% at 20% 80%, color-mix(in srgb, var(--color-hud) 14%, transparent), transparent 55%),
+    radial-gradient(70% 50% at 90% 10%, color-mix(in srgb, var(--color-neon-red) 16%, transparent), transparent 50%),
+    #05080f;
+  overflow: hidden;
+}
+
+.companion-hud-terminal p {
+  margin: 0 0 0.35rem;
+  opacity: 0.82;
+}
+
+.companion-hud-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: saturate(1.05) contrast(1.08);
+}
+
+.companion-hud-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 18%, rgba(3, 7, 18, 0.2) 48%, rgba(3, 7, 18, 0.88) 100%);
+}
+
+.companion-hud-tool {
+  position: absolute;
+  left: 1rem;
+  bottom: 7.5rem;
+  z-index: 2;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 45%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian) 72%, transparent);
+  color: var(--color-hud);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.65rem;
+}
+
+.companion-hud-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.companion-hud-readout strong {
+  color: var(--color-hud);
+  font-weight: 500;
+}
+
+.companion-hud-bubbles {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem 0;
+}
+
+.companion-hud-bubble {
+  max-width: 92%;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 28%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian) 78%, transparent);
+  backdrop-filter: blur(12px);
+  color: var(--color-fg);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.companion-hud-bubble--sys {
+  align-self: flex-start;
+  border-color: color-mix(in srgb, var(--color-neon-red) 32%, transparent);
+}
+
+.companion-hud-bubble--ops {
+  align-self: flex-end;
+  border-color: color-mix(in srgb, var(--color-hud) 50%, transparent);
+}
+
+.companion-hud-commands {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.companion-hud-commands__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+@media (max-width: 420px) {
+  .companion-hud-commands__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.companion-hud-cmd {
+  min-height: 44px;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 32%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian) 70%, transparent);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.companion-hud-cmd:hover,
+.companion-hud-cmd:focus-visible {
+  border-color: var(--color-hud);
+  color: var(--color-hud);
+}
+
+.companion-hud-input {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.companion-hud-input input {
+  min-height: 44px;
+  flex: 1;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 28%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian) 80%, transparent);
+  color: var(--color-fg);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+}
+
+.companion-hud-close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--color-neon-red) 45%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian) 70%, transparent);
+  color: var(--color-fg);
+}
+
+.companion-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.75rem;
+  height: 4.75rem;
+  border-radius: 999px;
+  outline: none;
+}
+
+.companion-orb:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-hud);
+}
+
+.companion-orb__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 55%, transparent);
+  border-top-color: transparent;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--color-hud) 40%, transparent);
+  animation: companion-orb-spin 12s linear infinite;
+}
+
+.companion-orb__ring--alt {
+  inset: 4px;
+  border-color: color-mix(in srgb, var(--color-neon-red) 50%, transparent);
+  border-bottom-color: transparent;
+  animation-duration: 18s;
+  animation-direction: reverse;
+  box-shadow: none;
+}
+
+.companion-orb__face {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: #0a0f1a;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-hud) 50%, transparent),
+    0 0 16px color-mix(in srgb, var(--color-neon-red) 28%, transparent);
+}
+
+.companion-orb__face img,
+.companion-orb__face video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.companion-orb__live {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-hud);
+  box-shadow: 0 0 12px var(--color-hud);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion-orb__ring,
+  .companion-orb__ring--alt {
+    animation: none;
+  }
+}
+
+@keyframes companion-orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

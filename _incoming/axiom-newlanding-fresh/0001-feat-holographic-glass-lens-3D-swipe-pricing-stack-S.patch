@@ -1,0 +1,1671 @@
+From 647ec0b509eb9d71888325cf66b7892f5f201cfa Mon Sep 17 00:00:00 2001
+From: Eric Mullen <rankbotaiapp@gmail.com>
+Date: Sun, 8 Nov 2026 02:48:20 -0800
+Subject: [PATCH] feat: holographic glass lens, 3D swipe pricing stack, Stripe
+ drawer checkout
+
+- R3F shader lens over the leopard freeze-pan hero refracts the loop around the cursor (idle drift on touch); lazy, off-screen paused, skips on reduced motion / no WebGL
+- Starter / Lifetime / Custom swipe-to-provision card stack with spring tilt + fling
+- Frosted slide-up drawer with Stripe Embedded Checkout, server-verified settle, particle burst, then routes to /onboard
+- Plans live in src/lib/axiom/launch-plans.ts
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Lp7D9JempMq8Yyvt6vg1uS
+---
+ public/media/holo-shard-loop.mp4              |   3 +
+ public/media/holo-shard-poster.jpg            |   3 +
+ src/components/cinematic/FreezePanStage.tsx   |   5 +-
+ src/components/cinematic/HoloGlassLayer.tsx   |  71 ++++
+ src/components/cinematic/HoloGlassScene.tsx   | 288 +++++++++++++++++
+ .../pricing/LaunchCheckoutDrawer.tsx          | 259 +++++++++++++++
+ src/components/pricing/ParticleBurst.tsx      | 117 +++++++
+ src/components/pricing/PricingCardStack.tsx   | 303 ++++++++++++++++++
+ src/components/pricing/PricingSection.tsx     |  73 +++++
+ src/lib/axiom/launch-checkout.ts              |  54 ++++
+ src/lib/axiom/launch-plans.ts                 | 107 +++++++
+ src/lib/axiom/payments.server.ts              |  58 ++++
+ src/routes/index.tsx                          |   4 +
+ src/styles.css                                | 154 +++++++++
+ 14 files changed, 1498 insertions(+), 1 deletion(-)
+ create mode 100644 public/media/holo-shard-loop.mp4
+ create mode 100644 public/media/holo-shard-poster.jpg
+ create mode 100644 src/components/cinematic/HoloGlassLayer.tsx
+ create mode 100644 src/components/cinematic/HoloGlassScene.tsx
+ create mode 100644 src/components/pricing/LaunchCheckoutDrawer.tsx
+ create mode 100644 src/components/pricing/ParticleBurst.tsx
+ create mode 100644 src/components/pricing/PricingCardStack.tsx
+ create mode 100644 src/components/pricing/PricingSection.tsx
+ create mode 100644 src/lib/axiom/launch-checkout.ts
+ create mode 100644 src/lib/axiom/launch-plans.ts
+
+diff --git a/public/media/holo-shard-loop.mp4 b/public/media/holo-shard-loop.mp4
+new file mode 100644
+index 0000000..b8b281b
+--- /dev/null
++++ b/public/media/holo-shard-loop.mp4
+@@ -0,0 +1,3 @@
++version https://git-lfs.github.com/spec/v1
++oid sha256:dd28d6fa4508ae8834cc45abf7a0114ef233a45b4a6c45ef9a835d3cd7da8919
++size 1085663
+diff --git a/public/media/holo-shard-poster.jpg b/public/media/holo-shard-poster.jpg
+new file mode 100644
+index 0000000..2d8910a
+--- /dev/null
++++ b/public/media/holo-shard-poster.jpg
+@@ -0,0 +1,3 @@
++version https://git-lfs.github.com/spec/v1
++oid sha256:9e9f5e75fa333217a706c026b458fe218ad0b96f41a67dccd1292ddcedaa0fb0
++size 23739
+diff --git a/src/components/cinematic/FreezePanStage.tsx b/src/components/cinematic/FreezePanStage.tsx
+index 6ae38e3..a2c8ae8 100644
+--- a/src/components/cinematic/FreezePanStage.tsx
++++ b/src/components/cinematic/FreezePanStage.tsx
+@@ -6,6 +6,7 @@ import {
+   buildAutonomousContentPlan,
+ } from "@/lib/axiom/cinematic-content-seo";
+ import { createFreezePanScene, type FreezePanHandle } from "@/lib/axiom/freeze-pan-scene";
++import { HoloGlassLayer } from "./HoloGlassLayer";
+ import { cn } from "@/lib/utils";
+ 
+ const FREEZE_EVERY_SEC = 9.5;
+@@ -36,6 +37,7 @@ export function FreezePanStage({
+ }: FreezePanStageProps) {
+   const videoRef = useRef<HTMLVideoElement>(null);
+   const canvasRef = useRef<HTMLCanvasElement>(null);
++  const mediaRef = useRef<HTMLDivElement>(null);
+   const sceneRef = useRef<FreezePanHandle | null>(null);
+   const [busy, setBusy] = useState(false);
+   const [glReady, setGlReady] = useState(false);
+@@ -153,7 +155,7 @@ export function FreezePanStage({
+       </div>
+ 
+       <div className="freeze-pan-layout">
+-        <div className="freeze-pan-media" data-phase={phase}>
++        <div ref={mediaRef} className="freeze-pan-media" data-phase={phase}>
+           <video
+             ref={videoRef}
+             className="freeze-pan-video"
+@@ -172,6 +174,7 @@ export function FreezePanStage({
+             data-ready={glReady || undefined}
+             data-active={phase === "freeze" || undefined}
+           />
++          <HoloGlassLayer video={videoRef} host={mediaRef} dimmed={phase === "freeze"} disabled={leaving} />
+           <button
+             type="button"
+             className="freeze-pan-hit"
+diff --git a/src/components/cinematic/HoloGlassLayer.tsx b/src/components/cinematic/HoloGlassLayer.tsx
+new file mode 100644
+index 0000000..bd98bed
+--- /dev/null
++++ b/src/components/cinematic/HoloGlassLayer.tsx
+@@ -0,0 +1,71 @@
++import { Component, Suspense, lazy, useEffect, useState, type ReactNode, type RefObject } from "react";
++
++const HoloGlassScene = lazy(() => import("./HoloGlassScene"));
++
++class LayerBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
++  state = { failed: false };
++  static getDerivedStateFromError() {
++    return { failed: true };
++  }
++  componentDidCatch() {
++    /* A WebGL failure must never take the hero down: the video + CSS grade stay as-is. */
++  }
++  render() {
++    return this.state.failed ? null : this.props.children;
++  }
++}
++
++function webglAvailable(): boolean {
++  try {
++    const c = document.createElement("canvas");
++    return Boolean(c.getContext("webgl2") || c.getContext("webgl"));
++  } catch {
++    return false;
++  }
++}
++
++/**
++ * Client-only holographic glass overlay for a cinematic hero.
++ * Lazy-loads three.js, pauses off-screen, and opts out for reduced motion, no WebGL, or Save-Data.
++ */
++export function HoloGlassLayer({
++  video,
++  host,
++  dimmed = false,
++  disabled = false,
++}: {
++  video: RefObject<HTMLVideoElement | null>;
++  host: RefObject<HTMLElement | null>;
++  /** Lower intensity while another effect owns the frame (e.g. the freeze-pan orbit). */
++  dimmed?: boolean;
++  disabled?: boolean;
++}) {
++  const [enabled, setEnabled] = useState(false);
++  const [visible, setVisible] = useState(true);
++
++  useEffect(() => {
++    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
++    const saveData = Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
++    setEnabled(!reduce && !saveData && webglAvailable());
++  }, []);
++
++  useEffect(() => {
++    const el = host.current;
++    if (!el || typeof IntersectionObserver === "undefined") return;
++    const io = new IntersectionObserver(([entry]) => setVisible(Boolean(entry?.isIntersecting)), { threshold: 0.05 });
++    io.observe(el);
++    return () => io.disconnect();
++  }, [host]);
++
++  if (!enabled || disabled) return null;
++
++  return (
++    <div className="holo-glass-layer" aria-hidden>
++      <LayerBoundary>
++        <Suspense fallback={null}>
++          <HoloGlassScene video={video} host={host} intensity={dimmed ? 0.35 : 1} running={visible} />
++        </Suspense>
++      </LayerBoundary>
++    </div>
++  );
++}
+diff --git a/src/components/cinematic/HoloGlassScene.tsx b/src/components/cinematic/HoloGlassScene.tsx
+new file mode 100644
+index 0000000..3e5e250
+--- /dev/null
++++ b/src/components/cinematic/HoloGlassScene.tsx
+@@ -0,0 +1,288 @@
++import { useEffect, useMemo, useRef, type RefObject } from "react";
++import { Canvas, useFrame, useThree } from "@react-three/fiber";
++import * as THREE from "three";
++
++/**
++ * Holographic glass lens that refracts the hero loop around the cursor.
++ * Faceted (voronoi) crystal normals bend the video, split it into thin-film colour,
++ * and leave a soft iridescent sheen across the rest of the frame.
++ * With no playable video it renders the sheen + facets alone, so the layer never goes blank.
++ */
++
++const vertex = /* glsl */ `
++varying vec2 vUv;
++void main() {
++  vUv = uv;
++  gl_Position = vec4(position.xy, 0.0, 1.0);
++}
++`;
++
++const fragment = /* glsl */ `
++precision highp float;
++varying vec2 vUv;
++uniform sampler2D uVideo;
++uniform float uHasVideo;
++uniform vec2 uRes;
++uniform vec2 uVideoSize;
++uniform vec2 uMouse;
++uniform vec2 uVel;
++uniform float uTime;
++uniform float uIntensity;
++
++vec2 hash2(vec2 p) {
++  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
++  return fract(sin(p) * 43758.5453);
++}
++
++// Voronoi: x = distance to nearest cell centre, y = edge distance, zw = cell id.
++vec4 voronoi(vec2 p) {
++  vec2 n = floor(p), f = fract(p);
++  float md = 8.0; vec2 mr = vec2(0.0); vec2 mc = vec2(0.0);
++  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
++    vec2 g = vec2(float(i), float(j));
++    vec2 o = hash2(n + g);
++    o = 0.5 + 0.5 * sin(uTime * 0.35 + 6.2831 * o);
++    vec2 r = g + o - f;
++    float d = dot(r, r);
++    if (d < md) { md = d; mr = r; mc = n + g; }
++  }
++  float me = 8.0;
++  for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++) {
++    vec2 g = vec2(float(i), float(j));
++    vec2 o = hash2(floor(p) + g);
++    o = 0.5 + 0.5 * sin(uTime * 0.35 + 6.2831 * o);
++    vec2 r = g + o - f;
++    if (dot(mr - r, mr - r) > 0.00001) me = min(me, dot(0.5 * (mr + r), normalize(r - mr)));
++  }
++  return vec4(sqrt(md), me, mc);
++}
++
++// object-fit: cover for the video texture.
++vec2 coverUv(vec2 uv) {
++  float sr = uRes.x / max(uRes.y, 1.0);
++  float vr = uVideoSize.x / max(uVideoSize.y, 1.0);
++  vec2 s = sr > vr ? vec2(1.0, vr / sr) : vec2(sr / vr, 1.0);
++  return (uv - 0.5) * s + 0.5;
++}
++
++vec3 film(float t) {
++  // Thin-film iridescence tuned to the cyan / magenta / white of the brand shards.
++  return 0.55 + 0.45 * cos(6.2831 * (t + vec3(0.0, 0.33, 0.67)));
++}
++
++void main() {
++  float aspect = uRes.x / max(uRes.y, 1.0);
++  vec2 p = vec2(vUv.x * aspect, vUv.y);
++  vec2 m = vec2(uMouse.x * aspect, uMouse.y);
++  float speed = clamp(length(uVel) * 1.4, 0.0, 1.0);
++
++  float radius = mix(0.26, 0.34, speed);
++  float d = distance(p, m);
++  float lens = smoothstep(radius, radius * 0.25, d);
++
++  vec4 v = voronoi(p * 6.0 + uVel * 2.0);
++  vec2 cellDir = normalize(hash2(v.zw) - 0.5 + 1e-4);
++  vec2 radial = (p - m) / max(d, 1e-3);
++  vec2 normal = normalize(cellDir * 0.65 + radial * 0.35 + uVel * 0.6);
++  float facetEdge = 1.0 - smoothstep(0.0, 0.035, v.y);
++
++  float bend = lens * (0.035 + 0.05 * speed) * uIntensity;
++  vec2 offs = normal * bend;
++  vec2 uv = vUv;
++
++  vec3 col = vec3(0.0);
++  if (uHasVideo > 0.5) {
++    float r = texture2D(uVideo, coverUv(uv - offs * 1.25)).r;
++    float g = texture2D(uVideo, coverUv(uv - offs)).g;
++    float b = texture2D(uVideo, coverUv(uv - offs * 0.75)).b;
++    col = vec3(r, g, b);
++  }
++
++  float fres = pow(1.0 - lens, 2.0) * lens * 4.0;
++  vec3 irid = film(dot(normal, vec2(0.7, 0.3)) * 0.8 + uTime * 0.05 + d * 2.0);
++  float caustic = pow(max(0.0, 1.0 - v.x * 1.6), 6.0) * lens;
++
++  col = mix(col, col * 0.75 + irid * 0.45, lens * 0.55);
++  col += irid * (facetEdge * lens * 0.55 + fres * 0.35 + caustic * 0.4);
++
++  // Sheen everywhere else: faint diagonal band that tracks the cursor.
++  float band = smoothstep(0.08, 0.0, abs((vUv.x - vUv.y) - (uMouse.x - uMouse.y) * 0.8 + sin(uTime * 0.2) * 0.1));
++  vec3 sheen = irid * band * 0.09 + irid * facetEdge * 0.035;
++
++  float alpha = uHasVideo > 0.5 ? lens * 0.92 : lens * 0.55;
++  alpha = max(alpha, max(band * 0.09, facetEdge * 0.04));
++  gl_FragColor = vec4(col + sheen * (1.0 - lens), alpha * uIntensity);
++}
++`;
++
++type PointerState = { x: number; y: number; vx: number; vy: number; lastMove: number };
++
++function Lens({
++  video,
++  pointer,
++  intensity,
++}: {
++  video: RefObject<HTMLVideoElement | null>;
++  pointer: RefObject<PointerState>;
++  intensity: number;
++}) {
++  const { size, gl } = useThree();
++  const mat = useRef<THREE.ShaderMaterial>(null!);
++  const smooth = useRef({ x: 0.5, y: 0.5, vx: 0, vy: 0, k: intensity });
++  const uniforms = useMemo(
++    () => ({
++      uVideo: { value: null as THREE.Texture | null },
++      uHasVideo: { value: 0 },
++      uRes: { value: new THREE.Vector2(1, 1) },
++      uVideoSize: { value: new THREE.Vector2(16, 9) },
++      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
++      uVel: { value: new THREE.Vector2(0, 0) },
++      uTime: { value: 0 },
++      uIntensity: { value: intensity },
++    }),
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++    [],
++  );
++
++  // Bind the existing hero <video> as a texture once it can decode frames; drop it if it errors.
++  useEffect(() => {
++    const el = video.current;
++    if (!el) return;
++    let tex: THREE.VideoTexture | null = null;
++    const attach = () => {
++      if (tex || el.readyState < 2 || !el.videoWidth) return;
++      tex = new THREE.VideoTexture(el);
++      tex.colorSpace = THREE.SRGBColorSpace;
++      tex.minFilter = THREE.LinearFilter;
++      tex.generateMipmaps = false;
++      uniforms.uVideo.value = tex;
++      uniforms.uVideoSize.value.set(el.videoWidth, el.videoHeight);
++      uniforms.uHasVideo.value = 1;
++    };
++    const detach = () => {
++      uniforms.uHasVideo.value = 0;
++      uniforms.uVideo.value = null;
++      tex?.dispose();
++      tex = null;
++    };
++    attach();
++    el.addEventListener("loadeddata", attach);
++    el.addEventListener("playing", attach);
++    el.addEventListener("error", detach);
++    el.addEventListener("emptied", detach);
++    return () => {
++      el.removeEventListener("loadeddata", attach);
++      el.removeEventListener("playing", attach);
++      el.removeEventListener("error", detach);
++      el.removeEventListener("emptied", detach);
++      detach();
++    };
++  }, [video, uniforms]);
++
++  useEffect(() => {
++    gl.setClearColor(0x000000, 0);
++  }, [gl]);
++
++  useFrame((state, raw) => {
++    const dt = Math.min(raw, 1 / 30);
++    const P = pointer.current;
++    const S = smooth.current;
++    const t = state.clock.elapsedTime;
++    // Idle autopilot (touch devices, or the cursor left): the lens drifts on a slow lissajous.
++    const idle = performance.now() - P.lastMove > 2600;
++    const tx = idle ? 0.5 + Math.sin(t * 0.31) * 0.28 : P.x;
++    const ty = idle ? 0.5 + Math.sin(t * 0.23 + 1.3) * 0.22 : P.y;
++    const k = 1 - Math.exp(-dt * 9);
++    S.x += (tx - S.x) * k;
++    S.y += (ty - S.y) * k;
++    S.vx += (P.vx - S.vx) * k;
++    S.vy += (P.vy - S.vy) * k;
++    P.vx *= Math.exp(-dt * 6);
++    P.vy *= Math.exp(-dt * 6);
++    S.k += (intensity - S.k) * (1 - Math.exp(-dt * 4));
++
++    uniforms.uTime.value = t;
++    uniforms.uMouse.value.set(S.x, S.y);
++    uniforms.uVel.value.set(THREE.MathUtils.clamp(S.vx, -1, 1), THREE.MathUtils.clamp(S.vy, -1, 1));
++    uniforms.uRes.value.set(size.width, size.height);
++    uniforms.uIntensity.value = S.k;
++  });
++
++  return (
++    <mesh frustumCulled={false}>
++      <planeGeometry args={[2, 2]} />
++      <shaderMaterial
++        ref={mat}
++        vertexShader={vertex}
++        fragmentShader={fragment}
++        uniforms={uniforms}
++        transparent
++        depthWrite={false}
++        depthTest={false}
++      />
++    </mesh>
++  );
++}
++
++export default function HoloGlassScene({
++  video,
++  host,
++  intensity,
++  running,
++}: {
++  video: RefObject<HTMLVideoElement | null>;
++  host: RefObject<HTMLElement | null>;
++  intensity: number;
++  running: boolean;
++}) {
++  const pointer = useRef<PointerState>({ x: 0.5, y: 0.5, vx: 0, vy: 0, lastMove: 0 });
++
++  // Track the cursor on the media host (events bubble up from the tap target above the canvas).
++  useEffect(() => {
++    const el = host.current;
++    if (!el) return;
++    let last = { x: 0, y: 0, t: 0 };
++    const onMove = (e: PointerEvent) => {
++      const r = el.getBoundingClientRect();
++      if (!r.width || !r.height) return;
++      const x = (e.clientX - r.left) / r.width;
++      const y = 1 - (e.clientY - r.top) / r.height;
++      const now = performance.now();
++      const dt = Math.max(16, now - last.t) / 1000;
++      const P = pointer.current;
++      if (last.t) {
++        P.vx = THREE.MathUtils.clamp((x - last.x) / dt, -3, 3) * 0.35;
++        P.vy = THREE.MathUtils.clamp((y - last.y) / dt, -3, 3) * 0.35;
++      }
++      P.x = x;
++      P.y = y;
++      P.lastMove = now;
++      last = { x, y, t: now };
++    };
++    const onLeave = () => {
++      pointer.current.lastMove = 0;
++    };
++    el.addEventListener("pointermove", onMove, { passive: true });
++    el.addEventListener("pointerdown", onMove, { passive: true });
++    el.addEventListener("pointerleave", onLeave);
++    return () => {
++      el.removeEventListener("pointermove", onMove);
++      el.removeEventListener("pointerdown", onMove);
++      el.removeEventListener("pointerleave", onLeave);
++    };
++  }, [host]);
++
++  return (
++    <Canvas
++      className="holo-glass-canvas"
++      orthographic
++      dpr={[1, 1.5]}
++      frameloop={running ? "always" : "never"}
++      gl={{ alpha: true, antialias: false, premultipliedAlpha: false, powerPreference: "high-performance" }}
++      style={{ pointerEvents: "none" }}
++      aria-hidden
++    >
++      <Lens video={video} pointer={pointer} intensity={intensity} />
++    </Canvas>
++  );
++}
+diff --git a/src/components/pricing/LaunchCheckoutDrawer.tsx b/src/components/pricing/LaunchCheckoutDrawer.tsx
+new file mode 100644
+index 0000000..020207d
+--- /dev/null
++++ b/src/components/pricing/LaunchCheckoutDrawer.tsx
+@@ -0,0 +1,259 @@
++import { useCallback, useEffect, useRef, useState } from "react";
++import { Drawer } from "vaul";
++import { useNavigate } from "@tanstack/react-router";
++import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
++import { loadStripe, type Stripe } from "@stripe/stripe-js";
++import { CheckCircle2, LoaderCircle, Lock, Mail, X } from "lucide-react";
++import { beginLaunchCheckout, confirmLaunchCheckout } from "@/lib/axiom/launch-checkout";
++import { LAUNCH_PLAN_STORAGE_KEY, provisioningPath, type LaunchPlan } from "@/lib/axiom/launch-plans";
++import { ParticleBurst } from "./ParticleBurst";
++import { cn } from "@/lib/utils";
++
++const ACCENT_HEX: Record<LaunchPlan["hue"], string> = {
++  cyan: "#00ffcc",
++  signal: "#ff4fd8",
++  amber: "#f5b942",
++};
++
++const stripeCache = new Map<string, Promise<Stripe | null>>();
++function stripeFor(key: string) {
++  let p = stripeCache.get(key);
++  if (!p) {
++    p = loadStripe(key);
++    stripeCache.set(key, p);
++  }
++  return p;
++}
++
++type Stage =
++  | { kind: "loading" }
++  | { kind: "ready"; sessionId: string; clientSecret: string; publishableKey: string }
++  | { kind: "unconfigured" }
++  | { kind: "confirming" }
++  | { kind: "success"; next: string }
++  | { kind: "error"; message: string };
++
++/**
++ * Frosted-glass slide-up drawer: Stripe Embedded Checkout inline, then a particle-burst
++ * success state that hands the buyer straight to tenant provisioning.
++ */
++export function LaunchCheckoutDrawer({ plan, onClose }: { plan: LaunchPlan | null; onClose: () => void }) {
++  const open = plan !== null;
++  const navigate = useNavigate();
++  const [stage, setStage] = useState<Stage>({ kind: "loading" });
++  const opened = useRef<string | null>(null);
++  const routeTimer = useRef(0);
++
++  const start = useCallback(async (p: LaunchPlan) => {
++    setStage({ kind: "loading" });
++    try {
++      const res = await beginLaunchCheckout({ data: { planId: p.id } });
++      if (res.status === "ready") setStage({ kind: "ready", ...res });
++      else setStage({ kind: "unconfigured" });
++    } catch (err) {
++      setStage({ kind: "error", message: err instanceof Error ? err.message : "Checkout could not open" });
++    }
++  }, []);
++
++  useEffect(() => {
++    if (!plan) {
++      opened.current = null;
++      return;
++    }
++    if (opened.current === plan.id) return;
++    opened.current = plan.id;
++    void start(plan);
++  }, [plan, start]);
++
++  useEffect(() => () => window.clearTimeout(routeTimer.current), []);
++
++  const succeed = useCallback(
++    (p: LaunchPlan, next: string, sessionId: string | null) => {
++      try {
++        sessionStorage.setItem(
++          LAUNCH_PLAN_STORAGE_KEY,
++          JSON.stringify({ planId: p.id, sessionId, settledAt: new Date().toISOString() }),
++        );
++      } catch {
++        /* storage can be unavailable in private modes */
++      }
++      setStage({ kind: "success", next });
++      routeTimer.current = window.setTimeout(() => {
++        void navigate({ href: next });
++      }, 1900);
++    },
++    [navigate],
++  );
++
++  const onComplete = useCallback(() => {
++    if (!plan || stage.kind !== "ready") return;
++    const sessionId = stage.sessionId;
++    setStage({ kind: "confirming" });
++    void confirmLaunchCheckout({ data: sessionId })
++      .then((res) => succeed(plan, res.next, sessionId))
++      .catch((err) =>
++        setStage({ kind: "error", message: err instanceof Error ? err.message : "Payment could not be confirmed" }),
++      );
++  }, [plan, stage, succeed]);
++
++  const locked = stage.kind === "confirming" || stage.kind === "success";
++
++  return (
++    <Drawer.Root
++      open={open}
++      onOpenChange={(next) => {
++        if (!next && !locked) onClose();
++      }}
++      handleOnly
++      dismissible={!locked}
++    >
++      <Drawer.Portal>
++        <Drawer.Overlay className="fixed inset-0 z-[80] bg-obsidian/60 backdrop-blur-[3px]" />
++        <Drawer.Content
++          className="checkout-drawer fixed inset-x-0 bottom-0 z-[90] mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col outline-none"
++          style={{ ["--card-accent" as string]: plan ? ACCENT_HEX[plan.hue] : ACCENT_HEX.cyan }}
++          aria-describedby={undefined}
++        >
++          <div className="checkout-drawer-glass relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[28px]">
++            <Drawer.Handle className="checkout-drawer-handle mx-auto mt-3" />
++            <div className="flex items-start justify-between gap-4 px-6 pt-4">
++              <div>
++                <p className="font-mono text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--card-accent)" }}>
++                  {plan?.tagline ?? "Checkout"}
++                </p>
++                <Drawer.Title className="mt-1.5 font-display text-2xl text-fg">
++                  {plan ? `Axiom ${plan.name}` : "Checkout"}
++                </Drawer.Title>
++                {plan ? (
++                  <p className="mt-1 text-sm text-muted">
++                    <span className="font-semibold text-fg">{plan.priceLabel}</span> {plan.priceNote}
++                  </p>
++                ) : null}
++              </div>
++              <button
++                type="button"
++                onClick={onClose}
++                disabled={locked}
++                className="grid size-11 shrink-0 place-items-center rounded-full border border-line text-muted transition hover:text-fg disabled:opacity-40"
++                aria-label="Close checkout"
++              >
++                <X className="size-4" />
++              </button>
++            </div>
++
++            <div className="relative mt-5 min-h-[22rem] flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6">
++              {plan ? (
++                <StageBody
++                  plan={plan}
++                  stage={stage}
++                  onComplete={onComplete}
++                  onRetry={() => void start(plan)}
++                  onSimulate={() => succeed(plan, provisioningPath(plan.id), null)}
++                />
++              ) : null}
++            </div>
++
++            <p className="flex items-center justify-center gap-1.5 border-t border-line px-6 py-3 text-[11px] text-faint">
++              <Lock className="size-3" aria-hidden /> Payments secured by Stripe · Gear Guardian LLC
++            </p>
++          </div>
++        </Drawer.Content>
++      </Drawer.Portal>
++    </Drawer.Root>
++  );
++}
++
++function StageBody({
++  plan,
++  stage,
++  onComplete,
++  onRetry,
++  onSimulate,
++}: {
++  plan: LaunchPlan;
++  stage: Stage;
++  onComplete: () => void;
++  onRetry: () => void;
++  onSimulate: () => void;
++}) {
++  if (stage.kind === "loading" || stage.kind === "confirming") {
++    return (
++      <div className="grid h-full min-h-[20rem] place-items-center">
++        <div className="flex flex-col items-center gap-3 text-sm text-muted">
++          <LoaderCircle className="size-6 animate-spin" style={{ color: "var(--card-accent)" }} aria-hidden />
++          {stage.kind === "loading" ? "Opening secure checkout…" : "Confirming payment with Stripe…"}
++        </div>
++      </div>
++    );
++  }
++
++  if (stage.kind === "ready") {
++    return (
++      <div className="checkout-embed overflow-hidden rounded-2xl">
++        <EmbeddedCheckoutProvider
++          key={stage.sessionId}
++          stripe={stripeFor(stage.publishableKey)}
++          options={{ clientSecret: stage.clientSecret, onComplete }}
++        >
++          <EmbeddedCheckout />
++        </EmbeddedCheckoutProvider>
++      </div>
++    );
++  }
++
++  if (stage.kind === "success") {
++    return (
++      <div className="relative grid min-h-[22rem] place-items-center overflow-hidden">
++        <ParticleBurst accent={ACCENT_HEX[plan.hue]} />
++        <div className="relative flex flex-col items-center gap-3 text-center">
++          <span className="checkout-success-ring grid size-16 place-items-center rounded-full">
++            <CheckCircle2 className="size-8" style={{ color: "var(--card-accent)" }} aria-hidden />
++          </span>
++          <p className="font-display text-2xl text-fg">You’re in.</p>
++          <p className="max-w-xs text-sm text-muted" aria-live="polite">
++            Provisioning your Axiom tenant — routing you to setup now.
++          </p>
++        </div>
++      </div>
++    );
++  }
++
++  if (stage.kind === "unconfigured") {
++    return (
++      <div className="grid min-h-[20rem] content-center gap-4 text-center">
++        <p className="text-sm text-muted">Card checkout isn’t switched on for this site yet.</p>
++        <a
++          href={`mailto:hello@axiom.shop?subject=${encodeURIComponent(`Axiom ${plan.name}`)}`}
++          className="mx-auto inline-flex min-h-12 items-center gap-2 rounded-full border border-line px-6 font-mono text-xs uppercase tracking-[0.18em] text-fg transition hover:border-accent/60"
++        >
++          <Mail className="size-4" aria-hidden /> Reserve by email
++        </a>
++        {import.meta.env.DEV ? (
++          <button
++            type="button"
++            onClick={onSimulate}
++            className="mx-auto font-mono text-[11px] uppercase tracking-[0.18em] text-faint underline-offset-4 hover:text-fg hover:underline"
++          >
++            Dev only · simulate a paid checkout
++          </button>
++        ) : null}
++      </div>
++    );
++  }
++
++  return (
++    <div className="grid min-h-[20rem] content-center gap-4 text-center">
++      <p className="text-sm text-danger">{stage.message}</p>
++      <button
++        type="button"
++        onClick={onRetry}
++        className={cn(
++          "mx-auto inline-flex min-h-12 items-center rounded-full border border-line px-6",
++          "font-mono text-xs uppercase tracking-[0.18em] text-fg transition hover:border-accent/60",
++        )}
++      >
++        Try again
++      </button>
++    </div>
++  );
++}
+diff --git a/src/components/pricing/ParticleBurst.tsx b/src/components/pricing/ParticleBurst.tsx
+new file mode 100644
+index 0000000..ae8d43f
+--- /dev/null
++++ b/src/components/pricing/ParticleBurst.tsx
+@@ -0,0 +1,117 @@
++import { useEffect, useRef } from "react";
++
++type Shard = {
++  x: number;
++  y: number;
++  vx: number;
++  vy: number;
++  r: number;
++  vr: number;
++  size: number;
++  hue: number;
++  life: number;
++};
++
++/**
++ * Iridescent glass-shard burst + shockwave ring, drawn on a 2D canvas (no extra WebGL context).
++ * Fires once on mount. Respects reduced motion by drawing nothing.
++ */
++export function ParticleBurst({ accent = "#00ffcc", count = 170 }: { accent?: string; count?: number }) {
++  const ref = useRef<HTMLCanvasElement>(null);
++
++  useEffect(() => {
++    const canvas = ref.current;
++    if (!canvas) return;
++    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
++    const ctx = canvas.getContext("2d");
++    if (!ctx) return;
++
++    const dpr = Math.min(window.devicePixelRatio || 1, 2);
++    const resize = () => {
++      const r = canvas.getBoundingClientRect();
++      canvas.width = Math.max(1, Math.floor(r.width * dpr));
++      canvas.height = Math.max(1, Math.floor(r.height * dpr));
++    };
++    resize();
++
++    const W = () => canvas.width / dpr;
++    const H = () => canvas.height / dpr;
++    const cx = W() / 2;
++    const cy = H() * 0.42;
++    const hues = [178, 195, 300, 320, 45];
++    const shards: Shard[] = Array.from({ length: count }, (_, i) => {
++      const a = (i / count) * Math.PI * 2 + Math.random() * 0.4;
++      const sp = 220 + Math.random() * 520;
++      return {
++        x: cx,
++        y: cy,
++        vx: Math.cos(a) * sp,
++        vy: Math.sin(a) * sp - 120,
++        r: Math.random() * Math.PI,
++        vr: (Math.random() - 0.5) * 14,
++        size: 3 + Math.random() * 9,
++        hue: hues[i % hues.length]! + (Math.random() - 0.5) * 20,
++        life: 1,
++      };
++    });
++
++    let raf = 0;
++    let last = performance.now();
++    const start = last;
++    const tick = (now: number) => {
++      const dt = Math.min(0.033, (now - last) / 1000);
++      last = now;
++      const t = (now - start) / 1000;
++      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++      ctx.clearRect(0, 0, W(), H());
++
++      // Shockwave ring.
++      if (t < 0.9) {
++        const k = t / 0.9;
++        ctx.beginPath();
++        ctx.arc(cx, cy, 20 + k * Math.max(W(), H()) * 0.7, 0, Math.PI * 2);
++        ctx.strokeStyle = accent;
++        ctx.globalAlpha = (1 - k) * 0.7;
++        ctx.lineWidth = 2 + (1 - k) * 6;
++        ctx.stroke();
++      }
++
++      ctx.globalCompositeOperation = "lighter";
++      let alive = 0;
++      for (const s of shards) {
++        if (s.life <= 0) continue;
++        alive += 1;
++        s.vx *= Math.exp(-dt * 1.6);
++        s.vy = s.vy * Math.exp(-dt * 1.6) + 420 * dt;
++        s.x += s.vx * dt;
++        s.y += s.vy * dt;
++        s.r += s.vr * dt;
++        s.life -= dt * 0.55;
++        const shimmer = 0.5 + 0.5 * Math.sin(t * 9 + s.hue);
++        ctx.save();
++        ctx.translate(s.x, s.y);
++        ctx.rotate(s.r);
++        ctx.globalAlpha = Math.max(0, s.life);
++        ctx.fillStyle = `hsl(${s.hue} 95% ${55 + shimmer * 30}%)`;
++        ctx.beginPath();
++        ctx.moveTo(0, -s.size);
++        ctx.lineTo(s.size * 0.55, s.size * 0.6);
++        ctx.lineTo(-s.size * 0.45, s.size * 0.35);
++        ctx.closePath();
++        ctx.fill();
++        ctx.restore();
++      }
++      ctx.globalCompositeOperation = "source-over";
++      ctx.globalAlpha = 1;
++      if (alive > 0) raf = requestAnimationFrame(tick);
++    };
++    raf = requestAnimationFrame(tick);
++    window.addEventListener("resize", resize);
++    return () => {
++      cancelAnimationFrame(raf);
++      window.removeEventListener("resize", resize);
++    };
++  }, [accent, count]);
++
++  return <canvas ref={ref} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />;
++}
+diff --git a/src/components/pricing/PricingCardStack.tsx b/src/components/pricing/PricingCardStack.tsx
+new file mode 100644
+index 0000000..633fcf8
+--- /dev/null
++++ b/src/components/pricing/PricingCardStack.tsx
+@@ -0,0 +1,303 @@
++import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
++import { animate, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
++import { ArrowLeft, ArrowRight, Check, ChevronsUp } from "lucide-react";
++import { LAUNCH_PLANS, type LaunchPlan } from "@/lib/axiom/launch-plans";
++import { cn } from "@/lib/utils";
++
++const FLING_X = 110;
++const FLING_VX = 600;
++const PROVISION_Y = -120;
++const PROVISION_VY = -700;
++const SPRING = { type: "spring", stiffness: 380, damping: 30 } as const;
++
++const HUE: Record<LaunchPlan["hue"], string> = {
++  cyan: "var(--color-accent)",
++  signal: "var(--color-signal)",
++  amber: "var(--color-amber)",
++};
++
++/**
++ * Tactile 3D card stack for the launch tiers.
++ * Swipe sideways (or arrows / ← →) to cycle tiers. Swipe up, tap the CTA, or press Enter to provision.
++ */
++export function PricingCardStack({ onProvision }: { onProvision: (plan: LaunchPlan) => void }) {
++  const reduce = useReducedMotion() ?? false;
++  const [order, setOrder] = useState<number[]>(() => LAUNCH_PLANS.map((_, i) => i));
++  const front = order[0]!;
++
++  const cycle = useCallback((dir: 1 | -1) => {
++    setOrder((prev) => (dir === 1 ? [...prev.slice(1), prev[0]!] : [prev[prev.length - 1]!, ...prev.slice(0, -1)]));
++  }, []);
++
++  const jumpTo = useCallback((index: number) => {
++    setOrder((prev) => {
++      const at = prev.indexOf(index);
++      return at <= 0 ? prev : [...prev.slice(at), ...prev.slice(0, at)];
++    });
++  }, []);
++
++  function onKey(e: KeyboardEvent<HTMLDivElement>) {
++    if (e.key === "ArrowRight") {
++      e.preventDefault();
++      cycle(1);
++    } else if (e.key === "ArrowLeft") {
++      e.preventDefault();
++      cycle(-1);
++    } else if (e.key === "Enter" && e.target === e.currentTarget) {
++      e.preventDefault();
++      onProvision(LAUNCH_PLANS[front]!);
++    }
++  }
++
++  return (
++    <div className="flex w-full flex-col items-center">
++      <div
++        className="price-stack relative mx-auto outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
++        role="region"
++        aria-roledescription="carousel"
++        aria-label="Axiom launch plans"
++        tabIndex={0}
++        onKeyDown={onKey}
++      >
++        {order
++          .map((planIndex, depth) => ({ planIndex, depth }))
++          .reverse()
++          .map(({ planIndex, depth }) => (
++            <StackCard
++              key={LAUNCH_PLANS[planIndex]!.id}
++              plan={LAUNCH_PLANS[planIndex]!}
++              depth={depth}
++              reduce={reduce}
++              onFling={cycle}
++              onProvision={onProvision}
++            />
++          ))}
++      </div>
++
++      <div className="mt-6 flex items-center gap-4">
++        <button
++          type="button"
++          onClick={() => cycle(-1)}
++          className="grid size-11 place-items-center rounded-full border border-line bg-obsidian/60 text-muted backdrop-blur-md transition hover:border-accent/60 hover:text-fg"
++          aria-label="Previous plan"
++        >
++          <ArrowLeft className="size-4" />
++        </button>
++        <div className="flex items-center gap-2" role="tablist" aria-label="Choose a plan">
++          {LAUNCH_PLANS.map((plan, i) => (
++            <button
++              key={plan.id}
++              type="button"
++              role="tab"
++              aria-selected={i === front}
++              aria-label={plan.name}
++              onClick={() => jumpTo(i)}
++              className="grid h-11 min-w-8 place-items-center"
++            >
++              <span
++                className={cn("block h-1.5 rounded-full transition-all duration-300", i === front ? "w-7" : "w-2.5 bg-fg/25")}
++                style={i === front ? { background: HUE[plan.hue] } : undefined}
++              />
++            </button>
++          ))}
++        </div>
++        <button
++          type="button"
++          onClick={() => cycle(1)}
++          className="grid size-11 place-items-center rounded-full border border-line bg-obsidian/60 text-muted backdrop-blur-md transition hover:border-accent/60 hover:text-fg"
++          aria-label="Next plan"
++        >
++          <ArrowRight className="size-4" />
++        </button>
++      </div>
++      <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
++        Swipe to browse · swipe <ChevronsUp className="inline size-3 align-[-2px]" aria-hidden /> to provision
++      </p>
++    </div>
++  );
++}
++
++function StackCard({
++  plan,
++  depth,
++  reduce,
++  onFling,
++  onProvision,
++}: {
++  plan: LaunchPlan;
++  depth: number;
++  reduce: boolean;
++  onFling: (dir: 1 | -1) => void;
++  onProvision: (plan: LaunchPlan) => void;
++}) {
++  const isFront = depth === 0;
++  const x = useMotionValue(0);
++  const y = useMotionValue(0);
++  const tiltX = useSpring(0, { stiffness: 220, damping: 18 });
++  const tiltY = useSpring(0, { stiffness: 220, damping: 18 });
++  const dragRotY = useTransform(x, [-240, 240], [-26, 26]);
++  const dragRotZ = useTransform(x, [-240, 240], [-9, 9]);
++  const dragRotX = useTransform(y, [-200, 0, 200], [18, 0, -10]);
++  const rotateY = useTransform(() => dragRotY.get() + tiltY.get());
++  const rotateX = useTransform(() => dragRotX.get() + tiltX.get());
++  const provisionGlow = useTransform(y, [PROVISION_Y * 1.2, 0], [1, 0]);
++  const sheenRef = useRef<HTMLDivElement>(null);
++  const flinging = useRef(false);
++  const drag = useRef<{ id: number; sx: number; sy: number; samples: { x: number; y: number; t: number }[] } | null>(null);
++
++  useEffect(() => {
++    if (!isFront) {
++      tiltX.set(0);
++      tiltY.set(0);
++    }
++  }, [isFront, tiltX, tiltY]);
++
++  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
++    if (!isFront || flinging.current || e.button > 0) return;
++    e.currentTarget.setPointerCapture(e.pointerId);
++    drag.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, samples: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
++  }
++
++  function onPointerUp(e: PointerEvent<HTMLDivElement>) {
++    const d = drag.current;
++    if (!d || d.id !== e.pointerId) return;
++    drag.current = null;
++    const now = performance.now();
++    const recent = d.samples.filter((s) => now - s.t < 120);
++    const first = recent[0] ?? d.samples[d.samples.length - 1]!;
++    const dt = Math.max(16, now - first.t) / 1000;
++    const velocity = { x: (e.clientX - first.x) / dt, y: (e.clientY - first.y) / dt };
++    const offset = { x: e.clientX - d.sx, y: e.clientY - d.sy };
++    if (Math.hypot(offset.x, offset.y) < 6) {
++      void animate(x, 0, SPRING);
++      void animate(y, 0, SPRING);
++      return;
++    }
++    onDragEnd(offset, velocity);
++  }
++
++  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
++    const d = drag.current;
++    if (d && d.id === e.pointerId) {
++      // Rubber-band the vertical axis so a sideways swipe stays sideways.
++      x.set(e.clientX - d.sx);
++      y.set((e.clientY - d.sy) * 0.7);
++      d.samples.push({ x: e.clientX, y: e.clientY, t: performance.now() });
++      if (d.samples.length > 8) d.samples.shift();
++      return;
++    }
++    if (!isFront || reduce) return;
++    const r = e.currentTarget.getBoundingClientRect();
++    const px = (e.clientX - r.left) / r.width;
++    const py = (e.clientY - r.top) / r.height;
++    tiltY.set((px - 0.5) * 16);
++    tiltX.set((0.5 - py) * 12);
++    sheenRef.current?.style.setProperty("--mx", `${px * 100}%`);
++    sheenRef.current?.style.setProperty("--my", `${py * 100}%`);
++  }
++
++  function onPointerLeave() {
++    tiltX.set(0);
++    tiltY.set(0);
++  }
++
++  function onDragEnd(offset: { x: number; y: number }, velocity: { x: number; y: number }) {
++    if (offset.y < PROVISION_Y || velocity.y < PROVISION_VY) {
++      void animate(y, -70, { ...SPRING, velocity: velocity.y }).then(() => void animate(y, 0, SPRING));
++      void animate(x, 0, SPRING);
++      onProvision(plan);
++      return;
++    }
++    if (Math.abs(offset.x) > FLING_X || Math.abs(velocity.x) > FLING_VX) {
++      const dir = (offset.x || velocity.x) > 0 ? 1 : -1;
++      flinging.current = true;
++      void animate(x, dir * 560, { duration: reduce ? 0 : 0.3, ease: [0.2, 0.8, 0.2, 1] }).then(() => {
++        onFling(1);
++        x.jump(0);
++        y.jump(0);
++        flinging.current = false;
++      });
++      void animate(y, offset.y * 0.4, SPRING);
++      return;
++    }
++    void animate(x, 0, SPRING);
++    void animate(y, 0, SPRING);
++  }
++
++  const accent = HUE[plan.hue];
++
++  return (
++    <motion.div
++      className="price-card absolute inset-0"
++      style={
++        {
++          x,
++          y,
++          rotateX: isFront ? rotateX : 0,
++          rotateY: isFront ? rotateY : 0,
++          rotateZ: isFront ? dragRotZ : 0,
++          zIndex: 10 - depth,
++          "--card-accent": accent,
++        } as unknown as CSSProperties
++      }
++      initial={false}
++      animate={{
++        scale: 1 - depth * 0.06,
++        translateY: depth * 22,
++        translateZ: -depth * 70,
++        opacity: depth > 2 ? 0 : 1 - depth * 0.22,
++        filter: depth ? `blur(${depth * 1.2}px) saturate(0.8)` : "blur(0px) saturate(1)",
++      }}
++      transition={reduce ? { duration: 0 } : SPRING}
++      onPointerDown={onPointerDown}
++      onPointerUp={onPointerUp}
++      onPointerCancel={onPointerUp}
++      onPointerMove={onPointerMove}
++      onPointerLeave={onPointerLeave}
++      aria-hidden={!isFront}
++      inert={!isFront}
++    >
++      <div className="price-card-face">
++        <div ref={sheenRef} className="price-card-sheen" aria-hidden />
++        <motion.div className="price-card-provision" style={{ opacity: provisionGlow }} aria-hidden />
++
++        <div className="relative flex h-full flex-col p-6 sm:p-7">
++          <div className="flex items-center justify-between gap-3">
++            <p className="font-mono text-[10px] uppercase tracking-[0.24em]" style={{ color: accent }}>
++              {plan.tagline}
++            </p>
++            {plan.id === "lifetime" ? (
++              <span className="rounded-full border border-signal/40 bg-signal/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-signal">
++                Best value
++              </span>
++            ) : null}
++          </div>
++          <h3 className="mt-3 font-display text-3xl text-fg">{plan.name}</h3>
++          <div className="mt-4 flex items-baseline gap-2">
++            <span className="font-display text-5xl font-semibold tracking-tight text-fg">{plan.priceLabel}</span>
++          </div>
++          <p className="mt-1 text-sm text-muted">{plan.priceNote}</p>
++
++          <ul className="mt-6 grid gap-2.5">
++            {plan.features.map((feature) => (
++              <li key={feature} className="flex items-start gap-2.5 text-sm text-fg/90">
++                <Check className="mt-0.5 size-4 shrink-0" style={{ color: accent }} aria-hidden />
++                <span>{feature}</span>
++              </li>
++            ))}
++          </ul>
++
++          <button
++            type="button"
++            onPointerDownCapture={(e) => e.stopPropagation()}
++            onClick={() => onProvision(plan)}
++            className="price-card-cta mt-auto inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-3 font-mono text-xs uppercase tracking-[0.18em]"
++          >
++            {plan.cta}
++            <ChevronsUp className="size-4" aria-hidden />
++          </button>
++        </div>
++      </div>
++    </motion.div>
++  );
++}
+diff --git a/src/components/pricing/PricingSection.tsx b/src/components/pricing/PricingSection.tsx
+new file mode 100644
+index 0000000..b281f3c
+--- /dev/null
++++ b/src/components/pricing/PricingSection.tsx
+@@ -0,0 +1,73 @@
++import { Suspense, lazy, useState } from "react";
++import { type LaunchPlan } from "@/lib/axiom/launch-plans";
++import { PricingCardStack } from "./PricingCardStack";
++
++/** Stripe.js only loads once someone actually opens checkout. */
++const LaunchCheckoutDrawer = lazy(() =>
++  import("./LaunchCheckoutDrawer").then((m) => ({ default: m.LaunchCheckoutDrawer })),
++);
++
++const BACKDROP_LOOP = "/media/holo-shard-loop.mp4";
++const BACKDROP_POSTER = "/media/holo-shard-poster.jpg";
++
++/** Pricing: holographic shard backdrop, 3D swipe stack, slide-up Stripe drawer. */
++export function PricingSection() {
++  const [selected, setSelected] = useState<LaunchPlan | null>(null);
++  const [drawerMounted, setDrawerMounted] = useState(false);
++  const [videoFailed, setVideoFailed] = useState(false);
++
++  function provision(plan: LaunchPlan) {
++    setDrawerMounted(true);
++    setSelected(plan);
++  }
++
++  return (
++    <section id="pricing" className="pricing-holo relative isolate snap-start overflow-hidden px-5 py-20 sm:px-10 sm:py-24">
++      {!videoFailed ? (
++        <video
++          className="pricing-holo-video"
++          src={BACKDROP_LOOP}
++          poster={BACKDROP_POSTER}
++          autoPlay
++          muted
++          loop
++          playsInline
++          preload="metadata"
++          aria-hidden
++          onError={() => setVideoFailed(true)}
++        />
++      ) : null}
++      <div className="pricing-holo-grade" aria-hidden />
++
++      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
++        <div className="max-w-xl">
++          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-accent/80">Pricing</p>
++          <h2 className="mt-3 font-display text-3xl text-fg sm:text-4xl">Pick a shard. Provision a business.</h2>
++          <p className="mt-4 text-base leading-relaxed text-muted sm:text-lg">
++            Start live for a dollar, own your territory outright, or book a two-week build made by hand. Every plan
++            lands you in tenant setup the moment payment clears.
++          </p>
++          <dl className="mt-8 grid grid-cols-3 gap-3 text-center sm:max-w-md">
++            {[
++              ["Minutes", "to a live storefront"],
++              ["24/7", "booking + text-back"],
++              ["Stripe", "payments built in"],
++            ].map(([k, v]) => (
++              <div key={k} className="glass-card rounded-2xl px-2 py-3 backdrop-blur-md">
++                <dt className="font-display text-lg text-fg">{k}</dt>
++                <dd className="mt-1 text-[11px] leading-snug text-muted">{v}</dd>
++              </div>
++            ))}
++          </dl>
++        </div>
++        <PricingCardStack onProvision={provision} />
++      </div>
++
++      {drawerMounted ? (
++        <Suspense fallback={null}>
++          <LaunchCheckoutDrawer plan={selected} onClose={() => setSelected(null)} />
++        </Suspense>
++      ) : null}
++    </section>
++  );
++}
+diff --git a/src/lib/axiom/launch-checkout.ts b/src/lib/axiom/launch-checkout.ts
+new file mode 100644
+index 0000000..ceb025f
+--- /dev/null
++++ b/src/lib/axiom/launch-checkout.ts
+@@ -0,0 +1,54 @@
++import { createServerFn } from "@tanstack/react-start";
++import { isLaunchPlanId, launchPlan, launchSessionSettled, provisioningPath, type LaunchPlanId } from "./launch-plans";
++
++export type LaunchCheckoutStart =
++  | { status: "ready"; sessionId: string; clientSecret: string; publishableKey: string }
++  | { status: "unconfigured" };
++
++/** Opens a Stripe Embedded Checkout session for a landing-page tier. */
++export const beginLaunchCheckout = createServerFn({ method: "POST" })
++  .validator((input: { planId?: string }) => {
++    const planId = String(input?.planId ?? "").trim();
++    if (!isLaunchPlanId(planId)) throw new Error("Unknown plan");
++    return { planId };
++  })
++  .handler(async ({ data }): Promise<LaunchCheckoutStart> => {
++    const payments = await import("./payments.server");
++    const publishableKey = payments.stripePublishableKey();
++    if (!payments.stripeConfigured() || !publishableKey) return { status: "unconfigured" };
++    const plan = launchPlan(data.planId)!;
++    let userId: string | undefined;
++    try {
++      const { getSessionUser } = await import("@/lib/auth/verify.server");
++      userId = (await getSessionUser())?.id;
++    } catch {
++      userId = undefined;
++    }
++    const session = await payments.createLaunchCheckout({
++      planId: plan.id,
++      planName: plan.name,
++      mode: plan.mode,
++      dueTodayCents: plan.dueTodayCents,
++      monthlyCents: plan.monthlyCents,
++      trialDays: plan.trialDays,
++      userId,
++    });
++    return { status: "ready", sessionId: session.id, clientSecret: session.clientSecret, publishableKey };
++  });
++
++/** Re-reads the session from Stripe so the client never decides on its own that a payment settled. */
++export const confirmLaunchCheckout = createServerFn({ method: "POST" })
++  .validator((sessionId: string) => {
++    const id = String(sessionId ?? "").trim();
++    if (!/^cs_[A-Za-z0-9_]+$/.test(id)) throw new Error("Invalid session");
++    return id;
++  })
++  .handler(async ({ data }): Promise<{ planId: LaunchPlanId; next: string }> => {
++    const { readLaunchSession } = await import("./payments.server");
++    const session = await readLaunchSession(data);
++    const plan = launchPlan(session.planId);
++    if (!plan) throw new Error("Unknown plan");
++    if (!launchSessionSettled(session.status, session.paymentStatus)) throw new Error("Payment is not complete");
++    if (session.amountTotal !== plan.dueTodayCents) throw new Error("Paid amount does not match the plan");
++    return { planId: plan.id, next: provisioningPath(plan.id) };
++  });
+diff --git a/src/lib/axiom/launch-plans.ts b/src/lib/axiom/launch-plans.ts
+new file mode 100644
+index 0000000..7a4d59d
+--- /dev/null
++++ b/src/lib/axiom/launch-plans.ts
+@@ -0,0 +1,107 @@
++/**
++ * Landing-page launch tiers sold from the 3D pricing stack.
++ * Amounts are cents. Change prices here only — the cards, drawer and Stripe session all read this list.
++ */
++
++export type LaunchPlanId = "starter" | "lifetime" | "custom";
++
++export type LaunchPlan = {
++  id: LaunchPlanId;
++  name: string;
++  tagline: string;
++  /** Charged today. */
++  dueTodayCents: number;
++  /** Recurring monthly amount after the trial, or null for one-time plans. */
++  monthlyCents: number | null;
++  trialDays: number;
++  /** How Stripe bills it. */
++  mode: "subscription" | "payment";
++  priceLabel: string;
++  priceNote: string;
++  features: string[];
++  cta: string;
++  /** Visual accent for the card + shader tint. */
++  hue: "cyan" | "signal" | "amber";
++};
++
++export const LAUNCH_PLANS: readonly LaunchPlan[] = [
++  {
++    id: "starter",
++    name: "Starter",
++    tagline: "Choose-your-price trial",
++    dueTodayCents: 100,
++    monthlyCents: 49700,
++    trialDays: 30,
++    mode: "subscription",
++    priceLabel: "$1",
++    priceNote: "today · 30 days live · then $497/mo",
++    features: [
++      "Live booking storefront in minutes",
++      "AI receptionist + instant text-back",
++      "Stripe deposits on every booking",
++      "Cancel any time in the first 30 days",
++    ],
++    cta: "Provision Starter",
++    hue: "cyan",
++  },
++  {
++    id: "lifetime",
++    name: "Lifetime",
++    tagline: "Own the territory",
++    dueTodayCents: 249700,
++    monthlyCents: null,
++    trialDays: 0,
++    mode: "payment",
++    priceLabel: "$2,497",
++    priceNote: "once · no monthly bill",
++    features: [
++      "Everything in Starter, forever",
++      "Locked trade + county territory",
++      "Cinematic hero film + content engine",
++      "Priority support line",
++    ],
++    cta: "Provision Lifetime",
++    hue: "signal",
++  },
++  {
++    id: "custom",
++    name: "Custom",
++    tagline: "2-week founder build",
++    dueTodayCents: 75000,
++    monthlyCents: null,
++    trialDays: 0,
++    mode: "payment",
++    priceLabel: "$750",
++    priceNote: "deposit · reserves your 2-week build slot",
++    features: [
++      "Built personally by Eric",
++      "Custom flows, integrations and data",
++      "Launch-ready on your phone in 14 days",
++      "Deposit applies to the final quote",
++    ],
++    cta: "Reserve my build",
++    hue: "amber",
++  },
++] as const;
++
++export const LAUNCH_PLAN_STORAGE_KEY = "axiom.launchPlan";
++
++export function launchPlan(id: string): LaunchPlan | null {
++  return LAUNCH_PLANS.find((plan) => plan.id === id) ?? null;
++}
++
++export function isLaunchPlanId(id: string): id is LaunchPlanId {
++  return launchPlan(id) !== null;
++}
++
++/** Where a settled buyer goes next: tenant provisioning. */
++export function provisioningPath(planId: LaunchPlanId): string {
++  const params = new URLSearchParams({ niche: "contractor", plan: planId });
++  return `/onboard?${params.toString()}`;
++}
++
++/** A completed embedded Checkout session counts as settled only when Stripe says so. */
++export function launchSessionSettled(status: string | undefined, paymentStatus: string | undefined): boolean {
++  if (status !== "complete") return false;
++  return paymentStatus === "paid" || paymentStatus === "no_payment_required";
++}
+diff --git a/src/lib/axiom/payments.server.ts b/src/lib/axiom/payments.server.ts
+index 1e42194..a8fe9d5 100644
+--- a/src/lib/axiom/payments.server.ts
++++ b/src/lib/axiom/payments.server.ts
+@@ -238,6 +238,64 @@ export async function createTerritoryCheckout(opts: {
+   return { id: session.id, url: session.url };
+ }
+ 
++/**
++ * Landing-page launch plan, sold inside the slide-up drawer with Stripe Embedded Checkout.
++ * redirect_on_completion=never keeps the buyer on the page so the drawer can run the success state.
++ */
++export async function createLaunchCheckout(opts: {
++  planId: string;
++  planName: string;
++  mode: "subscription" | "payment";
++  dueTodayCents: number;
++  monthlyCents: number | null;
++  trialDays: number;
++  userId?: string;
++}) {
++  const params = new URLSearchParams({
++    ui_mode: "embedded",
++    redirect_on_completion: "never",
++    mode: opts.mode,
++    "metadata[kind]": "launch_plan",
++    "metadata[plan_id]": opts.planId,
++  });
++  if (opts.userId && opts.userId !== "dev-user") params.set("metadata[user_id]", opts.userId);
++  let line = 0;
++  if (opts.mode === "subscription" && opts.monthlyCents) {
++    params.set(`line_items[${line}][quantity]`, "1");
++    params.set(`line_items[${line}][price_data][currency]`, "usd");
++    params.set(`line_items[${line}][price_data][product_data][name]`, `Axiom ${opts.planName} · monthly`);
++    params.set(`line_items[${line}][price_data][unit_amount]`, String(opts.monthlyCents));
++    params.set(`line_items[${line}][price_data][recurring][interval]`, "month");
++    line += 1;
++    if (opts.trialDays > 0) params.set("subscription_data[trial_period_days]", String(opts.trialDays));
++    params.set("subscription_data[metadata][plan_id]", opts.planId);
++  }
++  if (opts.dueTodayCents > 0) {
++    params.set(`line_items[${line}][quantity]`, "1");
++    params.set(`line_items[${line}][price_data][currency]`, "usd");
++    params.set(
++      `line_items[${line}][price_data][product_data][name]`,
++      opts.mode === "subscription" ? `Axiom ${opts.planName} · activation` : `Axiom ${opts.planName}`,
++    );
++    params.set(`line_items[${line}][price_data][unit_amount]`, String(opts.dueTodayCents));
++  }
++  const session = await stripeFetch("checkout/sessions", params);
++  if (!session.id || !session.client_secret) throw new Error("Stripe did not return a checkout session");
++  return { id: session.id, clientSecret: session.client_secret };
++}
++
++export async function readLaunchSession(sessionId: string) {
++  if (!sessionId.startsWith("cs_")) throw new Error("Invalid session");
++  const session = await stripeFetch(`checkout/sessions/${encodeURIComponent(sessionId)}`);
++  if (session.metadata?.kind !== "launch_plan") throw new Error("This payment is not a launch plan");
++  return {
++    planId: session.metadata.plan_id ?? "",
++    status: session.status,
++    paymentStatus: session.payment_status,
++    amountTotal: Number(session.amount_total),
++  };
++}
++
+ export async function settleTerritorySession(sessionId: string) {
+   if (!sessionId.startsWith("cs_")) throw new Error("Invalid session");
+   const session = await stripeFetch(`checkout/sessions/${encodeURIComponent(sessionId)}`);
+diff --git a/src/routes/index.tsx b/src/routes/index.tsx
+index fc89c70..294dd98 100644
+--- a/src/routes/index.tsx
++++ b/src/routes/index.tsx
+@@ -14,6 +14,7 @@ import { FreezePanStage } from "@/components/cinematic/FreezePanStage";
+ import { EmergencyTradeHero } from "@/components/marketing/EmergencyTradeHero";
+ import { InboundSignup } from "@/components/marketing/InboundSignup";
+ import { IndustryMarquee } from "@/components/marketing/IndustryMarquee";
++import { PricingSection } from "@/components/pricing/PricingSection";
+ import { buildAutonomousContentPlan, cinematicLandingMeta } from "@/lib/axiom/cinematic-content-seo";
+ import { useCurrentUserState } from "@/lib/auth/use-current-user";
+ import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+@@ -311,6 +312,9 @@ function Home() {
+         </div>
+       </section>
+ 
++      {/* Pricing · 3D swipe-to-provision stack + Stripe drawer */}
++      <PricingSection />
++
+       {/* Feature grid */}
+       <section id="features" className="bg-obsidian px-5 py-16 sm:px-10">
+         <div className="mx-auto max-w-6xl">
+diff --git a/src/styles.css b/src/styles.css
+index 854ecb1..4eacdca 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -8195,3 +8195,157 @@ body:has(.studio-root) .audio-toggle,
+ body:has(.studio-root) .avatar-help {
+   display: none;
+ }
++
++/* ---------- holographic glass lens over the cinematic hero */
++.holo-glass-layer {
++  position: absolute;
++  inset: 0;
++  z-index: 2;
++  pointer-events: none;
++}
++.holo-glass-layer > div,
++.holo-glass-canvas {
++  position: absolute !important;
++  inset: 0;
++  width: 100% !important;
++  height: 100% !important;
++  pointer-events: none !important;
++}
++
++/* ---------- pricing: holo shard backdrop */
++.pricing-holo {
++  background:
++    radial-gradient(60% 50% at 75% 40%, color-mix(in srgb, var(--color-signal) 14%, transparent), transparent 70%),
++    radial-gradient(50% 45% at 20% 70%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%),
++    var(--color-obsidian);
++}
++.pricing-holo-video {
++  position: absolute;
++  inset: 0;
++  z-index: -2;
++  width: 100%;
++  height: 100%;
++  object-fit: cover;
++  opacity: 0.55;
++}
++.pricing-holo-grade {
++  position: absolute;
++  inset: 0;
++  z-index: -1;
++  pointer-events: none;
++  background:
++    linear-gradient(to bottom, var(--color-obsidian) 0%, transparent 18%, transparent 82%, var(--color-obsidian) 100%),
++    linear-gradient(to right, color-mix(in srgb, var(--color-obsidian) 78%, transparent) 0%, transparent 60%);
++}
++
++/* ---------- pricing: 3D swipe stack */
++.price-stack {
++  width: min(23rem, 86vw);
++  height: 31rem;
++  perspective: 1200px;
++  transform-style: preserve-3d;
++  border-radius: 28px;
++  touch-action: pan-y;
++  /* Tilted cards dip behind this plane; let hits fall through to the card itself. */
++  pointer-events: none;
++}
++.price-card {
++  pointer-events: auto;
++  transform-style: preserve-3d;
++  cursor: grab;
++  touch-action: none;
++  will-change: transform;
++}
++.price-card:active { cursor: grabbing; }
++.price-card[aria-hidden="true"] { pointer-events: none; }
++.price-card-face {
++  position: relative;
++  height: 100%;
++  overflow: hidden;
++  border-radius: 28px;
++  background:
++    linear-gradient(160deg, color-mix(in srgb, var(--color-fg) 9%, transparent), color-mix(in srgb, var(--color-obsidian) 70%, transparent) 55%),
++    color-mix(in srgb, var(--color-surface) 90%, transparent);
++  backdrop-filter: blur(18px) saturate(1.4);
++  -webkit-backdrop-filter: blur(18px) saturate(1.4);
++  box-shadow:
++    inset 0 1px 0 color-mix(in srgb, var(--color-fg) 22%, transparent),
++    0 30px 70px -25px #000,
++    0 0 40px -10px color-mix(in srgb, var(--card-accent) 40%, transparent);
++}
++.price-card-face::before {
++  /* iridescent rim */
++  content: "";
++  position: absolute;
++  inset: 0;
++  border-radius: inherit;
++  padding: 1px;
++  background: conic-gradient(from 210deg, var(--card-accent), #ff4fd8, #7ec8e3, #ffffff, var(--card-accent));
++  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
++  -webkit-mask-composite: xor;
++  mask-composite: exclude;
++  opacity: 0.65;
++  pointer-events: none;
++}
++.price-card-sheen {
++  --mx: 30%;
++  --my: 20%;
++  position: absolute;
++  inset: 0;
++  pointer-events: none;
++  background:
++    radial-gradient(40% 35% at var(--mx) var(--my), color-mix(in srgb, #ffffff 20%, transparent), transparent 70%),
++    linear-gradient(115deg, transparent 30%, color-mix(in srgb, #ff4fd8 12%, transparent) 45%, color-mix(in srgb, #00ffcc 12%, transparent) 55%, transparent 70%);
++  background-size: 100% 100%, 220% 220%;
++  background-position: 0 0, calc(var(--mx) * 1.2) calc(var(--my) * 1.2);
++  mix-blend-mode: screen;
++}
++.price-card-provision {
++  position: absolute;
++  inset: 0;
++  pointer-events: none;
++  background: linear-gradient(to top, color-mix(in srgb, var(--card-accent) 38%, transparent), transparent 60%);
++}
++.price-card-cta {
++  color: var(--color-obsidian);
++  background: var(--card-accent);
++  box-shadow: 0 0 26px color-mix(in srgb, var(--card-accent) 45%, transparent);
++  transition: transform 0.15s ease, box-shadow 0.2s ease;
++}
++.price-card-cta:hover { box-shadow: 0 0 38px color-mix(in srgb, var(--card-accent) 65%, transparent); }
++.price-card-cta:active { transform: scale(0.97); }
++
++/* ---------- checkout drawer: frosted glass */
++.checkout-drawer-glass {
++  background:
++    linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 10%, transparent), transparent 30%),
++    color-mix(in srgb, var(--color-surface) 72%, transparent);
++  backdrop-filter: blur(26px) saturate(1.5);
++  -webkit-backdrop-filter: blur(26px) saturate(1.5);
++  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
++  border-bottom: 0;
++  box-shadow: 0 -30px 80px -20px #000, inset 0 1px 0 color-mix(in srgb, var(--color-fg) 20%, transparent);
++}
++.checkout-drawer-handle {
++  width: 3rem !important;
++  height: 0.3rem !important;
++  border-radius: 999px;
++  background: color-mix(in srgb, var(--color-fg) 30%, transparent) !important;
++}
++.checkout-embed {
++  background: #ffffff;
++  min-height: 20rem;
++}
++.checkout-success-ring {
++  background: color-mix(in srgb, var(--card-accent) 14%, transparent);
++  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent) 50%, transparent), 0 0 50px color-mix(in srgb, var(--card-accent) 45%, transparent);
++  animation: checkout-pop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
++}
++@keyframes checkout-pop {
++  from { transform: scale(0.4); opacity: 0; }
++  to { transform: scale(1); opacity: 1; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .checkout-success-ring { animation: none; }
++  .pricing-holo-video { display: none; }
++}
+-- 
+2.43.0
+

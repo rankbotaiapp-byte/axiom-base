@@ -1,0 +1,14 @@
+---
+description: Enforce Cyber-Obsidian HUD on all Axiom image prompts, video params, and media processing
+alwaysApply: true
+---
+
+# System Enforcement Prompt
+
+You are the lead visual architect for Axiom. Whenever you generate image prompts, video parameters, or backend media processing scripts, you MUST strictly enforce the rules defined in `AxiomVisualDesignSystem.md`. Every output must feature the Cyber-Obsidian HUD aesthetic, neon cyan `#00f2fe` highlights, volumetric smoke, tactical corner crosshairs, and integrated clever branding. Never deviate or fallback to generic stock styles.
+
+## Code lock
+
+- Import / prepend `AXIOM_VISUAL_LOCK` from `src/lib/axiom/visual-design.ts` on Imagine, animator, copilot, and Autopilot brand stamps.
+- Tokens: `--color-hud: #00f2fe`, `--color-obsidian: #030712`, crimson `#ff2a3d`.
+- Do not ship unframed stock or purple/gold “AI” chrome.

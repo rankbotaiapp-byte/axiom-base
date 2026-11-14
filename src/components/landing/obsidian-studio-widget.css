@@ -1,0 +1,167 @@
+.obsidian-studio {
+  --hud: var(--color-hud);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--color-hud) 14%, transparent), transparent 55%),
+    linear-gradient(180deg, #071018 0%, var(--color-obsidian) 100%);
+}
+
+.obsidian-studio-stage {
+  perspective: 1400px;
+}
+
+.obsidian-studio-plate {
+  position: relative;
+  transform: rotateX(4deg);
+  transform-origin: 50% 100%;
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, #020617 88%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-hud) 40%, transparent),
+    0 0 48px color-mix(in srgb, var(--color-hud) 22%, transparent),
+    inset 0 0 80px color-mix(in srgb, var(--color-hud) 8%, transparent);
+}
+
+.obsidian-studio-bezel {
+  pointer-events: none;
+  position: absolute;
+  inset: 0.7rem;
+  border: 2px solid color-mix(in srgb, var(--color-hud) 70%, transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--color-hud) 35%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--color-hud) 8%, transparent);
+}
+
+.obsidian-studio-bezel::before,
+.obsidian-studio-bezel::after {
+  content: "";
+  position: absolute;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-color: var(--color-hud);
+  border-style: solid;
+  filter: drop-shadow(0 0 8px var(--color-hud));
+}
+
+.obsidian-studio-bezel::before {
+  top: -2px;
+  left: -2px;
+  border-width: 6px 0 0 6px;
+}
+
+.obsidian-studio-bezel::after {
+  top: -2px;
+  right: -2px;
+  border-width: 6px 6px 0 0;
+}
+
+.obsidian-studio-bezel-sw,
+.obsidian-studio-bezel-se {
+  position: absolute;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-color: var(--color-hud);
+  border-style: solid;
+  filter: drop-shadow(0 0 8px var(--color-hud));
+}
+
+.obsidian-studio-bezel-sw {
+  bottom: -2px;
+  left: -2px;
+  border-width: 0 0 6px 6px;
+}
+
+.obsidian-studio-bezel-se {
+  right: -2px;
+  bottom: -2px;
+  border-width: 0 6px 6px 0;
+}
+
+.obsidian-studio-notch {
+  position: absolute;
+  top: 0.35rem;
+  left: 50%;
+  z-index: 2;
+  width: min(28rem, 70%);
+  height: 0.7rem;
+  translate: -50% 0;
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+  background: var(--color-hud);
+  box-shadow: 0 0 18px var(--color-hud);
+}
+
+.obsidian-studio-panel {
+  border: 1px solid color-mix(in srgb, var(--color-hud) 22%, transparent);
+  background: color-mix(in srgb, #020617 72%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-hud) 10%, transparent);
+}
+
+.obsidian-studio-field {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 28%, transparent);
+  background: #01040c;
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  padding: 0.6rem 0.75rem;
+}
+
+.obsidian-studio-field:focus {
+  outline: 2px solid color-mix(in srgb, var(--color-hud) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.obsidian-studio-bar {
+  height: 0.45rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-hud) 12%, #020617);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-hud) 30%, transparent);
+}
+
+.obsidian-studio-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-hud) 55%, transparent), var(--color-hud));
+  box-shadow: 0 0 12px var(--color-hud);
+}
+
+.obsidian-studio-claim {
+  min-height: 4.5rem;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--color-hud) 70%, transparent);
+  background: var(--color-hud);
+  color: #031018;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 28px color-mix(in srgb, var(--color-hud) 45%, transparent);
+}
+
+.obsidian-studio-claim:disabled {
+  opacity: 0.7;
+}
+
+.obsidian-studio-scan {
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    color-mix(in srgb, var(--color-hud) 6%, transparent) 2px 3px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obsidian-studio-plate {
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .obsidian-studio-plate {
+    transform: none;
+  }
+}

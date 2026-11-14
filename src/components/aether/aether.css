@@ -1,0 +1,717 @@
+/* Aether Dynamics — scoped under .aether-root */
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+/* =========================================================
+   AETHER DYNAMICS — styles.css
+   Obsidian dark mode · glassmorphism · HUD typography
+   ========================================================= */
+
+.aether-root{
+  --obsidian: #04060a;
+  --obsidian-2: #070b12;
+  --panel: rgba(7, 11, 18, 0.5);
+  --panel-solid: rgba(6, 9, 15, 0.9);
+  --cyan: #00f3ff;
+  --cyan-soft: rgba(0, 243, 255, 0.62);
+  --violet: #8b3dff;
+  --violet-deep: #4a1fb8;
+  --line: rgba(0, 243, 255, 0.15);
+  --line-strong: rgba(0, 243, 255, 0.4);
+  --text: #e3eef7;
+  --muted: #8aa0b3;
+  --faint: #4f6273;
+  --ok: #3dffb0;
+  --info: #7cc4ff;
+
+  --font-display: "Chakra Petch", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius: 14px;
+  --gutter: clamp(16px, 4vw, 56px);
+  --topbar-h: 72px;
+
+  /* Driven from JS (0..1): engine intensity / audio energy */
+  --pulse: 0;
+  --fx: 0px;
+  --fy: 0px;
+
+  color-scheme: dark;
+}
+
+.aether-root *, .aether-root *::before, .aether-root *::after{ box-sizing: border-box; margin: 0; padding: 0; }
+
+.aether-root{ background: var(--obsidian); scroll-behavior: smooth; scroll-padding-top: calc(var(--topbar-h) + 24px); }
+
+.aether-root{
+  min-height: 100vh;
+  font-family: var(--font-display);
+  color: var(--text);
+  background: var(--obsidian);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+.aether-root a{ color: inherit; text-decoration: none; }
+.aether-root button, .aether-root input, .aether-root select{ font: inherit; color: inherit; }
+.aether-root .mono{ font-family: var(--font-mono); letter-spacing: 0.04em; }
+.aether-root :focus-visible{ outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- Stage (WebGL canvas + video) ---------- */
+
+.aether-root #stage{
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100lvh;
+  display: block;
+  z-index: 0;
+  background: var(--obsidian);
+}
+
+.aether-root .engine-video{
+  position: fixed;
+  left: 0; top: 0;
+  width: 2px; height: 2px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* CSS fallback for low-power devices / no WebGL / reduced motion */
+.aether-root.is-fallback #stage{ display: none; }
+
+.aether-root.is-fallback .engine-video{
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100lvh;
+  opacity: 1;
+  z-index: 0;
+  object-fit: cover;
+  object-position: 55% 50%;
+  transform-origin: 56% 50%;
+  transform: translate3d(var(--fx), var(--fy), 0) scale(1.95);
+  -webkit-mask-image: radial-gradient(ellipse 30% 36% at 56% 50%, #000 45%, transparent 100%);
+          mask-image: radial-gradient(ellipse 30% 36% at 56% 50%, #000 45%, transparent 100%);
+  filter: saturate(1.15) brightness(calc(1 + var(--pulse) * 0.35));
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.aether-root .fallback-dust{ display: none; }
+
+.aether-root.is-fallback .fallback-dust{
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aether-root .fallback-dust span{
+  position: absolute;
+  inset: -50% 0 0 0;
+  background-repeat: repeat;
+  animation: dust-rise linear infinite;
+  opacity: 0.8;
+}
+.aether-root .fallback-dust span:nth-child(1){
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, var(--cyan), transparent),
+    radial-gradient(1px 1px at 140px 90px, #b48cff, transparent),
+    radial-gradient(1.5px 1.5px at 260px 200px, var(--cyan), transparent),
+    radial-gradient(1px 1px at 80px 240px, #ffffff, transparent);
+  background-size: 300px 300px;
+  animation-duration: 38s;
+}
+.aether-root .fallback-dust span:nth-child(2){
+  background-image:
+    radial-gradient(2px 2px at 60px 120px, var(--violet), transparent),
+    radial-gradient(2px 2px at 300px 40px, var(--cyan), transparent),
+    radial-gradient(1.5px 1.5px at 200px 330px, #ffb070, transparent);
+  background-size: 420px 420px;
+  animation-duration: 26s;
+  opacity: 0.6;
+}
+.aether-root .fallback-dust span:nth-child(3){
+  background-image:
+    radial-gradient(3px 3px at 100px 100px, rgba(0, 243, 255, 0.7), transparent),
+    radial-gradient(3px 3px at 420px 380px, rgba(139, 61, 255, 0.7), transparent);
+  background-size: 560px 560px;
+  animation-duration: 18s;
+  filter: blur(1px);
+  opacity: 0.45;
+}
+@keyframes dust-rise { to { transform: translate3d(0, -50%, 0); } }
+
+/* ---------- Cinematic frame overlay ---------- */
+
+.aether-root .frame{
+  position: fixed;
+  inset: 10px;
+  z-index: 2;
+  pointer-events: none;
+}
+.aether-root .corner{
+  position: absolute;
+  width: 22px; height: 22px;
+  border: 1px solid var(--line-strong);
+  opacity: 0.7;
+}
+.aether-root .corner.tl{ top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.aether-root .corner.tr{ top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.aether-root .corner.bl{ bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.aether-root .corner.br{ bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.aether-root .scan{
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 3px);
+  mix-blend-mode: overlay;
+}
+
+.aether-root .frame-readout{
+  position: absolute;
+  right: 34px;
+  bottom: 6px;
+  display: flex;
+  gap: 18px;
+  font-size: 10px;
+  color: var(--faint);
+}
+.aether-root .frame-readout b{ color: var(--cyan-soft); font-weight: 500; }
+
+/* ---------- Glass ---------- */
+
+.aether-root .glass{
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+          backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 calc(18px + var(--pulse) * 24px) rgba(0, 243, 255, calc(0.05 + var(--pulse) * 0.06)),
+    0 24px 60px rgba(0, 0, 0, 0.45);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .aether-root .glass{ background: var(--panel-solid); }
+}
+
+/* ---------- Top bar ---------- */
+
+.aether-root .topbar{
+  position: fixed;
+  top: 18px;
+  left: var(--gutter);
+  right: var(--gutter);
+  z-index: 20;
+  height: var(--topbar-h);
+  padding: 0 18px 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-radius: 16px;
+}
+
+.aether-root .brand{ display: flex; flex-direction: column; gap: 2px; line-height: 1; }
+.aether-root .brand-kicker{ font-size: 10px; color: var(--muted); }
+.aether-root .brand-name{
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+  text-shadow: 0 0 18px rgba(0, 243, 255, 0.45);
+}
+
+.aether-root .nav{ display: flex; gap: 4px; }
+.aether-root .nav a{
+  position: relative;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.aether-root .nav a:hover{ color: var(--text); }
+.aether-root .nav a.is-active{
+  color: var(--cyan);
+  border-color: var(--line-strong);
+  background: rgba(0, 243, 255, 0.07);
+  box-shadow: 0 0 16px rgba(0, 243, 255, 0.15), inset 0 0 12px rgba(0, 243, 255, 0.06);
+}
+
+.aether-root .topbar-tools{ display: flex; align-items: center; gap: 14px; }
+
+.aether-root .status{ display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.aether-root .status-dot{
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+  animation: blink 2.2s ease-in-out infinite;
+}
+@keyframes blink { 50% { opacity: 0.35; } }
+
+.aether-root .audio-toggle{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+  font-size: 11px;
+  background: rgba(0, 243, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s, color 0.25s;
+}
+.aether-root .audio-toggle:hover{ border-color: var(--line-strong); }
+.aether-root .audio-toggle[aria-pressed="true"]{ color: var(--cyan); border-color: var(--line-strong); background: rgba(0, 243, 255, 0.1); }
+
+.aether-root .eq{ display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.aether-root .eq i{ width: 2px; height: 4px; background: currentColor; border-radius: 1px; transition: height 0.2s; }
+.aether-root .audio-toggle[aria-pressed="true"] .eq i{ animation: eq 0.9s ease-in-out infinite; }
+.aether-root .eq i:nth-child(2){ animation-delay: -0.3s !important; }
+.aether-root .eq i:nth-child(3){ animation-delay: -0.6s !important; }
+.aether-root .eq i:nth-child(4){ animation-delay: -0.15s !important; }
+@keyframes eq { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+
+/* ---------- Layout ---------- */
+
+.aether-root main{ position: relative; z-index: 5; }
+
+.aether-root .hero{
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: calc(var(--topbar-h) + 72px) var(--gutter) 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 600px) 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 32px 40px;
+  align-content: start;
+  touch-action: pan-y;
+}
+
+.aether-root .hero-copy{ grid-column: 1; max-width: 600px; }
+
+.aether-root .eyebrow{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--cyan-soft);
+  margin-bottom: 18px;
+}
+.aether-root .eyebrow-dot{ width: 6px; height: 6px; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); transform: rotate(45deg); }
+
+.aether-root .hero-title{
+  font-weight: 700;
+  font-size: clamp(2.5rem, 5.6vw, 5.1rem);
+  line-height: 0.96;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.aether-root .line{ display: block; overflow: hidden; padding-bottom: 0.06em; }
+.aether-root .line-inner{
+  display: inline-block;
+  will-change: transform;
+  /* gradient lives on each transformed span: background-clip:text on a parent
+     does not paint children that get their own compositing layer */
+  background: linear-gradient(180deg, #d4fcff 0%, #00f3ff 55%, #2c8dff 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 14px rgba(0, 243, 255, 0.3));
+}
+
+.aether-root .lede{
+  margin-top: 22px;
+  max-width: 470px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: #b8c8d6;
+}
+
+.aether-root .cta-row{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+
+.aether-root .btn{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 22px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.25s, box-shadow 0.3s, background 0.3s, border-color 0.3s;
+}
+.aether-root .btn i{ font-style: normal; transition: transform 0.3s; }
+.aether-root .btn:hover i{ transform: translateX(4px); }
+.aether-root .btn:active{ transform: scale(0.98); }
+
+.aether-root .btn-primary{
+  color: #001417;
+  background: linear-gradient(135deg, #7ffaff 0%, var(--cyan) 45%, #39a6ff 100%);
+  border-color: transparent;
+  box-shadow: 0 0 24px rgba(0, 243, 255, 0.35), 0 0 60px rgba(0, 243, 255, 0.12);
+}
+.aether-root .btn-primary:hover{ box-shadow: 0 0 34px rgba(0, 243, 255, 0.6), 0 0 90px rgba(139, 61, 255, 0.3); }
+
+.aether-root .btn-ghost{
+  color: var(--text);
+  background: rgba(7, 11, 18, 0.45);
+  -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: blur(16px);
+}
+.aether-root .btn-ghost:hover{ border-color: var(--cyan); background: rgba(0, 243, 255, 0.08); }
+.aether-root .btn-block{ width: 100%; }
+
+/* ---------- HUD ---------- */
+
+.aether-root .hud{
+  grid-column: 1;
+  align-self: end;
+  width: min(100%, 540px);
+  padding: 16px;
+}
+
+.aether-root .hud-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--cyan-soft);
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.aether-root .hud-tier{ color: var(--faint); }
+
+.aether-root .hud-grid{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+
+.aether-root .widget{
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 243, 255, 0.025);
+  border: 1px solid rgba(0, 243, 255, 0.08);
+  min-width: 0;
+}
+.aether-root .widget-wide{ grid-column: span 2; }
+.aether-root .widget-ring{ grid-column: span 2; display: flex; align-items: center; gap: 14px; }
+.aether-root .w-row{ display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+
+.aether-root .w-label{ font-size: 10px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.aether-root .w-value{
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  text-shadow: 0 0 12px rgba(0, 243, 255, 0.35);
+  line-height: 1.1;
+}
+.aether-root .w-value small{ font-size: 11px; color: var(--muted); margin-left: 3px; }
+.aether-root .w-sub{ font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+.aether-root .w-sub b{ color: var(--cyan); font-weight: 500; }
+
+.aether-root .ring{ width: 58px; height: 58px; flex: none; transform: rotate(-90deg); }
+.aether-root .ring-track{ fill: none; stroke: rgba(0, 243, 255, 0.1); stroke-width: 4; }
+.aether-root .ring-fill{
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 163.36;
+  stroke-dashoffset: 2.6;
+  filter: drop-shadow(0 0 4px var(--cyan));
+}
+
+.aether-root .chip{
+  display: inline-block;
+  padding: 3px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
+.aether-root .chip-ok{ color: var(--ok); background: rgba(61, 255, 176, 0.08); box-shadow: 0 0 12px rgba(61, 255, 176, 0.2); }
+.aether-root .chip-info{ color: var(--info); background: rgba(124, 196, 255, 0.08); }
+
+.aether-root .segments{ display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; margin-top: 8px; }
+.aether-root .segments i{ height: 10px; border-radius: 2px; background: rgba(0, 243, 255, 0.08); transition: background 0.18s, box-shadow 0.18s; }
+.aether-root .segments i.on{ background: var(--cyan); box-shadow: 0 0 8px rgba(0, 243, 255, 0.6); }
+.aether-root .segments i.on.hot{ background: var(--violet); box-shadow: 0 0 8px rgba(139, 61, 255, 0.7); }
+
+.aether-root .meter{ display: flex; align-items: flex-end; gap: 3px; height: 26px; }
+.aether-root .meter i{
+  flex: 1;
+  height: 12%;
+  min-height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, var(--violet), var(--cyan));
+  opacity: 0.85;
+}
+
+.aether-root .hero-hint{
+  position: absolute;
+  right: var(--gutter);
+  bottom: 30px;
+  font-size: 11px;
+  color: var(--faint);
+}
+.aether-root .hint-touch{ display: none; }
+@media (pointer: coarse) { .aether-root .hint-desktop{ display: none; } .aether-root .hint-touch{ display: inline; } }
+
+/* ---------- Sections ---------- */
+
+.aether-root .section{
+  position: relative;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(80px, 12vh, 140px) var(--gutter);
+}
+
+.aether-root .section-head{ max-width: 640px; margin-bottom: 40px; }
+.aether-root .section-head h2{
+  font-size: clamp(2rem, 4.2vw, 3.4rem);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.aether-root .section-lede{ margin-top: 16px; font-size: 17px; line-height: 1.55; color: #b8c8d6; }
+
+.aether-root .spec-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.aether-root .spec{ padding: 22px; transition: border-color 0.3s, transform 0.4s; }
+.aether-root .spec:hover{ border-color: var(--line-strong); transform: translateY(-3px); }
+.aether-root .spec-code{ font-size: 10.5px; color: var(--cyan-soft); }
+.aether-root .spec-value{
+  margin-top: 18px;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.aether-root .spec-value small{ font-size: 16px; color: var(--muted); margin-left: 6px; font-weight: 500; }
+.aether-root .spec-meter{ margin: 18px 0 16px; height: 4px; border-radius: 2px; background: rgba(0, 243, 255, 0.08); overflow: hidden; }
+.aether-root .spec-meter i{
+  display: block;
+  height: 100%;
+  width: calc(var(--v) * 100%);
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  box-shadow: 0 0 10px var(--cyan);
+}
+.aether-root .spec-note{ font-size: 14px; line-height: 1.5; color: var(--muted); }
+
+.aether-root .log{ list-style: none; display: grid; gap: 12px; }
+.aether-root .log-item{
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+}
+.aether-root .log-item time{ font-size: 12px; color: var(--cyan-soft); }
+.aether-root .log-item h3{ font-size: 18px; font-weight: 600; letter-spacing: 0.02em; }
+.aether-root .log-item p{ font-size: 14px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+
+.aether-root .portal{ display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 16px; }
+
+.aether-root .engineer{ position: relative; padding: 26px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.aether-root .avatar{
+  width: 120px; height: 120px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 35%, rgba(0, 243, 255, 0.14), transparent 70%);
+  margin-bottom: 8px;
+}
+.aether-root .avatar svg{ width: 100%; height: 100%; filter: drop-shadow(0 0 6px rgba(0, 243, 255, 0.5)); }
+.aether-root .engineer h3{ font-size: 24px; line-height: 1.15; }
+.aether-root .engineer-note{ color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 360px; }
+
+.aether-root .pulse-ring{ position: absolute; right: 26px; bottom: 26px; width: 54px; height: 54px; }
+.aether-root .pulse-ring::before, .aether-root .pulse-ring i{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--cyan);
+  box-shadow: 0 0 16px var(--cyan), inset 0 0 10px rgba(0, 243, 255, 0.5);
+}
+.aether-root .pulse-ring i{ border-width: 1px; animation: ring-out 2.4s ease-out infinite; box-shadow: none; }
+@keyframes ring-out { from { transform: scale(1); opacity: 0.8; } to { transform: scale(2); opacity: 0; } }
+
+.aether-root .brief-form{ padding: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.aether-root .brief-form > .w-label, .aether-root .brief-form > .btn, .aether-root .brief-form > .form-status{ grid-column: 1 / -1; }
+.aether-root .field{ display: grid; gap: 6px; }
+.aether-root .field span{ font-size: 10.5px; color: var(--muted); text-transform: uppercase; }
+.aether-root .field input, .aether-root .field select{
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(2, 4, 8, 0.55);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+}
+.aether-root .field select{
+  background-image: linear-gradient(45deg, transparent 50%, var(--cyan) 50%), linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+.aether-root .field select option{ background: #0a0f18; }
+.aether-root .field input::placeholder{ color: var(--faint); }
+.aether-root .field input:focus, .aether-root .field select:focus{ border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 243, 255, 0.12); }
+.aether-root .field.is-invalid input, .aether-root .field.is-invalid select{ border-color: #ff5d7a; }
+.aether-root .form-status{ font-size: 12px; color: var(--cyan-soft); min-height: 1.2em; }
+.aether-root .form-status.is-error{ color: #ff8da1; }
+
+.aether-root .footer{
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 36px var(--gutter) 48px;
+  font-size: 11px;
+  color: var(--faint);
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- Boot + ignite ---------- */
+
+.aether-root .boot{
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  background: var(--obsidian);
+  transition: opacity 0.8s ease, visibility 0.8s;
+}
+.aether-root:not(.is-booting) .boot{ opacity: 0; visibility: hidden; }
+.aether-root .boot-text{ font-size: 12px; color: var(--cyan-soft); text-align: center; }
+.aether-root .boot-bar{ width: 220px; height: 2px; background: rgba(0, 243, 255, 0.12); overflow: hidden; }
+.aether-root .boot-bar i{ display: block; height: 100%; width: 0; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transition: width 0.4s ease; }
+
+.aether-root .ignite{
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 14px 22px;
+  font-size: 12px;
+  color: var(--cyan);
+  background: rgba(4, 6, 10, 0.8);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(0, 243, 255, 0.3);
+  cursor: pointer;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1080px) {
+  .aether-root .nav a{ padding: 9px 10px; font-size: 13px; }
+  .aether-root .status-text{ display: none; }
+}
+
+@media (max-width: 860px) {
+  .aether-root{ --topbar-h: 62px; }
+  /* backdrop-filter would make the bar a containing block and trap the fixed nav dock inside it */
+  .aether-root .topbar{
+    top: 10px;
+    padding: 0 10px 0 14px;
+    -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+    background: rgba(6, 9, 15, 0.82);
+  }
+  .aether-root .nav{
+    position: fixed;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    justify-content: space-between;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgba(7, 11, 18, 0.72);
+    -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+    border: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .aether-root .nav::-webkit-scrollbar{ display: none; }
+  .aether-root .nav a{ flex: 1 0 auto; text-align: center; padding: 10px 8px; font-size: 12px; }
+  .aether-root .brand-name{ font-size: 17px; }
+  .aether-root .status{ display: none; }
+
+  .aether-root .hero{
+    grid-template-columns: 1fr;
+    padding-top: calc(var(--topbar-h) + 38vh);
+    padding-top: calc(var(--topbar-h) + 38svh);
+    padding-bottom: 110px;
+    gap: 26px;
+  }
+  .aether-root .hero-hint{ display: none; }
+  .aether-root .hud{ width: 100%; }
+  .aether-root .portal{ grid-template-columns: 1fr; }
+  .aether-root .frame-readout{ display: none; }
+  .aether-root .footer{ padding-bottom: 110px; }
+  .aether-root .section{ padding-top: 72px; padding-bottom: 72px; }
+
+  .aether-root.is-fallback .engine-video{
+    object-position: 54% 50%;
+    transform-origin: 54% 30%;
+    transform: translate3d(var(--fx), var(--fy), 0) scale(1.25);
+    -webkit-mask-image: radial-gradient(ellipse 80% 42% at 50% 28%, #000 40%, transparent 100%);
+            mask-image: radial-gradient(ellipse 80% 42% at 50% 28%, #000 40%, transparent 100%);
+  }
+}
+
+@media (max-width: 560px) {
+  .aether-root .hud-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aether-root .widget-ring, .aether-root .widget-wide{ grid-column: span 2; }
+  .aether-root .brief-form{ grid-template-columns: 1fr; }
+  .aether-root .log-item{ grid-template-columns: 1fr auto; gap: 8px 14px; }
+  .aether-root .log-item time{ grid-column: 1 / -1; }
+  .aether-root .audio-label{ display: none; }
+  .aether-root .lede{ font-size: 16px; }
+  .aether-root .spec-value{ font-size: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aether-root *, .aether-root *::before, .aether-root *::after{ animation: none !important; transition: none !important; }
+  .aether-root{ scroll-behavior: auto; }
+}
+
+.aether-root {
+  min-height: 100vh;
+  color-scheme: dark;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+.aether-root.is-booting .boot { opacity: 1; pointer-events: auto; }

@@ -1,0 +1,369 @@
+import { useEffect, useState } from "react";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { effectiveDashboard } from "@/lib/axiom/dashboard";
+import { WEEKDAYS } from "@/lib/axiom/niches";
+import { acceptBooking, getOperatorData, getPortfolio, listStaffPortfolio, setEmployeeAvailability } from "@/lib/axiom/server";
+import { ProofStudio } from "@/components/employee/ProofStudio";
+import type { AccessMode, Appointment, Employee, PortfolioItem, Shop, ShopNotice } from "@/lib/axiom/types";
+import { EmployeeDashboardEditor } from "@/components/dashboard-controls";
+import { EmployeeWelcomeFilm } from "@/components/welcome-film";
+import { Wordmark } from "@/components/shop-chrome";
+import { Button } from "@/components/ui/button";
+import { useAxiomRing } from "@/components/axiom-ring";
+import { useShopPageData } from "./route";
+
+export const Route = createFileRoute("/$shopSlug/employee")({ component: EmployeePage });
+
+function EmployeePage() {
+  const { shopSlug } = Route.useParams();
+  const live = useShopPageData();
+  const { user, isPending } = useCurrentUserState();
+  const ring = useAxiomRing();
+  const [error, setError] = useState<string | null>(null);
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [mode, setMode] = useState<AccessMode>("none");
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [notices, setNotices] = useState<ShopNotice[]>([]);
+  const [gallery, setGallery] = useState<PortfolioItem[]>([]);
+  const [localConfig, setLocalConfig] = useState<Employee["dashboardConfig"] | null>(null);
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (isPending || !userId) return;
+    let cancelled = false;
+    void getOperatorData({ data: shopSlug })
+      .then(async (d) => {
+        if (cancelled) return;
+        setError(null);
+        setShop(d.shop);
+        setMode(d.mode);
+        setAppointments(d.appointments);
+        setNotices(d.notices);
+        const emp = d.employees.find((e) => e.id === d.employeeId) ?? null;
+        setEmployee(emp);
+        if (emp) {
+          try {
+            setGallery(await listStaffPortfolio({ data: { slug: shopSlug } }));
+          } catch {
+            setGallery(await getPortfolio({ data: emp.id }));
+          }
+        }
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Forbidden");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPending, shopSlug, userId]);
+
+  if (isPending || (user && !shop && !error)) {
+    return (
+      <main className="grid min-h-dvh place-items-center">
+        <div className="h-10 w-40 animate-pulse rounded-full bg-fg/8" />
+      </main>
+    );
+  }
+  if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/employee`} />;
+  if (error || !shop) {
+    return (
+      <main className="grid min-h-dvh place-items-center px-6 text-center">
+        <p className="font-display text-3xl">No station on this shop.</p>
+      </main>
+    );
+  }
+  if (mode === "owner") {
+    return <Navigate to="/$shopSlug/admin" params={{ shopSlug: shop.slug }} />;
+  }
+
+  const stationShop = live.shop.slug === shop.slug ? live.shop : shop;
+  const stationEmployee =
+    (employee && live.employees.find((item) => item.id === employee.id)) ?? employee;
+  const personalConfig = localConfig ?? stationEmployee?.dashboardConfig ?? null;
+  const layout =
+    stationEmployee && personalConfig
+      ? effectiveDashboard(stationShop.dashboardOverride, stationShop.dashboardConfig, personalConfig)
+      : null;
+  const mine = employee ? appointments.filter((item) => item.employeeId === employee.id) : appointments;
+  const stationNotices = notices.filter(
+    (notice) =>
+      notice.channel === "inbox" &&
+      employee &&
+      (notice.employeeId === employee.id || notice.employeeId == null),
+  );
+  const editorEmployee =
+    stationEmployee && personalConfig
+      ? { ...stationEmployee, dashboardConfig: personalConfig }
+      : null;
+
+  return (
+    <main className="min-h-dvh bg-bg px-5 py-6 sm:px-8">
+      <header className="flex items-center justify-between">
+        <div>
+          <Wordmark />
+          <p className="mt-2 text-sm text-muted">
+            {employee?.displayName ?? "Station"} · {shop.name}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {mode === "preview" ? (
+            <Link
+              to="/$shopSlug/admin"
+              params={{ shopSlug: shop.slug }}
+              className="inline-flex h-11 items-center text-sm text-muted hover:text-fg"
+            >
+              Admin
+            </Link>
+          ) : null}
+          <Link
+            to="/$shopSlug"
+            params={{ shopSlug: shop.slug }}
+            className="inline-flex h-11 items-center text-sm text-muted hover:text-fg"
+          >
+            Site
+          </Link>
+        </div>
+      </header>
+
+      {editorEmployee ? (
+        <EmployeeDashboardEditor
+          shop={stationShop}
+          employee={editorEmployee}
+          disabled={mode !== "preview" && mode !== "employee"}
+          onSaved={setLocalConfig}
+        />
+      ) : null}
+
+      {layout && layout.sections.length === 0 ? (
+        <p className="mt-10 text-sm text-faint">This station is clear.</p>
+      ) : null}
+
+      {employee ? (
+        <StationProfile
+          shopSlug={shop.slug}
+          employee={employee}
+          appointments={mine}
+          locked={mode === "preview"}
+          onAvailability={(availability) => setEmployee({ ...employee, availability })}
+        />
+      ) : null}
+
+      <section className="mt-10">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Station</p>
+        <h2 className="mt-2 font-display text-3xl">Customer interactions</h2>
+        <ul className="mt-4 grid gap-2">
+          {stationNotices.length === 0 ? (
+            <li className="rounded-2xl bg-surface p-4 text-sm text-faint">
+              No inquiries or booking notes for this station yet. New requests show up here when a customer writes in.
+            </li>
+          ) : (
+            stationNotices.map((notice) => (
+              <li key={notice.id} className="rounded-2xl bg-surface p-4 shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
+                <p className="text-xs uppercase tracking-wider text-faint">{notice.kind.split("_").join(" ")}</p>
+                <p className="mt-1 font-medium">{notice.subject}</p>
+                <p className="mt-1 text-sm text-muted">{notice.body}</p>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+
+      <Pipeline book={mine} />
+
+      {layout?.sections.includes("schedule") ? (
+      <section className="mt-10">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">My book</p>
+        <h1 className="mt-2 font-display text-4xl">Schedule</h1>
+        <ul className="mt-6 divide-y divide-line">
+          {mine.length === 0 ? (
+            <li className="py-6 text-sm text-faint">No appointments on this station yet.</li>
+          ) : (
+            mine.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm">{a.serviceName}</p>
+                  <p className="text-xs text-muted">
+                    {a.customerName} ·{" "}
+                    {new Date(a.startsAt).toLocaleString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {a.status === "pending" ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        void (async () => {
+                            const result = await acceptBooking({
+                            data: { slug: shop.slug, appointmentId: a.id },
+                          });
+                          ring.announce(
+                            {
+                              id: `acc-${a.id}`,
+                              type: "booking_confirmed",
+                              appointmentId: a.id,
+                              payload: result.detail,
+                              createdAt: new Date().toISOString(),
+                            },
+                            true,
+                          );
+                          const next = await getOperatorData({ data: shop.slug });
+                          setAppointments(next.appointments);
+                          setNotices(next.notices);
+                        })();
+                      }}
+                    >
+                      Confirm
+                    </Button>
+                  ) : (
+                    <span className="text-xs uppercase tracking-wider text-faint">{a.status}</span>
+                  )}
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+      ) : null}
+
+      {employee ? (
+        <ProofStudio
+          slug={shop.slug}
+          employee={employee}
+          gallery={gallery}
+          onGallery={setGallery}
+          onAvatar={(url) => setEmployee({ ...employee, avatarUrl: url })}
+          readonly={mode === "preview"}
+        />
+      ) : null}
+
+      {layout?.sections.includes("hours") ? <ShopHours hours={stationShop.hours} /> : null}
+      <EmployeeWelcomeFilm shopSlug={shop.slug} personId={user.id} shopName={shop.name} />
+    </main>
+  );
+}
+
+function Pipeline({ book }: { book: Appointment[] }) {
+  const columns: { status: Appointment["status"]; label: string; empty: string }[] = [
+    { status: "pending", label: "Incoming", empty: "No requests waiting." },
+    { status: "confirmed", label: "Appointments", empty: "Nothing confirmed." },
+    { status: "completed", label: "Finished", empty: "Nothing finished yet." },
+    { status: "cancelled", label: "Cancelled", empty: "No cancellations." },
+  ];
+  return (
+    <section className="mt-10">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Pipeline</p>
+      <h2 className="mt-2 font-display text-3xl">This station's book</h2>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {columns.map((column) => {
+          const rows = book.filter((item) => item.status === column.status);
+          return (
+            <div key={column.status} className="rounded-2xl bg-surface p-4">
+              <p className="text-xs uppercase tracking-wider text-faint">{column.label}</p>
+              {rows.length === 0 ? (
+                <p className="mt-3 text-sm text-faint">{column.empty}</p>
+              ) : (
+                <ul className="mt-3 grid gap-2">
+                  {rows.map((item) => (
+                    <li key={item.id}>
+                      <p className="text-sm">{item.customerName}</p>
+                      <p className="text-xs text-muted">{item.serviceName}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function StationProfile({
+  shopSlug,
+  employee,
+  appointments,
+  locked,
+  onAvailability,
+}: {
+  shopSlug: string;
+  employee: Employee;
+  appointments: Appointment[];
+  locked: boolean;
+  onAvailability: (availability: Employee["availability"]) => void;
+}) {
+  const confirmed = appointments.filter((item) => item.status === "confirmed").length;
+  const pending = appointments.filter((item) => item.status === "pending").length;
+  const completed = appointments.filter((item) => item.status === "completed").length;
+  return (
+    <section className="mt-10">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Profile</p>
+      <h2 className="mt-2 font-display text-3xl">{employee.displayName}</h2>
+      <p className="mt-1 text-sm text-muted">{employee.title}</p>
+      {employee.bio ? <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{employee.bio}</p> : null}
+      <dl className="mt-6 grid grid-cols-3 gap-3">
+        <Metric label="Waiting" value={pending} />
+        <Metric label="Confirmed" value={confirmed} />
+        <Metric label="Finished" value={completed} />
+      </dl>
+      <p className="mt-8 text-[11px] uppercase tracking-[0.2em] text-muted">Days on the book</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {WEEKDAYS.map(([key, label]) => {
+          const on = employee.availability[key as keyof Employee["availability"]];
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={on}
+              disabled={locked}
+              onClick={() => {
+                void setEmployeeAvailability({
+                  data: { slug: shopSlug, employeeId: employee.id, day: key, on: !on },
+                }).then((result) => onAvailability(result.availability));
+              }}
+              className={`glass-btn h-11 rounded-full px-4 text-sm ${on ? "text-fg" : "text-faint"}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="lift-card rounded-2xl bg-surface/80 p-4 backdrop-blur-md">
+      <dt className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</dt>
+      <dd className="mt-2 font-display text-3xl tabular">{value}</dd>
+    </div>
+  );
+}
+
+function ShopHours({ hours }: { hours: Shop["hours"] }) {
+  return (
+    <section className="mt-12 max-w-sm pb-16">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Open</p>
+      <h2 className="mt-2 font-display text-3xl">Shop hours</h2>
+      <ul className="mt-6 space-y-2 text-sm">
+        {WEEKDAYS.map(([key, label]) => (
+          <li key={key} className="flex justify-between">
+            <span className="text-muted">{label}</span>
+            <span className="tabular">{hours[key] ?? "closed"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
