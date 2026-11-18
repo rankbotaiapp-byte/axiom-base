@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { HeroLoopVideo } from "@/components/loop-video";
 
-/** Official HeyGen face-to-camera intro — plays before the niche cinematic loop. */
-export const FOUNDER_WELCOME_SRC = "/media/axiom-greeting.mp4";
-export const FOUNDER_WELCOME_SRC_FALLBACK = "/media/welcome-to-axiom.mp4";
-export const FOUNDER_WELCOME_SRC_FALLBACK_2 = "/media/welcome-to-axiom.mp4.mp4";
-export const FOUNDER_WELCOME_POSTER = "/media/axiom-greeting-poster.jpg";
+/** Face-to-camera intro — plays before the niche cinematic loop. */
+export const FOUNDER_WELCOME_SRC = "/media/welcome-to-axiom.mp4";
+export const FOUNDER_WELCOME_SRC_FALLBACK = "/media/axiom-greeting.mp4";
+export const FOUNDER_WELCOME_SRC_FALLBACK_2 = "/media/welcome-to-axiom.mp4";
+export const FOUNDER_WELCOME_POSTER = "/media/eric.jpg";
 export const FOUNDER_WELCOME_POSTER_FALLBACK = "/media/eric.jpg";
 
 const SRC_CHAIN = [
@@ -81,7 +81,7 @@ export function FounderWelcomeStage({
         <div className="founder-stage-copy">
           <p className="founder-stage-kicker">A note from Eric</p>
           <p className="founder-stage-line">
-            {owner}, this briefing is already locked on {target}. Bookings stay on after hours.
+            {owner}, this page is locked on {target}. $1 trial · 24/7 AI booking · $150/mo autopilot after day 14.
           </p>
           <a className="founder-stage-next" href="#trade-stage">
             See your shop

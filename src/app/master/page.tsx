@@ -1,9 +1,5 @@
-import MasterDesk from '@/components/master-desk';
+import { MasterAdminDashboard } from "@/components/axiom/MasterAdminDashboard";
 
 export default function MasterPageRoute() {
-  return (
-    <main className="min-h-screen bg-[#050507] p-8">
-      <MasterDesk />
-    </main>
-  );
+  return <MasterAdminDashboard />;
 }

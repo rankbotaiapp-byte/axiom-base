@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { AxiomLogoMark } from "./AxiomLogoMark";
 import { RippleButton } from "./RippleButton";
 import { useFunnel } from "./FunnelProvider";
 
@@ -11,7 +12,15 @@ const LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
-export default function Nav({ headerSlot }: { headerSlot?: ReactNode }) {
+export default function Nav({
+  headerSlot,
+  links = LINKS,
+  ctaLabel = "Start for $1",
+}: {
+  headerSlot?: ReactNode;
+  links?: { href: string; label: string }[];
+  ctaLabel?: string;
+}) {
   const { startOnboarding } = useFunnel();
   const [scrolled, setScrolled] = useState(false);
 
@@ -29,14 +38,9 @@ export default function Nav({ headerSlot }: { headerSlot?: ReactNode }) {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <a href="#top" className="flex items-center gap-2.5 font-display text-lg font-bold tracking-[0.2em] text-white">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-ember to-copper text-sm text-ink shadow-[0_0_24px_-4px_rgb(224_138_60/0.8)]">
-            A
-          </span>
-          AXIOM
-        </a>
+        <AxiomLogoMark href="#top" />
         <ul className="hidden items-center gap-8 text-sm text-mist md:flex">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <li key={l.href}>
               <a href={l.href} className="transition-colors hover:text-white">
                 {l.label}
@@ -46,8 +50,8 @@ export default function Nav({ headerSlot }: { headerSlot?: ReactNode }) {
         </ul>
         <div className="flex items-center gap-3">
           {headerSlot}
-          <RippleButton variant="primary" className="!px-4 !py-2 text-sm" onClick={() => startOnboarding({ plan: "free-setup" })}>
-            Free Setup
+          <RippleButton variant="primary" className="!px-4 !py-2 text-sm" onClick={() => startOnboarding({ plan: "trial" })}>
+            {ctaLabel}
           </RippleButton>
         </div>
       </nav>

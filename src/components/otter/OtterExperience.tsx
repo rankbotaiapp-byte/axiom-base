@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Hand, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BuildYoursSectionCta } from "@/components/showcase/ShowcaseDemoChrome";
 import { OTTER_CONFIG } from "@/lib/otter/config";
 import { playDive, playPop } from "@/lib/otter/audio";
 import { ActionDock } from "./ActionDock";
@@ -20,7 +21,7 @@ const DIVE_SEQUENCE: ReadonlyArray<{ at: number; status: string | null }> = [
   { at: 3200, status: null },
 ];
 
-export function OtterExperience() {
+export function OtterExperience({ embedded = false }: { embedded?: boolean }) {
   const { brand, media, bookingUrl, vapi, telemetry, habitat, facts } = OTTER_CONFIG;
 
   const fxRef = useRef<WaterFXHandle>(null);
@@ -68,7 +69,7 @@ export function OtterExperience() {
 
   return (
     <main
-      className="fixed inset-0 h-[100dvh] w-full select-none overflow-hidden bg-[#030712] text-white"
+      className={`${embedded ? "absolute inset-0 h-full" : "fixed inset-0 h-[100dvh]"} w-full select-none overflow-hidden bg-[#030712] text-white`}
       style={{ touchAction: "none", WebkitTapHighlightColor: "transparent" }}
     >
       <VideoBackdrop src={media.video} poster={media.poster} />
@@ -132,6 +133,9 @@ export function OtterExperience() {
         <div className="mt-auto flex flex-col gap-2 sm:gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end lg:gap-6">
           <div className="order-1 lg:absolute lg:right-10 lg:top-1/2 lg:-translate-y-1/2">
             <ActionDock onDive={handleDive} onSpecs={openSpecs} bookingUrl={bookingUrl} diving={diving} />
+            <div data-fx-ignore className="pointer-events-auto mt-3 hidden lg:block">
+              <BuildYoursSectionCta slug="coastal-otter" />
+            </div>
           </div>
 
           <div className="order-2 lg:order-none lg:justify-self-start">

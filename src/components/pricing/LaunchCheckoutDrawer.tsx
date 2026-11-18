@@ -7,6 +7,7 @@ import { CheckCircle2, LoaderCircle, Lock, Mail, X } from "lucide-react";
 import { beginLaunchCheckout, confirmLaunchCheckout } from "@/lib/axiom/launch-checkout";
 import { rememberLandingPlan } from "@/lib/axiom/funnel";
 import { LAUNCH_PLAN_STORAGE_KEY, provisioningPath, type LaunchPlan } from "@/lib/axiom/launch-plans";
+import { TrialCheckoutDisclosure } from "@/components/legal-notice";
 import { ParticleBurst } from "./ParticleBurst";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +21,10 @@ const stripeCache = new Map<string, Promise<Stripe | null>>();
 function stripeFor(key: string) {
   let p = stripeCache.get(key);
   if (!p) {
-    p = loadStripe(key);
+    p = loadStripe(key) ?? Promise.resolve(null);
     stripeCache.set(key, p);
   }
-  return p;
+  return p!;
 }
 
 type Stage =
@@ -193,6 +194,7 @@ function StageBody({
   if (stage.kind === "ready") {
     return (
       <div className="checkout-embed overflow-hidden rounded-2xl">
+        {plan.mode === "subscription" ? <TrialCheckoutDisclosure /> : null}
         <EmbeddedCheckoutProvider
           key={stage.sessionId}
           stripe={stripeFor(stage.publishableKey)}
@@ -237,7 +239,7 @@ function StageBody({
         >
           Continue to setup · /start
         </a>
-        {import.meta.env.DEV ? (
+        {process.env.NODE_ENV !== "production" ? (
           <button
             type="button"
             onClick={onSimulate}

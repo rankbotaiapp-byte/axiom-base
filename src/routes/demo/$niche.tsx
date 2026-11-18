@@ -12,7 +12,7 @@ import { NICHES } from "@/lib/axiom/niches";
 import { outreachNicheHero } from "@/lib/axiom/outreach-niche-batch";
 import { isOutreachVisit } from "@/lib/axiom/outreach-visit";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
-import ShopAdminPage from "@/app/[shop-slug]/admin/page";
+import ShopAdminPage from "@/app/[shopSlug]/admin/page";
 import type { ShopNiche } from "@/lib/axiom/types";
 
 type DemoSearch = ReturnType<typeof parseFunnelSearch> & { id?: string };
@@ -46,7 +46,7 @@ function claimSearch(niche: ShopNiche) {
 function NicheDemo() {
   const loaded = Route.useLoaderData();
   if (loaded.desk === "admin") {
-    return <ShopAdminPage params={Promise.resolve({ "shop-slug": "demo" })} />;
+    return <ShopAdminPage params={Promise.resolve({ shopSlug: "demo" })} />;
   }
   return <NichePreview />;
 }

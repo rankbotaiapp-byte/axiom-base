@@ -1,5 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SUBSCRIPTION_NOTICE } from "@/lib/axiom/legal-notices";
+import {
+  TERMS_AUTOPILOT_LIABILITY_CLAUSE,
+  TERMS_PLATFORM_FEE_CLAUSE,
+  TERMS_RENEWAL_CLAUSE,
+} from "@/lib/axiom/legal-notices";
 
 export const Route = createFileRoute("/terms")({
   component: TermsPage,
@@ -8,12 +12,14 @@ export const Route = createFileRoute("/terms")({
 function TermsPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 py-16">
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">Axiom</p>
-      <h1 className="mt-2 font-display text-4xl">Terms</h1>
-      <p className="mt-4 text-sm leading-relaxed text-muted">{SUBSCRIPTION_NOTICE}</p>
-      <p className="mt-4 text-sm leading-relaxed text-muted">
-        Reply STOP to opt out of texts. Axiom supplies software and booking tools only. It is not a party to shop work.
-      </p>
+      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">Gear Guardian LLC</p>
+      <h1 className="mt-2 font-display text-4xl">Terms of Service</h1>
+      <h2 className="mt-8 text-lg">Automatic Renewal & Trial Terms</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_RENEWAL_CLAUSE}</p>
+      <h2 className="mt-8 text-lg">Platform Fees & Stripe Connect</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_PLATFORM_FEE_CLAUSE}</p>
+      <h2 className="mt-8 text-lg">Limitation of Liability for Autopilot</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_AUTOPILOT_LIABILITY_CLAUSE}</p>
       <Link to="/" className="mt-8 inline-flex h-11 items-center text-sm text-accent">
         Back
       </Link>

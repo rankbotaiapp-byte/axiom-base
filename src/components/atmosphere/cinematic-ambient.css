@@ -1,0 +1,116 @@
+.cinematic-ambient-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  opacity: 0.42;
+  contain: strict;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-ambient-layer {
+    display: none;
+  }
+}
+
+.cinematic-ambient--haze::before,
+.cinematic-ambient--haze::after {
+  content: "";
+  position: absolute;
+  width: 140%;
+  height: 55%;
+  left: -20%;
+  border-radius: 50%;
+  filter: blur(28px);
+  opacity: 0.55;
+  animation: cinematic-haze-drift 18s ease-in-out infinite alternate;
+}
+
+.cinematic-ambient--haze::before {
+  bottom: -5%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--brand-glow, #b8f8ff) 35%, transparent),
+    transparent
+  );
+}
+
+.cinematic-ambient--haze::after {
+  top: 20%;
+  animation-duration: 22s;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--brand-primary, #00f2fe) 22%, transparent),
+    transparent
+  );
+}
+
+@keyframes cinematic-haze-drift {
+  0% {
+    transform: translate3d(-3%, 0, 0);
+  }
+  100% {
+    transform: translate3d(4%, -2%, 0);
+  }
+}
+
+.cinematic-ambient--motes {
+  background-image: radial-gradient(
+      circle at 20% 80%,
+      color-mix(in srgb, var(--brand-glow, #fff) 55%, transparent) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 70% 40%,
+      color-mix(in srgb, var(--brand-glow, #fff) 45%, transparent) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 45% 65%,
+      color-mix(in srgb, var(--brand-primary, #00f2fe) 40%, transparent) 0 1px,
+      transparent 2px
+    );
+  background-size: 120px 120px, 160px 160px, 200px 200px;
+  animation: cinematic-motes-float 24s linear infinite;
+}
+
+@keyframes cinematic-motes-float {
+  0% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  100% {
+    background-position: 0 -120px, 40px -80px, -30px -160px;
+  }
+}
+
+.cinematic-ambient--embers span {
+  position: absolute;
+  bottom: -8%;
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--brand-secondary, #d4af37) 75%, #fff);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--brand-primary, #00f2fe) 45%, transparent);
+  animation: cinematic-ember-rise var(--ember-dur, 6s) linear infinite;
+  animation-delay: var(--ember-delay, 0s);
+  left: var(--ember-x, 50%);
+  opacity: 0;
+}
+
+@keyframes cinematic-ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--ember-dx, 8px), -110%, 0) scale(0.2);
+  }
+}

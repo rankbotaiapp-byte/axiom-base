@@ -1,4 +1,10 @@
 import { COMPANION_HAPTICS, type CompanionPulse } from "./companion-archetypes.ts";
+import {
+  companionVoiceBeginSpeech,
+  companionVoiceEndSpeech,
+  companionVoiceSpeechBoundary,
+  primeCompanionVoiceAudio,
+} from "./companion-voice-bus.ts";
 import { axiomTactile, tactileCueForPulse } from "./tactile-engine.ts";
 
 /** Browser speakerphone + radio resonance + haptic pulse. Safe no-ops off the client. */
@@ -64,11 +70,17 @@ export function companionSpeak(text: string): boolean {
   if (!line || typeof window === "undefined" || !("speechSynthesis" in window)) return false;
   try {
     window.speechSynthesis.cancel();
+    companionVoiceEndSpeech();
+    primeCompanionVoiceAudio();
     companionRadioBurst();
     const utterance = new SpeechSynthesisUtterance(line);
     utterance.rate = 0.96;
     utterance.pitch = 0.78;
     utterance.volume = 1;
+    utterance.onstart = () => companionVoiceBeginSpeech();
+    utterance.onboundary = (event) => companionVoiceSpeechBoundary(event.charIndex ?? 0);
+    utterance.onend = () => companionVoiceEndSpeech();
+    utterance.onerror = () => companionVoiceEndSpeech();
     const voices = window.speechSynthesis.getVoices();
     const radio = voices.find((voice) => /en[-_]US/i.test(voice.lang) && /male|david|mark|fred/i.test(voice.name))
       ?? voices.find((voice) => /en/i.test(voice.lang));
@@ -76,6 +88,7 @@ export function companionSpeak(text: string): boolean {
     window.speechSynthesis.speak(utterance);
     return true;
   } catch {
+    companionVoiceEndSpeech();
     return false;
   }
 }

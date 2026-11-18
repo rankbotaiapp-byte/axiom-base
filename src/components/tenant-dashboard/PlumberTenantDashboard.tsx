@@ -21,6 +21,7 @@ import {
   overlayFilmSrc,
   type TenantOverlay,
 } from "@/lib/axiom/tenant-overlay";
+import { AxiomStudioInterface } from "@/components/studio/AxiomStudioInterface";
 import { DispatchPhoneLock } from "./dispatch-phone-lock";
 import { TestLiveDispatchButton } from "./test-live-dispatch-button";
 import { useTenantOverlay } from "./use-tenant-overlay";
@@ -137,6 +138,15 @@ export function PlumberTenantDashboard({ slug, stripeReturn = false }: { slug: s
           <TestLiveDispatchButton slug={slug} compact />
         </div>
       </header>
+
+      <div className="mx-auto max-w-6xl px-4 pb-5 sm:px-6">
+        <AxiomStudioInterface
+          shopSlug={slug}
+          shopName={overlay.company}
+          serviceLine={overlay.county}
+          liveHref={`/t/${encodeURIComponent(slug)}?niche=plumbing${overlay.greetEnabled ? "&greet=1" : ""}`}
+        />
+      </div>
 
       <div className="mx-auto grid max-w-6xl gap-5 px-4 pb-16 sm:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="grid gap-5">

@@ -492,25 +492,9 @@ export function localStorefront(shopSlug: string): ClientStorefront | null {
   };
 }
 
-function envValue(name: string): string {
-  const meta = import.meta as { env?: Record<string, string | undefined> };
-  const fromVite = meta.env?.[name]?.trim();
-  if (fromVite) return fromVite;
-  if (typeof process === "undefined" || !process.env) return "";
-  const bag = process.env as Record<string, string | undefined>;
-  return bag[name]?.trim() ?? "";
-}
-
 function supabaseEnv(): { url: string; key: string } {
-  const url = (
-    envValue("VITE_SUPABASE_URL") ||
-    envValue("NEXT_PUBLIC_SUPABASE_URL") ||
-    envValue("SUPABASE_URL")
-  ).replace(/\/$/, "");
-  const key =
-    envValue("VITE_SUPABASE_ANON_KEY") ||
-    envValue("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
-    envValue("SUPABASE_ANON_KEY");
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim().replace(/\/$/, "");
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
   return { url, key };
 }
 

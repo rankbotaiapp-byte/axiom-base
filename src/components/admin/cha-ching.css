@@ -1,0 +1,63 @@
+.cha-ching-metric-card {
+  position: relative;
+  border-radius: 14px;
+  background: color-mix(in srgb, #050507 90%, rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary, #00f2fe) 16%, transparent);
+}
+
+.cha-ching-metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-primary, #00f2fe) 55%, transparent), transparent 70%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.cha-ching-metric-card--glow {
+  animation: cha-ching-pulse 1.2s ease-out;
+}
+
+@keyframes cha-ching-pulse {
+  0% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--brand-secondary, #d4af37) 40%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--brand-secondary, #d4af37) 45%, transparent);
+  }
+  45% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--brand-secondary, #d4af37) 55%, transparent),
+      0 0 32px color-mix(in srgb, var(--brand-secondary, #d4af37) 35%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary, #00f2fe) 16%, transparent);
+  }
+}
+
+.cha-ching-live-dot {
+  animation: cha-ching-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes cha-ching-dot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 10px #34d399;
+  }
+  50% {
+    opacity: 0.75;
+    box-shadow: 0 0 18px #34d399;
+  }
+}
+
+.cha-ching-ticker {
+  font-variant-numeric: tabular-nums;
+}

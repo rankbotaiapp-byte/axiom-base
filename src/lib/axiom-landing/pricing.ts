@@ -1,37 +1,63 @@
-// Single source of truth for pricing copy. Change numbers here — every section updates.
-// Keep claims honest: only set FOUNDING_SPOTS if it's a real cap you'll enforce.
+/**
+ * Commercial pricing copy for the public landing.
+ * Amounts must stay aligned with `src/lib/stripe/commercial.ts`.
+ */
+
+import {
+  FOUNDER_LIFETIME_CENTS,
+  NAME_YOUR_PRICE_MIN_CENTS,
+  STANDARD_MONTHLY_CENTS,
+} from "@/lib/stripe/commercial";
 
 export const PRICING = {
-  lifetime: {
-    name: "Lifetime Back Office",
-    price: 997,
-    compareAt: 2388, // 12 months of a typical ~$199/mo booking + CRM stack
-    blurb: "Stop renting Jobber-class software. One payment owns booking, dispatch, and your admin for life.",
+  trial: {
+    id: "trial" as const,
+    name: "14-Day Trial",
+    floorDollars: NAME_YOUR_PRICE_MIN_CENTS / 100,
+    renewalDollars: STANDARD_MONTHLY_CENTS / 100,
+    blurb:
+      "$1 today for 14 days, then $150/month. Cancel in one click from Admin Billing before the trial ends and it does not renew.",
     features: [
-      "Your trade template, live the same day",
-      "Online booking + after-hours capture",
-      "Job routing and a live dispatch board",
-      "You edit everything — no developer on retainer",
-      "Phone app for you and the crew (installs to the home screen)",
-      "Reminders and review asks after the job",
-      "Lifetime template updates — still $0/mo",
+      "3-minute niche setup with regional leads and a cinematic 3D hero",
+      "Mobile Field Payment Logger — cash, checks, tap-to-pay, SMS pay links",
+      "1.5% Stripe Connect split on online bookings",
+      "0% platform fee on cash and checks logged in the field",
+      "One-click cancel in Axiom Admin Billing",
+    ],
+  },
+  lifetime: {
+    id: "lifetime" as const,
+    name: "Founder's Lifetime",
+    price: FOUNDER_LIFETIME_CENTS / 100,
+    blurb: "One payment. Permanent storefront access. Zero monthly SaaS fees.",
+    features: [
+      "Everything in the 14-day trial",
+      "Lifetime platform access — no $150/mo renewal",
+      "Priority template updates as trades expand",
+      "Founder desk support for go-live",
+      "Stripe Connect included",
     ],
   },
   monthly: {
-    name: "Starter Monthly",
-    price: 79,
-    blurb: "Test the desk for a month. Cancel any time — or buy lifetime when the first Saturday books itself.",
-    features: ["Your trade template", "Online booking", "Admin dashboard", "Email support"],
+    name: "14-day trial, then monthly",
+    price: STANDARD_MONTHLY_CENTS / 100,
+    blurb: `After 14 days, the subscription is $${STANDARD_MONTHLY_CENTS / 100}/mo until you cancel.`,
+    features: [
+      "Cinematic trade storefront + 24/7 booking engine",
+      "SMS routing and after-hours lead capture",
+      "Customer admin dashboard — edit services, hours, branding",
+      "Stripe Connect for deposits and invoices",
+    ],
   },
-  /** Cinematic builds from the showcase — rebranded to the buyer's business. */
   cinematic: {
     name: "Cinematic Build",
-    price: 1997,
-    blurb: "The exact demo you just played, stamped with your name, phone, and logo — plus Lifetime Back Office. No monthly rent. No agency rebuild.",
+    price: FOUNDER_LIFETIME_CENTS / 100,
+    blurb:
+      "The exact demo you played, stamped with your name, phone, and logo — Founder's Lifetime included.",
     includes: [
       "This exact site, rebranded to you",
-      "Lifetime Back Office included",
-      "Book, call, directions, and quote already wired",
+      "Founder's Lifetime included",
+      "Book, call, and quote already wired",
       "Yours forever — no monthly software fees",
     ],
   },
@@ -41,14 +67,14 @@ export const PRICING = {
     agencySiteHigh: 15000,
     oneMissedJob: 400,
   },
-  /** Set to a number to show "X founding spots left" — only if the cap is real. null hides it. */
   FOUNDING_SPOTS: null as number | null,
-  guarantee: "14-day money-back. If it does not save you an evening in the office, every dollar comes back. No call-center runaround.",
+  guarantee:
+    "Cancel in one click from Admin Billing before the 14 days end and the $150/month renewal does not start.",
   trust: [
-    { id: "guarantee", label: "14-day money-back" },
-    { id: "own", label: "You own the site and the data" },
-    { id: "stripe", label: "Checkout on Stripe" },
-    { id: "live", label: "Live the same day you pay" },
+    { id: "guarantee", label: "One-click cancel before day 14" },
+    { id: "own", label: "0% on cash and checks" },
+    { id: "stripe", label: "1.5% Stripe Connect on card bookings" },
+    { id: "live", label: "3-minute niche setup" },
   ],
 };
 
@@ -56,6 +82,6 @@ export const fmt = (n: number) => `$${n.toLocaleString("en-US")}`;
 
 export const buildPrice = (override?: number) => override ?? PRICING.cinematic.price;
 
-export function monthsOfStack(price = PRICING.cinematic.price) {
+export function monthsOfStack(price = PRICING.lifetime.price) {
   return Math.max(1, Math.round(price / PRICING.roi.typicalMonthlyStack));
 }

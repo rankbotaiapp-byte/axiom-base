@@ -1,22 +1,22 @@
 const STEPS = [
   {
     n: "01",
-    title: "Pick your trade",
-    body: "Choose a pre-built template made for plumbers, electricians, HVAC, barbers, mobile techs and more. Services, pricing and job flow are already set up.",
+    title: "3-minute niche setup",
+    body: "Pick the trade. Axiom loads preloaded regional leads and a cinematic 3D hero preview, so the storefront already looks like the shop instead of a blank template.",
   },
   {
     n: "02",
-    title: "Make it yours in minutes",
-    body: "Your admin dashboard lets you change your logo, colors, services, prices, hours and crew — from your phone. No developer, no waiting.",
+    title: "Make it yours from the truck",
+    body: "Change the logo, services, prices, hours, and crew from the phone. The same desk takes online bookings and the cash or check you collect on site.",
   },
   {
     n: "03",
     title: "Let the back office run",
-    body: "Customers book 24/7. Axiom routes jobs by area, texts your tech the details, sends reminders, and asks for the review when the job's done.",
+    body: "Customers book 24/7. Axiom routes the job, texts the tech, and keeps the field payment — card, tap, cash, or check — on the same ticket.",
   },
 ];
 
-const AUTOMATED = ["Online booking", "AI receptionist", "Job routing", "Dispatch board", "Text reminders", "Review requests", "Customer records", "Installable phone app"];
+const AUTOMATED = ["Online booking", "Regional lead preload", "Cinematic 3D hero", "Field cash & checks", "Tap-to-pay", "SMS pay links", "Dispatch board", "One-click cancel"];
 
 export default function HowItWorks() {
   return (
@@ -44,6 +44,15 @@ export default function HowItWorks() {
             </div>
           ))}
         </div>
+
+        <aside className="mt-8 rounded-2xl border border-copper/40 bg-copper/10 p-7 sm:p-8">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-copper">On the job site</p>
+          <h3 className="mt-2 font-display text-2xl font-semibold text-white">Mobile Field Payment Logger</h3>
+          <p className="mt-3 max-w-3xl leading-relaxed text-mist">
+            From the truck, log cash, a check, mobile tap-to-pay, or fire an SMS pay link before you pull out of the driveway.
+            Cash and checks carry 0% platform fees. Card and pay-link bookings stay on Stripe Connect at 1.5%.
+          </p>
+        </aside>
       </div>
     </section>
   );

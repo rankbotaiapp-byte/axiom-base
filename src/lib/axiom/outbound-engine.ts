@@ -1,4 +1,5 @@
 import { MASTER_FUNNELS, masterFunnel, type MasterFunnelId } from "./funnel.ts";
+import type { OutreachPitchAngleId } from "./outreach-pitch-angles";
 
 export const DEFAULT_SMS_DAILY_CAP = 40;
 export const DEFAULT_EMAIL_DAILY_CAP = 80;
@@ -214,6 +215,7 @@ export type OutboundEngineState = {
   smsTemplate: string;
   emailSubject: string;
   emailBody: string;
+  pitchAngleId: OutreachPitchAngleId;
   /** Catalog niche currently being trickled (empty = pick next in sequence). */
   activeNiche: string;
   /** When false, cron ticks hold — only manual Dispatch releases today's batch. */
@@ -289,6 +291,7 @@ export function defaultEngineState(): OutboundEngineState {
     smsTemplate: funnel.text,
     emailSubject: funnel.emailSubject,
     emailBody: funnel.emailBody,
+    pitchAngleId: "founder_video",
     activeNiche: "plumbing",
     cronEnabled: true,
     scheduleStartedOn: "",

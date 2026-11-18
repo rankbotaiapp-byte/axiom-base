@@ -1,6 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { Pool, types as pgTypes } from "pg";
 import { isDatabaseUnavailable } from "../../scripts/db-availability.mjs";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
@@ -223,27 +222,6 @@ function toSql(run: Run): Sql {
   return sql;
 }
 
-function migrationSources(): Record<string, string> {
-  try {
-    return import.meta.glob("/migrations/*.sql", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
-  } catch (err) {
-    // Vite replaces the glob call. A plain Node script, such as the California
-    // seed, reads the same files from disk.
-    if (!(err instanceof TypeError)) throw err;
-    const dir = join(dirname(fileURLToPath(import.meta.url)), "../../migrations");
-    const sources: Record<string, string> = {};
-    for (const name of readdirSync(dir)) {
-      if (!name.endsWith(".sql")) continue;
-      sources[`/migrations/${name}`] = readFileSync(join(dir, name), "utf8");
-    }
-    return sources;
-  }
-}
-
 /**
  * Apply pending `migrations/*.sql` to the Postgres named by `DATABASE_URL`.
  * The build step also runs this. Boot runs it again so a long-lived server
@@ -292,7 +270,10 @@ async function migratePostgresConnected(): Promise<void> {
       try {
         await client.query("BEGIN");
         await client.query(migrations[path]);
-        await client.query("insert into _migrations (name) values ($1)", [name]);
+        await client.query(
+          "insert into _migrations (name) values ($1) on conflict (name) do nothing",
+          [name],
+        );
         await client.query("COMMIT");
         console.info(`[db] applied ${name}`);
       } catch (err) {
@@ -440,14 +421,14 @@ async function createPgliteSql(): Promise<Sql> {
   const pg = await globalRef.__pgliteInstance__;
 
   // Apply migrations/ (the single schema source, including open trades) so preview matches production.
-  // SQL is inlined by the bundler via import.meta.glob (no runtime fs); applied
-  // files are tracked in _migrations. The glob does not descend, so the opt-in
+  // SQL is read from disk next to the process (process.cwd()/migrations), the
+  // same files hosted Postgres applies. readdir does not descend, so the opt-in
   // auth schema under migrations/auth/ stays out. Runs once per module instance
   // — so an HMR reload after adding a migration file applies it live — with
   // passes serialized on a global chain so concurrent callers never
   // double-apply.
   const migrate = async (): Promise<void> => {
-    const migrations = migrationSources();
+    const migrations = diskMigrationSources();
     const doneRows = await pg.query<{ name: string }>(
       "select name from _migrations",
     );
@@ -457,7 +438,10 @@ async function createPgliteSql(): Promise<Sql> {
       // statement can't leave a file half-applied but untracked.
       await pg.transaction(async (tx) => {
         await tx.exec(migrations[path]);
-        await tx.query("insert into _migrations (name) values ($1)", [name]);
+        await tx.query(
+          "insert into _migrations (name) values ($1) on conflict (name) do nothing",
+          [name],
+        );
       });
     }
   };

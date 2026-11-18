@@ -35,7 +35,14 @@ export function getCookie(name: string): string | undefined {
 export function setCookie(
   name: string,
   value: string,
-  opts?: { path?: string; maxAge?: number; httpOnly?: boolean; sameSite?: string; secure?: boolean },
+  opts?: {
+    path?: string;
+    maxAge?: number;
+    httpOnly?: boolean;
+    sameSite?: string;
+    secure?: boolean;
+    domain?: string;
+  },
 ) {
   try {
     const bag = cookies() as unknown as {
@@ -47,6 +54,7 @@ export function setCookie(
       httpOnly: opts?.httpOnly ?? true,
       sameSite: opts?.sameSite ?? "lax",
       secure: opts?.secure,
+      domain: opts?.domain,
     });
   } catch {
     /* cookie mutation unavailable outside a Server Action / Route Handler */

@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useRef } from "react";
-import { useRouterState } from "@tanstack/react-router";
+import { usePathname } from "next/navigation";
 import { mixRgb, paletteFromFrame, type Rgb } from "@/lib/axiom/film-palette";
 
 const VERT = `#version 300 es
@@ -156,7 +158,7 @@ function skipFluidForPath(pathname: string) {
 }
 
 export function FluidField() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = usePathname() ?? "";
   if (skipFluidForPath(pathname)) return null;
   return <FluidFieldRuntime />;
 }
@@ -460,7 +462,7 @@ function FluidFieldRuntime() {
     <canvas
       ref={ref}
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-0 h-dvh w-full"
+      className="pointer-events-none fixed inset-0 z-0 h-dvh w-full opacity-45"
     />
   );
 }

@@ -8,6 +8,7 @@ import {
   outreachNicheLabel,
 } from "./outreach-niche-batch.ts";
 import { renderOutreachMessage } from "./funnel.ts";
+import { founderMediaUrls } from "./founder-welcome";
 
 export const PLUMBING_EMERGENCY_HERO = "/media/axio-plumber-hero.mp4";
 export const PLUMBING_EMERGENCY_HERO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
@@ -22,10 +23,10 @@ export type OutreachTemplateDraft = {
 /** Done-for-you + missed-call copy for the Emergency Plumbing batch (20,330 leads). */
 export const PLUMBING_OUTREACH_TEMPLATES: OutreachTemplateDraft = {
   text:
-    "{owner} — emergency calls to {business} go quiet while you're on a job. Your 24/7 plumbing page in {city} opens with Eric's face-to-camera greeting, then your shop loop.\nPreview: {url}\nShop loop: {video}",
-  emailSubject: "{owner}, {business} — your emergency plumbing page is live",
+    "{owner} — missed calls cost {business} jobs while you're on a callout. $1 trial · 24/7 AI booking · $150/mo autopilot.\nEric's welcome: {founder_video}\nYour {city} page: {url}",
+  emailSubject: "{owner} — {business} · $1 trial, AI books 24/7",
   emailBody:
-    "Hi {owner},\n\nWhile {business} is on a callout, after-hours leak and drain jobs in {county} still ring — and walk if nobody texts back.\n\nYour Emergency Plumbing storefront is pre-built. Open the link and Eric greets you face-to-camera first, then your niche cinematic and live missed-call recovery:\n{url}\n\nShop loop after the greeting:\n{video}\nPoster: {video_thumb}\n\nClaim the page and keep the next emergency booking on your desk.",
+    "Hi {owner},\n\nAfter-hours leak and drain jobs in {county} still ring — and walk if nobody texts back.\n\n$1 trial. Instant AI booking on your page. Autopilot follows up until day 14, then $150/mo.\n\nOpen your preview — Eric's welcome film first, then your trade loop and live booker:\n{url}\n\nWelcome: {founder_video}\nPoster: {founder_poster}\nShop loop: {video}\n\nClaim it before the next emergency walks.",
 };
 
 export function outreachTemplatesForNiche(niche: string): OutreachTemplateDraft {
@@ -34,10 +35,11 @@ export function outreachTemplatesForNiche(niche: string): OutreachTemplateDraft 
     return PLUMBING_OUTREACH_TEMPLATES;
   }
   return {
-    text: "{owner} — {business} has a booking page ready.\nPreview: {url}\n{video}",
-    emailSubject: "{owner}, the {business} page is ready",
+    text:
+      "{owner} — {business} · $1 trial, AI books 24/7, $150/mo autopilot.\nEric: {founder_video}\nPreview: {url}",
+    emailSubject: "{owner} — {business} is live to book jobs",
     emailBody:
-      "Hi {owner},\n\n{business} has a storefront ready for {city} / {county}.\n\nPreview:\n{url}\n\nFilm:\n{video}\n",
+      "Hi {owner},\n\n{business} in {city} has a pre-built storefront with 24/7 AI booking and SMS dispatch.\n\n$1 trial · then $150/mo autopilot.\n\n{url}\n\nEric welcome: {founder_video}\nTrade film: {video}\n",
   };
 }
 
@@ -58,6 +60,8 @@ export function plumbingCampaignTokens(input: {
   url: string;
   video: string;
   video_thumb: string;
+  founder_video: string;
+  founder_poster: string;
   heroPath: string;
 } {
   const niche = "plumbing";
@@ -75,6 +79,7 @@ export function plumbingCampaignTokens(input: {
   });
   const url = `${origin}${demoPath}`;
   const video = heroPath.startsWith("http") ? heroPath : `${origin}${heroPath}`;
+  const founder = founderMediaUrls(origin);
   return {
     business: input.businessName,
     owner: input.owner || input.businessName,
@@ -84,6 +89,8 @@ export function plumbingCampaignTokens(input: {
     url,
     video,
     video_thumb: `${origin}${PLUMBING_EMERGENCY_POSTER}`,
+    founder_video: founder.founder_video,
+    founder_poster: founder.founder_poster,
     heroPath,
   };
 }

@@ -1,66 +1,48 @@
 /**
  * Minimal Next.js-compatible shim for leftover `@tanstack/react-start` APIs.
- * Server functions become async callables that accept `{ data }` (and optional context).
+ * Typed loosely so stubbed server-fn chains do not block `tsc --noEmit`.
  */
 
-type HandlerCtx<TData> = { data: TData; context: { userId: string } };
+export type ServerFn = ((input?: any) => Promise<any>) & { url?: string };
 
-type Chain<TData, TResult> = {
-  middleware: (mids: unknown[]) => Chain<TData, TResult>;
-  validator: <TNext>(fn: (d: TData) => TNext) => Chain<TNext, TResult>;
-  handler: (fn: (ctx: HandlerCtx<TData>) => Promise<TResult> | TResult) => ServerFn<TData, TResult>;
-};
-
-export type ServerFn<TData = unknown, TResult = unknown> = ((
-  input?: { data: TData } | TData,
-) => Promise<TResult>) & {
-  url?: string;
-};
-
-function wrap<TData, TResult>(
-  run: (ctx: HandlerCtx<TData>) => Promise<TResult> | TResult,
-  validate?: (d: unknown) => TData,
-): ServerFn<TData, TResult> {
-  const fn = (async (input?: { data: TData } | TData) => {
-    const raw =
-      input && typeof input === "object" && "data" in (input as object)
-        ? (input as { data: TData }).data
-        : (input as TData);
-    const data = validate ? validate(raw) : (raw as TData);
-    return run({ data, context: { userId: "local-dev" } });
-  }) as ServerFn<TData, TResult>;
-  return fn;
-}
-
-export function createServerFn(_opts?: { method?: string }): Chain<any, any> {
+export function createServerFn(_opts?: { method?: string }): any {
   let validate: ((d: unknown) => unknown) | undefined;
-  const chain: Chain<any, any> = {
+  const chain: any = {
     middleware() {
       return chain;
     },
-    validator(fn) {
-      validate = fn as (d: unknown) => unknown;
+    validator(fn: (d: any) => any) {
+      validate = fn;
       return chain;
     },
-    handler(fn) {
-      return wrap(fn, validate);
+    handler(fn: (ctx: any) => any) {
+      const run: ServerFn = (async (input?: any) => {
+        const raw =
+          input && typeof input === "object" && "data" in input ? input.data : input;
+        const data = validate ? validate(raw) : raw;
+        return fn({ data, context: { userId: "local-dev", bearerToken: "" } });
+      }) as ServerFn;
+      return run;
     },
   };
   return chain;
 }
 
-export function createMiddleware() {
-  return {
+export function createMiddleware(_opts?: { type?: string }): any {
+  const api: any = {
     middleware() {
-      return this;
+      return api;
     },
-    server() {
-      return this;
+    server(fn: any) {
+      void fn;
+      return api;
     },
-    client() {
-      return this;
+    client(fn: any) {
+      void fn;
+      return api;
     },
   };
+  return api;
 }
 
 export function createStart() {

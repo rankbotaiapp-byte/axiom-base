@@ -57,15 +57,18 @@ export type VerifiedUser = { id: string; email: string | null };
  */
 export async function getSessionUser(
   bearerToken?: string,
+  sourceHeaders?: Headers,
 ): Promise<VerifiedUser | null> {
   if (!authConfigured && !gateIdentityEnabled()) return null;
-  const request = getRequest();
-  if (!request) return null;
-  let headers = request.headers;
-  if (bearerToken) {
+  let headers: Headers;
+  if (sourceHeaders) {
+    headers = new Headers(sourceHeaders);
+  } else {
+    const request = getRequest();
+    if (!request) return null;
     headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${bearerToken}`);
   }
+  if (bearerToken) headers.set("Authorization", `Bearer ${bearerToken}`);
   try {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return null;

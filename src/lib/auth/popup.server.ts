@@ -62,7 +62,11 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
   // Stay first-party for the callback so the session cookie lands in THIS popup.
   const back = `${url.origin}/auth/popup?done=1`;
   try {
-    const apiRes = await auth.api.signInWithOAuth2({
+    const signInWithOAuth2 = (auth.api as { signInWithOAuth2?: Function }).signInWithOAuth2;
+    if (!signInWithOAuth2) {
+      return new Response("OAuth2 unavailable", { status: 501, headers: { "content-type": "text/plain" } });
+    }
+    const apiRes = await signInWithOAuth2({
       body: {
         providerId,
         callbackURL: back,

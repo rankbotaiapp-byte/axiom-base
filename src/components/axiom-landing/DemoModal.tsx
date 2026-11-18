@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Check, ChevronRight, X } from "lucide-react";
 import { getTemplate, type NicheTemplate } from "@/lib/axiom-landing/templates";
 import { useFunnel } from "./FunnelProvider";
@@ -97,6 +98,20 @@ export default function DemoModal() {
               Swap in your logo, colors, services and prices from the admin dashboard — your customers see your brand,
               not ours.
             </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Link
+                href={t.demoPath}
+                className="inline-flex h-11 items-center justify-center border border-white/15 px-4 text-sm font-semibold text-white transition hover:border-volt hover:text-volt"
+              >
+                Open niche demo
+              </Link>
+              <Link
+                href={`/${t.sampleSlug}`}
+                className="inline-flex h-11 items-center justify-center bg-volt px-4 text-sm font-semibold text-ink transition hover:brightness-110"
+              >
+                Launch /{t.sampleSlug}
+              </Link>
+            </div>
           </div>
 
           {/* right: phone */}

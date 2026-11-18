@@ -7,20 +7,20 @@ import { useFunnel } from "./FunnelProvider";
 
 const FAQ = [
   {
-    q: "Is it really a one-time payment?",
-    a: "Yes. Lifetime and cinematic builds are a single payment. You are not renting the desk. Carrier texts, if you turn them on, are billed at cost — we do not mark them up as a software fee.",
+    q: "What does the $1 trial turn into?",
+    a: "$1 today starts 14 days. If you do not cancel, it renews at $150/month until you stop it. One click in Admin Billing cancels the renewal. Founder's Lifetime is still a single $1,500 payment with no monthly fee.",
   },
   {
     q: "How does this compare to Jobber / Housecall / an agency site?",
-    a: "Those tools rent you a calendar every month. An agency site is usually $6k–$15k and still cannot dispatch your crew. Axiom is the site plus the back office, paid once. If it does not save you an evening in 14 days, you get the money back.",
+    a: "Those tools rent a calendar and still leave cash and checks off the ticket. An agency site is usually $6k–$15k and cannot log a payment from the truck. Axiom is the storefront plus the field desk: 1.5% on Stripe Connect bookings, 0% on cash and checks you log yourself.",
   },
   {
     q: "How fast can I be live?",
-    a: "Templates are already built. Cinematic demos rebrand at checkout with your name, phone, and logo. You can send a booking link the same day.",
+    a: "About three minutes. Pick the niche, and Axiom loads regional lead data plus a cinematic 3D hero preview. You can send a booking link the same day.",
   },
   {
-    q: "What if it looks like a toy / I hate it on my truck wrap?",
-    a: "Play the live demo first. You are buying that exact site, not a surprise mock. 14-day money-back, no argument.",
+    q: "What if I do not want it after the trial?",
+    a: "Cancel in one click from Admin Billing before the 14 days end. The $150/month renewal does not start. Refunds follow the terms: only where the law requires one.",
   },
   {
     q: "Do I need to be techy?",
@@ -75,11 +75,11 @@ export function FinalCta() {
           One missed Saturday call often pays for Axiom. After that, the desk keeps booking while you are on the job.
         </p>
         <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-          <RippleButton variant="primary" className="text-base" onClick={() => startOnboarding({ plan: "free-setup", templateId: selectedTemplateId })}>
-            Start Your Free Setup <ArrowRight className="ml-1 inline-block h-4 w-4" aria-hidden />
+          <RippleButton variant="primary" className="text-base" onClick={() => startOnboarding({ plan: "trial", templateId: selectedTemplateId })}>
+            Start the $1 · 14-day trial <ArrowRight className="ml-1 inline-block h-4 w-4" aria-hidden />
           </RippleButton>
           <RippleButton variant="ghost" className="text-base" onClick={() => startOnboarding({ plan: "lifetime", templateId: selectedTemplateId })}>
-            Pay Once — Own It Forever
+            Founder&apos;s Lifetime — $1,500
           </RippleButton>
         </div>
       </div>

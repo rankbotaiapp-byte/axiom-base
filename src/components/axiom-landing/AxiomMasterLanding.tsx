@@ -5,6 +5,7 @@ import Nav from "./Nav";
 import Hero from "./Hero";
 import HowItWorks from "./HowItWorks";
 import ProofOfWork from "./ProofOfWork";
+import TenantSlugLauncher from "./TenantSlugLauncher";
 import Pricing from "./Pricing";
 import { Faq, FinalCta, Footer } from "./FaqAndCta";
 import DemoModal from "./DemoModal";
@@ -51,6 +52,7 @@ export function AxiomMasterLanding({
           <Hero />
           <HowItWorks />
           <ProofOfWork readyIds={readyIds} showPending={showPending} />
+          <TenantSlugLauncher />
           <Pricing />
           <Faq />
           <FinalCta />

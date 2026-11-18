@@ -39,7 +39,12 @@ export const authClient = createAuthClient({
  * with the key removed, sign-in is real in preview (baked preview client) and
  * when deployed (injected per-app client).
  */
-export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
+function readViteAuthEnabled(): string | undefined {
+  if (typeof process === "undefined") return undefined;
+  return process.env.VITE_AUTH_ENABLED ?? process.env.NEXT_PUBLIC_VITE_AUTH_ENABLED;
+}
+
+export const authEnabled = readViteAuthEnabled() !== "false";
 
 /** The upstream providers to render sign-in buttons for. */
 export { GROK_PROVIDERS };
@@ -147,7 +152,9 @@ export async function signIn(
     return;
   }
 
-  const { data, error } = await authClient.signIn.oauth2({
+  const oauth2 = (authClient.signIn as { oauth2?: Function }).oauth2;
+  if (!oauth2) throw new Error("OAuth2 sign-in is unavailable in this build");
+  const { data, error } = await oauth2({
     providerId,
     callbackURL,
     errorCallbackURL,

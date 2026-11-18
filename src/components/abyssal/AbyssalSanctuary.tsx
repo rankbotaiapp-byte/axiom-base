@@ -1,5 +1,7 @@
+"use client";
 // @ts-nocheck
 import { useEffect, useRef } from "react";
+import { BuildYoursSectionCta } from "@/components/showcase/ShowcaseDemoChrome";
 import { mountAbyssal } from "./abyssalScene";
 import "./abyssal.css";
 
@@ -114,6 +116,7 @@ export function AbyssalSanctuary() {
               <span className="tag">01</span> Encounters
             </p>
             <h2 id="enc-h">Three dives. Three temperaments.</h2>
+            <BuildYoursSectionCta slug="abyssal-ocean" className="mt-4" />
           </div>
           <div className="cards">
             <article className="card panel" data-ui>
@@ -238,6 +241,11 @@ export function AbyssalSanctuary() {
                 <span className="tag">03</span> Reserve
               </p>
               <h2 id="book-h">Pick a dive and a day.</h2>
+              <BuildYoursSectionCta
+                slug="abyssal-ocean"
+                label="Build Yours Today — Use This Booking Calendar"
+                className="mt-4"
+              />
             </div>
             <div className="fields">
               <label htmlFor="f-dive">

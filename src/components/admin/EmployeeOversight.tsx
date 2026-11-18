@@ -29,7 +29,7 @@ export function EmployeeOversight({
     void load();
   }, [shop.slug]);
 
-  async function act(id: string, patch: Parameters<typeof moderatePortfolioItem>[0]["data"]) {
+  async function act(id: string, patch: Record<string, unknown>) {
     if (readonly) return;
     setBusy(true);
     setNote("");

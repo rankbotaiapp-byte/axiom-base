@@ -80,8 +80,31 @@ export const setShopIntro = stubFn();
 export const inviteEmployee = stubFn();
 export const updateEmployee = stubFn();
 export const removeEmployee = stubFn();
-export const beginStripeConnect = stubFn({ url: "/admin" });
-export const refreshStripeConnect = stubFn({ ok: true });
+/**
+ * Legacy desk callers land on billing (StripeConnectDashboard → /api/stripe/connect).
+ * Keep this free of payments.server so client admin bundles stay SSR-safe.
+ */
+export const beginStripeConnect = createServerFn({ method: "POST" })
+  .validator((input: string | { data?: string; slug?: string }) => {
+    if (typeof input === "string") return input.trim();
+    const nested = input && typeof input === "object" ? input : {};
+    return String(nested.data ?? nested.slug ?? "").trim();
+  })
+  .handler(async ({ data: slug }) => {
+    if (!slug) throw new Error("Missing shop slug");
+    return { url: `/${encodeURIComponent(slug)}/admin/billing?stripe=connect` };
+  });
+
+export const refreshStripeConnect = createServerFn({ method: "POST" })
+  .validator((input: string | { data?: string; slug?: string }) => {
+    if (typeof input === "string") return input.trim();
+    const nested = input && typeof input === "object" ? input : {};
+    return String(nested.data ?? nested.slug ?? "").trim();
+  })
+  .handler(async ({ data: slug }) => {
+    if (!slug) throw new Error("Missing shop slug");
+    return { ok: true as const, shopSlug: slug };
+  });
 export const generateBrandedAsset = stubFn({ url: "/media/hero-poster.jpg" });
 export const lockTenantBrand = stubFn();
 export const orchestrateFinalWebBuild = stubFn({ ok: true });
@@ -114,5 +137,11 @@ export const saveRenderWallet = stubFn();
 export const startAiCreditPack = stubFn({ url: "/" });
 export const startRenderCardSetup = stubFn({ url: "/" });
 export const getAuditStatus = stubGet({ status: "idle" });
+export const enhanceHeroStill = stubFn({ url: "/media/hero-poster.jpg" });
+export const finishCinematicHero = stubFn({ ok: true, url: "" });
+export const saveBrandDna = stubFn({ ok: true });
+export const startCinematicHero = stubFn({ jobId: "sim_job" });
+export const saveShopServices = stubFn({ ok: true });
+export const updateShopProfile = stubFn({ ok: true });
 
 export default getAxiomServerStatus;

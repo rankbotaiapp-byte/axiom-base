@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { BuildYoursSectionCta } from "@/components/showcase/ShowcaseDemoChrome";
 import { UPGRADE_PACKAGES, type UpgradePackageId } from "./data";
 import { SectionHeading } from "./SectionHeading";
 
@@ -117,6 +118,11 @@ export function ModdingSection({ selectedPackage, onSelectPackage }: ModdingSect
           eyebrow="CUSTOM MODDING & UPGRADES"
           title="Choose your build."
           description="Transparent pricing, real recovery windows, warranties that mean it. Pick a package and we'll schedule your consultation."
+        />
+        <BuildYoursSectionCta
+          slug="private-protection"
+          label="Build Yours Today — Use This Package Menu"
+          className="mb-8"
         />
 
         <div className="grid gap-10 lg:grid-cols-[1.25fr_1fr] lg:gap-14">

@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
 import { NicheStorefront, type StorefrontStaff } from "@/components/niche-storefront";
 import { GearGuardianCheckout } from "@/components/gear-guardian-checkout";
+import { StripeConnectNotice, SubscriptionDisclaimer, TrialCheckoutDisclosure } from "@/components/legal-notice";
 import { Wordmark } from "@/components/shop-chrome";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,6 @@ import { OnboardingVideoModal } from "@/components/OnboardingVideoModal";
 import { SnapSimulation } from "@/components/snap-simulation";
 import { LEAD_STORAGE_KEY } from "@/lib/axiom/funnel";
 import { OutreachWelcomeFilm } from "@/components/welcome-film";
-import { StripeConnectNotice, SubscriptionDisclaimer } from "@/components/legal-notice";
 
 type Preview = Awaited<ReturnType<typeof getLeadPreview>>;
 
@@ -313,6 +313,7 @@ export function LeadTerritory({
           <label className="mt-4 block text-sm text-muted" htmlFor="named-price">
             Month 1 amount (USD)
           </label>
+          <TrialCheckoutDisclosure />
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
@@ -337,7 +338,6 @@ export function LeadTerritory({
               Continue to checkout
             </Button>
           </div>
-          <SubscriptionDisclaimer />
         </div>
       ) : null}
       {processor === "desk" && checkoutId && planId ? (

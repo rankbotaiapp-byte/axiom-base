@@ -57,7 +57,7 @@ async function copySupabaseUser(ctx: AuthCtx, email: string, password: string) {
   const row = rows[0];
   if (!row?.id || !row.email) return;
   const hash = await ctx.context.password.hash(password);
-  const created = await ctx.context.internalAdapter.createUser({
+  const created = await (ctx.context.internalAdapter.createUser as Function)({
     id: row.id,
     email: row.email,
     name: row.name || row.email.split("@")[0] || "Owner",

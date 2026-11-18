@@ -3,6 +3,19 @@
 export const SUBSCRIPTION_NOTICE =
   "Payment is due at checkout. Recurring plans renew until cancelled from the shop desk or Stripe. Axiom supplies software and booking tools only — it is not a party to shop work, and is not liable for services, delays, or outcomes. Platform and processor fees are non-refundable except as required by law.";
 
+/** Shown immediately above the $1 trial payment button. */
+export const TRIAL_CHECKOUT_DISCLOSURE =
+  "By starting your 14-day trial, you authorize Gear Guardian LLC to charge your card $1.00 today. If you do not cancel before your 14 days end, your subscription will automatically renew at $150.00/month, billed monthly until canceled. You can cancel instantly anytime in your Axiom Admin Billing settings. All online transactions are subject to a 1.5% platform fee split.";
+
+export const TERMS_RENEWAL_CLAUSE =
+  "Gear Guardian LLC bills the Axiom trial at $1.00 today for 14 days. If you do not cancel before those 14 days end, the subscription automatically renews at $150.00 per month and continues monthly until you cancel. You can cancel in Axiom Admin Billing. Except where the law requires a refund, trial and subscription charges are not refundable once billed.";
+
+export const TERMS_PLATFORM_FEE_CLAUSE =
+  "Online transactions processed through Stripe Connect include a platform fee of 150 basis points (1.5%), collected by Gear Guardian LLC. Cash and check amounts logged from the field carry a 0% platform fee and are not split.";
+
+export const TERMS_AUTOPILOT_LIABILITY_CLAUSE =
+  "Autopilot can publish to Google Business Profile, Facebook, and Instagram. Those platforms control their own algorithms and local search ranking. Gear Guardian LLC is not liable for third-party algorithm updates, distribution changes, or fluctuations in local search ranking on Google Business, Facebook, or Instagram.";
+
 export const STRIPE_CONNECT_NOTICE =
   "Card charges, payouts, and chargebacks are handled by Stripe Connect. Funds settle to this shop's connected Stripe account. Axiom does not store full card numbers and is not the merchant of record for this payment.";
 

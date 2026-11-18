@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AiContentAutopilotToggle } from "@/components/admin/ai-content-autopilot";
@@ -69,21 +69,39 @@ function clipSeconds(file: File): Promise<number> {
 
 export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }) {
   const router = useRouter();
-  const stored = readHeroDraft(shop.slug);
-  const [tagline, setTagline] = useState(stored?.tagline ?? shop.tagline);
-  const [video, setVideo] = useState(startingFilm(shop, stored?.hero_video_url));
-  const [still, setStill] = useState(stored?.hero_image_url || cleanStillUrl(shop.heroImageUrl));
-  const [look, setLook] = useState<HeroLook>(
+  // Ensure client-only execution for WebGL / canvas / window refs
+  const [isMounted, setIsMounted] = useState(false);
+  const [tagline, setTagline] = useState(shop.tagline);
+  const [video, setVideo] = useState(() => startingFilm(shop, undefined));
+  const [still, setStill] = useState(() => cleanStillUrl(shop.heroImageUrl) || "");
+  const [look, setLook] = useState<HeroLook>(() =>
     parseHeroLook({
       ...(shop.heroLook ?? DEFAULT_HERO_LOOK),
-      ...(stored?.look ?? {}),
-      glow: stored?.look?.glow ?? shop.heroLook?.glow ?? shop.glowEnabled,
+      glow: shop.heroLook?.glow ?? shop.glowEnabled,
     }),
   );
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const stored = readHeroDraft(shop.slug);
+    if (!stored) return;
+    setTagline(stored.tagline ?? shop.tagline);
+    setVideo(startingFilm(shop, stored.hero_video_url));
+    setStill(stored.hero_image_url || cleanStillUrl(shop.heroImageUrl) || "");
+    setLook(
+      parseHeroLook({
+        ...(shop.heroLook ?? DEFAULT_HERO_LOOK),
+        ...(stored.look ?? {}),
+        glow: stored.look?.glow ?? shop.heroLook?.glow ?? shop.glowEnabled,
+      }),
+    );
+    // Hydrate draft once after mount — shop identity is stable for this desk.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only draft restore
+  }, [shop.slug]);
 
   async function publish(next: { video?: string; still?: string; look?: HeroLook; tagline?: string }) {
     const loop = cleanHeroUrl(next.video ?? video);
@@ -204,6 +222,14 @@ export function HeroStudio({ shop, readonly }: { shop: Shop; readonly: boolean }
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!isMounted) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-obsidian">
+        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/10" aria-hidden />
+      </main>
+    );
   }
 
   return (

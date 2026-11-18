@@ -99,20 +99,39 @@ function readCookie(request: Request, name: string): string {
   }
 }
 
+function hostKey(host: string): string {
+  const bare = host.trim().toLowerCase().replace(/:\d+$/, "").replace(/^\[|\]$/g, "");
+  if (bare === "localhost" || bare === "127.0.0.1" || bare === "::1") return "loopback";
+  return bare;
+}
+
+function sameDeskOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  let originHost = "";
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    return false;
+  }
+  const candidates = [request.headers.get("host") ?? "", (() => {
+    try {
+      return new URL(request.url).host;
+    } catch {
+      return "";
+    }
+  })()].filter(Boolean);
+  const key = hostKey(originHost);
+  return candidates.some((host) => hostKey(host) === key);
+}
+
 export async function assertAutopilotDesk(request: Request): Promise<void> {
   // Automated schedulers: CRON_SECRET / OUTREACH_CRON_SECRET (timing-safe).
   const { cronTokenValid } = await import("./cron-auth.server");
   if (cronTokenValid(request)) return;
 
-  const origin = request.headers.get("origin");
-  if (origin) {
-    let same = false;
-    try {
-      same = new URL(origin).host === new URL(request.url).host;
-    } catch {
-      same = false;
-    }
-    if (!same) throw new AutopilotError(403, "Forbidden");
+  if (!sameDeskOrigin(request)) {
+    throw new AutopilotError(403, "Cross-origin master desk request");
   }
   const secret = bypassSecret();
   const token = readCookie(request, MASTER_COOKIE);
@@ -123,9 +142,10 @@ export async function assertAutopilotDesk(request: Request): Promise<void> {
     const { acceptMasterKey } = await import("./master-bypass.server");
     if (acceptMasterKey(bearer)) return;
   }
-  const user = await getSessionUser();
-  if (user && (await isPlatformOwner(user.id))) return;
-  throw new AutopilotError(401, "Unauthorized");
+  const user = await getSessionUser(bearer || undefined, request.headers);
+  if (!user) throw new AutopilotError(401, "Missing master session");
+  if (await isPlatformOwner(user.id, user.email)) return;
+  throw new AutopilotError(403, "Email not in MASTER_ADMIN_EMAIL allowlist");
 }
 
 function modeNow(): OutreachMode {
@@ -334,6 +354,22 @@ async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<Auto
         and not exists (
           select 1 from outreach_sequences s
           where s.lead_slug = preloaded_leads.lead_slug and s.status = 'active'
+        )
+        and not exists (
+          select 1 from outreach_lead_quarantine q
+          where (
+            (btrim(q.lead_slug) <> '' and q.lead_slug = preloaded_leads.lead_slug)
+            or (
+              btrim(q.destination) <> '' and q.channel in ('email', 'any')
+              and lower(btrim(coalesce(preloaded_leads.contact_email, ''))) = lower(q.destination)
+            )
+            or (
+              btrim(q.destination) <> '' and q.channel in ('sms', 'any')
+              and length(regexp_replace(q.destination, '\\D', '', 'g')) >= 10
+              and regexp_replace(coalesce(preloaded_leads.contact_phone, ''), '\\D', '', 'g')
+                like '%' || right(regexp_replace(q.destination, '\\D', '', 'g'), 10)
+            )
+          )
         )
       order by county asc, lead_slug asc
       limit ${BATCH_LIMIT}

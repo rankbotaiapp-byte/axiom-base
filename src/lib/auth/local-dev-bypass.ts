@@ -42,17 +42,15 @@ export function localDevAuthAllowed(): boolean {
   return true;
 }
 
-/** Client-safe mirror (Vite). Production bundles never enable the bypass UI. */
+/** Client-safe mirror. Production bundles never enable the bypass UI. */
 export function localDevAuthAllowedClient(): boolean {
   try {
-    // Vite production + Node production — never show or honor local bypass UI.
-    if (import.meta.env.PROD || import.meta.env.MODE === "production") return false;
-    if (typeof process !== "undefined" && process.env.NODE_ENV === "production") return false;
-    const flag = String(import.meta.env.VITE_AXIOM_LOCAL_AUTH ?? "")
-      .trim()
-      .toLowerCase();
+    if (typeof process === "undefined") return false;
+    if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") return false;
+    const flag = process.env.AXIOM_LOCAL_AUTH?.trim().toLowerCase();
     if (flag === "0" || flag === "false" || flag === "off") return false;
-    return Boolean(import.meta.env.DEV) || flag === "1" || flag === "true" || flag === "on";
+    if (flag === "1" || flag === "true" || flag === "on") return true;
+    return process.env.NODE_ENV === "development";
   } catch {
     return false;
   }
@@ -76,7 +74,7 @@ async function ensureLocalCredential(ctx: AuthCtx, email: string, password: stri
   const hash = await ctx.context.password.hash(password);
 
   if (!userId) {
-    const created = await ctx.context.internalAdapter.createUser({
+    const created = await (ctx.context.internalAdapter.createUser as Function)({
       email,
       name,
       emailVerified: true,

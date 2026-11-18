@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { BuildYoursSectionCta } from "@/components/showcase/ShowcaseDemoChrome";
 import type { ConservationFact, HabitatMetric } from "@/lib/otter/config";
 
 interface ConservationModalProps {
@@ -148,16 +149,19 @@ export function ConservationModal({ open, onClose, metrics, facts, bookingUrl }:
             </div>
 
             {/* Footer CTA */}
-            <div className="flex flex-col gap-2 border-t border-cyan-500/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-              <p className="text-xs text-slate-400">Metrics refresh with each seasonal field survey.</p>
-              <a
-                href={bookingUrl}
-                {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-300 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-slate-950 shadow-[0_0_25px_rgba(34,211,238,0.45)] transition hover:shadow-[0_0_40px_rgba(34,211,238,0.7)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
-              >
-                <CalendarCheck className="h-4 w-4" aria-hidden="true" />
-                Book Expedition
-              </a>
+            <div className="flex flex-col gap-3 border-t border-cyan-500/20 px-5 py-4 sm:px-7">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-slate-400">Metrics refresh with each seasonal field survey.</p>
+                <a
+                  href={bookingUrl}
+                  {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-300 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-slate-950 shadow-[0_0_25px_rgba(34,211,238,0.45)] transition hover:shadow-[0_0_40px_rgba(34,211,238,0.7)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+                >
+                  <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+                  Book Expedition
+                </a>
+              </div>
+              <BuildYoursSectionCta slug="coastal-otter" />
             </div>
           </motion.div>
         </motion.div>

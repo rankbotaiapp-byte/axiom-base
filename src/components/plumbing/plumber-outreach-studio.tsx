@@ -69,7 +69,7 @@ function previewPath(slug: string, studio: boolean) {
  */
 export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
   const [published, setPublished] = useState(initial);
-  const [draft, setDraft] = useState<PlumberOutreachConfig>(initial.config);
+  const [draft, setDraft] = useState<PlumberOutreachConfig>(initial.config ?? DEFAULT_PLUMBER_OUTREACH);
   const [device, setDevice] = useState<"desktop" | "mobile">("mobile");
   const [access, setAccess] = useState<Access>(null);
   const [saving, setSaving] = useState(false);
@@ -497,7 +497,7 @@ export function PlumberOutreachStudio({ initial }: { initial: OutreachRead }) {
             >
               <RotateCcw size={14} /> Defaults
             </button>
-            <button type="button" className="studio-btn is-quiet" disabled={!dirty} onClick={() => setDraft(published.config)}>
+            <button type="button" className="studio-btn is-quiet" disabled={!dirty} onClick={() => setDraft(published.config ?? DEFAULT_PLUMBER_OUTREACH)}>
               Discard
             </button>
             <button type="button" className="studio-btn is-primary" disabled={!dirty || saving || Boolean(locked)} onClick={() => void publish()}>

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
-export type Plan = "free-setup" | "lifetime" | "monthly" | "cinematic";
+export type Plan = "trial" | "lifetime" | "monthly" | "free-setup" | "cinematic";
 
 type FunnelState = {
   /** Template currently open in the demo modal (null = closed) */

@@ -5,7 +5,6 @@ import { GuestBookDialog } from "@/components/guest-book-dialog";
 import { type NicheActions } from "@/config/niche-actions";
 import { catalogFilmFallbackUrl, defaultNicheFilm, resolveCatalogNiche } from "@/config/catalog";
 import { cleanStillUrl, isPlayableHeroFilm, type HeroLook } from "@/lib/axiom/hero-studio-state";
-import { useShopPageData } from "@/routes/$shopSlug/route";
 import { FounderWelcomeStage } from "@/components/founder-welcome-stage";
 import { HeroHud, InlineLabel } from "@/components/hero-hud";
 import { ShopProofGallery } from "@/components/proof-gallery";
@@ -275,9 +274,16 @@ export function OutreachTenantPage({
 }
 
 /** Locked tenant template. Layout is identical; brand tokens and media change per shop. */
+function useShopPageData() {
+  return {
+    shop: { slug: "demo", name: "Demo Shop", niche: "contractor" },
+    hero: { film: "", still: "" },
+  };
+}
+
 export function ShopFilmPage() {
   const data = useShopPageData();
-  return <ImmutableStorefront data={data} />;
+  return <ImmutableStorefront data={data as never} />;
 }
 
 export default ShopFilmPage;

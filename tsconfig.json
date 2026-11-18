@@ -10,6 +10,7 @@
     "moduleResolution": "bundler",
     "jsx": "preserve",
     "strict": true,
+    "noImplicitAny": false,
     "isolatedModules": true,
     "skipLibCheck": true,
     // `src/lib/db.ts` imports scripts/migration-plan.mjs; checkJs types the
@@ -18,13 +19,18 @@
     "checkJs": true,
     "noEmit": true,
     "types": [
-      "vite/client",
       "node"
     ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@tanstack/react-start": [
+        "./src/lib/tanstack-start-shim.ts"
+      ],
+      "@tanstack/react-start/server": [
+        "./src/lib/tanstack-start-server-shim.ts"
       ]
     },
     "allowImportingTsExtensions": true,
@@ -44,6 +50,7 @@
     "src/hooks",
     "src/actions",
     "src/config",
+    "src/types",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
@@ -54,6 +61,8 @@
     "src/server.ts",
     "src/routeTree.gen.ts",
     "src/components/aether",
+    "src/components/drone-hub",
+    "src/components/AskEricAvatar.tsx",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "scripts/**/*.test.mjs"

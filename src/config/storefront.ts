@@ -10,7 +10,9 @@ export const site = {
   url:
     typeof window !== "undefined"
       ? window.location.origin
-      : ((import.meta.env.VITE_SITE_URL as string | undefined) ?? "https://axiom.shop"),
+      : (typeof process !== "undefined"
+          ? process.env.VITE_SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL
+          : undefined) ?? "https://axiom.shop",
   tagline: "Your complete local business app — live in minutes.",
   description:
     "Axiom builds a 24/7 booking app, admin dashboard and autonomous content engine for your local business. Start for $1, then $150/mo — or lock Founder's Lifetime.",

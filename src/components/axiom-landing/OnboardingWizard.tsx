@@ -9,6 +9,7 @@ import { PRICING, fmt, buildPrice } from "@/lib/axiom-landing/pricing";
 import { publicStripeLink } from "@/lib/axiom-landing/public-env";
 import { RippleButton } from "./RippleButton";
 import { TrustMarks } from "./TrustMarks";
+import { readStorefrontAccent, readStorefrontDraft } from "@/lib/axiom/accent-color";
 import { useFunnel, type Plan } from "./FunnelProvider";
 
 const STRIPE_LINK = publicStripeLink("lifetime");
@@ -18,9 +19,24 @@ type Details = { business: string; name: string; phone: string; email: string; c
 const EMPTY: Details = { business: "", name: "", phone: "", email: "", city: "", website: "" };
 
 const PLANS: { id: Plan; title: string; price: string; note: string }[] = [
-  { id: "lifetime", title: "Lifetime Access", price: `${fmt(PRICING.lifetime.price)} once`, note: "No monthly fees, ever" },
-  { id: "monthly", title: "Starter Monthly", price: `${fmt(PRICING.monthly.price)}/mo`, note: "Cancel any time" },
-  { id: "free-setup", title: "Set it up free first", price: "$0 today", note: "Decide before you go live" },
+  {
+    id: "trial",
+    title: "14-Day Trial",
+    price: `${fmt(PRICING.trial.floorDollars)} today · then ${fmt(PRICING.trial.renewalDollars)}/mo`,
+    note: "Cancel in one click · 1.5% online · 0% cash and checks",
+  },
+  {
+    id: "lifetime",
+    title: "Founder's Lifetime",
+    price: `${fmt(PRICING.lifetime.price)} once`,
+    note: "No monthly fees, ever",
+  },
+  {
+    id: "free-setup",
+    title: "Preview first",
+    price: "$0 today",
+    note: "Provision a slug, decide before checkout",
+  },
 ];
 
 export default function OnboardingWizard() {
@@ -115,10 +131,21 @@ export default function OnboardingWizard() {
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...d, template: pickedName ?? "Not chosen", plan, source: "axiom-landing" }),
+        body: JSON.stringify({
+          ...d,
+          template: pickedName ?? "Not chosen",
+          plan,
+          source: "axiom-landing",
+          accent: readStorefrontDraft()?.accent || readStorefrontAccent(),
+          niche: readStorefrontDraft()?.niche || "",
+        }),
         signal: AbortSignal.timeout(15000),
       });
-      if (!res.ok) throw new Error();
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; siteUrl?: string } | null;
+      if (!res.ok || payload?.ok === false) {
+        throw new Error(payload?.error || `Launch failed (${res.status}).`);
+      }
+      if (payload?.siteUrl) setSiteUrl(payload.siteUrl);
       if (checkoutLink) {
         const url = new URL(checkoutLink);
         url.searchParams.set("prefilled_email", d.email);
@@ -128,7 +155,10 @@ export default function OnboardingWizard() {
       }
       setStep(3);
       setStatus("idle");
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong sending that — please try again.";
+      console.error("[storefront] launch submit failed", message);
+      setErrorMsg(message);
       setStatus("error");
     }
   };
@@ -157,8 +187,10 @@ export default function OnboardingWizard() {
               {isBuild
                 ? `Make ${build!.name} yours — about 60 seconds`
                 : plan === "lifetime"
-                  ? "Own the desk — lifetime"
-                  : "Start your free setup"}
+                  ? "Founder's Lifetime — $1,500"
+                  : plan === "trial"
+                    ? "$1 for 14 days, then $150/mo"
+                    : "Preview your Axiom storefront"}
             </p>
             <button onClick={closeWizard} className="grid h-9 w-9 place-items-center rounded-full border border-white/15 text-mist transition hover:scale-105 hover:text-white" aria-label="Close">
               <X className="h-4 w-4" />
@@ -320,7 +352,7 @@ export default function OnboardingWizard() {
                 ))}
               </div>
               <p className="mt-4 text-center text-sm text-mist">{PRICING.guarantee}</p>
-              {status === "error" && <p className="mt-4 text-center text-sm text-red-400">Something went wrong sending that — please try again.</p>}
+              {status === "error" && <p className="mt-4 text-center text-sm text-red-400">{errorMsg || "Something went wrong sending that — please try again."}</p>}
               <div className="mt-6 flex items-center justify-between">
                 <button type="button" onClick={() => setStep(1)} className="text-sm text-mist hover:text-white">
                   <ArrowLeft className="mr-1 inline-block h-4 w-4" aria-hidden /> Back
@@ -331,8 +363,10 @@ export default function OnboardingWizard() {
                     : plan === "lifetime"
                       ? STRIPE_LINK
                         ? `Pay ${fmt(PRICING.lifetime.price)} & Launch`
-                        : "Lock In Lifetime Access"
-                      : "Launch My Back Office"}
+                        : "Lock In Founder's Lifetime"
+                      : plan === "trial"
+                        ? "Start the $1 trial"
+                        : "Launch My Storefront"}
                   {status !== "sending" ? <ArrowRight className="ml-1 inline-block h-4 w-4" aria-hidden /> : null}
                 </RippleButton>
               </div>

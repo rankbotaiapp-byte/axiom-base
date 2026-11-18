@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/** account.updated, payment_intent.succeeded, and checkout.session.completed. */
+/** checkout.session.completed, subscription created/updated/deleted, and invoice.payment_succeeded. */
 export const Route = createFileRoute("/api/webhooks/stripe")({
   server: {
     handlers: {

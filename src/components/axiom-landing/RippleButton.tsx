@@ -26,7 +26,12 @@ export function RippleButton({
   };
 
   return (
-    <button type="button" {...rest} onPointerDown={handlePointerDown} className={`btn btn-${variant} ${className}`}>
+    <button
+      type="button"
+      {...rest}
+      onPointerDown={handlePointerDown}
+      className={`btn btn-${variant} ${className}`}
+    >
       {children}
     </button>
   );

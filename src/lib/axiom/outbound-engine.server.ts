@@ -3,6 +3,11 @@ import { env } from "@/lib/env.server";
 import { newId } from "@/lib/utils";
 import { AutopilotError, assertAutopilotDesk } from "./autopilot.server";
 import { isEmailReady, masterFunnel, renderOutreachMessage } from "./funnel";
+import {
+  applyPitchAngleToEmail,
+  applyPitchAngleToSms,
+  parsePitchAngleId,
+} from "./outreach-pitch-angles";
 import { finalizeOutreachBody } from "./legal-notices";
 import { outreachDestination } from "./preview-link";
 import { resolvePublicAppOrigin } from "./public-app-url";
@@ -84,12 +89,14 @@ async function loadState(sql: Sql): Promise<OutboundEngineState & { smsSentToday
       active_niche: string | null;
       cron_enabled: boolean | null;
       schedule_started_on: string | null;
+      pitch_angle_id: string | null;
     }>`
       select paused, strategy_id, sms_daily_cap, email_daily_cap, sms_template, email_subject, email_body,
              sms_sent_today, email_sent_today, day_key::text as day_key,
              coalesce(active_niche, '') as active_niche,
              coalesce(cron_enabled, false) as cron_enabled,
-             coalesce(schedule_started_on::text, '') as schedule_started_on
+             coalesce(schedule_started_on::text, '') as schedule_started_on,
+             pitch_angle_id
       from outbound_engine_state where id = ${"master"} limit 1
     `;
     const row = rows[0];
@@ -118,6 +125,7 @@ async function loadState(sql: Sql): Promise<OutboundEngineState & { smsSentToday
       activeNiche: (row.active_niche ?? "").trim(),
       cronEnabled: row.cron_enabled === true,
       scheduleStartedOn: (row.schedule_started_on ?? "").slice(0, 10),
+      pitchAngleId: parsePitchAngleId(row.pitch_angle_id),
       smsSentToday: smsSent,
       emailSentToday: emailSent,
     };
@@ -135,11 +143,11 @@ async function saveState(sql: Sql, patch: Partial<OutboundEngineState>) {
     await sql`
       insert into outbound_engine_state (
         id, paused, strategy_id, sms_daily_cap, email_daily_cap, sms_template, email_subject, email_body,
-        active_niche, cron_enabled, schedule_started_on, day_key, updated_at
+        active_niche, cron_enabled, schedule_started_on, pitch_angle_id, day_key, updated_at
       ) values (
         ${"master"}, ${next.paused}, ${funnel.id}, ${next.smsDailyCap}, ${next.emailDailyCap},
         ${next.smsTemplate}, ${next.emailSubject}, ${next.emailBody}, ${next.activeNiche ?? ""},
-        ${next.cronEnabled === true}, ${started}, ${pacificDay()}::date, now()
+        ${next.cronEnabled === true}, ${started}, ${next.pitchAngleId}, ${pacificDay()}::date, now()
       )
       on conflict (id) do update set
         paused = excluded.paused,
@@ -152,6 +160,7 @@ async function saveState(sql: Sql, patch: Partial<OutboundEngineState>) {
         active_niche = excluded.active_niche,
         cron_enabled = excluded.cron_enabled,
         schedule_started_on = coalesce(excluded.schedule_started_on, outbound_engine_state.schedule_started_on),
+        pitch_angle_id = excluded.pitch_angle_id,
         updated_at = now()
     `;
   } catch (err) {
@@ -387,8 +396,20 @@ async function logAssignedLead(
     video: media.videoUrl,
     videoThumb: media.thumbUrl,
   };
+  const rendered =
+    channel === "sms"
+      ? applyPitchAngleToSms(
+          renderOutreachMessage(state.smsTemplate, vars),
+          state.pitchAngleId,
+          { city: lead.city, county: lead.county },
+        )
+      : applyPitchAngleToEmail(
+          renderOutreachMessage(state.emailBody, vars),
+          state.pitchAngleId,
+          { city: lead.city, county: lead.county },
+        );
   const body = finalizeOutreachBody(
-    offer.appendFounderOfferAssets(renderOutreachMessage(state.smsTemplate, vars), {
+    offer.appendFounderOfferAssets(rendered, {
       videoUrl: media.videoUrl,
       thumbUrl: media.thumbUrl,
       previewUrl: url,
@@ -798,6 +819,36 @@ export async function setOutboundPaused(request: Request, paused: boolean) {
   await assertEngine(request);
   const sql = await getSql();
   await saveState(sql, { paused });
+}
+
+export async function saveOutboundTemplates(
+  request: Request,
+  input: {
+    smsTemplate?: string;
+    emailSubject?: string;
+    emailBody?: string;
+    smsDailyCap?: number;
+    emailDailyCap?: number;
+    pitchAngleId?: string;
+  },
+) {
+  await assertEngine(request);
+  const sql = await getSql();
+  const patch: Partial<OutboundEngineState> = {};
+  if (typeof input.smsTemplate === "string") patch.smsTemplate = input.smsTemplate.slice(0, 480);
+  if (typeof input.emailSubject === "string") patch.emailSubject = input.emailSubject.slice(0, 160);
+  if (typeof input.emailBody === "string") patch.emailBody = input.emailBody.slice(0, 4000);
+  if (typeof input.smsDailyCap === "number" && Number.isFinite(input.smsDailyCap)) {
+    patch.smsDailyCap = clampDailyCap(input.smsDailyCap, DEFAULT_SMS_DAILY_CAP);
+  }
+  if (typeof input.emailDailyCap === "number" && Number.isFinite(input.emailDailyCap)) {
+    patch.emailDailyCap = clampDailyCap(input.emailDailyCap, DEFAULT_EMAIL_DAILY_CAP);
+  }
+  if (typeof (input as { pitchAngleId?: unknown }).pitchAngleId === "string") {
+    patch.pitchAngleId = parsePitchAngleId((input as { pitchAngleId: string }).pitchAngleId);
+  }
+  await saveState(sql, patch);
+  return readOutboundEngine(request);
 }
 
 export async function tickOutboundFromCron(request: Request) {

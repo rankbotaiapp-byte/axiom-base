@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AutopilotLoopsPanel } from "@/components/admin/autopilot-loops";
-import { AutopilotCard } from "@/components/master/AutopilotCard";
+import { AutopilotDashboard } from "@/components/AutopilotDashboard";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getOperatorData, listMyShops } from "@/lib/axiom/server";
@@ -64,7 +64,7 @@ export default function MasterAutopilotPage() {
         <Link href={`/${shop.slug}/admin`} className="text-sm text-muted hover:text-fg">
           {shop.name} desk
         </Link>
-        <AutopilotCard mode="simulation" />
+        <AutopilotDashboard shopName={shop.name} shopSlug={shop.slug} defaultScope="master" />
         <AutopilotLoopsPanel shop={shop} readonly={false} />
       </div>
     </main>

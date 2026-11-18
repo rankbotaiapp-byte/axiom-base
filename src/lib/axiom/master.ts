@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { parsePhoneLine } from "./funnel";
 
 export const AXIOM_MASTER_CONFIG = {
   version: "2.5.0",
@@ -33,5 +34,62 @@ export const claimMasterBypass = createServerFn({ method: "POST" })
   .validator((d: { key?: string }) => d)
   .handler(async () => ({ ok: true }));
 export const getMasterDesk = createServerFn({ method: "GET" }).handler(async () => ({ ok: true }));
+
+export const ensureFunnelSession = createServerFn({ method: "POST" })
+  .validator((d: Record<string, unknown> = {}) => d)
+  .handler(async ({ data }) => ({ ok: true, sessionId: "local", ...data }));
+
+export const recordFunnelHit = createServerFn({ method: "POST" })
+  .validator((d: Record<string, unknown> = {}) => d)
+  .handler(async ({ data }) => ({ ok: true, ...data }));
+
+export const beginTerritoryCheckout = createServerFn({ method: "POST" })
+  .validator((d: Record<string, unknown>) => d)
+  .handler(async ({ data }) => ({
+    processor: "simulation" as const,
+    url: "/onboard",
+    checkoutId: "sim_checkout",
+    ...data,
+  }));
+
+export const confirmTerritorySession = createServerFn({ method: "POST" })
+  .validator((d: Record<string, unknown>) => d)
+  .handler(async ({ data }) => ({ ok: true, ...data }));
+
+export const finishTerritoryCheckout = createServerFn({ method: "POST" })
+  .validator((d: Record<string, unknown>) => d)
+  .handler(async ({ data }) => ({ ok: true, ...data }));
+
+export const getLeadPreview = createServerFn({ method: "GET" })
+  .validator((d: Record<string, unknown> = {}) => d)
+  .handler(async () => ({ leads: [], count: 0 }));
+
+/** Sync lead normalizer used by master.server (not a server fn). */
+export function cleanLead(data: Record<string, any> = {}) {
+  const businessName = String(data.businessName || "Business").trim();
+  const tradeType = String(data.tradeType || "contractor").trim();
+  const city = String(data.city || "").trim();
+  const county = String(data.county || "").trim();
+  const leadSlug = `${businessName}-${city || county || "local"}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64);
+  return {
+    businessName,
+    tradeType,
+    tradeLabel: String(data.tradeLabel || tradeType),
+    city,
+    county,
+    contactEmail: String(data.contactEmail || ""),
+    contactPhone: String(data.contactPhone || ""),
+    contactName: String(data.contactName || ""),
+    reviewScore: Number(data.reviewScore || 0),
+    reviewCount: Number(data.reviewCount || 0),
+    hasWebsite: Boolean(data.hasWebsite),
+    phoneLine: parsePhoneLine(data.phoneLine),
+    leadSlug: leadSlug || "lead",
+  };
+}
 
 export default AXIOM_MASTER_CONFIG;

@@ -314,7 +314,17 @@ export async function handleOutreachInbound(request: Request): Promise<Response>
     for (const slug of [...new Set(slugs)]) await haltLeadDrip(sql, slug, reason);
   }
 
-  if (isMessagingOptOut(inbound)) return twimlResponse(OPT_OUT_CONFIRMATION);
+  if (isMessagingOptOut(inbound)) {
+    const { quarantineLead } = await import("./outreach-quarantine.server");
+    await quarantineLead({
+      leadSlug: lead?.leadSlug || slugs[0],
+      channel: "sms",
+      destination: from,
+      reason: "opt_out",
+      source: "inbound",
+    }).catch((err) => console.error("[inbound] quarantine failed", err));
+    return twimlResponse(OPT_OUT_CONFIRMATION);
+  }
 
   const history = await loadTurns(sql, from);
   const isFirst = history.length === 0;

@@ -3,7 +3,7 @@ import { ShieldCheck, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
-import { StripeConnectNotice, SubscriptionDisclaimer } from "@/components/legal-notice";
+import { StripeConnectNotice, SubscriptionDisclaimer, TrialCheckoutDisclosure } from "@/components/legal-notice";
 
 export function GearGuardianCheckout({
   amountCents,
@@ -80,6 +80,7 @@ export function GearGuardianCheckout({
       </div>
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
       <div className="mt-5 flex flex-col gap-2">
+        {notice === "subscription" ? <TrialCheckoutDisclosure /> : null}
         <Button type="button" size="lg" onClick={() => void pay()} disabled={busy}>
           {busy ? (
             <>

@@ -31,12 +31,13 @@ export const OTTER_CONFIG = {
   },
 
   media: {
-    video: "/media/otter-adventures-loop.mp4",
+    video: "/media/otter-hero-animation.mp4",
     poster: "/media/otter-adventures-poster.jpg",
+    still: "/otter-swimming.png",
   },
 
   /** Booking portal. Set NEXT_PUBLIC_BOOKING_URL in .env to point at Cal.com / Calendly / your own route. */
-  bookingUrl: process.env.VITE_BOOKING_URL ?? "/otter-adventures/book",
+  bookingUrl: process.env.VITE_BOOKING_URL ?? "/coastal-otter#book",
 
   /** Vapi voice concierge. Both values come from the Vapi dashboard. */
   vapi: {

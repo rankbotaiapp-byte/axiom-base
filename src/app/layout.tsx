@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { AxiomStarfieldBackground } from "@/components/AxiomStarfieldBackground";
 import { Atmosphere } from "./atmosphere";
 import "../styles.css";
 
 export const metadata: Metadata = {
   title: "Axiom",
   description:
-    "Instant booking sites for local service businesses. Start for $1, then $150/mo — or lock Founder's Lifetime for $1000.",
+    "Trade storefronts in about 3 minutes from regional leads and a cinematic 3D hero. $1 for 14 days, then $150/mo. 1.5% on online bookings. 0% on cash and checks logged in the field.",
 };
 
 export const dynamic = "force-dynamic";
@@ -18,11 +19,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@450;500;600&family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@450;500;600&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
         />
       </head>
-      <body className="min-h-dvh bg-[#030712] font-sans text-fg antialiased">
+      <body className="relative min-h-dvh bg-[#030712] font-sans text-fg antialiased">
         <Atmosphere />
+        {/* After Atmosphere so opaque WebGL fluid cannot bury the stars; under z-10 UI */}
+        <AxiomStarfieldBackground />
         <div className="relative z-10 min-h-dvh bg-transparent">{children}</div>
       </body>
     </html>

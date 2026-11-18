@@ -19,6 +19,10 @@ export type MasterTelemetry = {
     uptimeSeconds: number;
   };
   updatedAt: string;
+  trials: number;
+  creditSpend: number;
+  netProfit: number;
+  lastDispatch: string;
 };
 
 export type SubscriptionStatus =
@@ -49,7 +53,14 @@ export type TenantsResponse = {
 };
 
 export type AutopilotState = "idle" | "running" | "paused" | "error";
-export type AutopilotAction = "start" | "pause" | "run_batch" | "automate" | "tick_content" | "tick_blender";
+export type AutopilotAction =
+  | "start"
+  | "pause"
+  | "run_batch"
+  | "automate"
+  | "tick_content"
+  | "tick_blender"
+  | "save_templates";
 export type LogLevel = "info" | "success" | "warn" | "error";
 export type Channel = "sms" | "email" | "system";
 
@@ -70,14 +81,30 @@ export type AutopilotLog = {
   message: string;
 };
 
+export type AutopilotTemplates = {
+  smsTemplate: string;
+  emailSubject: string;
+  emailBody: string;
+  smsDailyCap: number;
+  emailDailyCap: number;
+  pitchAngleId: string;
+  dripSteps: Array<{ id: string; day: number; label: string; template: string }>;
+};
+
 export type AutopilotStatus = {
   state: AutopilotState;
   currentBatchId: string | null;
   queued: number;
   sentToday: number;
+  remainingQueue?: number;
+  totalLeads?: number;
+  quarantined?: number;
+  activeReplies?: number;
+  deliveryRate?: number;
   sms: ChannelStats;
   email: ChannelStats;
   logs: AutopilotLog[];
+  templates?: AutopilotTemplates;
 };
 
 export function parseSubscriptionStatus(value: string | null | undefined): SubscriptionStatus {

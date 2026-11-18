@@ -82,16 +82,16 @@ export default function StickyConversionBar() {
           <RippleButton
             variant="ghost"
             className="!px-3 !py-3 text-[13px] sm:!px-5 sm:text-sm"
-            onClick={() => startOnboarding({ plan: "free-setup", templateId: name ? id : null })}
+            onClick={() => startOnboarding({ plan: "trial", templateId: name ? id : null })}
           >
-            Use This Template For My Business
+            $1 · 14-day trial
           </RippleButton>
           <RippleButton
             variant="primary"
             className="!px-3 !py-3 text-[13px] sm:!px-5 sm:text-sm"
             onClick={() => startOnboarding({ plan: "lifetime", templateId: name ? id : null })}
           >
-            Own it forever — {fmt(PRICING.lifetime.price)}
+            Founder&apos;s Lifetime — {fmt(PRICING.lifetime.price)}
           </RippleButton>
         </div>
         )}

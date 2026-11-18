@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { HeroStudio } from "@/components/studio/HeroStudio";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { localStorefront } from "@/lib/axiom/autopilot";
@@ -11,6 +11,27 @@ import { materializeDatasetShop } from "@/lib/axiom/autopilot-shop";
 import { getOperatorData } from "@/lib/axiom/server";
 import { rememberHeroStudioSlug } from "@/lib/axiom/hero-studio-route";
 import type { AccessMode, Shop } from "@/lib/axiom/types";
+
+/** Client-only: canvas / video / localStorage studio chrome — never SSR. */
+const HeroStudio = dynamic(
+  () => import("../components/HeroStudio").then((m) => m.HeroStudio),
+  {
+    ssr: false,
+    loading: () => (
+      <main className="grid min-h-dvh place-items-center bg-obsidian">
+        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/10" aria-hidden />
+      </main>
+    ),
+  },
+);
+
+function StudioSkeleton() {
+  return (
+    <main className="grid min-h-dvh place-items-center bg-obsidian">
+      <div className="h-10 w-48 animate-pulse rounded-full bg-fg/10" aria-hidden />
+    </main>
+  );
+}
 
 export default function HeroStudioPage() {
   const params = useParams<{ shopSlug: string }>();
@@ -20,7 +41,13 @@ export default function HeroStudioPage() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [mode, setMode] = useState<AccessMode>("none");
   const [error, setError] = useState<string | null>(null);
+  // Ensure client-only execution for WebGL / canvas / window refs
+  const [isMounted, setIsMounted] = useState(false);
   const userId = user?.id;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     rememberHeroStudioSlug(shopSlug);
@@ -29,25 +56,40 @@ export default function HeroStudioPage() {
   useEffect(() => {
     if (isPending || !userId) return;
     let cancelled = false;
-    void getOperatorData({ data: shopSlug })
+
+    // Seeded tenants (axiom-auto, etc.) must paint immediately — TanStack
+    // createServerFn can hang under the Next App Router, which left the desk
+    // on a forever skeleton and crashed preflight.
+    const dataset = localStorefront(shopSlug);
+    if (dataset) {
+      setShop(materializeDatasetShop(dataset).shop);
+      setMode("preview");
+      setError(null);
+    }
+
+    const operator = Promise.race([
+      getOperatorData({ data: shopSlug }),
+      new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), 2500);
+      }),
+    ]);
+
+    void operator
       .then((next) => {
-        if (cancelled) return;
-        setShop(next.shop);
+        if (cancelled || !next) {
+          if (!dataset && !cancelled) setError("Forbidden");
+          return;
+        }
+        setShop(next.shop as Shop);
         setMode(next.mode);
         setError(null);
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
-        const dataset = localStorefront(shopSlug);
+        if (cancelled || dataset) return;
         const message = err instanceof Error ? err.message : "";
-        if (dataset && /not found|database|unavailable|paused|recovery|connection/i.test(message)) {
-          setShop(materializeDatasetShop(dataset).shop);
-          setMode("preview");
-          setError(null);
-          return;
-        }
         setError(message || "Forbidden");
       });
+
     return () => {
       cancelled = true;
     };
@@ -57,12 +99,10 @@ export default function HeroStudioPage() {
     if (mode === "employee") router.replace(`/${shopSlug}/employee`);
   }, [mode, router, shopSlug]);
 
+  if (!isMounted) return <StudioSkeleton />;
+
   if (isPending || (user && !shop && !error)) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-obsidian">
-        <div className="h-10 w-48 animate-pulse rounded-full bg-fg/10" />
-      </main>
-    );
+    return <StudioSkeleton />;
   }
   if (!user) return <RedirectToSignIn to="/login" next={`/${shopSlug}/admin/hero-studio`} />;
   if (mode === "employee") return null;

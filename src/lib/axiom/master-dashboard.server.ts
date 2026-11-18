@@ -124,6 +124,25 @@ export async function readMasterTelemetry(request: Request): Promise<MasterTelem
   } catch {
     dbOk = false;
   }
+  let trials = 0;
+  let creditSpend = 0;
+  try {
+    const sql = await getSql();
+    trials = await countOf(
+      sql<{ n: number }>`
+        select count(*)::int as n
+        from shops s
+        left join shop_billing b on b.shop_id = s.id
+        where s.is_showcase = false
+          and lower(coalesce(b.status, '')) in ('trialing', 'trial')
+      `,
+    );
+    creditSpend = (await readCreditSpendCents(sql)) / 100;
+  } catch {
+    trials = 0;
+    creditSpend = 0;
+  }
+  const netProfit = Math.round((trials - creditSpend) * 100) / 100;
   const p95 = p95Latency();
   recordLatency(Date.now() - started);
   return {
@@ -140,12 +159,27 @@ export async function readMasterTelemetry(request: Request): Promise<MasterTelem
       uptimeSeconds: Math.floor(process.uptime()),
     },
     updatedAt: new Date().toISOString(),
+    trials,
+    creditSpend,
+    netProfit,
+    lastDispatch: `${trials} trials active • $${netProfit.toFixed(2)} net margin`,
   };
 }
 
-export async function readMasterTenants(request: Request): Promise<{ tenants: MasterTenant[] }> {
+async function readCreditSpendCents(sql: Sql): Promise<number> {
+  try {
+    const rows = await sql<{ n: number }>`select coalesce(sum(month_spend_cents), 0)::int as n from shop_ai_credits`;
+    const n = Number(rows[0]?.n ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function readMasterTenants(request: Request): Promise<{ tenants: MasterTenant[]; creditSpendCents: number }> {
   await assertAutopilotDesk(request);
   const sql = await getSql();
+  const creditSpendCents = await readCreditSpendCents(sql);
   try {
     const rows = await sql<{
       id: string;
@@ -183,7 +217,7 @@ export async function readMasterTenants(request: Request): Promise<{ tenants: Ma
       order by s.created_at desc
       limit 200
     `;
-    return { tenants: rows.map(mapTenant) };
+    return { tenants: rows.map(mapTenant), creditSpendCents };
   } catch (err) {
     if (!missingRelation(err)) throw err;
   }
@@ -215,9 +249,10 @@ export async function readMasterTenants(request: Request): Promise<{ tenants: Ma
           last_webhook_at: null,
         }),
       ),
+      creditSpendCents,
     };
   } catch (err) {
-    if (missingRelation(err)) return { tenants: [] };
+    if (missingRelation(err)) return { tenants: [], creditSpendCents };
     throw err;
   }
 }
@@ -315,8 +350,10 @@ export async function readMasterAutopilotStatus(request: Request): Promise<Autop
   await assertAutopilotDesk(request);
   const sql = await getSql();
   const engine = await import("./outbound-engine.server");
+  const { SMS_DRIP_STEPS } = await import("./sms-drip");
+  const { countQuarantinedLeads } = await import("./outreach-quarantine.server");
   const shot = await engine.readOutboundEngine(request);
-  const [sms, email, logs, batch] = await Promise.all([
+  const [sms, email, logs, batch, quarantined, activeReplies, delivery] = await Promise.all([
     channelStats(sql, "sms"),
     channelStats(sql, "email"),
     loadLogs(sql),
@@ -330,24 +367,83 @@ export async function readMasterAutopilotStatus(request: Request): Promise<Autop
         return null;
       }
     })(),
+    countQuarantinedLeads(),
+    countOf(
+      sql<{ n: number }>`
+        select count(*)::int as n from outreach_sequences
+        where status = 'replied' and created_at >= now() - interval '7 days'
+      `,
+    ),
+    (async () => {
+      try {
+        const rows = await sql<{ delivered: number; total: number }>`
+          select
+            coalesce(count(*) filter (
+              where lower(event_type) in ('delivered', 'sent', 'opened', 'clicked')
+            ), 0)::int as delivered,
+            coalesce(count(*), 0)::int as total
+          from outreach_telemetry_logs
+          where created_at >= now() - interval '7 days'
+        `;
+        const delivered = Number(rows[0]?.delivered) || 0;
+        const total = Number(rows[0]?.total) || 0;
+        return total > 0 ? delivered / total : 0;
+      } catch {
+        return 0;
+      }
+    })(),
   ]);
   const paused = shot.state.paused !== false;
   const queued = shot.metrics.queued;
   let state: AutopilotStatus["state"] = paused ? "paused" : "running";
   if (paused && queued === 0) state = "idle";
   if (!sms.healthy || !email.healthy) state = "error";
+  const sent = sms.sent + email.sent;
+  const failed = sms.failed + email.failed;
+  const engineDelivery = Number(shot.metrics.deliveryRate) || 0;
+  const deliveryRate =
+    delivery > 0
+      ? delivery
+      : engineDelivery > 0
+        ? engineDelivery
+        : sent > 0
+          ? Math.max(0, (sent - failed) / sent)
+          : 0;
   return {
     state,
     currentBatchId: batch,
     queued,
     sentToday: shot.metrics.smsSentToday + shot.metrics.emailSentToday,
+    remainingQueue: shot.metrics.smsRemaining + shot.metrics.emailRemaining,
+    totalLeads: shot.metrics.queued + shot.metrics.sent,
+    quarantined,
+    activeReplies,
+    deliveryRate: Math.round(deliveryRate * 1000) / 10,
     sms,
     email,
     logs,
+    templates: {
+      smsTemplate: shot.state.smsTemplate,
+      emailSubject: shot.state.emailSubject,
+      emailBody: shot.state.emailBody,
+      smsDailyCap: shot.state.smsDailyCap,
+      emailDailyCap: shot.state.emailDailyCap,
+      pitchAngleId: shot.state.pitchAngleId,
+      dripSteps: SMS_DRIP_STEPS.map((step) => ({
+        id: step.id,
+        day: step.day,
+        label: step.label,
+        template: step.template,
+      })),
+    },
   };
 }
 
-export async function commandMasterAutopilot(request: Request, action: AutopilotAction): Promise<AutopilotStatus> {
+export async function commandMasterAutopilot(
+  request: Request,
+  action: AutopilotAction,
+  payload?: unknown,
+): Promise<AutopilotStatus> {
   await assertAutopilotDesk(request);
   const engine = await import("./outbound-engine.server");
   if (action === "pause") {
@@ -368,6 +464,18 @@ export async function commandMasterAutopilot(request: Request, action: Autopilot
   if (action === "tick_content" || action === "tick_blender") {
     const { tickShopAutopilot } = await import("./shop-autopilot.server");
     await tickShopAutopilot();
+    return readMasterAutopilotStatus(request);
+  }
+  if (action === "save_templates") {
+    const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    await engine.saveOutboundTemplates(request, {
+      smsTemplate: typeof body.smsTemplate === "string" ? body.smsTemplate : undefined,
+      emailSubject: typeof body.emailSubject === "string" ? body.emailSubject : undefined,
+      emailBody: typeof body.emailBody === "string" ? body.emailBody : undefined,
+      smsDailyCap: typeof body.smsDailyCap === "number" ? body.smsDailyCap : undefined,
+      emailDailyCap: typeof body.emailDailyCap === "number" ? body.emailDailyCap : undefined,
+      pitchAngleId: typeof body.pitchAngleId === "string" ? body.pitchAngleId : undefined,
+    });
     return readMasterAutopilotStatus(request);
   }
   await dispatchAutopilot(request);

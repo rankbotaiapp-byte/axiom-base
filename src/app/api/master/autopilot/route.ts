@@ -56,7 +56,14 @@ function dryRunRequested(request: Request): boolean {
   return url.searchParams.get("dry") === "1" || request.headers.get("x-autopilot-dry-run") === "1";
 }
 
-function parseAction(body: unknown): "start" | "pause" | "run_batch" | "automate" | "tick_content" | "tick_blender" | "" {
+function payloadRequestsDry(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  return (body as { dryRun?: unknown }).dryRun === true;
+}
+
+function parseAction(
+  body: unknown,
+): "start" | "pause" | "run_batch" | "automate" | "tick_content" | "tick_blender" | "save_templates" | "" {
   if (!body || typeof body !== "object") return "";
   const action = (body as { action?: unknown }).action;
   if (
@@ -65,7 +72,8 @@ function parseAction(body: unknown): "start" | "pause" | "run_batch" | "automate
     action === "run_batch" ||
     action === "automate" ||
     action === "tick_content" ||
-    action === "tick_blender"
+    action === "tick_blender" ||
+    action === "save_templates"
   ) {
     return action;
   }
@@ -76,19 +84,22 @@ function parseAction(body: unknown): "start" | "pause" | "run_batch" | "automate
 export async function POST(request: Request): Promise<Response> {
   try {
     const snapshot = request.clone();
-    let action: "start" | "pause" | "run_batch" | "automate" | "tick_content" | "tick_blender" | "" = "";
+    let payload: unknown = null;
     try {
-      action = parseAction(await request.json());
+      payload = await request.json();
     } catch {
-      action = "";
+      payload = null;
+    }
+    const action = parseAction(payload);
+    const dry = dryRunRequested(snapshot) || payloadRequestsDry(payload);
+    if (dry && (action === "" || action === "run_batch")) {
+      const { simulateAutopilot } = await import("@/lib/axiom/autopilot.server");
+      const result = await simulateAutopilot(snapshot);
+      return Response.json({ ...result, dryRun: true, message: "Dry-run sweep complete (0 live messages sent)." });
     }
     if (action) {
       const { commandMasterAutopilot } = await import("@/lib/axiom/master-dashboard.server");
-      return Response.json(await commandMasterAutopilot(snapshot, action));
-    }
-    if (dryRunRequested(snapshot)) {
-      const { simulateAutopilot } = await import("@/lib/axiom/autopilot.server");
-      return Response.json(await simulateAutopilot(snapshot));
+      return Response.json(await commandMasterAutopilot(snapshot, action, payload));
     }
     const { dispatchAutopilot } = await import("@/lib/axiom/autopilot.server");
     return Response.json(await dispatchAutopilot(snapshot));

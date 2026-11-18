@@ -32,7 +32,7 @@ async function isConnectorReady(): Promise<boolean> {
     getConnectorReadiness(),
     READINESS_PROBE_TIMEOUT_MS,
   );
-  return result?.ready === true;
+  return Boolean((result as { ready?: boolean } | null)?.ready);
 }
 
 /**

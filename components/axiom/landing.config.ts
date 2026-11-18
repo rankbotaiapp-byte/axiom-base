@@ -16,10 +16,9 @@ export const landingConfig = {
     subhead:
       "Booking, dispatch and follow-up in one app you can launch to your phone in minutes.",
     /** Drop cee8a042.jpeg over this file (keep the name) to use the final brand still. */
-    image: "/media/axiom/brand-hero.jpg",
-    imageAlt: "AXIOM wordmark in dark metal inside rotating cyan and amber neon rings",
-    /** Animated loop shown when the visitor presses Play. */
-    loop: "/media/axiom/brand-hero-loop.mp4",
+    image: "/media/axiom/axiom-logo-poster.jpg",
+    imageAlt: "Obsidian stone A and AXIOM wordmark with a crimson core",
+    loop: "/media/axiom/axiom-logo-loop.mp4",
     primaryCta: { label: "Launch my app", href: "#book" },
     secondaryCta: { label: "Book a 2-week build", href: "#book" },
   },

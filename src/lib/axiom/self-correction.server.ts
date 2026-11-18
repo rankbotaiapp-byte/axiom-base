@@ -73,7 +73,35 @@ export async function handleTelemetryWebhook(request: Request): Promise<Response
     return Response.json({ ok: false, error: "Could not parse provider event" }, { status: 400 });
   }
   await persistTelemetryEvent(event);
-  return Response.json({ ok: true, channel: event.channel, eventType: event.eventType });
+
+  let quarantine: { quarantined: number; halted: number; reason: string | null } = {
+    quarantined: 0,
+    halted: 0,
+    reason: null,
+  };
+  try {
+    const { quarantineFromTelemetryEvent } = await import("./outreach-quarantine.server");
+    const result = await quarantineFromTelemetryEvent({
+      channel: event.channel,
+      eventType: event.eventType,
+      errorCode: event.errorCode,
+      destination: event.destination,
+    });
+    quarantine = result;
+  } catch (err) {
+    console.error("[telemetry] quarantine failed", err);
+  }
+
+  if (source === "twilio") {
+    const { recordTwilioCompanionPulse } = await import("./companion-telemetry.server");
+    void recordTwilioCompanionPulse(event.eventType, event.errorCode, `${event.channel}:${event.eventType}`);
+  }
+  return Response.json({
+    ok: true,
+    channel: event.channel,
+    eventType: event.eventType,
+    quarantine,
+  });
 }
 
 function envSmsNumbers(): { primary: string; backup: string } {

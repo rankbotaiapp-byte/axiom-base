@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
+import { BuildYoursSectionCta } from "@/components/showcase/ShowcaseDemoChrome";
 import { ARSENAL_HOTSPOTS, ASSETS, STILL_ASPECT, type ArsenalHotspot } from "./data";
 import { SectionHeading } from "./SectionHeading";
 
@@ -176,6 +177,9 @@ export function ArsenalSection({ onBook }: ArsenalSectionProps) {
             <p className="mt-1 text-sm text-slate-400">{p.body}</p>
           </motion.div>
         ))}
+      </div>
+      <div className="relative mx-auto mt-10 max-w-7xl">
+        <BuildYoursSectionCta slug="private-protection" />
       </div>
     </section>
   );

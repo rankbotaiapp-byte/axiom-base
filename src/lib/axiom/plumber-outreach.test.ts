@@ -194,7 +194,7 @@ test("industrial plumbing campaign urls never route through otter demos", () => 
   assert.equal(plumberCampaignPath("accurate-plumbing"), "/t/accurate-plumbing?niche=plumbing&greet=1");
 });
 
-test("root route and leftover Next page both render industrial plumbing outreach", () => {
+test("TanStack plumbing routes keep outreach; Next root serves freeze landing", () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
   const index = readFileSync(join(root, "routes/index.tsx"), "utf8");
   const nextPage = readFileSync(join(root, "app/page.tsx"), "utf8");
@@ -210,9 +210,10 @@ test("root route and leftover Next page both render industrial plumbing outreach
   assert.match(index, /PlumberOutreachLive/);
   assert.match(index, /sectionId=\{PLUMBING_DEMO_ANCHOR\}/);
   assert.doesNotMatch(index, /AxiomMasterLanding/);
-  assert.match(nextPage, /FounderIntroHero/);
-  assert.match(nextPage, /PlumberOutreachLive/);
+  assert.match(nextPage, /AxiomFreezeLanding/);
+  assert.match(nextPage, /axiom-studio/);
   assert.doesNotMatch(nextPage, /AxiomMasterLanding/);
+  assert.doesNotMatch(nextPage, /PlumberOutreachLive/);
   assert.match(admin, /PlumberOutreachStudio/);
   const intro = readFileSync(join(root, "components/plumbing/founder-intro-hero.tsx"), "utf8");
   assert.match(intro, /src="\/media\/Axiom_24_7 Booking for Contractors_720p_caption\.mp4"/);

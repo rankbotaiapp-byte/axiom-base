@@ -10,12 +10,15 @@
   --color-bg: #030712;
   --color-obsidian: #030712;
   --color-studio: #0a0a0c;
+  --color-field: #050507;
+  --color-carbon: #141618;
+  --color-frame: #ef4444;
   --color-surface: #121216;
   --color-surface-2: #1a1a20;
-  --color-fg: #e8e8ed;
-  --color-muted: #8b8b96;
-  --color-faint: #5c5c66;
-  --color-line: rgba(232, 232, 237, 0.1);
+  --color-fg: #f8fafc; /* slate-50 — high-contrast body */
+  --color-muted: #94a3b8; /* slate-400 — readable helpers */
+  --color-faint: #64748b;
+  --color-line: rgba(248, 250, 252, 0.12);
   --color-accent: #00ffcc;
   --color-neon-cyan: #00ffcc;
   --color-amber: #f5b942;
@@ -36,7 +39,7 @@
   --color-slate: #0d1117;
   --color-panel: #121821;
   --color-volt: #3fd8ff;
-  --color-mist: #9aa7b8;
+  --color-mist: #94a3b8; /* slate-400 — crisp helper labels */
   /* Obsidian HUD neon from the studio reference plate */
   --color-hud: #00f2fe;
   --color-hud-crimson: #ff2a3d;
@@ -47,10 +50,82 @@
   --radius-xl: 20px;
   --radius-2xl: 24px;
 
-  --shadow-border: 0 0 0 1px rgba(232, 232, 237, 0.08);
-  --shadow-border-hover: 0 0 0 1px rgba(46, 230, 214, 0.28);
-  --shadow-neon: 0 0 0 1px color-mix(in srgb, var(--color-accent) 42%, transparent),
-    0 0 28px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  --shadow-border: 0 0 0 1px rgba(248, 250, 252, 0.1);
+  --shadow-border-hover: 0 0 0 1px rgba(0, 242, 254, 0.32);
+  --shadow-neon: 0 0 0 1px color-mix(in srgb, var(--color-hud) 42%, transparent),
+    0 0 28px color-mix(in srgb, var(--color-hud) 18%, transparent);
+  --shadow-glass: 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 20px rgba(0, 242, 254, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-glass-amber: 0 0 0 1px rgba(245, 158, 11, 0.22),
+    0 0 22px rgba(245, 158, 11, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Sharpened glass panels — razor border + HUD glow ring */
+.axiom-glass {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(3, 7, 18, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-glass);
+}
+.axiom-glass-amber {
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  background: rgba(3, 7, 18, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-glass-amber);
+}
+
+/* Full-bleed particle canvas vignette — fades logo film into Cyber-Obsidian margins. */
+.bg-gradient-to-radial {
+  background-image: radial-gradient(
+    ellipse at center,
+    var(--tw-gradient-from, transparent),
+    var(--tw-gradient-via-stops, var(--tw-gradient-stops, transparent)),
+    var(--tw-gradient-to, #030712)
+  );
+}
+.axiom-particle-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    rgba(3, 7, 18, 0.5) 52%,
+    #030712 100%
+  );
+}
+/* Keep the upper AXIOM watermark readable; crush edges/bottom into obsidian. */
+.axiom-particle-vignette--header {
+  background:
+    radial-gradient(ellipse 95% 55% at 50% 8%, transparent 0%, transparent 48%, rgba(3, 7, 18, 0.28) 72%, #030712 100%),
+    linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(3, 7, 18, 0.4) 52%, #030712 88%);
+}
+
+/* Neon fog drift behind Studio upload / DarkAxiom freeze stage */
+@keyframes axiomFogDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translate3d(3%, -4%, 0) scale(1.06);
+    opacity: 0.85;
+  }
+  70% {
+    transform: translate3d(-2%, 3%, 0) scale(0.96);
+    opacity: 0.65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[axiomFogDrift_22s_ease-in-out_infinite\],
+  .animate-\[axiomFogDrift_26s_ease-in-out_infinite\],
+  .animate-\[axiomFogDrift_20s_ease-in-out_infinite\] {
+    animation: none !important;
+    opacity: 0.45;
+  }
 }
 
 /* Unlayered shell — must beat component CSS (e.g. aether.css) that lands outside @layer. */
@@ -58,16 +133,20 @@ html {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background-color: #030712;
   background-color: var(--color-bg, #030712);
-  color: var(--color-fg, #e8e8ed);
+  color: var(--color-fg, #f8fafc);
 }
 
 body {
   min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background-color: #030712;
   background-color: var(--color-bg, #030712);
-  color: var(--color-fg, #e8e8ed);
+  color: var(--color-fg, #f8fafc);
 }
 
 html.fluid-on body {
@@ -85,12 +164,16 @@ html.fluid-off body {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     background: var(--color-bg);
     color: var(--color-fg);
   }
 
   body {
     min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     background: var(--color-bg);
     color: var(--color-fg);
   }
@@ -101,10 +184,19 @@ html.fluid-off body {
 
   h1, h2, h3 {
     text-wrap: balance;
+    letter-spacing: -0.02em;
+    color: #fff;
   }
 
   p {
     text-wrap: pretty;
+    line-height: 1.55;
+    color: #f1f5f9; /* slate-100 */
+  }
+
+  small,
+  .text-helper {
+    color: #94a3b8; /* slate-400 */
   }
 
   button:not(:disabled),
@@ -389,6 +481,21 @@ html.fluid-off body {
 }
 
 /* Floating hero activity cards */
+@keyframes axiom-orb-hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.axiom-orb-hero-float {
+  animation: axiom-orb-hero-float 5s ease-in-out infinite;
+  will-change: transform;
+}
+
 @keyframes hero-float-a {
   0%,
   100% {

@@ -1,7 +1,21 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service, Shop, ShopNotice } from "@/lib/axiom/types";
 import { LiveDeskTelemetry } from "@/components/admin/LiveDeskTelemetry";
+import { AxiomStudioInterface } from "@/components/studio/AxiomStudioInterface";
+import { AxiomChatDrawer } from "@/components/AxiomChatDrawer";
+import { AxiomVideoCompanion } from "@/components/AxiomVideoCompanion";
+import AxiomContentCreator from "@/components/AxiomContentCreator";
+import { StudioAutoBuildPanel } from "@/components/studio/StudioAutoBuildPanel";
+import { AxiomStudioHudShell } from "@/components/studio/ObsidianHudChrome";
+import { JobRadarSmsPreview } from "@/components/admin/JobRadarSmsPreview";
+import { ChaChingRevenueCounter } from "@/components/admin/ChaChingRevenueCounter";
+import { FounderWelcomeModal } from "@/components/admin/FounderWelcomeModal";
+import { shopCity } from "@/lib/axiom/avatar";
+import StripeConnectDashboard from "@/components/StripeConnectDashboard";
+import { AutopilotDashboard } from "@/components/AutopilotDashboard";
+import { AxiomTelemetryProvider, useAxiomTelemetry } from "@/context/AxiomTelemetryContext";
 
 export type OpData = {
   mode: AccessMode;
@@ -31,22 +45,111 @@ export function AdminShell({
   onReload?: () => void;
 }) {
   return (
-    <main className="min-h-dvh bg-obsidian px-4 py-8 text-fg">
-      <div className="mx-auto grid max-w-5xl gap-6">
-        <header className="rounded-2xl border border-hud/20 bg-studio px-5 py-5">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-hud">Operator desk</p>
-          <h1 className="mt-2 font-display text-3xl">{data.shop.name}</h1>
-          <p className="mt-2 text-sm text-muted">
-            {readonly ? "Preview mode" : "Owner mode"} · /{data.shop.slug}
+    <AxiomTelemetryProvider shopId={data.shop.slug}>
+      <AdminShellInner data={data} readonly={readonly} />
+    </AxiomTelemetryProvider>
+  );
+}
+
+function AdminShellInner({ data, readonly }: { data: OpData; readonly: boolean }) {
+  const telemetry = useAxiomTelemetry();
+  const [chatOpen, setChatOpen] = useState(false);
+
+  return (
+    <AxiomStudioHudShell brandTitle={data.shop.name} deskSlug={data.shop.slug} themeId="cyber_cyan">
+      <div className="mx-auto grid max-w-[1400px] gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-md">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">
+            {readonly ? "Preview mode" : "Owner mode"} · Companion {telemetry.status}
           </p>
-        </header>
+          <div className="flex flex-wrap items-center gap-2">
+            <DeskLink href={`/${data.shop.slug}/admin/billing`}>Billing</DeskLink>
+            <DeskLink href="/content-creator">Content creator</DeskLink>
+            <DeskLink href="/admin/autopilot">Mechanical Heart</DeskLink>
+            <button
+              type="button"
+              onClick={() => setChatOpen(true)}
+              className="axiom-hud-cta-primary min-h-9 px-4 py-2"
+            >
+              Receptionist chat
+            </button>
+          </div>
+        </div>
+        <StudioAutoBuildPanel
+          shopSlug={data.shop.slug}
+          shopName={data.shop.name}
+          niche={data.shop.niche || "contractor"}
+          readonly={readonly}
+          previewHref={`/${data.shop.slug}`}
+          embedInShell
+        />
+        <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
+          <ChaChingRevenueCounter
+            shopSlug={data.shop.slug}
+            shopName={data.shop.name}
+            appointments={data.appointments}
+            services={data.services}
+          />
+          <JobRadarSmsPreview
+            shopName={data.shop.name}
+            shopSlug={data.shop.slug}
+            city={shopCity(data.shop.address)}
+            ownerPhone={data.notificationPhone || data.notifyPhone}
+          />
+        </div>
+        {!readonly ? (
+          <AxiomContentCreator
+            shopSlug={data.shop.slug}
+            businessName={data.shop.name}
+            compact
+          />
+        ) : null}
+        <AutopilotDashboard
+          shopName={data.shop.name}
+          shopSlug={data.shop.slug}
+          defaultScope={data.platformDesk ? "master" : "tenant"}
+          pollMs={15_000}
+        />
+        <StripeConnectDashboard shopSlug={data.shop.slug} readonly={readonly} />
+        <AxiomStudioInterface
+          shopSlug={data.shop.slug}
+          shopName={data.shop.name}
+          serviceLine={data.shop.tagline}
+          readonly={readonly}
+          liveHref={`/${data.shop.slug}`}
+        />
         <LiveDeskTelemetry shopSlug={data.shop.slug} />
-        <section className="rounded-2xl border border-line bg-surface px-5 py-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Book</p>
-          <p className="mt-2 font-display text-2xl tabular">{data.appointments.length}</p>
-          <p className="mt-1 text-sm text-muted">Appointments loaded for this shop.</p>
-        </section>
       </div>
-    </main>
+      <AxiomVideoCompanion
+        size="sm"
+        draggable
+        status={telemetry.status}
+        onClick={() => setChatOpen(true)}
+      />
+      <AxiomChatDrawer
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        deskLabel={data.shop.name}
+      />
+      <FounderWelcomeModal
+        shopSlug={data.shop.slug}
+        shopName={data.shop.name}
+        ownerName={data.shop.name}
+        niche={data.shop.niche || data.shop.customNiche || "contractor"}
+        address={data.shop.address}
+        readonly={readonly}
+      />
+    </AxiomStudioHudShell>
+  );
+}
+
+function DeskLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      className="inline-flex min-h-9 items-center rounded-full border border-white/15 bg-white/[0.03] px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-white/70 transition hover:border-[var(--brand-primary)]/40 hover:text-white"
+    >
+      {children}
+    </a>
   );
 }

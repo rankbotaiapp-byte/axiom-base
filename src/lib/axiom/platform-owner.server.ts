@@ -10,16 +10,22 @@ export function masterEmails(): string[] {
     .filter(Boolean);
 }
 
-export async function isPlatformOwner(userId: string): Promise<boolean> {
+export async function isPlatformOwner(userId: string, sessionEmail?: string | null): Promise<boolean> {
   if (userId === MASTER_OWNER_ID) return true;
   const allow = masterEmails();
   if (!allow.length || !userId) return false;
-  const sql = await getSql();
-  const rows = await sql<{ email: string | null }>`
-    select "email" as email from "user" where id = ${userId} limit 1
-  `;
-  const email = rows[0]?.email?.trim().toLowerCase() ?? "";
-  return email.length > 0 && allow.includes(email);
+  const direct = sessionEmail?.trim().toLowerCase() ?? "";
+  if (direct && allow.includes(direct)) return true;
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ email: string | null }>`
+      select "email" as email from "user" where id = ${userId} limit 1
+    `;
+    const email = rows[0]?.email?.trim().toLowerCase() ?? "";
+    return email.length > 0 && allow.includes(email);
+  } catch {
+    return false;
+  }
 }
 
 export async function assertPlatformOwner(userId: string): Promise<void> {
