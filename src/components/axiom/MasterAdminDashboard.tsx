@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ActiveLeadsCard } from "@/components/axiom/cards/ActiveLeadsCard";
 import { MarginProtectionCard } from "@/components/axiom/cards/MarginProtectionCard";
 import { AxiomSpaceOrbitCanvas } from "@/components/axiom/AxiomSpaceOrbitCanvas";
-import { AxiomVideoCompanion } from "@/components/AxiomVideoCompanion";
+import { AXIOM_COMPACT_FAB_CLASS } from "@/components/AxiomChatDrawer";
 import { AxiomTelemetryProvider, useAxiomTelemetry } from "@/context/AxiomTelemetryContext";
 import { masterDeskError, masterDeskFetch } from "@/lib/axiom/master-desk-client";
 
@@ -250,10 +250,31 @@ function MasterAdminDashboardInner() {
 
           {section === "studio" ? (
             <Panel title="Studio & branding">
-              <p className="text-sm text-white/70">The phone studio is the storefront people see first. Brand color and the $1 launch live there.</p>
-              <Link href="/axiom-studio" className="mt-4 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-[#00ffcc]">
-                Open studio
-              </Link>
+              <p className="text-sm text-white/70">
+                Logo workspace builds storefront loops. The 3D landing studio edits CRO copy, companion face,
+                and particles — persisted to Supabase <span className="font-mono text-[#00ffcc]">app_settings</span> as{" "}
+                <span className="font-mono text-white/80">axiom_landing:&lt;slug&gt;</span>.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-4">
+                <Link
+                  href="/axiom-studio"
+                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-[#00ffcc]"
+                >
+                  Open logo studio
+                </Link>
+                <Link
+                  href="/axiom/studio"
+                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-[#00ffcc]"
+                >
+                  Open 3D landing studio
+                </Link>
+                <Link
+                  href="/axiom"
+                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-white/70"
+                >
+                  Preview /axiom
+                </Link>
+              </div>
             </Panel>
           ) : null}
 
@@ -302,11 +323,14 @@ function MasterAdminDashboardInner() {
           ) : null}
         </main>
       </div>
-      <AxiomVideoCompanion
-        size="sm"
-        draggable
+      <button
+        type="button"
         onClick={() => router.push("/companion")}
-      />
+        className={`fixed bottom-6 right-6 z-[66] sm:bottom-8 sm:right-8 ${AXIOM_COMPACT_FAB_CLASS}`}
+        aria-label="Open Axiom companion"
+      >
+        ▶ Ask Axiom
+      </button>
     </div>
   );
 }

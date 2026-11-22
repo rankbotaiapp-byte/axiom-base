@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import { OutboundStorefront } from "@/components/outbound/OutboundStorefront";
-import Axiom3DOrbiter from "@/components/Axiom3DOrbiter";
 import { firstQuery } from "@/lib/axiom/outbound-preview";
 import { resolveOutboundLead } from "@/lib/axiom/outbound-preview.server";
-import { previewStockForNiche } from "@/lib/axiom/preview-stock";
+import { previewStockForBusiness } from "@/lib/axiom/preview-stock";
 import { readPublicShop } from "@/lib/axiom/shop-accent.server";
 import { readStudioAccess } from "@/lib/axiom/studio-credits.server";
 import { AXIOM_THEMES } from "@/lib/axiom/themes";
 import { LiveShopCroShell, LiveShopQuoteSection } from "@/components/conversion/LiveShopCroShell";
+import { PublicStudioFraming } from "@/components/studio/fx/PublicStudioFraming";
+import { getStudioFxState } from "@/lib/axiom/studio-fx/server";
 import { shopCity } from "@/lib/axiom/avatar";
 
 export default async function ShopPage({
@@ -27,14 +28,20 @@ export default async function ShopPage({
 
     // Theme from brand pack (shops have accent, not a theme id column yet)
     const activeTheme = AXIOM_THEMES["neon-cyan"] ?? Object.values(AXIOM_THEMES)[0]!;
-    const stock = previewStockForNiche(shop.niche);
+    const city = shopCity(shop.address);
+    const stock = previewStockForBusiness({
+      niche: shop.niche,
+      businessName: shop.name,
+      accent: shop.accent,
+      city,
+    });
     const services = [
       { title: `Emergency ${shop.niche}`, description: "Priority dispatch with live booking confirmation." },
       { title: "Diagnostics & Repair", description: "On-site assessment and fixed-rate repair options." },
       { title: "Install & Upgrade", description: "New installs and system upgrades, scheduled same-day when available." },
       { title: "Maintenance Plans", description: "Recurring service windows to keep your systems mission-ready." },
     ];
-    const gallery = [stock.still, stock.still, stock.still];
+    const gallery = [stock.still, stock.proof, stock.services];
 
     const themeStyles = `
       .immutable-storefront {
@@ -54,7 +61,7 @@ export default async function ShopPage({
       url: `/${shop.slug}`,
     };
 
-    const city = shopCity(shop.address);
+    const studioFx = await getStudioFxState(shop.slug);
 
     return (
       <LiveShopCroShell
@@ -72,8 +79,8 @@ export default async function ShopPage({
         />
 
         {/* --- SECTION 1: HERO & 3D COMPANION --- */}
-        <header className="relative px-6 py-20 lg:py-28 overflow-hidden border-b border-slate-800/80">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <header className="relative px-6 py-16 lg:py-24 overflow-hidden border-b border-slate-800/80">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             
             {/* Left Column: Tenant Branding & Booking CTA */}
             <div>
@@ -100,30 +107,41 @@ export default async function ShopPage({
                 {shop.tagline || `Emergency ${shop.niche} dispatch and bookings, day and night.`}
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-4 items-center">
-                <a 
-                  href={`/${shop.slug}/book`} 
-                  className={`inline-flex items-center justify-center px-8 py-4 rounded-xl bg-gradient-to-r ${activeTheme.gradient} text-slate-950 font-bold shadow-lg hover:opacity-90 transition-all text-base`}
-                  style={{ boxShadow: `0 10px 25px -5px var(--shop-glow)` }}
+              <div className="mt-8 flex flex-wrap gap-3 items-center">
+                <a
+                  href={`/${shop.slug}/admin/studio`}
+                  className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#00f2fe]/55 bg-[#00f2fe]/10 px-6 py-3 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-[#00f2fe] shadow-[0_0_24px_rgba(0,242,254,0.16)] transition hover:bg-[#00f2fe]/18"
                 >
-                  Book Now / Test Dispatch
+                  Studio
                 </a>
-                <a 
-                  href="tel:5418908126" 
-                  className="inline-flex items-center justify-center px-6 py-4 rounded-xl bg-slate-900 border border-slate-800 text-white font-semibold hover:border-slate-700 transition-colors"
+                <a
+                  href={`/${shop.slug}/admin/studio`}
+                  className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#FFE500] px-6 py-3 font-mono text-[11px] font-black uppercase tracking-[0.12em] text-[#030712] shadow-[0_20px_60px_-20px_#FFE500] transition hover:brightness-110"
                 >
-                  Call Dispatch Now
+                  Upgrade your own shop photo
+                </a>
+                <a
+                  href={`/${shop.slug}/book`}
+                  className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#00f2fe] px-8 py-3 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-[#030712] shadow-[0_14px_40px_-12px_#00f2fe] transition hover:brightness-110"
+                >
+                  Book
+                </a>
+                <a
+                  href="tel:5418908126"
+                  className="inline-flex items-center justify-center px-4 py-3 font-mono text-[10px] uppercase tracking-[0.14em] text-white/55 transition hover:text-white"
+                >
+                  Call dispatch
                 </a>
               </div>
             </div>
 
-            {/* Right Column: Interactive 3D Companion Droplet */}
-            <div className="w-full bg-slate-950/60 border border-slate-800/80 rounded-2xl backdrop-blur-xl p-4 shadow-2xl" style={{ boxShadow: `0 25px 50px -12px var(--shop-glow)` }}>
-              <div className="mb-2 px-2 flex justify-between items-center text-xs font-mono text-slate-400">
-                <span>// AXIOM COMPANION CORE</span>
-                <span style={{ color: 'var(--shop-primary)' }}>ACTIVE</span>
-              </div>
-              <Axiom3DOrbiter />
+            <div className="w-full min-w-0">
+              <PublicStudioFraming
+                variant="embed"
+                slug={shop.slug}
+                initial={studioFx}
+                studioHref={`/${shop.slug}/admin/studio`}
+              />
             </div>
 
           </div>
@@ -232,7 +250,12 @@ export default async function ShopPage({
       {theme}
       <OutboundStorefront
         profile={profile}
-        stock={previewStockForNiche(profile.niche)}
+        stock={previewStockForBusiness({
+          niche: profile.niche,
+          businessName: profile.businessName,
+          city: profile.city,
+          accent,
+        })}
         studioUnlocked={access.isActive && access.credits > 0}
       />
     </>

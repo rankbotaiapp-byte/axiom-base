@@ -5,7 +5,6 @@ import type { AccessMode, Appointment, Billing, Employee, PaymentSetup, Service,
 import { LiveDeskTelemetry } from "@/components/admin/LiveDeskTelemetry";
 import { AxiomStudioInterface } from "@/components/studio/AxiomStudioInterface";
 import { AxiomChatDrawer } from "@/components/AxiomChatDrawer";
-import { AxiomVideoCompanion } from "@/components/AxiomVideoCompanion";
 import AxiomContentCreator from "@/components/AxiomContentCreator";
 import { StudioAutoBuildPanel } from "@/components/studio/StudioAutoBuildPanel";
 import { AxiomStudioHudShell } from "@/components/studio/ObsidianHudChrome";
@@ -16,6 +15,7 @@ import { shopCity } from "@/lib/axiom/avatar";
 import StripeConnectDashboard from "@/components/StripeConnectDashboard";
 import { AutopilotDashboard } from "@/components/AutopilotDashboard";
 import { AxiomTelemetryProvider, useAxiomTelemetry } from "@/context/AxiomTelemetryContext";
+import { StorefrontStudio } from "@/components/storefront/StorefrontStudio";
 
 export type OpData = {
   mode: AccessMode;
@@ -58,14 +58,14 @@ function AdminShellInner({ data, readonly }: { data: OpData; readonly: boolean }
   return (
     <AxiomStudioHudShell brandTitle={data.shop.name} deskSlug={data.shop.slug} themeId="cyber_cyan">
       <div className="mx-auto grid max-w-[1400px] gap-6">
+        <StorefrontStudio slug={data.shop.slug} />
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-md">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">
-            {readonly ? "Preview mode" : "Owner mode"} · Companion {telemetry.status}
+            {readonly ? "Preview mode" : "Owner mode"} · {data.shop.niche || "contractor"} · Companion {telemetry.status}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <DeskLink href={`/${data.shop.slug}/admin/billing`}>Billing</DeskLink>
-            <DeskLink href="/content-creator">Content creator</DeskLink>
-            <DeskLink href="/admin/autopilot">Mechanical Heart</DeskLink>
+            <DeskLink href={`/${data.shop.slug}/admin/autopilot`}>Autopilot</DeskLink>
             <button
               type="button"
               onClick={() => setChatOpen(true)}
@@ -107,7 +107,7 @@ function AdminShellInner({ data, readonly }: { data: OpData; readonly: boolean }
         <AutopilotDashboard
           shopName={data.shop.name}
           shopSlug={data.shop.slug}
-          defaultScope={data.platformDesk ? "master" : "tenant"}
+          defaultScope="tenant"
           pollMs={15_000}
         />
         <StripeConnectDashboard shopSlug={data.shop.slug} readonly={readonly} />
@@ -120,12 +120,6 @@ function AdminShellInner({ data, readonly }: { data: OpData; readonly: boolean }
         />
         <LiveDeskTelemetry shopSlug={data.shop.slug} />
       </div>
-      <AxiomVideoCompanion
-        size="sm"
-        draggable
-        status={telemetry.status}
-        onClick={() => setChatOpen(true)}
-      />
       <AxiomChatDrawer
         open={chatOpen}
         onOpenChange={setChatOpen}

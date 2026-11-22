@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { AxiomChatDrawer } from "@/components/AxiomChatDrawer";
-import { AxiomVideoCompanion } from "@/components/AxiomVideoCompanion";
+import { AXIOM_COMPACT_FAB_CLASS, AxiomChatDrawer } from "@/components/AxiomChatDrawer";
 
 type AxiomGlobalAssistantProps = {
   /** When true, click routes straight to /companion instead of the quick hub. */
@@ -42,14 +41,14 @@ export function AxiomGlobalAssistant({ directToCompanion = false }: AxiomGlobalA
         className="pointer-events-none fixed bottom-5 right-5 z-[55] overflow-visible sm:bottom-7 sm:right-7"
         style={{ overflow: "visible" }}
       >
-        <div className="pointer-events-auto overflow-visible">
-          <AxiomVideoCompanion
-            size="sm"
-            attentionLook
-            onClick={onActivate}
-            className="drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)]"
-          />
-        </div>
+        <button
+          type="button"
+          onClick={onActivate}
+          className={`pointer-events-auto ${AXIOM_COMPACT_FAB_CLASS}`}
+          aria-label="Open Axiom assistant"
+        >
+          ▶ Ask Axiom
+        </button>
       </div>
 
       <AnimatePresence>

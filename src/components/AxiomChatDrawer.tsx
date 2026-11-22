@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { MessageCircle, SendHorizontal, Square, X } from "lucide-react";
+import { SendHorizontal, Square, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   companionHaptic,
@@ -32,6 +32,10 @@ function messageText(message: UIMessage): string {
     .trim();
 }
 
+/** Compact bright launcher from the hook-section collapsed player — not a character icon. */
+export const AXIOM_COMPACT_FAB_CLASS =
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#00f2fe] px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#030712] shadow-[0_14px_40px_-12px_#00f2fe] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00f2fe]";
+
 export type AxiomChatDrawerProps = {
   /** Controlled open state; omit for self-managed FAB. */
   open?: boolean;
@@ -47,7 +51,7 @@ export type AxiomChatDrawerProps = {
 
 /**
  * Glassmorphic Cyber-Obsidian chat drawer — streams `/api/chat` and pulses
- * the adjacent AxiomVideoCompanion via the shared voice bus on conversation events.
+ * the companion voice bus on conversation events.
  */
 export function AxiomChatDrawer({
   open: openProp,
@@ -147,10 +151,10 @@ export function AxiomChatDrawer({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="pointer-events-auto fixed bottom-6 right-6 z-[66] flex h-14 w-14 items-center justify-center rounded-full border border-[#00f2fe]/45 bg-[#030712]/90 text-[#00f2fe] shadow-[0_0_28px_rgba(0,242,254,0.22)] backdrop-blur-md transition hover:border-[#00f2fe]/80 hover:shadow-[0_0_40px_rgba(0,242,254,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00f2fe] sm:bottom-8 sm:right-[7.5rem]"
+          className={`pointer-events-auto fixed bottom-6 right-6 z-[66] sm:bottom-8 sm:right-8 ${AXIOM_COMPACT_FAB_CLASS}`}
           aria-label="Open Axiom chat"
         >
-          <MessageCircle className="h-6 w-6" strokeWidth={1.75} />
+          ▶ Ask Axiom
         </button>
       ) : null}
 

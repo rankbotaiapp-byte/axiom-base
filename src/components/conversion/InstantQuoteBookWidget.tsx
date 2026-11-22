@@ -134,7 +134,7 @@ export function InstantQuoteBookWidget({
           <div className="grid gap-2 sm:grid-cols-2">
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--brand-primary)]/50 bg-[var(--brand-primary)]/12 px-4 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--brand-glow)]"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#00f2fe] px-4 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-[#030712] shadow-[0_14px_40px_-12px_#00f2fe]"
               onClick={() =>
                 booking.openVideoBooking({
                   serviceId: service.id,
@@ -147,7 +147,7 @@ export function InstantQuoteBookWidget({
               }
             >
               <Sparkles className="h-4 w-4" />
-              Talk to Axiom — lock it in
+              Book
             </button>
             <button
               type="button"

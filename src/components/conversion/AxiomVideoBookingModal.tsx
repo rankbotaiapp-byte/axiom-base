@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Calendar, MessageCircle, X, Zap } from "lucide-react";
-import { AxiomChatDrawer } from "@/components/AxiomChatDrawer";
-import { AxiomVideoCompanion } from "@/components/AxiomVideoCompanion";
+import { AXIOM_COMPACT_FAB_CLASS, AxiomChatDrawer } from "@/components/AxiomChatDrawer";
 import { formatQuoteRange, type InstantQuoteSelection } from "@/lib/axiom/instant-quote-catalog";
 import { cn } from "@/lib/utils";
 
@@ -94,9 +93,13 @@ export function AxiomVideoBookingModal({
           )}
 
           <div className="mt-5 flex flex-col items-center gap-4">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-              <AxiomVideoCompanion size="md" attentionLook status="good" onClick={() => setChatOpen(true)} />
-            </div>
+            <button
+              type="button"
+              className={AXIOM_COMPACT_FAB_CLASS}
+              onClick={() => setChatOpen(true)}
+            >
+              ▶ Ask Axiom
+            </button>
             <div className="grid w-full gap-2 sm:grid-cols-2">
               <button
                 type="button"
@@ -108,11 +111,11 @@ export function AxiomVideoBookingModal({
               </button>
               <a
                 href={bookPath}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 font-mono text-[10px] uppercase tracking-[0.14em] text-white transition hover:border-white/30"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#00f2fe] px-4 font-mono text-[11px] font-black uppercase tracking-[0.14em] text-[#030712] shadow-[0_14px_40px_-12px_#00f2fe] transition hover:brightness-110"
                 onClick={onClose}
               >
                 <Calendar className="h-4 w-4" />
-                Pick a time slot
+                Book
               </a>
             </div>
             {emergency ? (

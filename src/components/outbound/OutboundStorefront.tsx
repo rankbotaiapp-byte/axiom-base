@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
-import { ShieldCheck, Upload, Zap } from "lucide-react";
+import { ShieldCheck, Upload } from "lucide-react";
 import {
-  composeNeuralPrompt,
-  decomposeStudioLayers,
   STUDIO_MATRIX,
   STUDIO_MATRIX_NICHES,
   type StudioMatrixNiche,
@@ -18,6 +16,10 @@ import { EmergencyDispatchBar } from "@/components/conversion/EmergencyDispatchB
 import { InstantQuoteBookWidget } from "@/components/conversion/InstantQuoteBookWidget";
 import { StorefrontBookingHost } from "@/components/conversion/StorefrontBookingHost";
 import { FounderWelcomeStrip } from "@/components/conversion/FounderWelcomeStrip";
+import { CinematicAmbientOverlay } from "@/components/atmosphere/CinematicAmbientOverlay";
+import { cinemagraphPresetForNiche } from "@/lib/axiom/storefront-atmosphere";
+import { animateRecreatedBackground, readCachedStudioPhotos, rememberStudioPhoto, remakeUploadedPhoto } from "@/components/axiom/studioRemake";
+import { INLAY_PRESETS, MOTION_PRESETS, microMotionForNiche, type InlayPresetId, type MotionPresetId } from "@/lib/axiom/storefront-themes";
 import { cn } from "@/lib/utils";
 
 const PROOF_SLOTS = [
@@ -28,9 +30,9 @@ const PROOF_SLOTS = [
 
 type ProofSlot = (typeof PROOF_SLOTS)[number]["id"];
 
-function CornerFrame({ className, children }: { className?: string; children: ReactNode }) {
+function CornerFrame({ className, children, id }: { className?: string; children: ReactNode; id?: string }) {
   return (
-    <div className={cn("relative border border-frame/80 bg-carbon", className)}>
+    <div id={id} className={cn("relative border border-frame/80 bg-carbon", className)}>
       <span className="pointer-events-none absolute -left-px -top-px h-3.5 w-3.5 border-l-2 border-t-2 border-frame" />
       <span className="pointer-events-none absolute -right-px -top-px h-3.5 w-3.5 border-r-2 border-t-2 border-frame" />
       <span className="pointer-events-none absolute -bottom-px -left-px h-3.5 w-3.5 border-b-2 border-l-2 border-frame" />
@@ -54,9 +56,14 @@ export function OutboundStorefront({
   const [step, setStep] = useState(0);
   const [photoName, setPhotoName] = useState("");
   const [heroStill, setHeroStill] = useState("");
+  const [heroMotion, setHeroMotion] = useState("");
+  const [drift, setDrift] = useState(false);
+  const [inlay, setInlay] = useState<InlayPresetId>("surface");
+  const [motionPreset, setMotionPreset] = useState<MotionPresetId>("smoke");
   const [proof, setProof] = useState<Record<string, string>>({});
   const [slot, setSlot] = useState<ProofSlot | null>(null);
-  const [busy, setBusy] = useState<"hero" | "slot" | "contact" | null>(null);
+  const [busy, setBusy] = useState<"hero" | "slot" | "contact" | "motion" | null>(null);
+  const uploads = useRef<Partial<Record<"hero" | ProofSlot, File>>>({});
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [contactName, setContactName] = useState("");
@@ -66,51 +73,84 @@ export function OutboundStorefront({
 
   const displayName = name.trim() || profile.businessName;
   const entry = STUDIO_MATRIX[niche];
-  const packet = useMemo(
-    () => decomposeStudioLayers({ niche, shopName: displayName, tagline: profile.tagline }),
-    [niche, displayName, profile.tagline],
-  );
   const place = [profile.city, profile.county].filter(Boolean).join(", ");
 
   const trialHref = `/start?plan=starter&slug=${encodeURIComponent(profile.slug)}`;
 
-  async function generateStill(scene: string, target: "hero" | ProofSlot) {
+  useEffect(() => {
+    const saved = readCachedStudioPhotos(profile.slug);
+    const hero = saved.find((photo) => photo.id === "hero");
+    if (hero?.url) setHeroStill(hero.url);
+    const nextProof: Record<string, string> = {};
+    for (const photo of saved) {
+      if (photo.id !== "hero") nextProof[photo.id] = photo.url;
+    }
+    if (Object.keys(nextProof).length) setProof((current) => ({ ...nextProof, ...current }));
+  }, [profile.slug]);
+
+  async function generateStill(_scene: string, target: "hero" | ProofSlot) {
     setError("");
     setNotice("");
     if (!studioUnlocked) {
       setError(STUDIO_TRIAL_PROMPT);
       return;
     }
+    const file = uploads.current[target];
+    if (!file) {
+      setError("Upload a photo first. Studio remakes that photo and does not pull a library plate.");
+      return;
+    }
     setBusy(target === "hero" ? "hero" : "slot");
-    const prompt = composeNeuralPrompt({
-      niche,
-      shopName: displayName,
-      tagline: profile.tagline,
-      sceneHint: photoName ? `${scene} Reference photo: ${photoName}.` : scene,
-      medium: "image",
-    });
     try {
-      const response = await fetch("/api/studio/still", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          shopSlug: profile.slug,
-          niche,
-          shopName: displayName,
-          tagline: profile.tagline,
-          prompt,
-        }),
+      const imageUrl = await remakeUploadedPhoto({
+        file,
+        shopSlug: profile.slug,
+        niche,
+        shopName: displayName,
+        brandColor: "#00FFCC",
+        slotLabel: target === "hero" ? "Hero" : target,
+        inlay,
       });
-      const { handleGenerationGuardHttpStatus } = await import("@/lib/axiom/generation-checkout-client");
-      if (await handleGenerationGuardHttpStatus(response.status, profile.slug)) return;
-      const json = (await response.json().catch(() => ({}))) as { imageUrl?: string; error?: string };
-      if (!response.ok || !json.imageUrl) throw new Error(json.error || "The still did not finish.");
-      if (target === "hero") setHeroStill(json.imageUrl);
-      else setProof((current) => ({ ...current, [target]: json.imageUrl! }));
-      setNotice("The plate is live on this preview.");
+      rememberStudioPhoto(profile.slug, {
+        id: target,
+        name: file.name,
+        url: imageUrl,
+        inlay,
+      });
+      if (target === "hero") {
+        setHeroStill(imageUrl);
+        setHeroMotion("");
+      } else setProof((current) => ({ ...current, [target]: imageUrl }));
+      setNotice("The uploaded photo is remade on this preview.");
       setSlot(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The still did not finish.");
+      setError(err instanceof Error ? err.message : "The remake did not finish.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function animateBackground() {
+    if (!/^https:\/\//i.test(heroStill)) {
+      setError("Remake the uploaded photo first, then animate its background.");
+      return;
+    }
+    setDrift(true);
+    setBusy("motion");
+    setError("");
+    try {
+      const videoUrl = await animateRecreatedBackground({
+        imageUrl: heroStill,
+        shopSlug: profile.slug,
+        niche,
+        shopName: displayName,
+        brandColor: "#00FFCC",
+        motion: motionPreset,
+      });
+      setHeroMotion(videoUrl);
+      setNotice("The background of the remake is in motion.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Background motion did not finish.");
     } finally {
       setBusy(null);
     }
@@ -123,9 +163,13 @@ export function OutboundStorefront({
       return;
     }
     setPhotoName(file.name.slice(0, 80));
+    uploads.current[target] = file;
     const url = URL.createObjectURL(file);
-    if (target === "hero") setHeroStill(url);
-    else setProof((current) => ({ ...current, [target]: url }));
+    if (target === "hero") {
+      setHeroStill(url);
+      setHeroMotion("");
+      setDrift(false);
+    } else setProof((current) => ({ ...current, [target]: url }));
     setError("");
   }
 
@@ -164,7 +208,7 @@ export function OutboundStorefront({
       shopSlug={profile.slug}
       shopName={displayName}
       bookPath={bookPath}
-      themeId="sparta_gold"
+      themeId="cyber_cyan"
     >
       <main className="min-h-dvh bg-[#050507] pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-fg">
         <EmergencyDispatchBar city={place || profile.city} placement="bottom" />
@@ -181,14 +225,19 @@ export function OutboundStorefront({
         nicheLabel={entry.label}
         line={profile.tagline}
         still={heroStill}
+        motionSrc={heroMotion}
+        drift={drift}
+        niche={niche}
         stock={stock}
-        environment={packet.layers[0].label}
-        equipment={entry.equipment}
         phone={profile.phone}
+        busy={busy === "motion"}
+        motionPreset={motionPreset}
+        onMotionPreset={(value) => setMotionPreset(value)}
+        onAnimate={() => void animateBackground()}
       />
 
       <div className="relative z-20 mx-auto -mt-16 w-full max-w-xl px-4 sm:-mt-24">
-        <CornerFrame className="bg-field/90 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-5">
+        <CornerFrame id="studio-card" className="bg-[#07080C]/92 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-5">
           <p className="font-display text-lg leading-snug text-fg">
             Want to customize this for your exact shop? Type your name, pick your trade, or drop a reference photo.
           </p>
@@ -251,14 +300,29 @@ export function OutboundStorefront({
                   onChange={(event) => onPhoto(event.target.files?.[0], "hero")}
                 />
               </label>
+              <label className="grid gap-2 text-sm text-fg" htmlFor="outbound-inlay">
+                Inlay
+                <select
+                  id="outbound-inlay"
+                  value={inlay}
+                  onChange={(event) => setInlay(event.target.value as InlayPresetId)}
+                  className="min-h-11 border border-line bg-carbon px-3 text-fg"
+                >
+                  {INLAY_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {studioUnlocked ? null : <TrialCheckoutDisclosure />}
               <button
                 type="button"
-                className="min-h-11 bg-frame px-4 text-sm font-medium text-field disabled:opacity-40"
+                className="min-h-12 bg-[#FFE500] px-4 text-sm font-black uppercase tracking-[0.12em] text-[#030712] shadow-[0_20px_60px_-20px_#FFE500] disabled:opacity-40"
                 disabled={busy !== null}
                 onClick={() => void generateStill(entry.equipment, "hero")}
               >
-                {busy === "hero" ? "Generating the plate…" : studioUnlocked ? "Generate the live plate" : "Start the $1 trial"}
+                {busy === "hero" ? "Upgrading photo…" : studioUnlocked ? "Upgrade your own shop photo" : "Start the $1 trial"}
               </button>
               {studioUnlocked ? null : (
                 <a href={trialHref} className="inline-flex min-h-11 items-center text-sm text-frame">
@@ -315,33 +379,19 @@ export function OutboundStorefront({
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           {PROOF_SLOTS.map((item) => {
             const image = proof[item.id];
-            if (image) {
-              return (
-                <figure key={item.id} className="overflow-hidden border border-frame/70 bg-carbon">
-                  <img src={image} alt={`${displayName} ${item.title}`} className="aspect-[4/5] w-full object-cover" />
-                  <figcaption className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
-                    {item.title}
-                  </figcaption>
-                </figure>
-              );
-            }
             return (
-              <button
-                key={item.id}
-                type="button"
-                className="flex aspect-[4/5] flex-col items-start justify-between border border-dashed border-frame/80 bg-carbon px-4 py-4 text-left"
-                onClick={() => {
-                  setSlot(item.id);
-                  setError("");
-                }}
-              >
-                <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-frame">
-                  <Zap size={14} aria-hidden />[{entry.label} proof of work]
-                </span>
-                <span className="text-sm leading-relaxed text-fg">
-                  Showcase your latest project to boost local trust by 300%. Click to generate AI asset or upload photo.
-                </span>
-              </button>
+              <figure key={item.id} className="overflow-hidden border border-frame/70 bg-carbon">
+                {image ? (
+                  <img src={image} alt={`${displayName} ${item.title}`} className="aspect-[4/5] w-full object-cover" />
+                ) : (
+                  <div className="flex aspect-[4/5] items-center justify-center px-4 text-center text-xs text-muted">
+                    Upload a job photo to remake this frame.
+                  </div>
+                )}
+                <figcaption className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+                  {item.title}
+                </figcaption>
+              </figure>
             );
           })}
         </div>
@@ -451,20 +501,30 @@ function HeroPlate({
   nicheLabel,
   line,
   still,
+  motionSrc,
+  drift,
+  niche,
   stock,
-  environment,
-  equipment,
   phone,
+  busy,
+  motionPreset,
+  onMotionPreset,
+  onAnimate,
 }: {
   name: string;
   place: string;
   nicheLabel: string;
   line: string;
   still: string;
+  motionSrc: string;
+  drift: boolean;
+  niche: string;
   stock: PreviewStock;
-  environment: string;
-  equipment: string;
   phone: string;
+  busy: boolean;
+  motionPreset: MotionPresetId;
+  onMotionPreset: (value: MotionPresetId) => void;
+  onAnimate: () => void;
 }) {
   const reduce = useReducedMotion();
   const px = useMotionValue(0);
@@ -475,8 +535,6 @@ function HeroPlate({
   const rotateY = useTransform(sx, [-0.5, 0.5], [-9, 9]);
   const farX = useTransform(sx, (value) => value * 18);
   const farY = useTransform(sy, (value) => value * 12);
-  const midX = useTransform(sx, (value) => value * 42);
-  const midY = useTransform(sy, (value) => value * 28);
   const nearX = useTransform(sx, (value) => value * 70);
   const nearY = useTransform(sy, (value) => value * 40);
 
@@ -497,8 +555,10 @@ function HeroPlate({
     >
       <motion.div className="absolute inset-0" style={{ rotateX: reduce ? 0 : rotateX, rotateY: reduce ? 0 : rotateY, transformStyle: "preserve-3d" }}>
         <motion.div className="absolute inset-0 bg-field" style={{ x: farX, y: farY, z: -40 }}>
-          {still ? (
-            <img src={still} alt="" className="h-full w-full object-cover opacity-70" />
+          {motionSrc ? (
+            <video src={motionSrc} poster={still} muted loop autoPlay playsInline className="h-full w-full object-cover" />
+          ) : still ? (
+            <img src={still} alt="" className="h-full w-full object-cover" />
           ) : (
             <video
               src={stock.loop}
@@ -507,18 +567,35 @@ function HeroPlate({
               loop
               autoPlay
               playsInline
-              className="h-full w-full object-cover opacity-80"
+              className="h-full w-full object-cover"
             />
           )}
-          <div className="absolute inset-0 bg-field/45" />
-        </motion.div>
-        <motion.div
-          className="absolute inset-8 border border-frame/70 bg-carbon/40"
-          style={{ x: midX, y: midY, z: 12 }}
-        >
-          <p className="max-w-sm p-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.16em] text-frame">
-            {environment}. {equipment}
-          </p>
+          {drift && !motionSrc ? <CinematicAmbientOverlay preset={cinemagraphPresetForNiche(niche)} /> : null}
+          <div className="absolute inset-0 bg-gradient-to-t from-field via-field/35 to-transparent" />
+          {/^https:\/\//i.test(still) ? (
+            <div className="absolute right-4 top-4 z-20 flex items-center gap-1">
+              <select
+                aria-label="Background motion"
+                value={motionPreset}
+                onChange={(event) => onMotionPreset(event.target.value as MotionPresetId)}
+                className="border border-white/20 bg-black/70 px-2 py-1.5 text-[10px] text-white"
+              >
+                {MOTION_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="border border-white/20 bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
+                disabled={busy}
+                onClick={onAnimate}
+              >
+                {busy ? "Animating…" : "Animate Background"}
+              </button>
+            </div>
+          ) : null}
         </motion.div>
         <motion.div className="absolute inset-x-6 top-16 sm:inset-x-10 sm:top-20" style={{ x: nearX, y: nearY, z: 48 }}>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-frame">
@@ -526,12 +603,26 @@ function HeroPlate({
           </p>
           <h1 className="mt-3 max-w-3xl font-display text-4xl font-semibold leading-tight text-fg sm:text-6xl">{name}</h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted sm:text-base">{line}</p>
-          <a
-            href={phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : "#contact"}
-            className="mt-6 inline-flex min-h-11 items-center bg-frame px-5 text-sm font-medium text-field"
-          >
-            Book an emergency visit
-          </a>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <a
+              href="#studio-card"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#00f2fe]/55 bg-[#00f2fe]/10 px-5 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-[#00f2fe]"
+            >
+              Studio
+            </a>
+            <a
+              href="#studio-card"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#FFE500] px-5 font-mono text-[11px] font-black uppercase tracking-[0.12em] text-[#030712] shadow-[0_20px_60px_-20px_#FFE500]"
+            >
+              Upgrade your own shop photo
+            </a>
+            <a
+              href={phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : "#contact"}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00f2fe] px-6 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-[#030712] shadow-[0_14px_40px_-12px_#00f2fe]"
+            >
+              Book
+            </a>
+          </div>
         </motion.div>
       </motion.div>
     </section>
