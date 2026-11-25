@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Abyssal Ocean & Marine",
     description: "Shark & octopus underwater expeditions with live booking.",
-    images: ["/showcase/abyssal-sanctuary/poster.jpg"],
+    images: ["/media/hero-poster.jpg"],
   },
 };
 

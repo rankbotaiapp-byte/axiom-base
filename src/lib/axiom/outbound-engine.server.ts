@@ -3,6 +3,7 @@ import { env } from "@/lib/env.server";
 import { newId } from "@/lib/utils";
 import { AutopilotError, assertAutopilotDesk } from "./autopilot.server";
 import { isEmailReady, masterFunnel, renderOutreachMessage } from "./funnel";
+import { renderLeadOutreach } from "./outreach-desk.server";
 import {
   applyPitchAngleToEmail,
   applyPitchAngleToSms,
@@ -12,6 +13,7 @@ import { finalizeOutreachBody } from "./legal-notices";
 import { outreachDestination } from "./preview-link";
 import { resolvePublicAppOrigin } from "./public-app-url";
 import { hasListedPhone } from "./autopilot";
+import { parseLeadLineType } from "./lead-verification";
 import { parseOutreachMode } from "./outreach-queue";
 import { OUTREACH_ACTIVE_VERTICAL, PLUMBING_LEAD_DATASET_SIZE, tradeTypeMatchersForNiche } from "./outreach-niche-batch";
 import {
@@ -307,6 +309,9 @@ type LeadRow = {
   trade_type: string;
   contact_email: string | null;
   contact_phone: string | null;
+  visual_mode?: string | null;
+  line_type?: string | null;
+  prime_score?: number | null;
 };
 
 async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]> {
@@ -316,6 +321,30 @@ async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]
   const to = from + size - 1;
   try {
     // Inclusive `.range(from, to)` window — never `select *` the 20,330 catalog.
+    return await sql<LeadRow>`
+      select lead_slug, business_name, city, county, trade_type, contact_email, contact_phone, visual_mode,
+             coalesce(line_type, 'unknown') as line_type, coalesce(prime_score, 0) as prime_score
+      from preloaded_leads
+      where claimed = false
+        and (
+          lower(trade_type) = any(string_to_array(${matchers.join("|")}, '|'))
+          or lower(btrim(coalesce(trade_label, ''))) = any(string_to_array(${matchers.join("|")}, '|'))
+        )
+        and (btrim(coalesce(contact_email, '')) <> '' or btrim(coalesce(contact_phone, '')) <> '')
+      order by
+        case when coalesce(prime_score, 0) >= 75 and coalesce(qa_approved, false) then 0 else 1 end,
+        prime_score desc,
+        county asc,
+        lead_slug asc
+      offset ${from}
+      limit ${size}
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!/visual_mode|prime_score|qa_approved|line_type/i.test(message)) {
+      logEngineFailure("loadLeads.range", err, { from, to, size });
+      throw err;
+    }
     return await sql<LeadRow>`
       select lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
       from preloaded_leads
@@ -329,9 +358,6 @@ async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]
       offset ${from}
       limit ${size}
     `;
-  } catch (err) {
-    logEngineFailure("loadLeads.range", err, { from, to, size });
-    throw err;
   }
 }
 
@@ -364,7 +390,10 @@ type OfferTools = Awaited<typeof import("@/lib/stripe/commercial")>;
 
 function assignChannel(lead: LeadRow, rooms: { sms: number; email: number }): "sms" | "email" | null {
   const channel = pickEngineChannel({
-    canSms: hasListedPhone(lead.contact_phone ?? ""),
+    canSms:
+      hasListedPhone(lead.contact_phone ?? "") &&
+      parseLeadLineType(lead.line_type) !== "landline" &&
+      parseLeadLineType(lead.line_type) !== "fixedVoip",
     canEmail: isEmailReady(lead.contact_email ?? ""),
     smsRemaining: rooms.sms,
     emailRemaining: rooms.email,
@@ -387,6 +416,15 @@ async function logAssignedLead(
   const media = offer.founderOfferMedia(origin);
   const url = offer.founderOfferPitchUrl(origin, { leadSlug: lead.lead_slug, county: lead.county });
   void outreachDestination;
+  const visual = renderLeadOutreach(
+    {
+      visualMode: lead.visual_mode ?? undefined,
+      businessName: lead.business_name,
+      leadSlug: lead.lead_slug,
+      county: lead.county,
+    },
+    origin,
+  );
   const vars = {
     business: lead.business_name,
     url,
@@ -399,12 +437,12 @@ async function logAssignedLead(
   const rendered =
     channel === "sms"
       ? applyPitchAngleToSms(
-          renderOutreachMessage(state.smsTemplate, vars),
+          visual.sms || renderOutreachMessage(state.smsTemplate, vars),
           state.pitchAngleId,
           { city: lead.city, county: lead.county },
         )
       : applyPitchAngleToEmail(
-          renderOutreachMessage(state.emailBody, vars),
+          visual.emailBody || renderOutreachMessage(state.emailBody, vars),
           state.pitchAngleId,
           { city: lead.city, county: lead.county },
         );

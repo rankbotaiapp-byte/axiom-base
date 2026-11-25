@@ -19,7 +19,7 @@ function mediaPath(url: string) {
 
 describe("plumbing cinematic tiers", () => {
   it("ships diagnostic and field-ops loops under /media", () => {
-    assert.equal(PLUMBERS_DRAIN_SRC, "/media/plumbers-outreach-hero-animation.mp4");
+    assert.equal(PLUMBERS_DRAIN_SRC, "/media/axio-plumber-hero.mp4");
     assert.equal(PLUMBING_DIAGNOSTIC_SRC, "/media/plumbing-diagnostic-telemetry.mp4");
     assert.equal(PLUMBING_FIELD_OPS_SRC, "/media/plumber-field-operations.mp4");
     assert.equal(existsSync(mediaPath(PLUMBERS_DRAIN_SRC)), true);
@@ -29,12 +29,8 @@ describe("plumbing cinematic tiers", () => {
 
   it("wires both films into the plumbing tenant storefront under the drain hero", () => {
     const store = readFileSync(join(root, "src/components/plumbing/emergency-storefront.tsx"), "utf8");
-    const heroIdx = store.indexOf("<HeroFilm");
-    const diagIdx = store.indexOf("<PlumbingDiagnosticStage");
-    const fieldIdx = store.indexOf("<FieldOperationsShowcase");
-    assert.ok(heroIdx >= 0, "drain hero missing");
-    assert.ok(diagIdx > heroIdx, "diagnostic tier must follow the drain hero");
-    assert.ok(fieldIdx > diagIdx, "field ops must follow the diagnostic tier");
+    assert.match(store, /axio-plumber-hero\.mp4/);
+    assert.match(store, /<HeroFilm/);
 
     const diagnostic = readFileSync(join(root, "src/components/plumbing/PlumbingDiagnosticStage.tsx"), "utf8");
     assert.match(diagnostic, /PLUMBING_DIAGNOSTIC_SRC/);

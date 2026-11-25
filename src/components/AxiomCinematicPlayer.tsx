@@ -7,13 +7,7 @@ import {
   CINEMATIC_HERO_VIDEO,
 } from "@/lib/axiom/cinematic-content-seo";
 
-const HERO_CHAIN = [
-  CINEMATIC_HERO_VIDEO,
-  "/media/axiom-robot-hero.mp4",
-  ...CINEMATIC_HERO_FALLBACKS.filter(
-    (u) => u !== CINEMATIC_HERO_VIDEO && u !== "/media/axiom-landing.mp4.mp4",
-  ),
-] as const;
+const HERO_CHAIN = CINEMATIC_HERO_FALLBACKS;
 
 function nextCandidate(current: string): string | null {
   const idx = HERO_CHAIN.indexOf(current as (typeof HERO_CHAIN)[number]);

@@ -2,19 +2,19 @@
  * Storefront film hierarchy. Greeting never lives in the hero feed or
  * showcase tabs — it belongs only in About Builder / Founder Story.
  */
-export const HEART_GEARS_SRC = "/media/axioms-heart.mp4";
-export const HEART_GEARS_POSTER = "/media/axioms-heart-poster.jpg";
-/** Alias some briefs use; the shipped file is axioms-heart.mp4. */
-export const HEART_GEARS_ALIAS = "/media/heart-gears-animation.mp4";
+export const HEART_GEARS_SRC = "/media/studio-preview.mp4";
+export const HEART_GEARS_POSTER = "/media/hero-poster.jpg";
+/** Alias some briefs use; studio preview is the on-disk cinematic. */
+export const HEART_GEARS_ALIAS = "/media/studio-preview.mp4";
 
-export const LIQUID_WRENCH_SRC = "/media/gemini_generated_video_5d59539e.mp4";
-export const LIQUID_WRENCH_ALIAS = "/media/liquid-wrench-transformation.mp4";
+export const LIQUID_WRENCH_SRC = "/media/plumber-field-operations.mp4";
+export const LIQUID_WRENCH_ALIAS = "/media/plumber-field-operations.mp4";
 export const ELECTRICAL_METER_SRC = "/media/electrician-hero-animation.mp4";
-export const PLUMBERS_DRAIN_SRC = "/media/plumbers-outreach-hero-animation.mp4";
+export const PLUMBERS_DRAIN_SRC = "/media/axio-plumber-hero.mp4";
 export const PLUMBING_DIAGNOSTIC_SRC = "/media/plumbing-diagnostic-telemetry.mp4";
-export const PLUMBING_DIAGNOSTIC_SRC_FALLBACK = "/media/plumbing-diagnostic-telemetry.mp4.mp4";
+export const PLUMBING_DIAGNOSTIC_SRC_FALLBACK = "/media/plumbing-diagnostic-telemetry.mp4";
 export const PLUMBING_FIELD_OPS_SRC = "/media/plumber-field-operations.mp4";
-export const PLUMBING_FIELD_OPS_SRC_FALLBACK = "/media/plumber-field-operations.mp4.mp4";
+export const PLUMBING_FIELD_OPS_SRC_FALLBACK = "/media/plumber-field-operations.mp4";
 export const FOUNDER_GREETING_SRC = "/media/axiom-greeting.mp4";
 export const FOUNDER_GREETING_POSTER = "/media/axiom-greeting-poster.jpg";
 

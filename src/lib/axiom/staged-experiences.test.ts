@@ -26,7 +26,10 @@ describe("staged experiences", () => {
       assert.equal(stagedExperience(row.slug)?.path, row.path);
       assert.equal(isStagedExperienceSlug(row.slug), true);
       for (const asset of row.media) {
-        assert.ok(asset.startsWith("/media/"), asset);
+        assert.ok(
+          asset.startsWith("/media/") || asset.startsWith("/apex-moto-gt3/") || asset.startsWith("/textures/"),
+          asset,
+        );
         const disk = join(process.cwd(), "public", asset.replace(/^\//, ""));
         if (asset.endsWith(".mp4")) {
           assert.ok(existsSync(disk), `missing ${asset}`);

@@ -1,11 +1,14 @@
 import js from "@eslint/js";
-import prettier from "eslint-config-prettier";
+import nextPlugin from "@next/eslint-plugin-next";
 import reactHooks from "eslint-plugin-react-hooks";
-import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-/** Flat ESLint config for the TanStack Start app-builder template. */
+/**
+ * Classic hooks + Next plugin (so existing `eslint-disable @next/next/...`
+ * comments resolve). React Compiler / ESLint 9 stylistic rules stay off so
+ * lint surfaces real blockers instead of hundreds of historical warnings.
+ */
 export default tseslint.config(
   {
     ignores: [
@@ -13,35 +16,46 @@ export default tseslint.config(
       ".output/**",
       ".vercel/**",
       ".nitro/**",
+      ".next/**",
+      ".npm-cache/**",
+      "coverage/**",
       "node_modules/**",
       "src/routeTree.gen.ts",
     ],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+    files: ["src/**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+    linterOptions: {
+      reportUnusedDisableDirectives: "off",
+    },
     languageOptions: {
+      parser: tseslint.parser,
       ecmaVersion: 2022,
       globals: { ...globals.browser, ...globals.node },
     },
     plugins: {
+      "@typescript-eslint": tseslint.plugin,
       "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
+      "@next/next": nextPlugin,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "no-redeclare": "off",
+      "no-useless-assignment": "off",
+      "no-control-regex": "off",
+      "no-empty": "off",
+      "preserve-caught-error": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/no-explicit-any": "off",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "off",
+      "@next/next/no-html-link-for-pages": "off",
     },
   },
-  // Disable rules that conflict with Prettier formatting.
-  prettier,
 );

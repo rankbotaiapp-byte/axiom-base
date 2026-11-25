@@ -193,6 +193,7 @@ export async function readMasterTenants(request: Request): Promise<{ tenants: Ma
       billing_status: string | null;
       stripe_customer_id: string | null;
       last_webhook_at: string | null;
+      first_lead_activation_reason: string | null;
     }>`
       select
         s.id,
@@ -209,7 +210,8 @@ export async function readMasterTenants(request: Request): Promise<{ tenants: Ma
         coalesce(c.stripe_customer_id, '') as stripe_customer_id,
         (
           select max(e.created_at)::text from shop_events e where e.shop_id = s.id
-        ) as last_webhook_at
+        ) as last_webhook_at,
+        coalesce(b.first_lead_activation_reason, '') as first_lead_activation_reason
       from shops s
       left join shop_billing b on b.shop_id = s.id
       left join shop_ai_credits c on c.shop_id = s.id
@@ -247,6 +249,7 @@ export async function readMasterTenants(request: Request): Promise<{ tenants: Ma
           lead_count: 0,
           stripe_customer_id: "",
           last_webhook_at: null,
+          first_lead_activation_reason: "",
         }),
       ),
       creditSpendCents,
@@ -269,6 +272,7 @@ function mapTenant(row: {
   billing_status: string | null;
   stripe_customer_id: string | null;
   last_webhook_at: string | null;
+  first_lead_activation_reason?: string | null;
 }): MasterTenant {
   return {
     id: row.id,
@@ -283,6 +287,7 @@ function mapTenant(row: {
     stripeCustomerId: row.stripe_customer_id || "",
     currentPeriodEnd: null,
     lastWebhookAt: row.last_webhook_at,
+    firstLeadActivationReason: row.first_lead_activation_reason || "",
   };
 }
 

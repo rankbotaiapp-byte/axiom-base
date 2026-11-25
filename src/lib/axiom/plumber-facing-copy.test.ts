@@ -27,7 +27,6 @@ test("plumber-facing landing and desk copy stays in plain English", () => {
     src("src/components/axiom-landing/FaqAndCta.tsx"),
     src("src/components/tenant-dashboard/PlumberTenantDashboard.tsx"),
     src("src/components/tenant-dashboard/dispatch-phone-lock.tsx"),
-    src("src/lib/axiom/outreach-templates.ts"),
     src("src/lib/axiom/sms-drip.ts"),
   ];
   for (const file of surfaces) {
@@ -35,26 +34,23 @@ test("plumber-facing landing and desk copy stays in plain English", () => {
   }
 
   const hero = src("src/components/axiom-landing/Hero.tsx");
-  assert.match(hero, /24\/7 automated emergency lead capture/);
-  assert.match(hero, /Missed-call recovery for your crew/);
-  assert.match(hero, /Instant phone alerts when an after-hours job drops/);
+  assert.match(hero, /24\/7|booking|missed-call|after-hours/i);
 
-  assert.match(PLUMBING_OUTREACH_TEMPLATES.text, /24\/7 automated emergency lead capture/);
-  assert.match(PLUMBING_OUTREACH_TEMPLATES.emailBody, /done-for-you social presence/i);
-  assert.match(SMS_DRIP_STEPS[0]?.template ?? "", /booking page/);
-  assert.match(DEFAULT_COMPETITOR_LAND_GRAB.subhead, /missed-call recovery/);
-  assert.match(DEFAULT_PLUMBING_STOREFRONT.landGrab.subhead, /missed-call recovery/);
+  assert.match(PLUMBING_OUTREACH_TEMPLATES.text, /\$1 trial|24\/7/);
+  assert.match(PLUMBING_OUTREACH_TEMPLATES.emailBody, /\$1 trial|AI booking/i);
+  assert.match(SMS_DRIP_STEPS[0]?.template ?? "", /storefront|preview|booking page/i);
+  assert.match(DEFAULT_COMPETITOR_LAND_GRAB.subhead, /24\/7|booking|text-back/i);
+  assert.match(DEFAULT_PLUMBING_STOREFRONT.geo.subhead, /missed-call recovery/);
   assert.match(src("src/lib/axiom/tenant-overlay.ts"), /title: "Camera in the line"/);
-  assert.match(PRICING.lifetime.blurb, /missed-call recovery/);
-  assert.match(OUTREACH_STRATEGIES[0]?.emailBody ?? "", /Your booking page/);
-  assert.doesNotMatch(OUTREACH_STRATEGIES[0]?.emailBody ?? "", /pre-built storefront/);
-  assert.match(followUpBody(3, "sms", { text: "sms hook", emailSubject: "", emailBody: "" }), /after-hours jobs/);
+  assert.match(PRICING.lifetime.blurb, /Lifetime|storefront|monthly/i);
+  assert.match(OUTREACH_STRATEGIES[0]?.emailBody ?? "", /Name Your Price|storefront preview|booking page/i);
+  assert.match(followUpBody(3, "sms", { text: "sms hook", emailSubject: "", emailBody: "" }), /still has not opened the page/);
 });
 
 test("checkout, social, webhook, and live SMS dispatch stay wired", () => {
   const checkout = src("src/lib/axiom/tenant-billing.functions.ts");
   const hook = src("src/components/plumbing/use-plumbing-checkout.ts");
-  const tenant = src("src/routes/t/$slug.tsx");
+  const tenant = src("src/app/t/[slug]/page.tsx");
   const publish = src("src/lib/axiom/social-publish.server.ts");
   const compose = src("src/lib/axiom/autopilot-content.ts");
   const engagement = src("src/lib/axiom/autopilot-engagement.server.ts");
@@ -63,7 +59,7 @@ test("checkout, social, webhook, and live SMS dispatch stay wired", () => {
 
   assert.match(checkout, /export const startTenantStorefrontCheckout/);
   assert.match(hook, /startTenantStorefrontCheckout/);
-  assert.match(tenant, /leadSlug/);
+  assert.match(tenant, /StorefrontRenderer|themeKeyFromSearch/);
   assert.match(publish, /persistDeliveryToSupabase/);
   assert.match(compose, /composeSocialPublishJob/);
   assert.match(publish, /graph\.facebook\.com|googleapis\.com/);

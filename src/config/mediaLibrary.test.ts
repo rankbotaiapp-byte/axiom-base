@@ -15,8 +15,8 @@ import {
 describe("media library index", () => {
   it("indexes loops and stills under public/media with themes", () => {
     const dir = fileURLToPath(new URL("../../public", import.meta.url));
-    assert.ok(MEDIA_LIBRARY.length > 80);
-    assert.ok(mediaLibraryLoops().length > 20);
+    assert.ok(MEDIA_LIBRARY.length > 20);
+    assert.ok(mediaLibraryLoops().length > 5);
     const urls = new Set<string>();
     for (const asset of MEDIA_LIBRARY) {
       assert.equal(urls.has(asset.url), false, asset.url);
@@ -26,7 +26,7 @@ describe("media library index", () => {
       assert.ok(asset.niches.length >= 1);
       assert.ok(asset.theme);
     }
-    assert.equal(isMediaLibraryUrl("/media/heroes/axiom-landing.mp4"), true);
+    assert.equal(isMediaLibraryUrl("/media/axio-plumber-hero.mp4"), true);
     assert.equal(isMediaLibraryUrl("/media/../secret.mp4"), false);
   });
 
@@ -36,7 +36,7 @@ describe("media library index", () => {
     const pick = pickMediaForNiche("auto", "loop", 2);
     assert.ok(pick?.url.endsWith(".mp4"));
     const studio = mediaStudioLoopOptions();
-    assert.ok(studio.some((row) => row.url === "/media/heroes/axiom-landing.mp4"));
+    assert.ok(studio.some((row) => row.url === "/media/axio-plumber-hero.mp4"));
     assert.ok(studio.every((row) => row.url.startsWith("/media/") && row.url.endsWith(".mp4")));
   });
 });

@@ -36,8 +36,8 @@ export const DEFAULT_DRONE_HUB_CONFIG: DroneHubConfig = {
   headline: 'Drone Operations Hub',
   subhead:
     'Thermal inspection, terrain mapping and search support across the Rogue Valley. Every flight is planned, flown and reported by a certified pilot.',
-  videoSrc: '/media/drone-loop.mp4',
-  posterSrc: '/media/drone-poster.jpg',
+  videoSrc: '/media/infrastructure-hero-animation.mp4',
+  posterSrc: '/media/heroes/contractor.jpg',
   bookingHref: '/book/drone-ops',
   credentials: ['FAA Part 107 certified', 'Fully insured', 'Thermal · Mapping · Inspection', 'Reports in 48 hrs'],
   coords: '42.43°N  123.17°W',

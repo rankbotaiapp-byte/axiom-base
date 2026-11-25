@@ -33,8 +33,8 @@ const ARCHETYPES: Record<CompanionArchetypeId, CompanionArchetype> = {
     name: "Nova",
     callsign: "AX-FEM",
     title: "Cyber Female Operative",
-    still: "/assets/avatars/cyber-female-ref.jpg",
-    loop: "/assets/avatars/cyber-female-intro.mp4",
+    still: "/media/ai-female.png",
+    loop: "/media/axiom-greeting.mp4",
     tool: "diagnostic scanner",
   },
   "cyber-male": {
@@ -42,8 +42,8 @@ const ARCHETYPES: Record<CompanionArchetypeId, CompanionArchetype> = {
     name: "Orbit",
     callsign: "AX-MAL",
     title: "Cyber Male Operative",
-    still: "/assets/avatars/cyber-male-ref.jpg",
-    loop: "/assets/avatars/cyber-male-intro.mp4",
+    still: "/media/ai-male.png",
+    loop: "/media/axiom-greeting.mp4",
     tool: "field comms plate",
   },
   animatronic: {
@@ -51,8 +51,8 @@ const ARCHETYPES: Record<CompanionArchetypeId, CompanionArchetype> = {
     name: "Stinger",
     callsign: "AX-ANM",
     title: "Animatronic",
-    still: "/assets/avatars/animatronic-ref.jpg",
-    loop: "/assets/avatars/animatronic-intro.mp4",
+    still: "/media/ai-male.png",
+    loop: "/media/studio-preview.mp4",
     tool: "servo clamp",
   },
   "predator-mech": {
@@ -60,8 +60,8 @@ const ARCHETYPES: Record<CompanionArchetypeId, CompanionArchetype> = {
     name: "Lynx",
     callsign: "AX-PRD",
     title: "Predator Mech Animal",
-    still: "/assets/avatars/predator-mech-ref.jpg",
-    loop: "/assets/avatars/predator-intro.mp4",
+    still: "/media/van.png",
+    loop: "/media/auto-hero-animation.mp4",
     tool: "tracking array",
   },
 };

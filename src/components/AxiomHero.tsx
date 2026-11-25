@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import WaterCanvas from "@/components/water/WaterCanvas";
 
-const HERO_VIDEO = "/media/otter-hero-animation.mp4" as const;
-const HERO_POSTER = "/media/otter-hero-poster.jpg" as const;
+const HERO_VIDEO = "/media/axio-plumber-hero.mp4" as const;
+const HERO_POSTER = "/media/axio-plumber-hero.jpg" as const;
 
 type AxiomHeroProps = {
   /** Primary CTA — Choose Your Price trial entry into the main build. */

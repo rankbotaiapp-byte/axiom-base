@@ -39,12 +39,8 @@ const TUMBLE_LENS_INFLUENCE = LENS_R * 1.95;
 const TUMBLE_CURSOR_INFLUENCE = 2.05;
 
 /** Deep-red Axiom core loop mapped inside the glass cavity */
-const INNER_CORE_VIDEO = CINEMATIC_HERO_VIDEO; // /media/heroes/axiom-landing.mp4
-const INNER_CORE_FALLBACKS = [
-  "/media/axiom-landing.mp4",
-  "/media/axiom/axiom-logo-loop.mp4",
-  "/media/axiom-robot-hero.mp4",
-] as const;
+const INNER_CORE_VIDEO = CINEMATIC_HERO_VIDEO; // /media/axio-plumber-hero.mp4
+const INNER_CORE_FALLBACKS = CINEMATIC_HERO_FALLBACKS;
 
 /** Differential parallax — multi-angular particle depth vs. heavy glass tracking. */
 const PLANE = {
@@ -74,15 +70,8 @@ const PLANE = {
 type DepthBand = "back" | "mid" | "shell";
 
 /** Play-once particle logo film → permanent freeze-lock on final break frame. */
-const PARTICLE_LOGO_FILM = "/media/particle-logo-axiom.mp4";
-const VIDEO_CHAIN = [
-  PARTICLE_LOGO_FILM,
-  CINEMATIC_HERO_VIDEO,
-  "/media/axiom-robot-hero.mp4",
-  ...CINEMATIC_HERO_FALLBACKS.filter(
-    (u) => u !== CINEMATIC_HERO_VIDEO && u !== "/media/axiom-landing.mp4.mp4",
-  ),
-] as const;
+const PARTICLE_LOGO_FILM = "/media/studio-cyan-fog-loop.mp4";
+const VIDEO_CHAIN = [PARTICLE_LOGO_FILM, ...CINEMATIC_HERO_FALLBACKS] as const;
 
 function expDamp01(t: number, k = 6.5) {
   return 1 - Math.exp(-k * THREE.MathUtils.clamp(t, 0, 1));

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { HeroLoopVideo } from "@/components/loop-video";
 
 const SEEN_PREFIX = "axiom:admin-welcome:";
-export const ADMIN_WELCOME_SRC = "/media/heroes/admin-welcome.mp4";
+export const ADMIN_WELCOME_SRC = "/media/welcome-to-axiom.mp4";
 
 function welcomeSeen(shopSlug: string): boolean {
   try {

@@ -24,31 +24,31 @@ export const MASTER_HERO_DEFAULTS: Record<MasterCategoryId, MasterHeroDefault> =
   "automotive-mobile": {
     id: "automotive-mobile",
     title: "Automotive & Mobile Services",
-    src: "/media/apex-launch-hero-animation.mp4",
+    src: "/media/auto-hero-animation.mp4",
     loopTailTrimSec: LOOP_TAIL_TRIM_SEC,
   },
   "residential-outdoor": {
     id: "residential-outdoor",
     title: "Residential & Outdoor Services",
-    src: "/media/leopard-hero-path.mp4",
+    src: "/media/infrastructure-hero-animation.mp4",
     loopTailTrimSec: LOOP_TAIL_TRIM_SEC,
   },
   "urgent-response": {
     id: "urgent-response",
     title: "Urgent Response Trades",
-    src: "/media/otter-hero-animation.mp4",
+    src: "/media/axio-plumber-hero.mp4",
     loopTailTrimSec: LOOP_TAIL_TRIM_SEC,
   },
   "personal-lifestyle": {
     id: "personal-lifestyle",
     title: "Personal, Appointment & Lifestyle Services",
-    src: "/media/polar-bear-hero-animation.mp4",
+    src: "/media/studio-cyan-fog-loop.mp4",
     loopTailTrimSec: LOOP_TAIL_TRIM_SEC,
   },
   "specialty-local": {
     id: "specialty-local",
     title: "Specialty & Local Niche Markets",
-    src: "/media/shark-hero-animation.mp4",
+    src: "/media/locksmith-hero-animation.mp4",
     loopTailTrimSec: LOOP_TAIL_TRIM_SEC,
   },
 };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { HeroLoopVideo } from "@/components/loop-video";
 
-export const APEX_LAUNCH_FILM = "/media/apex-launch-hero-animation.mp4";
+export const APEX_LAUNCH_FILM = "/media/auto-hero-animation.mp4";
 
 const ACTIONS = [
   { id: "launch", label: "Activate launch" },

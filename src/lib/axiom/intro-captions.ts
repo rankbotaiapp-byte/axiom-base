@@ -1,4 +1,4 @@
-/** Timed overlay lines for `/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4`. `at` is seconds from start. */
+/** Timed overlay lines for `/media/axiom-24-7-booking-for-contractors.mp4`. `at` is seconds from start. */
 export type IntroCaptionCue = { at: number; text: string };
 
 export const INTRO_CAPTION_CUES: readonly IntroCaptionCue[] = [

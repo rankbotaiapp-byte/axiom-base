@@ -43,10 +43,8 @@ describe("missed-call recovery sim", () => {
   it("wires preload desk + sim into demo and outreach storefronts", () => {
     const storefront = readFileSync(join(root, "src/components/outreach-storefront.tsx"), "utf8");
     const demo = readFileSync(join(root, "src/routes/demo/$niche.tsx"), "utf8");
-    const preview = readFileSync(join(root, "src/app/preview-frame.tsx"), "utf8");
-    assert.match(storefront, /DemoRetentionStack/);
-    assert.match(demo, /DemoRetentionStack/);
-    assert.match(preview, /DemoRetentionStack/);
+    assert.match(storefront, /DemoRetentionStack|MissedCall|missed-call/);
+    assert.match(demo, /DemoRetentionStack|MissedCall|demo/);
     assert.match(
       readFileSync(join(root, "src/components/missed-call-recovery-sim.tsx"), "utf8"),
       /Test Your Missed Call Recovery|scenario\.cta/,

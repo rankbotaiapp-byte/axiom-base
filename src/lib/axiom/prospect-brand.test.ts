@@ -11,7 +11,7 @@ test("accent accepts only hex and expands short form", () => {
 });
 
 test("logo accepts a site path or http(s) and drops the rest", () => {
-  assert.equal(sanitizeLogoUrl("/media/mark.png"), "/media/mark.png");
+  assert.equal(sanitizeLogoUrl("/media/van.png"), "/media/van.png");
   assert.equal(sanitizeLogoUrl("https://cdn.example/logo.png"), "https://cdn.example/logo.png");
   assert.equal(sanitizeLogoUrl("//cdn.example/logo.png"), "");
   assert.equal(sanitizeLogoUrl("/../secret"), "");

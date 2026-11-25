@@ -27,14 +27,8 @@ const HERO_CHOICES = [
     mobile: "/media/axio-plumber-hero-mobile.mp4",
     poster: "/media/axio-plumber-hero.jpg",
   },
-  {
-    label: "Plumbers outreach loop",
-    url: "/media/plumbers-outreach-hero-animation.mp4",
-    mobile: "",
-    poster: "/media/plumbers-outreach-hero-poster.jpg",
-  },
-  { label: "Axiom plumber hero", url: "/media/axiom-plumber-hero.mp4", mobile: "/media/axiom-plumber-hero-mobile.mp4", poster: "/media/axiom-plumber-hero.jpg" },
-  { label: "Plumbing emergency", url: "/media/plumbing-emergency-hero.mp4", mobile: "/media/plumbing-emergency-hero-mobile.mp4", poster: "/media/axiom-plumber-hero.jpg" },
+  { label: "Plumbing emergency", url: "/media/plumbing-emergency-hero.mp4", mobile: "/media/plumbing-emergency-hero-mobile.mp4", poster: "/media/plumbing-emergency-hero.jpg" },
+  { label: "Plumbers (catalog film)", url: "/media/plumbers-hero-animation.mp4", mobile: "", poster: "/media/heroes/plumbing.jpg" },
 ];
 
 type Access = { ok: boolean; reason: string } | null;

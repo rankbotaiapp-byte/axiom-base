@@ -18,11 +18,11 @@ test("tenant shop routes collapse onto /media and /assets", () => {
   assert.equal(toRootPublicPath("/media/auto-hero-animation.mp4"), "/media/auto-hero-animation.mp4");
   assert.equal(toRootPublicPath("media/auto-hero-animation.mp4"), "/media/auto-hero-animation.mp4");
   assert.equal(toRootPublicPath("auto-hero-animation.mp4"), "/media/auto-hero-animation.mp4");
-  assert.equal(toRootPublicPath("public/media/otter-hero-animation.mp4"), "/media/otter-hero-animation.mp4");
+  assert.equal(toRootPublicPath("public/media/axio-plumber-hero.mp4"), "/media/axio-plumber-hero.mp4");
   assert.equal(toRootPublicPath("/axiom-auto/media/auto-hero-animation.mp4"), "/media/auto-hero-animation.mp4");
   assert.equal(toRootPublicPath("/axiom-auto/admin/media/auto-hero-animation.mp4"), "/media/auto-hero-animation.mp4");
-  assert.equal(toRootPublicPath("/assets/avatars/cyber-male-intro.mp4"), "/assets/avatars/cyber-male-intro.mp4");
-  assert.equal(toRootPublicPath("/shop/assets/avatars/cyber-male-intro.mp4"), "/assets/avatars/cyber-male-intro.mp4");
+  assert.equal(toRootPublicPath("/media/axiom-greeting.mp4"), "/media/axiom-greeting.mp4");
+  assert.equal(toRootPublicPath("/shop/media/axiom-greeting.mp4"), "/media/axiom-greeting.mp4");
   assert.equal(toRootPublicPath("/api/hero-video/shop_1?v=2"), "/api/hero-video/shop_1?v=2");
   assert.equal(toRootPublicPath("../media/secret.mp4"), "");
 });

@@ -39,8 +39,8 @@ export const PROOF_OF_WORK_DEMOS: readonly ProofOfWorkDemo[] = [
       "3D-styled catch-and-release splash, river trip packages, guide bio, and 24/7 charter booking on a public storefront.",
     accent: "#06b6d4",
     hoverAccent: "#34d399",
-    poster: "/media/studio-references/hero-poster.jpg",
-    preview: "/media/studio-references/hero-loop-optimized.mp4",
+    poster: "/media/hero-poster.jpg",
+    preview: "/media/studio-cyan-fog-loop.mp4",
     href: "/rogue-river-fishing",
     features: [
       "Interactive 3D/Motion Hero",
@@ -59,8 +59,8 @@ export const PROOF_OF_WORK_DEMOS: readonly ProofOfWorkDemo[] = [
       "Swimming otter hero, touch-poppable bubbles, interactive physics dock, tour schedule, and instant online reservations.",
     accent: "#22d3ee",
     hoverAccent: "#34d399",
-    poster: "/media/otter-adventures-poster.jpg",
-    preview: "/media/otter-hero-animation.mp4",
+    poster: "/media/axio-plumber-hero.jpg",
+    preview: "/media/axio-plumber-hero.mp4",
     href: "/coastal-otter",
     features: [
       "Interactive 3D/Motion Hero",
@@ -79,8 +79,8 @@ export const PROOF_OF_WORK_DEMOS: readonly ProofOfWorkDemo[] = [
       "Shark and octopus underwater scene, deep-ocean layout, expedition offerings, live booking, and AI assistant integration.",
     accent: "#2fe0d0",
     hoverAccent: "#34d399",
-    poster: "/showcase/abyssal-sanctuary/poster.jpg",
-    preview: "/media/shark-hero-animation.mp4",
+    poster: "/media/hero-poster.jpg",
+    preview: "/media/axio-plumber-hero.mp4",
     href: "/abyssal-ocean",
     features: [
       "Interactive 3D/Motion Hero",
@@ -99,8 +99,8 @@ export const PROOF_OF_WORK_DEMOS: readonly ProofOfWorkDemo[] = [
       "Cyber-girl hero, tactical protection packages, vetted public credentials, and confidential 24/7 consultation booking.",
     accent: "#ff2d55",
     hoverAccent: "#34d399",
-    poster: "/media/cyber-augment-poster.jpg",
-    preview: "/media/cyber-augment-loop.mp4",
+    poster: "/media/hero-poster.jpg",
+    preview: "/media/electrician-hero-animation.mp4",
     href: "/private-protection",
     features: [
       "Interactive 3D/Motion Hero",

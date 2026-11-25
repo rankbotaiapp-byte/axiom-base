@@ -286,7 +286,7 @@ export function SwipeRevealHero({
         poster={
           poster ??
           (/owl[-_](?:prey-hero|midnight_dive)\.mp4(?:$|[?#])/.test(baseVideoSrc)
-            ? "/media/heroes/owl-prey-still.jpg"
+            ? "/media/heroes/landscaper.jpg"
             : undefined)
         }
         autoPlay

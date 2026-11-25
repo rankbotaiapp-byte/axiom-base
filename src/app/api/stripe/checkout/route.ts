@@ -13,13 +13,19 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   shopSlug: z.string().min(2).max(80),
-  planId: z.enum(["trial", "lifetime"]).default("trial"),
+  planId: z.enum(["trial", "lifetime", "monthly", "unlock"]).default("trial"),
   namedPriceCents: z.number().int().positive().optional(),
   namedPriceDollars: z.string().optional(),
   businessName: z.string().max(80).optional(),
   niche: z.string().max(40).optional(),
   userId: z.string().max(80).optional(),
   origin: z.string().url().optional(),
+  publishAfter: z.boolean().optional(),
+  leadId: z.string().max(80).optional(),
+  phone: z.string().max(28).optional(),
+  email: z.string().max(120).optional(),
+  city: z.string().max(80).optional(),
+  showcaseThemeId: z.enum(["solar_gold", "pure_cyan", "emergency_amber", "cobalt_ice"]).optional(),
 });
 
 /**
@@ -85,6 +91,12 @@ export async function POST(request: Request) {
       businessName: data.businessName,
       niche: data.niche,
       userId,
+      publishAfter: data.publishAfter,
+      leadId: data.leadId,
+      phone: data.phone,
+      email: data.email,
+      city: data.city,
+      showcaseThemeId: data.showcaseThemeId,
     });
 
     return NextResponse.json({

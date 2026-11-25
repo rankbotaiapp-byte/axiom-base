@@ -16,28 +16,28 @@ test("a niche studio reads a hero film from public/media/heroes", () => {
   const field = particleStudioModel({
     business: "North Frame",
     defaultName: "Northline Repair",
-    heroVideoUrl: "/media/heroes/auto-hero.mp4",
+    heroVideoUrl: "/media/auto-hero-animation.mp4",
     heroImageUrl: "",
-    staffFront: "/media/alex-morgan.jpg",
-    staffBack: "/media/willa-grant.jpg",
+    staffFront: "/media/ai-female.png",
+    staffBack: "/media/ai-male.png",
     filmLabel: "Field loop",
   });
   assert.equal(field.line, "North Frame");
   assert.equal(field.heroKind, "video");
-  assert.equal(field.heroUrl, "/media/heroes/auto-hero.mp4");
+  assert.equal(field.heroUrl, "/media/auto-hero-animation.mp4");
   assert.notEqual(field.staffFront, field.staffBack);
 
   const quiet = particleStudioModel({
     defaultName: "Lane Practice",
     heroVideoUrl: "https://example.test/nope.mp4",
-    heroImageUrl: "/media/heroes/practice.jpg",
-    staffFront: "/media/alex-morgan.jpg",
-    staffBack: "/media/willa-grant.jpg",
+    heroImageUrl: "/media/heroes/plumbing.jpg",
+    staffFront: "/media/ai-female.png",
+    staffBack: "/media/ai-male.png",
     filmLabel: "Practice still",
   });
   assert.equal(quiet.line, "Lane Practice");
   assert.equal(quiet.heroKind, "image");
-  assert.equal(quiet.heroUrl, "/media/heroes/practice.jpg");
+  assert.equal(quiet.heroUrl, "/media/heroes/plumbing.jpg");
 });
 
 test("a wide swipe clears more of the cover than a tap", () => {

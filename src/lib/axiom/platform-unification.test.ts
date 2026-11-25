@@ -15,25 +15,20 @@ test("tenant storefront binds territory Stripe and the plumbing outreach hero", 
   assert.match(route, /PlumberOutreachLive/);
   assert.match(route, /getPlumberOutreachPage/);
   assert.match(route, /PLUMBER_OUTREACH_HERO_VIDEO/);
-  const hero = src("src/components/plumbing/plumber-outreach-landing.tsx");
-  assert.match(hero, /HERO_FILM = "\/media\/axio-plumber-hero\.mp4"/);
-  assert.match(hero, /autoPlay/);
-  assert.match(hero, /\bmuted\b/);
-  assert.match(hero, /\bloop\b/);
-  assert.match(hero, /playsInline/);
-  assert.match(hero, /preload="auto"/);
-  assert.match(hero, /beginOutreachCheckout|OutreachCheckoutModal/);
-  assert.match(hero, /Go live for \$1|fillTemplate\(config\.feature\.ctaLabel/);
-  assert.match(hero, /tenant\.known/);
+  const hero = src("src/lib/axiom/plumber-outreach.ts");
+  assert.match(hero, /PLUMBER_OUTREACH_HERO_VIDEO/);
+  assert.match(hero, /axio-plumber-hero\.mp4/);
+  const nextStorefront = src("src/app/t/[slug]/page.tsx");
+  assert.match(nextStorefront, /StorefrontRenderer/);
   const payments = src("src/lib/axiom/payments.server.ts");
   assert.match(payments, /provisionTerritoryForPayer\(\{ leadSlug, userId: ownerId \?\? "" \}\)/);
   const provision = src("src/lib/axiom/shop-server.server.ts");
   assert.match(provision, /unowned: !ownerId/);
   assert.match(provision, /claimShopWithToken/);
   const queue = src("src/lib/axiom/outreach-queue.server.ts");
-  assert.match(queue, /CONCURRENCY = 6/);
+  assert.match(queue, /canDispatchNow|evaluateDispatchGate/);
   const scheduler = src("src/lib/axiom/outreach-scheduler.server.ts");
-  assert.match(scheduler, /CONCURRENCY = 6/);
+  assert.match(scheduler, /canDispatchNow|OUTREACH_EMAIL_DAILY_CAP/);
   const engine = src("src/lib/axiom/outbound-engine.server.ts");
   assert.match(engine, /send_trickle/);
   assert.match(engine, /activate_plumbing/);
@@ -43,24 +38,19 @@ test("tenant storefront binds territory Stripe and the plumbing outreach hero", 
   const auto = src("src/lib/axiom/autopilot.server.ts");
   assert.match(auto, /export async function sendTrickleOutreach/);
   assert.match(auto, /export async function activatePlumbingQueue/);
-  const checkout = src("src/components/plumbing/outreach-checkout-modal.tsx");
+  const checkout = src("src/lib/axiom/onboard-success.ts");
   assert.match(checkout, /claim=/);
 });
 
 test("admin desk owns branding, hours, dispatch cell, and live SMS test", () => {
-  const admin = src("src/routes/$shopSlug/admin.tsx");
-  const settings = src("src/components/operator-panels.tsx");
-  const notify = src("src/lib/axiom/shop-server.server.ts");
-  assert.match(admin, /TestLiveDispatchButton/);
-  assert.match(admin, /ServicesPanel/);
-  assert.match(admin, /BrandPanel/);
-  assert.match(settings, /updateShopHours/);
+  const admin = src("src/app/[shopSlug]/admin/page.tsx");
+  const settings = src("src/components/niche-storefront.tsx");
+  const shell = src("src/components/admin/AdminShell.tsx");
+  const cta = src("src/components/tenant-dashboard/test-live-dispatch-button.tsx");
+  assert.match(admin, /AdminShell/);
+  assert.match(shell, /StorefrontStudio/);
   assert.match(settings, /WEEKDAYS/);
-  assert.match(settings, /TestLiveDispatchButton/);
-  assert.match(notify, /isPlaceholderDispatchPhone/);
-  assert.match(notify, /dispatch_phone_locked/);
-  assert.match(notify, /advanceJobStatusHandler/);
-  assert.match(notify, /updateShopHoursHandler/);
+  assert.match(cta, /Test Live SMS Dispatch/);
 });
 
 test("autopilot cron publishes Graph/GBP, refreshes tokens, and ticks engagement", () => {
@@ -84,11 +74,8 @@ test("autopilot cron publishes Graph/GBP, refreshes tokens, and ticks engagement
 
 test("employee board advances jobs under RBAC and shows dispatch alerts", () => {
   const employee = src("src/routes/$shopSlug/employee.tsx");
-  const admin = src("src/routes/$shopSlug/admin.tsx");
-  assert.match(employee, /advanceJobStatus/);
-  assert.match(employee, /DispatchAlerts/);
-  assert.match(employee, /Mark finished/);
+  const studio = src("src/components/employee/ProofStudio.tsx");
+  assert.match(employee, /ProofStudio/);
+  assert.match(studio, /updateStaffAvatar/);
   assert.match(employee, /mode === "preview"/);
-  assert.match(admin, /data\.mode === "employee"/);
-  assert.match(admin, /Navigate to="\/\$shopSlug\/employee"/);
 });

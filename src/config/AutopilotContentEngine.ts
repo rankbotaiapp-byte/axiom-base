@@ -135,7 +135,7 @@ export function sanitizeAutopilotLoops(urls: readonly string[]): string[] {
 export function pickAutopilotLoop(loops: readonly string[], cursor = 0): { loopUrl: string; nextCursor: number } {
   const list = loops.filter(Boolean);
   if (!list.length) {
-    return { loopUrl: HERO_LIBRARY[0]?.videoUrl ?? "/media/otter-hero-animation.mp4", nextCursor: 0 };
+    return { loopUrl: HERO_LIBRARY[0]?.videoUrl ?? "/media/axio-plumber-hero.mp4", nextCursor: 0 };
   }
   const index = ((cursor % list.length) + list.length) % list.length;
   return { loopUrl: list[index]!, nextCursor: index + 1 };

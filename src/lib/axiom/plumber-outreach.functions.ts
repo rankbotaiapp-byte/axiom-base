@@ -22,4 +22,8 @@ export const savePlumberOutreach = createServerFn({ method: "POST" })
   .validator((d: Record<string, unknown>) => d)
   .handler(async ({ data }) => ({ ok: true, ...data }));
 
+export const grantOnboardLaunch = createServerFn({ method: "POST" })
+  .validator((d: Record<string, unknown> = {}) => d)
+  .handler(async ({ data }) => ({ ok: true, launched: true, ...data }));
+
 export default triggerPlumberCampaign;

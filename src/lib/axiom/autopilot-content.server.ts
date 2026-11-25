@@ -259,10 +259,14 @@ async function downloadImageBytes(src: string): Promise<{ bytes: Uint8Array; mim
 async function persistBrandedStill(
   shop: TenantShop,
   composition: BrandedStockComposition,
+  plateSvg?: string,
 ): Promise<{ assetId: string; url: string } | null> {
   const sql = await getSql();
-  const downloaded =
-    composition.base.kind === "image" ? await downloadImageBytes(composition.base.src) : null;
+  const downloaded = plateSvg
+    ? null
+    : composition.base.kind === "image"
+      ? await downloadImageBytes(composition.base.src)
+      : null;
   const id = newId("med");
   const caption = `${composition.overlay.shopName} · ${composition.overlay.cta}`.slice(0, 80);
   const purpose = "autopilot-stock-brand";
@@ -284,7 +288,14 @@ async function persistBrandedStill(
       `;
     }
 
-    if (downloaded) {
+    if (plateSvg) {
+      const svgBytes = new TextEncoder().encode(plateSvg);
+      await sql.query(
+        `insert into shop_media_assets (id, shop_id, slot, purpose, caption, mime, data, is_hero, created_at, updated_at)
+         values ($1, $2, $3, $4, $5, $6, $7, true, now(), now())`,
+        [id, shop.id, "hero", purpose, caption, "image/svg+xml", Buffer.from(svgBytes)],
+      );
+    } else if (downloaded) {
       await sql.query(
         `insert into shop_media_assets (id, shop_id, slot, purpose, caption, mime, data, is_hero, created_at, updated_at)
          values ($1, $2, $3, $4, $5, $6, $7, false, now(), now())`,
@@ -417,10 +428,23 @@ function brandFromShop(shop: TenantShop): { logoUrl?: string; accent?: string } 
 /** Source → brand-stamp → persist for one armed tenant. */
 export async function sourceBrandedContentForShop(shop: TenantShop): Promise<StockBrandTickResult> {
   const city = shopCity(shop.address);
-  const seed = daySeedFromDate() + shop.slug.length;
   const brand = brandFromShop(shop);
-  // Daily cycle prefers Pixabay (then Pexels) trade MP4s; stills remain a proof companion.
-  const base = await fetchLegalStockMedia({ niche: shop.niche, kind: "video", seed });
+  const { resolveDemoLoop } = await import("./branded-demo-loop.ts");
+  const { materializeDemoPlate } = await import("./branded-demo.server.ts");
+  const loop = resolveDemoLoop(shop.niche);
+  const seed = daySeedFromDate() + shop.slug.length;
+  const base = {
+    id: `niche-loop-${shop.slug}`,
+    kind: "video" as const,
+    src: loop,
+    query: pickTradeKeyword(shop.niche, seed),
+    license: {
+      provider: "curated" as const,
+      license: "platform" as const,
+      attribution: "Axiom niche loop",
+      pageUrl: loop,
+    },
+  };
   const composition = composeBrandedStock({
     base,
     shopName: shop.name,
@@ -442,28 +466,71 @@ export async function sourceBrandedContentForShop(shop: TenantShop): Promise<Sto
     );
   }
 
-  // Companion still (Unsplash/Pexels/curated) keeps the gallery fresh alongside the video post.
-  const still = await fetchLegalStockMedia({ niche: shop.niche, kind: "image", seed: seed + 1 });
-  if (still.kind === "image") {
-    const stillComposition = composeBrandedStock({
-      base: still,
-      shopName: shop.name,
-      city,
-      bookUrl: `/${shop.slug}/book`,
-      niche: shop.niche,
-      logoUrl: brand.logoUrl,
-      accent: brand.accent,
-    });
-    const stillStored = await persistBrandedStill(shop, stillComposition);
-    if (still.license.provider !== "curated" || stillStored) {
-      await queueBrandedSocial(shop, stillComposition, stillStored?.assetId ?? stored?.assetId ?? null);
-    }
-    if (stillStored?.url) {
-      await fillProofFromStock(
-        shop,
-        stillStored.url,
-        `${stillComposition.overlay.tradeLabel} · ${stillComposition.overlay.shopName}`,
-      );
+  const plate = await materializeDemoPlate({
+    businessName: shop.name,
+    niche: shop.niche,
+    slot: "hero",
+    accent: brand.accent,
+    city,
+    overrideUrl: shop.hero_image_url,
+  });
+  const stillBase = curatedStockImage(shop.niche, seed + 1);
+  const stillComposition = composeBrandedStock({
+    base: { ...stillBase, src: plate.sourceUrl, previewSrc: plate.sourceUrl },
+    shopName: shop.name,
+    city,
+    bookUrl: `/${shop.slug}/book`,
+    niche: shop.niche,
+    logoUrl: brand.logoUrl,
+    accent: brand.accent,
+  });
+  const stillStored = await persistBrandedStill(shop, stillComposition, plate.svg);
+  if (stillStored) {
+    await queueBrandedSocial(shop, stillComposition, stillStored.assetId ?? stored?.assetId ?? null);
+  }
+  if (stillStored?.url) {
+    await fillProofFromStock(
+      shop,
+      stillStored.url,
+      `${stillComposition.overlay.tradeLabel} · ${stillComposition.overlay.shopName}`,
+    );
+  }
+
+  const heroStill = String(shop.hero_image_url || "").trim();
+  if (/^https:\/\//i.test(heroStill)) {
+    try {
+      const { microMotionForNiche } = await import("./storefront-themes.ts");
+      const { findCachedBackgroundMotion, generateBackgroundMotion } = await import("./ai-client.ts");
+      const motion = microMotionForNiche(shop.niche);
+      const motionInput = {
+        shopSlug: shop.slug,
+        sourceImageUrl: heroStill,
+        niche: shop.niche,
+        shopName: shop.name,
+        brandColor: brand.accent,
+        motion,
+      };
+      const cached = await findCachedBackgroundMotion(motionInput);
+      let videoUrl = cached?.videoUrl || "";
+      if (!videoUrl) {
+        const { releaseMicroMotion, reserveMicroMotion } = await import("./hero-motion-studio.server.ts");
+        const reserved = await reserveMicroMotion(shop.slug);
+        if (reserved.ok) {
+          try {
+            const made = await generateBackgroundMotion(motionInput);
+            videoUrl = made.videoUrl;
+            if (made.cached) await releaseMicroMotion(reserved.shopId);
+          } catch {
+            await releaseMicroMotion(reserved.shopId);
+          }
+        }
+      }
+      if (videoUrl) {
+        const sql = await getSql();
+        await sql`update shops set hero_video_url = ${videoUrl} where id = ${shop.id}`.catch(() => undefined);
+      }
+    } catch {
+      /* a missing balance or a cold cache leaves the still in place */
     }
   }
 

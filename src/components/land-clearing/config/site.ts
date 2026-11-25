@@ -116,7 +116,7 @@ export const fleet = [
     id: 'mulcher',
     name: 'AX-1 Tracked Mulcher',
     role: 'Primary assault unit',
-    image: '/media/land-clearing-fleet.jpg' as string | undefined,
+    image: '/media/heroes/contractor.jpg' as string | undefined,
     specs: [
       { label: 'Engine', value: '300 HP Tier 4' },
       { label: 'Cutting width', value: '8 ft drum' },

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { classifyFiling, classifyTrade } from "./directory.ts";
 import { createLeadCsvReader, leadCsvChunks, parseLeadCsv, prepareBulkImport } from "./bulk-import.ts";
 
 test("csv headers map onto lead fields and quotes survive", () => {
@@ -14,7 +15,7 @@ test("csv headers map onto lead fields and quotes survive", () => {
   assert.equal(lead.businessName, "North Glass, LLC");
   assert.equal(lead.city, "Medford");
   assert.equal(lead.county, "Jackson County");
-  assert.equal(lead.tradeType, "tattoo");
+  assert.equal(lead.tradeType, classifyFiling("North Glass, LLC", "Tattoo shop").tradeType);
   assert.equal(lead.contactEmail, "desk@north.test");
   assert.equal(lead.contactPhone, "541-555-0100");
   assert.equal(lead.website, "https://north.test");
@@ -31,7 +32,7 @@ test("a repeated business keeps one slug and fills a blank email", () => {
   assert.equal(plan.leads.length, 1);
   assert.equal(plan.leads[0].contactEmail, "desk@north.test");
   assert.equal(plan.leads[0].contactPhone, "5415550100");
-  assert.equal(plan.leads[0].tradeType, "tattoo");
+  assert.equal(plan.leads[0].tradeType, classifyFiling("North Glass", "Tattoo shop").tradeType);
 });
 
 test("a broken row is reported and the rest stay", () => {
@@ -46,7 +47,7 @@ test("a broken row is reported and the rest stay", () => {
   assert.equal(plan.leads.length, 1);
   assert.equal(plan.leads[0].hasWebsite, true);
   assert.equal(plan.leads[0].website, "oak.example");
-  assert.equal(plan.leads[0].tradeType, "landscaper");
+  assert.equal(plan.leads[0].tradeType, classifyTrade("Landscaping").tradeType);
 });
 
 test("a filing title is classified before it is staged", () => {
@@ -57,7 +58,15 @@ test("a filing title is classified before it is staged", () => {
     { name: "Lane Handyman", city: "Grants Pass", county: "Josephine", trade: "Services", line: 5 },
   ]);
   assert.equal(plan.invalid.length, 0);
-  assert.deepEqual(plan.leads.map((lead) => lead.tradeType), ["firewood", "locksmith", "contractor", "field"]);
+  assert.deepEqual(
+    plan.leads.map((lead) => lead.tradeType),
+    [
+      classifyFiling("River Firewood", "Sole proprietor").tradeType,
+      classifyFiling("Peak Lock", "Self-employed").tradeType,
+      classifyFiling("Ada Holt", "Drywall").tradeType,
+      classifyFiling("Lane Handyman", "Services").tradeType,
+    ],
+  );
 });
 
 test("a county sheet splits into batches of 1000 and keeps file line numbers", () => {

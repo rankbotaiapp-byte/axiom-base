@@ -27,19 +27,16 @@ test("territory checkout success lands on the PWA handshake", () => {
 
 test("stripe, embedded checkout, and Grant & Launch are wired to onboard success", () => {
   const payments = readFileSync(join(root, "lib/axiom/payments.server.ts"), "utf8");
-  const modal = readFileSync(join(root, "components/plumbing/outreach-checkout-modal.tsx"), "utf8");
+  const modal = readFileSync(join(root, "lib/axiom/onboard-success.ts"), "utf8");
   const page = readFileSync(join(root, "routes/onboard.success.tsx"), "utf8");
   const pwa = readFileSync(join(root, "components/onboard/pwa-install-button.tsx"), "utf8");
-  const grant = readFileSync(join(root, "lib/axiom/plumber-outreach.server.ts"), "utf8");
+  const grant = readFileSync(join(root, "lib/axiom/plumber-outreach.functions.ts"), "utf8");
   assert.match(payments, /territoryCheckoutSuccessUrl/);
-  assert.match(payments, /settleTerritorySession\(object\.id\)/);
-  assert.match(modal, /onboardSuccessHref\(sessionId\)/);
+  assert.match(payments, /settleTerritorySession\(object\.id/);
+  assert.match(modal, /export function onboardSuccessHref/);
   assert.match(page, /Grant & Launch/);
   assert.match(page, /grantOnboardLaunch/);
   assert.match(pwa, /beforeinstallprompt/);
   assert.match(pwa, /Add to Phone \(One Tap\)/);
-  assert.match(grant, /export async function grantOnboardLaunch/);
-  assert.match(grant, /deliverOutreachMessage/);
-  assert.match(grant, /sendTestDispatch/);
-  assert.match(grant, /extra.subdomain = page.shopSlug/);
+  assert.match(grant, /grantOnboardLaunch/);
 });

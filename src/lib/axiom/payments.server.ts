@@ -4,7 +4,7 @@ import { env } from "@/lib/env.server";
 import { resolveStripeKeys } from "@/lib/stripe/keys";
 import { stampCheckoutSessionShare } from "@/lib/stripe/connect-fee";
 import { newId } from "@/lib/utils";
-import { territoryCheckoutSuccessUrl } from "./onboard-success";
+import { ONBOARD_SUCCESS_SESSION_PLACEHOLDER, territoryCheckoutSuccessUrl } from "./onboard-success";
 import { GEAR_GUARDIAN_BPS, gearGuardianFeeCents } from "./merchant-pricing";
 import {
   mapSubscriptionStatus,
@@ -54,6 +54,7 @@ type StripeObject = Record<string, unknown> & {
   customer_details?: { email?: string | null } | null;
   metadata?: Record<string, string> | null;
   client_reference_id?: string;
+  payment_method?: string | { id?: string } | null;
 };
 
 type StripeEvent = {
@@ -61,6 +62,78 @@ type StripeEvent = {
   type?: string;
   data?: { object?: StripeObject };
 };
+
+function paymentIntentIdFrom(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") return value.id;
+  return "";
+}
+
+function subscriptionIdFrom(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") return value.id;
+  return "";
+}
+
+function paymentMethodIdFromUnknown(value: unknown): string {
+  if (typeof value === "string" && value.startsWith("pm_")) return value;
+  if (value && typeof value === "object" && "id" in value) {
+    const id = (value as { id?: string }).id || "";
+    if (id.startsWith("pm_")) return id;
+  }
+  return "";
+}
+
+/** Save the $1 card on the customer so first-lead axiom_pro can charge off-session. */
+export async function attachCustomerDefaultPaymentMethod(
+  customerId: string,
+  paymentMethodId: string,
+): Promise<string> {
+  if (!customerId.startsWith("cus_") || !paymentMethodId.startsWith("pm_")) return "";
+  try {
+    await stripeFetch(
+      `payment_methods/${encodeURIComponent(paymentMethodId)}/attach`,
+      new URLSearchParams({ customer: customerId }),
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!/already been attached|previously used with a customer/i.test(message)) {
+      /* still try to set the invoice default below */
+    }
+  }
+  await stripeFetch(
+    `customers/${encodeURIComponent(customerId)}`,
+    new URLSearchParams({ "invoice_settings[default_payment_method]": paymentMethodId }),
+  );
+  return paymentMethodId;
+}
+
+async function resolveUnlockCard(session: StripeObject): Promise<{ customerId: string; paymentMethodId: string }> {
+  let customerId = stripeCustomerIdFromSession(session);
+  let paymentMethodId = paymentMethodIdFromUnknown(session.payment_method);
+  const intent = session.payment_intent;
+  if (!paymentMethodId && intent && typeof intent === "object") {
+    paymentMethodId = paymentMethodIdFromUnknown((intent as { payment_method?: unknown }).payment_method);
+  }
+  if (session.id && (!customerId || !paymentMethodId)) {
+    const expanded = await stripeFetch(
+      `checkout/sessions/${encodeURIComponent(session.id)}?expand[]=payment_intent.payment_method`,
+    );
+    customerId = customerId || stripeCustomerIdFromSession(expanded);
+    paymentMethodId =
+      paymentMethodId ||
+      paymentMethodIdFromUnknown(expanded.payment_method) ||
+      paymentMethodIdFromUnknown(
+        expanded.payment_intent && typeof expanded.payment_intent === "object"
+          ? (expanded.payment_intent as { payment_method?: unknown }).payment_method
+          : "",
+      );
+  }
+  if (customerId && paymentMethodId) {
+    await attachCustomerDefaultPaymentMethod(customerId, paymentMethodId);
+  }
+  return { customerId, paymentMethodId };
+}
 
 function stripeCustomerIdFromSession(object: StripeObject): string {
   const customer = object.customer;
@@ -475,6 +548,9 @@ export async function createTerritoryCheckout(opts: {
   embedded?: boolean;
   businessName?: string;
   niche?: string;
+  publishAfter?: boolean;
+  leadId?: string;
+  showcaseThemeId?: string;
 }) {
   const { clampNamedPriceCents, STANDARD_MONTHLY_CENTS, FOUNDER_LIFETIME_CENTS } = await import(
     "@/lib/stripe/commercial"
@@ -499,6 +575,9 @@ export async function createTerritoryCheckout(opts: {
   }
   if (opts.businessName) params.set("metadata[business_name]", opts.businessName.slice(0, 80));
   if (opts.niche) params.set("metadata[niche]", opts.niche.slice(0, 40));
+  if (opts.leadId) params.set("metadata[lead_id]", opts.leadId.slice(0, 80));
+  if (opts.publishAfter) params.set("metadata[publish_after]", "1");
+  if (opts.showcaseThemeId) params.set("metadata[showcase_theme_id]", opts.showcaseThemeId.slice(0, 32));
 
   if (opts.cadence === "once") {
     const amount = opts.amountCents > 0 ? opts.amountCents : FOUNDER_LIFETIME_CENTS;
@@ -557,11 +636,65 @@ export async function createTerritoryCheckout(opts: {
     }
   }
 
+  if (opts.publishAfter && !opts.embedded) {
+    params.set(
+      "success_url",
+      `${opts.origin.replace(/\/$/, "")}/${encodeURIComponent(shopSlug)}/admin?published=1&session_id=${ONBOARD_SUCCESS_SESSION_PLACEHOLDER}`,
+    );
+  }
+
   const session = await stripeFetch("checkout/sessions", params);
   if (opts.embedded) {
     if (!session.id || !session.client_secret) throw new Error("Stripe did not return a checkout session");
     return { id: session.id, url: "", clientSecret: session.client_secret };
   }
+  if (!session.id || !session.url) throw new Error("Stripe did not return a checkout session");
+  return { id: session.id, url: session.url, clientSecret: "" };
+}
+
+/** One-time $1.00 payment. Unlocks Studio editing and leaves publish_status draft. */
+export async function createStorefrontUnlockCheckout(opts: {
+  slug: string;
+  origin: string;
+  businessName?: string;
+  niche?: string;
+  userId?: string;
+  leadId?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+}) {
+  const { STOREFRONT_UNLOCK_CENTS } = await import("./hydrate-storefront");
+  const shopSlug = cleanShopSlug(opts.slug);
+  const origin = opts.origin.replace(/\/$/, "");
+  const success = `${origin}/${encodeURIComponent(shopSlug)}/admin?unlocked=1&session_id=${ONBOARD_SUCCESS_SESSION_PLACEHOLDER}`;
+  const cancel = `${origin}/t/${encodeURIComponent(shopSlug)}`;
+  const params = new URLSearchParams({
+    mode: "payment",
+    success_url: success,
+    cancel_url: cancel,
+    client_reference_id: opts.leadId?.slice(0, 80) || shopSlug,
+    "line_items[0][quantity]": "1",
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][unit_amount]": String(STOREFRONT_UNLOCK_CENTS),
+    "line_items[0][price_data][product_data][name]": "Axiom storefront unlock",
+    customer_creation: "always",
+    "payment_intent_data[setup_future_usage]": "off_session",
+    "metadata[kind]": "storefront_unlock",
+    "metadata[plan_id]": "unlock",
+    "metadata[shop_slug]": shopSlug,
+    "metadata[lead_slug]": shopSlug,
+    "metadata[slug]": shopSlug,
+    "metadata[lead_id]": (opts.leadId || shopSlug).slice(0, 80),
+    "metadata[billing_tier]": "storefront_unlock",
+  });
+  if (opts.userId && opts.userId !== "dev-user") params.set("metadata[user_id]", opts.userId);
+  if (opts.businessName) params.set("metadata[business_name]", opts.businessName.slice(0, 80));
+  if (opts.niche) params.set("metadata[niche]", opts.niche.slice(0, 40));
+  if (opts.phone) params.set("metadata[phone]", opts.phone.slice(0, 28));
+  if (opts.email) params.set("metadata[email]", opts.email.slice(0, 120));
+  if (opts.city) params.set("metadata[city]", opts.city.slice(0, 80));
+  const session = await stripeFetch("checkout/sessions", params);
   if (!session.id || !session.url) throw new Error("Stripe did not return a checkout session");
   return { id: session.id, url: session.url, clientSecret: "" };
 }
@@ -575,10 +708,19 @@ export async function createTenantLicenseCheckout(opts: {
   niche?: string;
   logoUrl?: string;
   userId?: string;
+  publishAfter?: boolean;
+  leadId?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  showcaseThemeId?: string;
 }) {
   const { clampNamedPriceCents, NAME_YOUR_PRICE_MIN_CENTS } = await import("@/lib/stripe/commercial");
-  const planId = opts.planId === "lifetime" ? "lifetime" : "trial";
-  const cadence = planId === "lifetime" ? "once" : "trial";
+  if (opts.planId === "unlock") {
+    return createStorefrontUnlockCheckout(opts);
+  }
+  const planId = opts.planId === "lifetime" ? "lifetime" : opts.planId === "monthly" ? "monthly" : "trial";
+  const cadence = planId === "lifetime" ? "once" : planId === "monthly" ? "month" : "trial";
   const named =
     cadence === "trial"
       ? clampNamedPriceCents(opts.namedPriceCents ?? NAME_YOUR_PRICE_MIN_CENTS)
@@ -598,7 +740,12 @@ export async function createTenantLicenseCheckout(opts: {
     leadSlug: opts.slug,
     checkoutId,
     planId,
-    planName: planId === "lifetime" ? "Founder's Lifetime Access" : "Name Your Price · Month 1",
+    planName:
+      planId === "lifetime"
+        ? "Founder's Lifetime Access"
+        : planId === "monthly"
+          ? "Axiom monthly"
+          : "Name Your Price · Month 1",
     amountCents: named ?? 0,
     cadence,
     origin: opts.origin,
@@ -606,6 +753,9 @@ export async function createTenantLicenseCheckout(opts: {
     namedPriceCents: named,
     businessName: opts.businessName,
     niche: opts.niche,
+    publishAfter: opts.publishAfter,
+    leadId: opts.leadId,
+    showcaseThemeId: opts.showcaseThemeId,
   });
 }
 
@@ -860,20 +1010,15 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
 
     if (event.type === "invoice.payment_failed" || event.type === "payment_intent.payment_failed") {
       const slug = slugFromStripeObject(object ?? {});
-      if (slug) await syncTenantSubscriptionStatus(slug, "canceled");
-      if (event.type === "invoice.payment_failed" && object) {
-        const ownerId = await resolveStripeOwnerUserId(object);
-        if (ownerId) await deactivateTenantGenerationQuota(ownerId);
-      }
-      return Response.json({ received: true, companion: "alert" });
+      if (slug) await syncTenantSubscriptionStatus(slug, "past_due");
+      return Response.json({ received: true, companion: "alert", status: "past_due", shopSlug: slug });
     }
 
     if (event.type === "invoice.payment_succeeded") {
       const slug = slugFromStripeObject(object ?? {});
-      if (slug) {
-        await syncTenantSubscriptionStatus(slug, "active");
-        return Response.json({ received: true, kind: "invoice", status: "active", shopSlug: slug });
-      }
+      // Do not force `active` here: $1 unlock + awaiting_first_real_lead shops
+      // stay on hold until a real lead. Subscription events carry Stripe status.
+      return Response.json({ received: true, kind: "invoice", shopSlug: slug || undefined });
     }
 
     if (event.type === "checkout.session.completed" && object?.id) {
@@ -898,6 +1043,69 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
           received: true,
           kind: "booking",
           application_fee_cents: Number(meta.gear_guardian_cents) || gearGuardianFeeCents(Number(object.amount_total) || 0),
+        });
+      }
+
+      if (meta.kind === "storefront_unlock") {
+        const amountCents = Number(object.amount_total) || 0;
+        const paymentStatus = object.payment_status || "";
+        if (paymentStatus !== "paid" || amountCents !== 100) {
+          return Response.json({
+            received: true,
+            kind: "storefront_unlock",
+            skipped: paymentStatus !== "paid" ? "unpaid" : "amount",
+          });
+        }
+        const { settleStorefrontUnlock } = await import("./storefront-unlock.server");
+        const settled = await settleStorefrontUnlock({
+          sessionId: object.id,
+          paymentIntentId: paymentIntentIdFrom(object.payment_intent),
+          leadId: meta.lead_id || meta.lead_slug || meta.shop_slug || "",
+          slug: meta.shop_slug || meta.lead_slug || meta.slug || "",
+          niche: meta.niche || "contractor",
+          businessName: meta.business_name || meta.shop_name || "",
+          userId: meta.user_id || "",
+          phone: meta.phone,
+          email: meta.email || (typeof object.customer_email === "string" ? object.customer_email : ""),
+          city: meta.city,
+        });
+        if (settled.shopId) {
+          try {
+            const lifecycle = await import("./lifecycle.server");
+            let card = { customerId, paymentMethodId: "" };
+            try {
+              card = await resolveUnlockCard(object);
+            } catch (err) {
+              console.error(
+                "[stripe-webhook] unlock card attach threw",
+                err instanceof Error ? err.message.slice(0, 200) : err,
+              );
+            }
+            await lifecycle.markAwaitingFirstRealLead({
+              shopId: settled.shopId,
+              stripeCustomerId: card.customerId || customerId,
+              stripePaymentMethodId: card.paymentMethodId || undefined,
+            });
+            if (!settled.already) {
+              await lifecycle.sendSimulatedReadyAlert(
+                settled.shopId,
+                meta.business_name || meta.shop_name || settled.shopSlug,
+              );
+            }
+          } catch (err) {
+            console.error(
+              "[stripe-webhook] first-lead hold / test alert threw",
+              err instanceof Error ? err.message.slice(0, 200) : err,
+            );
+          }
+        }
+        return Response.json({
+          received: true,
+          kind: "storefront_unlock",
+          shopSlug: settled.shopSlug,
+          already: settled.already,
+          phase: settled.phase,
+          awaitingFirstRealLead: true,
         });
       }
 
@@ -928,6 +1136,17 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
           if (!benignCheckoutError(err)) throw err;
         }
         const shop = await provisionTerritoryForPayer({ leadSlug, userId: ownerId ?? "" });
+        if (meta.showcase_theme_id) {
+          try {
+            const { applyShowcaseThemeToShop } = await import("./shop-accent.server");
+            await applyShowcaseThemeToShop(shop.slug || leadSlug, meta.showcase_theme_id);
+          } catch (err) {
+            console.error(
+              "[stripe-webhook] showcase theme save threw",
+              err instanceof Error ? err.message.slice(0, 200) : err,
+            );
+          }
+        }
         if (!ownerId && "claimToken" in shop && shop.unowned) {
           try {
             const { getSql } = await import("@/lib/db");
@@ -1010,6 +1229,22 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
             );
           }
         }
+        if (meta.publish_after === "1") {
+          try {
+            const { notePlanAndPublish } = await import("./storefront-unlock.server");
+            const planStatus = billingStatus === "trialing" ? "trialing" : "active";
+            await notePlanAndPublish({
+              slug: shop.slug || leadSlug,
+              planStatus,
+              stripeSubscriptionId: subscriptionIdFrom(object.subscription),
+            });
+          } catch (err) {
+            console.error(
+              "[stripe-webhook] publish-after plan sync threw",
+              err instanceof Error ? err.message.slice(0, 200) : err,
+            );
+          }
+        }
         return Response.json({
           received: true,
           kind: "territory",
@@ -1032,6 +1267,7 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
         gear,
         stripeCustomerId: customerId,
         stripeSessionId: object.id,
+        showcaseThemeId: meta.showcase_theme_id,
       });
       try {
         await syncCheckoutTenantToSupabase({

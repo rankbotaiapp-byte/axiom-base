@@ -50,8 +50,8 @@ export function OutdoorGuideStudio({
     <section className="outdoor-stage is-prey" aria-label="Outdoor guide studio" data-asset="owl_midnight_dive.mp4" data-depth={hud.depth}>
       {hero ?? (
         <SwipeRevealHero
-          baseVideoSrc="/media/heroes/owl_midnight_dive.mp4"
-          coverImageSrc="/media/heroes/pine-brush-cover.png"
+          baseVideoSrc="/media/infrastructure-hero-animation.mp4"
+          coverImageSrc="/media/heroes/landscaper.jpg"
           badgeText="ACTIVE INTERACTION: UNVEIL THE WILDLIFE."
           heading="The Silent Apex Predator"
           subheading="Swipe across the canopy brush to uncover the hidden wildlife below."

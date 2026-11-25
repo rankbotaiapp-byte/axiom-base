@@ -5,7 +5,7 @@
  */
 
 export const FALLBACK_HERO_POSTER = "/media/hero-poster.jpg";
-export const FALLBACK_HERO_LOOP = "/media/master-defaults/leopard-loop.mp4";
+export const FALLBACK_HERO_LOOP = "/media/axio-plumber-hero.mp4";
 export const GIT_LFS_POINTER_MARK = "https://git-lfs.github.com/spec/v1";
 
 const TENANT_PREFIX = /^\/(?!api\/|media\/|assets\/|__grok\/)[^/]+(?:\/[^/]+)?\/(media|assets)\//i;

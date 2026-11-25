@@ -67,3 +67,9 @@ export function needsAutoReload(balance: number, autoReload: boolean, threshold 
 export function currentSpendMonth(now = new Date()): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** One even slice of the monthly content budget, never below a single motion credit. */
+export function dailyMotionCapCents(monthlyLimitCents: number): number {
+  const monthly = clampMonthlySpendLimitCents(monthlyLimitCents);
+  return Math.max(centsPerRenderCredit(), Math.floor(monthly / 30));
+}

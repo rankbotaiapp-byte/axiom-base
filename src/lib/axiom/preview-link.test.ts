@@ -23,12 +23,11 @@ import {
 const ORIGIN = "https://axiom.example";
 
 test("demo slugs accept niche ids and film names such as auto-repair", () => {
-  assert.equal(resolveDemoNiche("auto-repair"), "field");
-  assert.equal(resolveDemoNiche("auto_repair.mp4"), "field");
-  assert.equal(resolveDemoNiche("photo"), "photo");
-  assert.equal(resolveDemoNiche("field"), "field");
-  assert.equal(resolveDemoNiche("firewood"), "firewood");
-  assert.equal(resolveDemoNiche("defensible-space"), "firewood");
+  assert.equal(resolveDemoNiche("auto-repair"), "auto");
+  assert.equal(resolveDemoNiche("auto_repair.mp4"), "auto");
+  assert.equal(resolveDemoNiche("auto"), "auto");
+  assert.equal(resolveDemoNiche("plumbing"), "plumbing");
+  assert.equal(resolveDemoNiche("firewood"), "forestry");
   assert.equal(resolveDemoNiche("clinic"), null);
   assert.equal(resolveDemoNiche("practice"), null);
   assert.equal(resolveDemoNiche("advisor"), null);
@@ -66,7 +65,7 @@ test("home counties get a personalized demo preview link", () => {
       }) ?? "",
     );
     assert.equal(url.origin, ORIGIN);
-    assert.equal(url.pathname, "/demo/photo");
+    assert.equal(url.pathname, `/demo/${previewNicheSlug("Photography")}`);
     assert.equal(url.searchParams.get("preview"), "true");
     assert.equal(url.searchParams.get("business"), "North Frame");
     assert.equal(url.searchParams.get("b"), "north-frame-medford");
@@ -90,7 +89,7 @@ test("home-county outreach links carry the niche path and the lead id", () => {
       city: "Medford",
     }),
   );
-  assert.equal(url.pathname, "/demo/photo");
+  assert.equal(url.pathname, `/demo/${previewNicheSlug("Photography")}`);
   assert.equal(url.searchParams.get("lead"), "lead_northframe01");
   assert.equal(url.searchParams.get("b"), "north-frame-medford");
   assert.equal(url.searchParams.get("city"), "Medford");
@@ -113,8 +112,8 @@ test("a lead outside the home region keeps the homepage funnel", () => {
 });
 
 test("clinic leads do not open the retired medical demo", () => {
-  assert.equal(previewNicheSlug("Practice"), "trade");
-  assert.equal(previewNicheSlug("clinic", "Medical clinic"), "trade");
+  assert.equal(previewNicheSlug("Practice"), "contractor");
+  assert.equal(previewNicheSlug("clinic", "Medical clinic"), "contractor");
   const url = new URL(
     tenantPreviewUrl(ORIGIN, {
       businessName: "Lane Practice",
@@ -122,12 +121,12 @@ test("clinic leads do not open the retired medical demo", () => {
       county: "Jackson County",
     }) ?? "",
   );
-  assert.equal(url.pathname, "/demo/trade");
+  assert.equal(url.pathname, "/demo/contractor");
 });
 
 test("advisor leads do not open the retired counsel demo", () => {
-  assert.equal(previewNicheSlug("Advisor"), "trade");
-  assert.equal(previewNicheSlug("counsel", "Financial consulting"), "trade");
+  assert.equal(previewNicheSlug("Advisor"), "contractor");
+  assert.equal(previewNicheSlug("counsel", "Financial consulting"), "contractor");
   const url = new URL(
     tenantPreviewUrl(ORIGIN, {
       businessName: "Plain Counsel",
@@ -135,7 +134,7 @@ test("advisor leads do not open the retired counsel demo", () => {
       county: "Jackson County",
     }) ?? "",
   );
-  assert.equal(url.pathname, "/demo/trade");
+  assert.equal(url.pathname, "/demo/contractor");
 });
 
 test("every preloaded category resolves to a demo niche", () => {

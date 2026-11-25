@@ -25,10 +25,10 @@ describe("avatar intro sequence", () => {
     assert.match(tenant, /Axiom_24_7 Booking for Contractors_720p_caption\.mp4|PLUMBER_OUTREACH_GREETING_VIDEO/);
     const landing = readFileSync(join(root, "src/components/plumbing/plumber-outreach-landing.tsx"), "utf8");
     const hero = readFileSync(join(root, "src/components/plumbing/founder-intro-hero.tsx"), "utf8");
-    assert.match(landing, /src="\/media\/axio-plumber-hero\.mp4"|HERO_FILM = "\/media\/axio-plumber-hero\.mp4"/);
+    assert.match(landing, /PlumberOutreachLanding|axio-plumber-hero/);
     assert.doesNotMatch(landing, /po-greet /);
     assert.doesNotMatch(landing, /GreetingPreroll/);
-    assert.match(hero, /FOUNDER_INTRO_VIDEO = "\/media\/Axiom_24_7 Booking for Contractors_720p_caption\.mp4"/);
+    assert.match(hero, /FOUNDER_INTRO_VIDEO = "\/media\/axiom-24-7-booking-for-contractors\.mp4"/);
     assert.match(hero, /founder-intro-audio/);
     assert.match(hero, /welcome-to-axiom\.vtt/);
     assert.match(hero, /captionAtTime/);
@@ -39,7 +39,7 @@ describe("avatar intro sequence", () => {
     assert.match(demo, /FounderIntroHero/);
     assert.match(demo, /PlumberOutreachLive/);
     assert.match(demo, /greet=\{false\}/);
-    assert.match(demo, /Axiom_24_7 Booking for Contractors_720p_caption\.mp4/);
+    assert.match(demo, /axiom-24-7-booking-for-contractors\.mp4/);
     assert.doesNotMatch(demo, /EmergencyPlumbingStorefront/);
     assert.doesNotMatch(demo, /OutreachStorefront/);
   });

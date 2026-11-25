@@ -9,9 +9,9 @@ import {
 
 describe("plumbing drain telemetry state machine", () => {
   it("binds the catalog drain film", () => {
-    assert.equal(PLUMBING_DRAIN_SRC, "/media/plumbers-outreach-hero-animation.mp4");
+    assert.equal(PLUMBING_DRAIN_SRC, "/media/axio-plumber-hero.mp4");
     assert.equal(isPlumbingDrainFilm(PLUMBING_DRAIN_SRC), true);
-    assert.equal(isPlumbingDrainFilm("/media/axioms-heart.mp4"), false);
+    assert.equal(isPlumbingDrainFilm("/media/studio-preview.mp4"), false);
     assert.equal(isPlumbingDrainFilm("/media/axiom-greeting.mp4"), false);
   });
 

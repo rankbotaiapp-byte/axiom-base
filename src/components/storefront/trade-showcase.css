@@ -1,0 +1,243 @@
+.ts-shell {
+  --ts-obsidian: #050507;
+  --ts-cyan: #00ffcc;
+  --ts-ring: #FFE500;
+  --ts-ring-hot: #FF9900;
+  --ts-call: #FF9900;
+  --ts-book: #00ffcc;
+  min-height: 100svh;
+  background: var(--ts-obsidian);
+  color: #fff;
+  padding: 10px;
+}
+.ts-frame {
+  position: relative;
+  min-height: calc(100svh - 20px);
+  overflow: hidden;
+  background: var(--ts-obsidian);
+  border-radius: 28px;
+  box-shadow:
+    0 0 0 3px var(--ts-ring),
+    0 0 0 6px var(--ts-ring-hot),
+    0 0 48px color-mix(in srgb, var(--ts-ring-hot) 45%, transparent);
+}
+.ts-inner {
+  position: relative;
+  padding: 12px 14px 108px;
+}
+.ts-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(5 5 7 / 0.86);
+  padding: 6px 10px;
+}
+.ts-mark {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgb(0 255 204 / 0.35);
+  background: #0b0d12;
+}
+.ts-mark img { height: 100%; width: 100%; object-fit: cover; }
+.ts-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ts-phone-icon {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ts-call);
+  color: #050507;
+}
+.ts-hero {
+  position: relative;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 18px;
+  aspect-ratio: 16 / 10;
+  background: #050507;
+}
+.ts-hero video,
+.ts-hero img {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+.ts-tick {
+  position: absolute;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border-color: var(--ts-ring-hot);
+  border-style: solid;
+  pointer-events: none;
+}
+.ts-tick-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+.ts-tick-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+.ts-tick-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+.ts-tick-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+.ts-badge {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  border: 2px solid var(--ts-cyan);
+  padding: 6px 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  background: rgb(5 5 7 / 0.7);
+}
+.ts-mute {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 3;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background: rgb(5 5 7 / 0.72);
+  padding: 0 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ts-banner {
+  margin-top: 10px;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ts-cyan);
+}
+.ts-title {
+  margin: 10px 8px 0;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+.ts-eyebrow {
+  margin-top: 18px;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ts-cyan);
+}
+.ts-headline {
+  margin: 10px 8px 0;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+.ts-sub {
+  margin: 12px auto 0;
+  max-width: 34rem;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.7);
+}
+.ts-cta {
+  display: flex;
+  min-height: 54px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  border-radius: 16px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ts-cta-call { background: var(--ts-call); color: #050507; }
+.ts-cta-book {
+  margin-top: 10px;
+  border: 1.5px solid var(--ts-book);
+  background: transparent;
+  color: #fff;
+}
+.ts-trust {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.ts-trust article {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 16px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(11 13 18 / 0.9);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ts-orb {
+  position: fixed;
+  right: 22px;
+  bottom: 108px;
+  z-index: 8;
+  display: grid;
+  height: 64px;
+  width: 64px;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid var(--ts-cyan);
+  background: #10131a;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--ts-cyan) 40%, transparent);
+  color: var(--ts-cyan);
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+.ts-sticky {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ts-sticky a {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ts-sticky-call { background: var(--ts-call); color: #050507; }
+.ts-sticky-book { background: var(--ts-book); color: #050507; }

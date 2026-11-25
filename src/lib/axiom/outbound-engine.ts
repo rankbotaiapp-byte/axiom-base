@@ -124,9 +124,9 @@ export function pickEngineChannel(input: {
 }): "sms" | "email" | null {
   const sms = input.canSms && input.smsRemaining > 0;
   const email = input.canEmail && input.emailRemaining > 0;
-  if (!sms && !email) return null;
-  if (sms && (!email || input.smsRemaining >= input.emailRemaining)) return "sms";
-  return "email";
+  if (email) return "email";
+  if (sms) return "sms";
+  return null;
 }
 
 export function engineErrorMessage(err: unknown, fallback = "row failed"): string {

@@ -4,8 +4,8 @@ import { type LaunchPlan } from "@/lib/axiom/launch-plans";
 import { LaunchCheckoutDrawer } from "./LaunchCheckoutDrawer";
 import { PricingCardStack } from "./PricingCardStack";
 
-const BACKDROP_LOOP = "/media/holo-shard-loop.mp4";
-const BACKDROP_FALLBACK = "/media/hero-1280.mp4";
+const BACKDROP_LOOP = "/media/studio-cyan-fog-loop.mp4";
+const BACKDROP_FALLBACK = "/media/axio-plumber-hero.mp4";
 const BACKDROP_POSTER = "/media/hero-poster.jpg";
 
 /** Pricing: holographic shard backdrop, 3D swipe stack, slide-up Stripe drawer. */

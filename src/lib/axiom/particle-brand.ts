@@ -42,7 +42,8 @@ export function twoWordBrand(source: string, fallback: string): TwoWordBrand {
 }
 
 function heroesUrl(url: string): string {
-  return url.startsWith("/media/heroes/") ? url : "";
+  if (!url.startsWith("/media/") || url.includes("..")) return "";
+  return url;
 }
 
 export type ParticleStudioInput = {

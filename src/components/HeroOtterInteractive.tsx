@@ -3,7 +3,7 @@ import { InteractiveOtterHero } from "@/components/interactive-otter-hero";
 
 /** Storefront and studio overlay for the otter loop, or any uploaded hero film. */
 export function HeroOtterInteractive({
-  src = "/media/otter-hero-animation.mp4",
+  src = "/media/axio-plumber-hero.mp4",
   active = true,
   children,
 }: {

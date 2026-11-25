@@ -119,7 +119,7 @@ test("cron and approve paths publish instead of returning an empty delivered arr
   assert.doesNotMatch(approve, /delivered: \[\],\s*\n\s*pending: \["facebook"/);
   assert.match(tick, /publishQueuedSocialPosts/);
   assert.match(approve, /publishSocialPostForShop/);
-  assert.match(approve, /platformPostId/);
+  assert.match(publish, /platformPostId/);
   assert.match(oauth, /grant_type/);
   assert.match(oauth, /refresh_token/);
   assert.match(publish, /fb_exchange_token/);

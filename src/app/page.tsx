@@ -1,19 +1,24 @@
 ﻿import type { Metadata } from "next";
-import { AxiomFreezeLanding } from "@/components/axiom-landing/freeze-landing/AxiomFreezeLanding";
+import { Suspense } from "react";
+import AxiomLanding from "@/components/axiom/AxiomLanding";
 
 export const metadata: Metadata = {
-  title: "AXIOM — 24/7 booking for local trades",
+  title: "Axiom — Turn your web presence into a revenue machine",
   description:
-    "Stop losing after-hours jobs. $1 trial: instant quote, AI booking, Autopilot SMS, Cha-Ching pipeline — then $150/mo.",
+    "24/7 booking, daily content, and social on Autopilot with admin approval. $1 first month — $150/mo starts on the first verified real lead.",
   openGraph: {
-    title: "AXIOM — Stop losing after-hours jobs",
+    title: "Axiom — Turn your web presence into a revenue machine",
     description:
-      "$1 trial for plumbers, roofers, HVAC, and electrical. Live demos, instant quote, and founder-backed support.",
-    images: [{ url: "/media/hero-poster.jpg" }],
+      "Claim a storefront from a niche template or recreated hero. Autopilot drafts; you approve. $1 first month.",
+    images: [{ url: "/media/heroes/axiom-revenue-machine-hero.png" }],
   },
 };
 
-/** Primary landing: freeze-particle hero, character reveal, Heart Machine, Master Dashboard CMS. */
-export default function RootPage() {
-  return <AxiomFreezeLanding studioHref="/axiom-studio" />;
+/** Hero (cursor-tracking Axiom) → 60s intro → Studio $1 test drive. */
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <AxiomLanding />
+    </Suspense>
+  );
 }

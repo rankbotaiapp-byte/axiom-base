@@ -41,7 +41,7 @@ export const OnboardingVideoModal: React.FC<OnboardingVideoModalProps> = ({
         {/* Video Player */}
         <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-zinc-800 mb-6">
           <HeroLoopVideo
-            src="/media/heroes/intro-welcome.mp4"
+            src="/media/axiom-24-7-booking-for-contractors.mp4"
             controls
             autoPlay
             loop={false}

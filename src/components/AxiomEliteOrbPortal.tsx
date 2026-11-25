@@ -16,8 +16,8 @@ const PARALLAX_SPRING = { stiffness: 150, damping: 20, mass: 0.8 };
 /** Opposite-direction depth shift for bg layers (px). */
 const BG_SHIFT_PX = 14;
 /** Black + silver Axiom logo particle loop. */
-const LOGO_VIDEO = "/media/axiom/axiom-logo-loop.mp4";
-const LOGO_POSTER = "/media/axiom/axiom-logo-poster.jpg";
+const LOGO_VIDEO = "/media/studio-cyan-fog-loop.mp4";
+const LOGO_POSTER = "/media/studio-cyan-fog-poster.jpg";
 
 const PARTICLE_N = 220;
 

@@ -1,8 +1,8 @@
 /** Milestone stills for the tent survival chase. Files on disk use a doubled image extension. */
 export const TENT_MILESTONES = {
-  dawn: "/media/heroes/image_5.png.jpg",
-  chase: "/media/heroes/image_6.png.jpg",
-  cover: "/media/heroes/image_7.png.jpg",
+  dawn: "/media/hero-poster.jpg",
+  chase: "/media/hero-poster.jpg",
+  cover: "/media/hero-poster.jpg",
 } as const;
 
 export const ZIPPER_BREACH = 0.78;

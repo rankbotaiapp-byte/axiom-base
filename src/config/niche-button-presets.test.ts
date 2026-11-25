@@ -45,11 +45,11 @@ test("niche presets stay on the outer edges", () => {
   assert.equal(fromShark.length, 4);
   assert.equal(fromShark[0]?.label, "Book Now");
   assert.equal(fromShark[3]?.label, "Instant Quote");
-  const fromWater = studioDefaultButtons("water-systems", "/media/otter-hero-animation.mp4", "/abyss/book");
+  const fromWater = studioDefaultButtons("water-systems", "/media/axio-plumber-hero.mp4", "/abyss/book");
   assert.equal(fromWater[0]?.label, "Book Now");
   assert.equal(fromWater[3]?.label, "Instant Quote");
   const fromAbyssalAlias = studioDefaultButtons("abyssal-hero", "", "/abyss/book");
   assert.equal(fromAbyssalAlias[0]?.label, "Book Now");
-  const fromBarber = studioDefaultButtons("barber", "/media/barber-hero-animation.mp4");
+  const fromBarber = studioDefaultButtons("barber", "/media/studio-cyan-fog-loop.mp4");
   assert.equal(fromBarber[0]?.label, "Book Fade & Trim");
 });

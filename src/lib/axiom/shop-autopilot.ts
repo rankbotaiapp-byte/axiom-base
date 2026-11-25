@@ -21,6 +21,8 @@ export type AutopilotTickResult = {
   social: boolean;
   /** Fresh legal stock still/video + brand stamp from the daily content sourcer. */
   stockBrand: boolean;
+  /** Web preview + simulated social intents from the publish hook. */
+  published?: boolean;
   notice: boolean;
   detail: string;
 };

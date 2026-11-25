@@ -13,7 +13,7 @@ const SEED = [
 ] as const;
 
 const FLIP = { type: "spring" as const, stiffness: 300, damping: 20 };
-const OTTER_LOOP = "/media/otter-hero-animation.mp4";
+const OTTER_LOOP = "/media/axio-plumber-hero.mp4";
 
 type Bubble = { id: string; x: number; y: number; size: number };
 type Ripple = { id: number; x: number; y: number };

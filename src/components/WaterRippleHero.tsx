@@ -98,9 +98,9 @@ function coverFit(canvasW: number, canvasH: number, imageW: number, imageH: numb
 }
 
 export function WaterRippleHero({
-  baseVideoSrc = "/media/heroes/river-hawk-base.mp4",
-  poster = "/media/heroes/river-hawk-base.jpg",
-  coverImageSrc = "/media/heroes/river-hawk-cover.jpg",
+  baseVideoSrc = "/media/infrastructure-hero-animation.mp4",
+  poster = "/media/heroes/landscaper.jpg",
+  coverImageSrc = "/media/heroes/landscaper.jpg",
   badgeText = RIVER_RIPPLE_BADGE,
   heading = "River Hawk Guides",
   subheading = "Drag across the water. Ripples spread through the current.",

@@ -20,7 +20,7 @@ describe("niche media", () => {
   it("hides the niche loop when the owner uploads a still", () => {
     const media = resolveHeroMedia({
       niche: "auto",
-      heroImageUrl: "/media/alex-morgan.jpg",
+      heroImageUrl: "/media/eric.jpg",
       heroVideoUrl: null,
     });
     // Video from catalog still wins when no upload film is set.
@@ -50,7 +50,7 @@ describe("niche media", () => {
       const media = NICHE_MEDIA[niche];
       assert.match(
         media.heroVideoUrl,
-        /\/media\/(?:master-defaults\/[a-z0-9-]+-loop|[a-z0-9-]+\/hero-animation|[a-z0-9-]+-hero-(?:animation|path))\.mp4$/i,
+        /\/media\/(?:master-defaults\/[a-z0-9-]+-loop|[a-z0-9-]+\/hero-animation|studio-cyan-fog-loop|axio-plumber-hero(?:-mobile)?|plumbing-emergency-hero(?:-mobile)?|[a-z0-9-]+-hero-(?:animation|path))\.mp4$/i,
         niche,
       );
     }

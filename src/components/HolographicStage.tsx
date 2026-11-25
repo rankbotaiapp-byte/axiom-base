@@ -27,7 +27,7 @@ export function HolographicStage({
   businessName = "Axiom desk",
   customer = false,
   filmUrl = catalogFilmUrl("contractor"),
-  posterUrl = "/media/goopy-orb-base.jpg",
+  posterUrl = "/media/hero-poster.jpg",
 }: HolographicStageProps) {
   const reduce = useReducedMotion();
   const stageRef = useRef<HTMLElement>(null);

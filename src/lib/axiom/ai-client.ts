@@ -10,6 +10,9 @@
 
 import "server-only";
 
+import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { getSql } from "@/lib/db";
 import {
@@ -20,7 +23,8 @@ import {
   type StudioLayerPacket,
   type StudioRenderLayer,
 } from "./studio-engine";
-import { buildProofTouchupPrompt, buildSlotBrandedPrompt } from "./storefront-themes";
+import { buildSlotBrandedPrompt } from "./storefront-themes";
+import { animateRecreatedBackgroundPrompt, remakeUploadedPhotoPrompt } from "./hero-video-studio";
 import { withAxiomVisualLock } from "./visual-design";
 
 const FLUX_MODEL = "black-forest-labs/flux-1.1-pro";
@@ -142,14 +146,20 @@ export async function generateStudioHeroImage(prompt: string, niche: string, sho
  * 6-second cinematic loop. Google Veo 3.1 takes the still as `image`.
  * A Kling model id in REPLICATE_VIDEO_MODEL uses `start_image` instead.
  */
-export async function generateHeroVideoLoop(imageUrl: string, niche: string, shopSlug: string): Promise<string> {
+export async function generateHeroVideoLoop(
+  imageUrl: string,
+  niche: string,
+  shopSlug: string,
+  promptOverride?: string,
+): Promise<string> {
   const still = imageUrl.trim();
   if (!/^https:\/\//.test(still)) throw new Error("The hero image URL is not public");
   const entry = studioMatrixEntry(niche);
   const prompt = clipPrompt(
-    withAxiomVisualLock(
-      `Seamless 6-second cinematic background loop of ${entry.label}. ${entry.motion} ${entry.environment} ${entry.fluid} Slow parallax, volumetric smoke, neon-red structural edge light #ff2a3d on obsidian #050507. End on the same frame so the loop is seamless. No spoken words. No on-film captions. No extra people.`,
-    ),
+    promptOverride?.trim() ||
+      withAxiomVisualLock(
+        `Seamless 6-second cinematic background loop of ${entry.label}. ${entry.motion} ${entry.environment} ${entry.fluid} Slow parallax, volumetric smoke, neon-red structural edge light #ff2a3d on obsidian #050507. End on the same frame so the loop is seamless. No spoken words. No on-film captions. No extra people.`,
+      ),
   );
   const model = process.env.REPLICATE_VIDEO_MODEL?.trim() || VEO_MODEL;
   const kling = /kling/i.test(model);
@@ -325,14 +335,62 @@ async function linkStorefront(input: {
   });
 }
 
+function writePublicStudioFile(slug: string, fileName: string, bytes: Uint8Array): string {
+  const rel = join("media", "studio", shopKey(slug), fileName.replace(/\\/g, "/"));
+  const dest = join(process.cwd(), "public", rel);
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, bytes);
+  return `/${rel.replace(/\\/g, "/")}`;
+}
+
 async function hostAsset(slug: string, fileName: string, remoteUrl: string, kind: "image" | "video"): Promise<string> {
   const file = await downloadAsset(remoteUrl, kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES);
   const mime = kind === "video" ? "video/mp4" : file.mime.startsWith("image/") ? file.mime : "image/webp";
-  return uploadToMedia(slug, fileName, file.bytes, mime);
+  try {
+    return await uploadToMedia(slug, fileName, file.bytes, mime);
+  } catch {
+    return writePublicStudioFile(slug, fileName, file.bytes);
+  }
 }
 
 function fluxImg2ImgModel(): string {
   return process.env.REPLICATE_FLUX_IMG2IMG_MODEL?.trim() || FLUX_KONTEXT_MODEL;
+}
+
+function videoModel(): string {
+  return process.env.REPLICATE_VIDEO_MODEL?.trim() || VEO_MODEL;
+}
+
+/** Same inputs always map to one stored file, so a reload does not call Replicate again. */
+const hotGenerationCache = new Map<string, string>();
+
+function generationDigest(parts: string[]): string {
+  return createHash("sha256").update(parts.join("\n")).digest("hex").slice(0, 32);
+}
+
+async function readGenerationCache(slug: string, fileName: string, digestId: string): Promise<string | null> {
+  const hot = hotGenerationCache.get(digestId);
+  if (hot) return hot;
+  const supabase = supabaseAdmin();
+  if (!supabase) return null;
+  const url = `${supabase.url}/storage/v1/object/public/media/${shopKey(slug)}/studio/${fileName}`;
+  try {
+    const head = await fetch(url, { method: "HEAD" });
+    const exists = head.ok
+      ? Number(head.headers.get("content-length") || "1") > 0
+      : head.status === 400 || head.status === 405
+        ? (await fetch(url, { headers: { Range: "bytes=0-0" } })).ok
+        : false;
+    if (!exists) return null;
+    hotGenerationCache.set(digestId, url);
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function rememberGeneration(digestId: string, url: string) {
+  hotGenerationCache.set(digestId, url);
 }
 
 /** Proof slot touch-up: image-to-image preserving the tenant's real job photo. */
@@ -342,14 +400,29 @@ export async function generateProofTouchupSlot(input: {
   slotLabel?: string;
   niche?: string;
   themeId?: string;
-}): Promise<{ imageUrl: string; prompt: string; mode: "proof_touchup" }> {
+  shopName?: string;
+  brandColor?: string;
+  inlay?: string;
+  logoUrl?: string;
+}): Promise<{ imageUrl: string; prompt: string; mode: "proof_touchup"; cached: boolean }> {
   const shopSlug = shopKey(input.shopSlug);
   if (!shopSlug) throw new Error("Unknown shop");
   const still = input.sourceImageUrl.trim();
   if (!/^https:\/\//.test(still)) throw new Error("The source image URL must be public https");
   const prompt = clipPrompt(
-    buildProofTouchupPrompt({ slotLabel: input.slotLabel, niche: input.niche, themeId: input.themeId }),
+    remakeUploadedPhotoPrompt({
+      slotLabel: input.slotLabel,
+      niche: input.niche,
+      shopName: input.shopName,
+      brandColor: input.brandColor,
+      inlay: input.inlay,
+      hasUpload: true,
+    }),
   );
+  const digestId = generationDigest(["proof", fluxImg2ImgModel(), still, prompt]);
+  const fileName = `cache/proof-${digestId}.webp`;
+  const cachedUrl = await readGenerationCache(shopSlug, fileName, digestId);
+  if (cachedUrl) return { imageUrl: cachedUrl, prompt, mode: "proof_touchup", cached: true };
   const remote = await replicatePredict(
     fluxImg2ImgModel(),
     {
@@ -362,12 +435,98 @@ export async function generateProofTouchupSlot(input: {
     },
     IMAGE_WAIT_MS,
   );
-  try {
-    const imageUrl = await hostAsset(shopSlug, `${Date.now()}-proof-touchup.webp`, remote, "image");
-    return { imageUrl, prompt, mode: "proof_touchup" };
-  } catch {
-    return { imageUrl: remote, prompt, mode: "proof_touchup" };
-  }
+  const imageUrl = await hostAsset(shopSlug, fileName, remote, "image");
+  rememberGeneration(digestId, imageUrl);
+  return { imageUrl, prompt, mode: "proof_touchup", cached: false };
+}
+
+export async function findCachedProofTouchup(input: {
+  shopSlug: string;
+  sourceImageUrl: string;
+  slotLabel?: string;
+  niche?: string;
+  themeId?: string;
+  shopName?: string;
+  brandColor?: string;
+  inlay?: string;
+  logoUrl?: string;
+}): Promise<{ imageUrl: string; prompt: string; mode: "proof_touchup"; cached: true } | null> {
+  const shopSlug = shopKey(input.shopSlug);
+  const still = input.sourceImageUrl.trim();
+  if (!shopSlug || !/^https:\/\//.test(still)) return null;
+  const prompt = clipPrompt(
+    remakeUploadedPhotoPrompt({
+      slotLabel: input.slotLabel,
+      niche: input.niche,
+      shopName: input.shopName,
+      brandColor: input.brandColor,
+      inlay: input.inlay,
+      hasUpload: true,
+    }),
+  );
+  const digestId = generationDigest(["proof", fluxImg2ImgModel(), still, prompt]);
+  const imageUrl = await readGenerationCache(shopSlug, `cache/proof-${digestId}.webp`, digestId);
+  return imageUrl ? { imageUrl, prompt, mode: "proof_touchup", cached: true } : null;
+}
+
+/** Motion of the recreated still only. The uploaded frame stays the subject. */
+export async function generateBackgroundMotion(input: {
+  shopSlug: string;
+  sourceImageUrl: string;
+  niche?: string;
+  shopName?: string;
+  brandColor?: string;
+  motion?: string;
+  reactions?: readonly string[];
+}): Promise<{ videoUrl: string; prompt: string; mode: "background_motion"; cached: boolean }> {
+  const shopSlug = shopKey(input.shopSlug);
+  if (!shopSlug) throw new Error("Unknown shop");
+  const still = input.sourceImageUrl.trim();
+  const prompt = clipPrompt(
+    withAxiomVisualLock(
+      animateRecreatedBackgroundPrompt({
+        niche: input.niche,
+        shopName: input.shopName,
+        motion: input.motion,
+        reactions: input.reactions,
+      }).motionPrompt,
+    ),
+  );
+  const digestId = generationDigest(["motion", videoModel(), still, prompt]);
+  const fileName = `cache/motion-${digestId}.mp4`;
+  const cachedUrl = await readGenerationCache(shopSlug, fileName, digestId);
+  if (cachedUrl) return { videoUrl: cachedUrl, prompt, mode: "background_motion", cached: true };
+  const remote = await generateHeroVideoLoop(still, input.niche || "contractor", shopSlug, prompt);
+  const videoUrl = await hostAsset(shopSlug, fileName, remote, "video");
+  rememberGeneration(digestId, videoUrl);
+  return { videoUrl, prompt, mode: "background_motion", cached: false };
+}
+
+export async function findCachedBackgroundMotion(input: {
+  shopSlug: string;
+  sourceImageUrl: string;
+  niche?: string;
+  shopName?: string;
+  brandColor?: string;
+  motion?: string;
+  reactions?: readonly string[];
+}): Promise<{ videoUrl: string; prompt: string; mode: "background_motion"; cached: true } | null> {
+  const shopSlug = shopKey(input.shopSlug);
+  const still = input.sourceImageUrl.trim();
+  if (!shopSlug || !/^https:\/\//.test(still)) return null;
+  const prompt = clipPrompt(
+    withAxiomVisualLock(
+      animateRecreatedBackgroundPrompt({
+        niche: input.niche,
+        shopName: input.shopName,
+        motion: input.motion,
+        reactions: input.reactions,
+      }).motionPrompt,
+    ),
+  );
+  const digestId = generationDigest(["motion", videoModel(), still, prompt]);
+  const videoUrl = await readGenerationCache(shopSlug, `cache/motion-${digestId}.mp4`, digestId);
+  return videoUrl ? { videoUrl, prompt, mode: "background_motion", cached: true } : null;
 }
 
 /** Slot-aware branded still for layout stack assignment. */
@@ -408,12 +567,8 @@ export async function generateAiBrandedSlot(input: {
     },
     IMAGE_WAIT_MS,
   );
-  try {
-    const imageUrl = await hostAsset(shopSlug, `${Date.now()}-slot-branded.webp`, remote, "image");
-    return { imageUrl, prompt, mode: "ai_branded" };
-  } catch {
-    return { imageUrl: remote, prompt, mode: "ai_branded" };
-  }
+  const imageUrl = await hostAsset(shopSlug, `${Date.now()}-slot-branded.webp`, remote, "image");
+  return { imageUrl, prompt, mode: "ai_branded" };
 }
 
 /** One Flux still for outreach previews and proof slots. Storage is used when it is configured. */
@@ -430,12 +585,8 @@ export async function generateStudioStill(input: {
   const packet = decomposeStudioLayers({ niche, shopName: input.shopName, tagline: input.tagline });
   const prompt = input.prompt?.trim() || packet.prompt;
   const remote = await generateStudioHeroImage(prompt, niche, shopSlug);
-  try {
-    const imageUrl = await hostAsset(shopSlug, `${Date.now()}-still.webp`, remote, "image");
-    return { imageUrl, prompt };
-  } catch {
-    return { imageUrl: remote, prompt };
-  }
+  const imageUrl = await hostAsset(shopSlug, `${Date.now()}-still.webp`, remote, "image");
+  return { imageUrl, prompt };
 }
 
 /** Generate the hero still, the three layer plates, and the loop, then publish them. */

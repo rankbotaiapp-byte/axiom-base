@@ -358,6 +358,8 @@ export function renderOutreachMessage(
   const filled = template
     .replaceAll("{{business_name}}", lead.business)
     .replaceAll("{{preview_link}}", lead.url)
+    .replaceAll("{{claimUrl}}", lead.url)
+    .replaceAll("{claimUrl}", lead.url)
     .replaceAll("{{city}}", city)
     .replaceAll("{business_name}", lead.business)
     .replaceAll("{preview_link}", lead.url)
@@ -548,6 +550,7 @@ export function deskPreviewPath(lead: {
   if (city) params.set("city", city);
   if (business) params.set("biz", business);
   if (trade) params.set("trade", trade);
+  params.set("sample", "1");
   if (isPlumbingCampaign(trade)) {
     return plumberCampaignPath(lead.leadSlug);
   }

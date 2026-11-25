@@ -2,10 +2,10 @@ import { useState } from "react";
 import { HeroLoopVideo } from "@/components/loop-video";
 
 /** Face-to-camera intro — plays before the niche cinematic loop. */
-export const FOUNDER_WELCOME_SRC = "/media/welcome-to-axiom.mp4";
-export const FOUNDER_WELCOME_SRC_FALLBACK = "/media/axiom-greeting.mp4";
-export const FOUNDER_WELCOME_SRC_FALLBACK_2 = "/media/welcome-to-axiom.mp4";
-export const FOUNDER_WELCOME_POSTER = "/media/eric.jpg";
+export const FOUNDER_WELCOME_SRC = "/media/axiom-greeting.mp4";
+export const FOUNDER_WELCOME_SRC_FALLBACK = "/media/welcome-to-axiom.mp4";
+export const FOUNDER_WELCOME_SRC_FALLBACK_2 = "/media/axiom-24-7-booking-for-contractors.mp4";
+export const FOUNDER_WELCOME_POSTER = "/media/axiom-greeting-poster.jpg";
 export const FOUNDER_WELCOME_POSTER_FALLBACK = "/media/eric.jpg";
 
 const SRC_CHAIN = [

@@ -10,12 +10,12 @@ import {
 
 describe("cinematic content + SEO architecture", () => {
   it("pins the generated Axiom landing loop", () => {
-    assert.match(CINEMATIC_HERO_VIDEO, /\/media\/heroes\/axiom-landing\.mp4$/);
+    assert.match(CINEMATIC_HERO_VIDEO, /\/media\/axio-plumber-hero\.mp4$/);
   });
 
   it("lists generated landing fallbacks before kit placeholders", () => {
     assert.equal(CINEMATIC_HERO_FALLBACKS[0], CINEMATIC_HERO_VIDEO);
-    assert.ok(CINEMATIC_HERO_FALLBACKS.includes("/media/heroes/axiom-burnout.mp4"));
+    assert.ok(CINEMATIC_HERO_FALLBACKS.includes("/media/auto-hero-animation.mp4"));
   });
 
   it("builds an autonomous multi-channel plan with local SEO schema", () => {

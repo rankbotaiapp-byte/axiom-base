@@ -11,10 +11,10 @@ test("owner presets use the trade names on the dashboard", () => {
 });
 
 test("the live preview pairs the two-word mark with a heroes film", () => {
-  const preview = heroMotionPreview("North Frame", "Northline Repair", "/media/heroes/auto-repair.mp4", "");
+  const preview = heroMotionPreview("North Frame", "Northline Repair", "/media/auto-hero-animation.mp4", "");
   assert.equal(preview.line, "North Frame");
   assert.equal(preview.kind, "video");
-  assert.equal(preview.mediaUrl, "/media/heroes/auto-repair.mp4");
+  assert.equal(preview.mediaUrl, "/media/auto-hero-animation.mp4");
   const blocked = heroMotionPreview("Axiom", "Northline Repair", "https://example.test/nope.mp4", "/tmp/secret.jpg");
   assert.equal(blocked.line, "Axiom Repair");
   assert.equal(blocked.mediaUrl, "");
@@ -22,11 +22,11 @@ test("the live preview pairs the two-word mark with a heroes film", () => {
 
 test("set as live hero pins a catalog film and the motion that the shop can store", () => {
   const plan = planLiveHero(
-    { upload: null, catalogVideo: "/media/heroes/landscaper.mp4", catalogImage: "" },
+    { upload: null, catalogVideo: "/media/infrastructure-hero-animation.mp4", catalogImage: "" },
     { pan: true, ripple: true, neon: true, particle: false },
   );
-  assert.equal(plan.catalogFilm, "/media/heroes/landscaper.mp4");
-  assert.equal(plan.mediaPath, "/media/heroes/landscaper.mp4");
+  assert.equal(plan.catalogFilm, "/media/infrastructure-hero-animation.mp4");
+  assert.equal(plan.mediaPath, "/media/infrastructure-hero-animation.mp4");
   assert.equal(plan.introPreset, "cinematic-pan");
   assert.equal(plan.glowEnabled, true);
   assert.equal(plan.uploadVideo, false);
@@ -43,12 +43,12 @@ test("a shop upload is the hero and a catalog film is not", () => {
     video: "",
     image: "data:image/jpeg;base64,aa",
   });
-  assert.equal(ownerHeroMedia("/media/heroes/landscaper.mp4", "/media/heroes/landscaper.jpg"), null);
+  assert.equal(ownerHeroMedia("/media/infrastructure-hero-animation.mp4", "/media/heroes/landscaper.jpg"), null);
 });
 
 test("an upload replaces the niche film and a stray path is not a hero", () => {
   const uploaded = planLiveHero(
-    { upload: "video", catalogVideo: "/media/heroes/trades-hero.mp4", catalogImage: "" },
+    { upload: "video", catalogVideo: "/media/infrastructure-hero-animation.mp4", catalogImage: "" },
     parseHeroMotion({ pan: "yes", neon: false }),
   );
   assert.equal(uploaded.uploadVideo, true);

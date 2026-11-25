@@ -63,10 +63,10 @@ export const shopConfig: ShopConfig = {
     "Hand-built turbo V-twins and track-spec customs. Every build is dyno-proven before it leaves the bay.",
   statusLabel: "Live system status",
   heroCenterpiece: {
-    image: "/media/hyper-moto-apex-engine.jpg",
+    image: "/apex-moto-gt3/apex-poster.jpg",
     alt: "Custom turbocharged V-twin engine",
   },
-  heroVideo: { src: "/media/garage-loop.mp4", poster: "/media/garage-poster.jpg" },
+  heroVideo: { src: "/media/auto-hero-animation.mp4", poster: "/media/auto-hero.jpg" },
   dyno: { peakHp: 248, peakBoostPsi: 18.5, label: "Last dyno pull · Bay 2" },
   concierge: {
     name: "AXIOM",
@@ -74,7 +74,7 @@ export const shopConfig: ShopConfig = {
     avatarAlt: "AXIOM, the Apex Moto Labs AI workshop concierge",
     greetingVideo: { src: "/media/axiom-greeting.mp4", poster: "/media/axiom-greeting-poster.jpg" },
     launcher: {
-      image: "/media/hyper-moto-wireframe-head.jpg",
+      image: "/media/auto-hero.jpg",
       lines: ["Speak with", "Chief Engineer"],
     },
     greeting:

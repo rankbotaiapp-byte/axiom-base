@@ -20,6 +20,14 @@ import { CinematicAmbientOverlay } from "@/components/atmosphere/CinematicAmbien
 import { cinemagraphPresetForNiche } from "@/lib/axiom/storefront-atmosphere";
 import { animateRecreatedBackground, readCachedStudioPhotos, rememberStudioPhoto, remakeUploadedPhoto } from "@/components/axiom/studioRemake";
 import { INLAY_PRESETS, MOTION_PRESETS, microMotionForNiche, type InlayPresetId, type MotionPresetId } from "@/lib/axiom/storefront-themes";
+import {
+  capEnvironmentalReactions,
+  ENVIRONMENTAL_REACTION_PRESETS,
+  EnvironmentalReactionType,
+  getDefaultReactionsForTrade,
+  subjectFromStudioUpload,
+  TOOL_OR_GENERIC_SHOWCASE,
+} from "@/lib/axiom/studio-visual-blueprint";
 import { cn } from "@/lib/utils";
 
 const PROOF_SLOTS = [
@@ -60,6 +68,9 @@ export function OutboundStorefront({
   const [drift, setDrift] = useState(false);
   const [inlay, setInlay] = useState<InlayPresetId>("surface");
   const [motionPreset, setMotionPreset] = useState<MotionPresetId>("smoke");
+  const [reactions, setReactions] = useState<EnvironmentalReactionType[]>(() =>
+    getDefaultReactionsForTrade(profile.niche, "tool_or_generic"),
+  );
   const [proof, setProof] = useState<Record<string, string>>({});
   const [slot, setSlot] = useState<ProofSlot | null>(null);
   const [busy, setBusy] = useState<"hero" | "slot" | "contact" | "motion" | null>(null);
@@ -97,7 +108,14 @@ export function OutboundStorefront({
     }
     const file = uploads.current[target];
     if (!file) {
-      setError("Upload a photo first. Studio remakes that photo and does not pull a library plate.");
+      const showcase = TOOL_OR_GENERIC_SHOWCASE.posterUrl;
+      if (target === "hero") {
+        setHeroStill(showcase);
+        setHeroMotion("");
+      } else setProof((current) => ({ ...current, [target]: showcase }));
+      setReactions(getDefaultReactionsForTrade(niche, "tool_or_generic"));
+      setNotice("No vehicle or building uploaded — the Axiom showcase panel is on this preview instead of a broken plate.");
+      setError("");
       return;
     }
     setBusy(target === "hero" ? "hero" : "slot");
@@ -146,6 +164,7 @@ export function OutboundStorefront({
         shopName: displayName,
         brandColor: "#00FFCC",
         motion: motionPreset,
+        reactions,
       });
       setHeroMotion(videoUrl);
       setNotice("The background of the remake is in motion.");
@@ -169,6 +188,9 @@ export function OutboundStorefront({
       setHeroStill(url);
       setHeroMotion("");
       setDrift(false);
+      setReactions(
+        getDefaultReactionsForTrade(niche, subjectFromStudioUpload({ hasFile: true, inlay })),
+      );
     } else setProof((current) => ({ ...current, [target]: url }));
     setError("");
   }
@@ -232,7 +254,9 @@ export function OutboundStorefront({
         phone={profile.phone}
         busy={busy === "motion"}
         motionPreset={motionPreset}
+        reactions={reactions}
         onMotionPreset={(value) => setMotionPreset(value)}
+        onReactions={setReactions}
         onAnimate={() => void animateBackground()}
       />
 
@@ -279,6 +303,11 @@ export function OutboundStorefront({
                     )}
                     onClick={() => {
                       setNiche(id);
+                      const subject = subjectFromStudioUpload({
+                        hasFile: Boolean(uploads.current.hero),
+                        inlay,
+                      });
+                      setReactions(getDefaultReactionsForTrade(id, subject));
                       setStep(2);
                     }}
                   >
@@ -508,7 +537,9 @@ function HeroPlate({
   phone,
   busy,
   motionPreset,
+  reactions,
   onMotionPreset,
+  onReactions,
   onAnimate,
 }: {
   name: string;
@@ -523,7 +554,9 @@ function HeroPlate({
   phone: string;
   busy: boolean;
   motionPreset: MotionPresetId;
+  reactions: EnvironmentalReactionType[];
   onMotionPreset: (value: MotionPresetId) => void;
+  onReactions: (value: EnvironmentalReactionType[]) => void;
   onAnimate: () => void;
 }) {
   const reduce = useReducedMotion();
@@ -581,6 +614,41 @@ function HeroPlate({
                 className="border border-white/20 bg-black/70 px-2 py-1.5 text-[10px] text-white"
               >
                 {MOTION_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Environmental reaction"
+                value={reactions[0]}
+                onChange={(event) =>
+                  onReactions(capEnvironmentalReactions([event.target.value as EnvironmentalReactionType, reactions[1]]))
+                }
+                className="border border-white/20 bg-black/70 px-2 py-1.5 text-[10px] text-white"
+              >
+                {ENVIRONMENTAL_REACTION_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Second environmental reaction"
+                value={reactions[1] ?? ""}
+                onChange={(event) =>
+                  onReactions(
+                    capEnvironmentalReactions(
+                      event.target.value
+                        ? [reactions[0], event.target.value as EnvironmentalReactionType]
+                        : [reactions[0]],
+                    ),
+                  )
+                }
+                className="border border-white/20 bg-black/70 px-2 py-1.5 text-[10px] text-white"
+              >
+                <option value="">One effect</option>
+                {ENVIRONMENTAL_REACTION_PRESETS.map((preset) => (
                   <option key={preset.id} value={preset.id}>
                     {preset.label}
                   </option>

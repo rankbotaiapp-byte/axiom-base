@@ -8,15 +8,14 @@
 import { composeAutopilotClip, tradeCopyForNiche } from "../../config/AutopilotContentEngine.ts";
 import { emergencySearchPhrase, tradeHashtags, tradeKeywordsForNiche } from "./autopilot-content.ts";
 
-export const CINEMATIC_HERO_VIDEO = "/media/heroes/axiom-landing.mp4";
-export const CINEMATIC_HERO_POSTER = "/media/hero-poster.jpg";
+export const CINEMATIC_HERO_VIDEO = "/media/axio-plumber-hero.mp4";
+export const CINEMATIC_HERO_POSTER = "/media/axiom-noir-hero-panel.svg";
 /** Custom Axiom landing loop, then kit / wildlife fallbacks if that file is missing. */
 export const CINEMATIC_HERO_FALLBACKS = [
   CINEMATIC_HERO_VIDEO,
-  "/media/heroes/axiom-burnout.mp4",
-  "/media/axiom-landing.mp4.mp4",
-  "/media/underwater-leapord-hero-animation.mp4",
-  "/media/hero-1280.mp4",
+  "/media/auto-hero-animation.mp4",
+  "/media/infrastructure-hero-animation.mp4",
+  "/media/studio-cyan-fog-loop.mp4",
 ] as const;
 
 export type AutonomousPostChannel = "web" | "instagram" | "facebook" | "tiktok" | "youtube_shorts";

@@ -2,10 +2,27 @@
 
 import { authClient, getBearerToken } from "@/lib/auth/client";
 
-/** Same-origin desk calls. Cookies ride along, and the Better Auth session token is sent as a bearer when one exists. */
+const MASTER_BYPASS_STORAGE = "axiom_master_bypass";
+
+export function rememberMasterBypassKey(key: string): void {
+  const value = key.trim();
+  if (value.length < 16 || typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(MASTER_BYPASS_STORAGE, value);
+}
+
+export function readMasterBypassKey(): string {
+  try {
+    return sessionStorage.getItem(MASTER_BYPASS_STORAGE)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Same-origin desk calls. Cookies ride along; master bypass key or Better Auth token is sent as Bearer. */
 export async function masterDeskFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
-  let token = getBearerToken();
+  const bypass = readMasterBypassKey();
+  let token = bypass || getBearerToken();
   if (!token) {
     try {
       const session = await authClient.getSession();

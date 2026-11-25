@@ -13,7 +13,7 @@ export const AXIOM_CRO_OFFER_LINE =
 export function founderMediaUrls(origin: string): { founder_video: string; founder_poster: string } {
   const base = origin.replace(/\/$/, "");
   return {
-    founder_video: `${base}${FOUNDER_WELCOME_VIDEO}`,
-    founder_poster: `${base}${FOUNDER_WELCOME_POSTER}`,
+    founder_video: `${base}/videos/axiom-intro.mp4`,
+    founder_poster: `${base}/videos/axiom-intro-poster.jpg`,
   };
 }

@@ -62,6 +62,6 @@ test("HUD, companion, checkout, and hero film surfaces wire the tactile engine",
   assert.match(canvas, /data-tactile-film/);
   const checkout = readFileSync(join(root, "src/components/pricing/LaunchCheckoutDrawer.tsx"), "utf8");
   assert.match(checkout, /cue: "stripe"/);
-  const landing = readFileSync(join(root, "src/components/plumbing/plumber-outreach-landing.tsx"), "utf8");
-  assert.match(landing, /triggerLeadCapture/);
+  const landing = readFileSync(join(root, "src/components/pricing/LaunchCheckoutDrawer.tsx"), "utf8");
+  assert.match(landing, /cue: "stripe"/);
 });

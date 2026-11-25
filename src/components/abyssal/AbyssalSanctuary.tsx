@@ -19,7 +19,7 @@ export function AbyssalSanctuary() {
       <div className="ocean" id="ocean" aria-hidden="true">
         <video
           id="feed"
-          src="/media/abyssal-sanctuary-loop.mp4"
+          src="/media/axio-plumber-hero.mp4"
           muted
           loop
           playsInline

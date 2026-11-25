@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { getNicheActions } from "@/config/niche-actions";
-import { previewStockForNiche } from "@/lib/axiom/preview-stock";
+import { previewStockForBusiness } from "@/lib/axiom/preview-stock";
 import { STUDIO_MATRIX, STUDIO_MATRIX_NICHES, type StudioMatrixNiche } from "@/lib/axiom/studio-engine";
 import SparkField from "@/components/components/axiom/SparkField";
 
@@ -12,7 +12,10 @@ export function HeroStudioLivePreview() {
   const [name, setName] = useState("Apex Plumbing");
   const [niche, setNiche] = useState<StudioMatrixNiche>("plumbing");
   const entry = STUDIO_MATRIX[niche];
-  const stock = useMemo(() => previewStockForNiche(niche), [niche]);
+  const stock = useMemo(
+    () => previewStockForBusiness({ niche, businessName: name }),
+    [name, niche],
+  );
   const actions = getNicheActions(entry.catalogNiche ?? "contractor");
   const plate = name.trim() || "Your shop";
 
@@ -61,7 +64,7 @@ export function HeroStudioLivePreview() {
           data-sample
           data-sample-fit="contain"
         />
-        <SparkField colors={[HUD, "#ff2a3d"]} density={28} />
+        <SparkField colors={[HUD, "#FFE500"]} density={28} />
         <div className="pointer-events-none absolute inset-3" aria-hidden>
           {["left-0 top-0 border-l border-t", "right-0 top-0 border-r border-t", "left-0 bottom-0 border-l border-b", "right-0 bottom-0 border-r border-b"].map(
             (corner) => (

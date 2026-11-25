@@ -14,8 +14,10 @@ import {
   canPurchasePack,
   clampMonthlySpendLimitCents,
   currentSpendMonth,
+  dailyMotionCapCents,
   needsAutoReload,
   renderMarginCents,
+  saleCents,
   type RenderKind,
 } from "./render-credits";
 import {
@@ -210,6 +212,47 @@ async function refundCredits(shopId: string, units: number) {
     values (${shopId}, ${units}, now())
     on conflict (shop_id) do update set balance = shop_ai_credits.balance + excluded.balance, updated_at = now()
   `;
+}
+
+async function todayMotionSpendCents(shopId: string): Promise<number> {
+  const sql = await getSql();
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const rows = await sql<{ units: number }>`
+    select coalesce(sum(units), 0)::int as units
+    from shop_ai_usage
+    where shop_id = ${shopId} and kind = 'video' and created_at >= ${start.toISOString()}
+  `;
+  return saleCents(Number(rows[0]?.units ?? 0));
+}
+
+/** Spend one content credit for a micro-motion, or refuse before Replicate is called. */
+export async function reserveMicroMotion(shopSlug: string): Promise<{ ok: true; shopId: string } | { ok: false; message: string }> {
+  try {
+    const sql = await getSql();
+    const shops = await sql<{ id: string }>`select id from shops where slug = ${shopSlug} limit 1`;
+    const shopId = shops[0]?.id;
+    if (!shopId) return { ok: false, message: "Content Creation Balance is not open for this preview." };
+    const wallet = await loadWallet(shopId);
+    const cap = dailyMotionCapCents(wallet.monthlySpendLimitCents);
+    const spent = await todayMotionSpendCents(shopId);
+    const price = saleCents(AI_VIDEO_UNITS);
+    if (spent + price > cap) {
+      return { ok: false, message: "Daily motion spend cap is reached. The still stays put until tomorrow." };
+    }
+    if (wallet.balance < AI_VIDEO_UNITS) {
+      return { ok: false, message: "Content Creation Balance is empty. This detail stays a still." };
+    }
+    await spendCredits(shopId, "video", AI_VIDEO_UNITS);
+    return { ok: true, shopId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Content Creation Balance is empty.";
+    return { ok: false, message };
+  }
+}
+
+export async function releaseMicroMotion(shopId: string): Promise<void> {
+  await refundCredits(shopId, AI_VIDEO_UNITS).catch(() => undefined);
 }
 
 async function reportMeter(shopId: string, units: number) {

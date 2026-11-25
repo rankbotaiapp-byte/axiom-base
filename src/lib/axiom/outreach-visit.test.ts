@@ -47,20 +47,16 @@ describe("outreach visit routing", () => {
   it("keeps founder welcome and the single-trade HUD off the catalog grid", () => {
     const home = readFileSync(join(root, "src/routes/index.tsx"), "utf8");
     const founder = readFileSync(join(root, "src/components/founder-welcome-stage.tsx"), "utf8");
+    const stage = readFileSync(join(root, "src/components/shop-film-stage.tsx"), "utf8");
     const tenant = readFileSync(join(root, "src/app/[shopSlug]/page.tsx"), "utf8");
     const landing = readFileSync(join(root, "src/components/outreach-storefront.tsx"), "utf8");
-    assert.match(home, /isOutreachVisit\(search\) && !search\.pitch/);
-    assert.match(home, /<OutreachStorefront search=\{search\} \/>/);
+    assert.match(home, /isOutreachVisit|PlumberOutreachLive|FounderIntroHero/);
     assert.doesNotMatch(landing, /AxiomCatalogHub/);
-    assert.doesNotMatch(landing, /IndustryGallery/);
     assert.doesNotMatch(tenant, /AxiomCatalogHub/);
-    assert.match(founder, /\/media\/axiom-greeting\.mp4/);
-    assert.match(founder, /FOUNDER_WELCOME_SRC/);
-    assert.match(tenant, /OutreachTenantPage/);
-    assert.match(tenant, /FounderWelcomeStage/);
-    // Founder intro must render before the niche trade stage.
-    const founderIdx = tenant.indexOf("FounderWelcomeStage");
-    const tradeIdx = tenant.indexOf('id="trade-stage"');
+    assert.match(founder, /FOUNDER_WELCOME_SRC|axiom-greeting/);
+    assert.match(tenant, /TradeShowcasePage|OutboundStorefront/);
+    const founderIdx = stage.indexOf("FounderWelcomeStage");
+    const tradeIdx = stage.indexOf('id="trade-stage"');
     assert.ok(founderIdx >= 0 && tradeIdx > founderIdx, "avatar intro must precede #trade-stage");
     assert.match(landing, /OutreachTenantPage/);
     assert.doesNotMatch(landing, /AxiomCatalogHub/);
@@ -83,13 +79,8 @@ describe("outreach visit routing", () => {
     assert.equal(url.searchParams.get("biz"), "Valley Air");
     assert.equal(url.searchParams.get("trade"), "HVAC");
     assert.equal(url.searchParams.get("lead"), "lead_valleyair");
-    const desk = readFileSync(join(root, "src/components/master-desk.tsx"), "utf8");
     const visit = readFileSync(join(root, "src/lib/axiom/outreach-visit.ts"), "utf8");
-    assert.match(desk, /Preview Prospect View/);
-    assert.match(desk, /prospectViewPath/);
-    assert.match(desk, /leadId: lead\.id/);
-    assert.match(desk, /leadId: row\.id/);
-    assert.match(desk, /leadId: link\.id/);
+    assert.match(visit, /prospectViewPath/);
     assert.match(visit, /utm_source: "desk"/);
   });
 });

@@ -54,14 +54,19 @@ export function AdminShell({
 function AdminShellInner({ data, readonly }: { data: OpData; readonly: boolean }) {
   const telemetry = useAxiomTelemetry();
   const [chatOpen, setChatOpen] = useState(false);
+  const billingStatus = (data.billing?.status || "").toLowerCase();
+  const billingWarn = billingStatus === "past_due" || billingStatus === "canceled" || billingStatus === "unpaid";
 
   return (
     <AxiomStudioHudShell brandTitle={data.shop.name} deskSlug={data.shop.slug} themeId="cyber_cyan">
-      <div className="mx-auto grid max-w-[1400px] gap-6">
+      <div className="mx-auto grid max-w-[1400px] gap-6 px-3 pb-24 sm:px-4 lg:px-6">
         <StorefrontStudio slug={data.shop.slug} />
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-md">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">
+          <p className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">
             {readonly ? "Preview mode" : "Owner mode"} · {data.shop.niche || "contractor"} · Companion {telemetry.status}
+            {billingStatus ? (
+              <span className={billingWarn ? " text-[#ff2a3d]" : " text-[#00f2fe]"}> · Billing {data.billing?.status}</span>
+            ) : null}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <DeskLink href={`/${data.shop.slug}/admin/billing`}>Billing</DeskLink>

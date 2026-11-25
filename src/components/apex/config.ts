@@ -49,10 +49,10 @@ export const videoCrop: VideoCropConfig = {
 };
 
 export const media = {
-  master: "/media/apex-moto-gt3-hero.mp4",
+  master: "/apex-moto-gt3/apex-clean-loop.mp4",
   /** Pre-cropped, headline-removed loop for the CSS-only tier (no shader needed). */
-  cleanLoop: "/media/garage-loop.mp4",
-  poster: "/media/apex-moto-gt3-poster.jpg",
+  cleanLoop: "/media/auto-hero-animation.mp4",
+  poster: "/apex-moto-gt3/apex-poster.jpg",
 } as const;
 
 /* ------------------------------------------------------------------ */

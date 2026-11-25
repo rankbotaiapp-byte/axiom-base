@@ -10,7 +10,7 @@ export default function CaseStudies() {
     <section id="cases" className="relative overflow-hidden bg-forest-950 py-24 sm:py-32">
       <div
         className="absolute inset-0 bg-cover bg-center opacity-[0.12] [filter:grayscale(1)_contrast(1.2)]"
-        style={{ backgroundImage: 'url(/media/land-clearing-poster.jpg)' }}
+        style={{ backgroundImage: 'url(/media/heroes/contractor.jpg)' }}
         aria-hidden="true"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-forest-950 via-forest-950/85 to-forest-950" />

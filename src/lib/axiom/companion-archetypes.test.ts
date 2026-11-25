@@ -24,11 +24,11 @@ test("pairs plumbing, electrical, HVAC, and auto to the four companion archetype
   assert.equal(companionTradeTool("plumbing"), "pipe wrench + camera reel");
   assert.equal(companionStorageKey("Apex Moto"), "axiom-companion-archetype:apex moto");
   const female = companionArchetype("cyber-female");
-  assert.equal(female.still, "/assets/avatars/cyber-female-ref.jpg");
-  assert.equal(female.loop, "/assets/avatars/cyber-female-intro.mp4");
-  assert.equal(companionArchetype("cyber-male").loop, "/assets/avatars/cyber-male-intro.mp4");
-  assert.equal(companionArchetype("animatronic").still, "/assets/avatars/animatronic-ref.jpg");
-  assert.equal(companionArchetype("predator-mech").loop, "/assets/avatars/predator-intro.mp4");
+  assert.equal(female.still, "/media/ai-female.png");
+  assert.equal(female.loop, "/media/axiom-greeting.mp4");
+  assert.equal(companionArchetype("cyber-male").loop, "/media/axiom-greeting.mp4");
+  assert.equal(companionArchetype("animatronic").still, "/media/ai-male.png");
+  assert.equal(companionArchetype("predator-mech").loop, "/media/auto-hero-animation.mp4");
   for (const row of allCompanionArchetypes()) {
     assert.ok(existsSync(join(root, "public", row.still.replace(/^\//, ""))), row.still);
     assert.ok(existsSync(join(root, "public", row.loop.replace(/^\//, ""))), row.loop);
@@ -63,7 +63,7 @@ test("companion HUD modal and chrome are wired on storefront and admin", () => {
   const modal = readFileSync(join(root, "src/components/admin/CompanionHUDModal.tsx"), "utf8");
   const hud = readFileSync(join(root, "src/components/CyberCompanionHud.tsx"), "utf8");
   const storefront = readFileSync(join(root, "src/components/storefront/immutable-storefront.tsx"), "utf8");
-  const admin = readFileSync(join(root, "src/routes/$shopSlug/admin.tsx"), "utf8");
+  const admin = readFileSync(join(root, "src/components/admin/AdminShell.tsx"), "utf8");
   const comms = readFileSync(join(root, "src/lib/axiom/companion-comms.ts"), "utf8");
   const feed = readFileSync(join(root, "src/components/admin/useCompanionLiveFeed.ts"), "utf8");
   assert.match(modal, /companion-hud-layer--bg/);
@@ -79,6 +79,6 @@ test("companion HUD modal and chrome are wired on storefront and admin", () => {
   assert.match(storefront, /FunnelLayout/);
   const funnel = readFileSync(join(root, "src/components/funnel/FunnelLayout.tsx"), "utf8");
   assert.match(funnel, /ObsidianHudChrome/);
-  assert.match(admin, /ObsidianHudChrome/);
-  assert.match(admin, /CyberCompanionHud/);
+  assert.match(admin, /AxiomStudioHudShell|ObsidianHudChrome/);
+  assert.match(admin, /AdminShellInner|LiveDeskTelemetry/);
 });

@@ -33,22 +33,21 @@ describe("master hero defaults", () => {
       assert.equal(catalogFilmUrl(row.id), defaultHeroSrcForNiche(row.id));
       assert.equal(catalogFilmUrl(row.id), MASTER_HERO_DEFAULTS[masterCategoryFor(row.id)].src);
     }
-    assert.equal(catalogFilmUrl("plumbing"), "/media/otter-hero-animation.mp4");
-    assert.equal(catalogFilmUrl("contractor"), "/media/leopard-hero-path.mp4");
-    assert.equal(catalogFilmUrl("auto"), "/media/apex-launch-hero-animation.mp4");
-    assert.equal(catalogFilmUrl("barber"), "/media/polar-bear-hero-animation.mp4");
-    assert.equal(catalogFilmUrl("taxidermy"), "/media/shark-hero-animation.mp4");
+    assert.equal(catalogFilmUrl("plumbing"), "/media/axio-plumber-hero.mp4");
+    assert.equal(catalogFilmUrl("contractor"), "/media/infrastructure-hero-animation.mp4");
+    assert.equal(catalogFilmUrl("auto"), "/media/auto-hero-animation.mp4");
+    assert.equal(catalogFilmUrl("barber"), "/media/studio-cyan-fog-loop.mp4");
+    assert.equal(catalogFilmUrl("taxidermy"), "/media/locksmith-hero-animation.mp4");
     assert.equal(masterCategoryFor("junk-removal"), "residential-outdoor");
-    assert.equal(tradeLoopUrl("plumbing"), "/media/axiom-plumber-hero.mp4");
-    assert.notEqual(tradeLoopUrl("plumbing"), catalogFilmUrl("plumbing"));
-    assert.equal(resolveShopHeroFilm({ niche: "plumbing" }), "/media/axiom-plumber-hero.mp4");
+    assert.equal(tradeLoopUrl("plumbing"), "/media/axio-plumber-hero.mp4");
+    assert.equal(resolveShopHeroFilm({ niche: "plumbing" }), "/media/axio-plumber-hero.mp4");
     assert.equal(
-      resolveShopHeroFilm({ niche: "plumbing", overrideHeroVideoUrl: "/media/tiger-hero-animation.mp4" }),
-      "/media/tiger-hero-animation.mp4",
+      resolveShopHeroFilm({ niche: "plumbing", overrideHeroVideoUrl: "/media/plumbers-hero-animation.mp4" }),
+      "/media/plumbers-hero-animation.mp4",
     );
     assert.equal(
-      bustStorefrontFilm("/media/tiger-hero-animation.mp4", 1730000000000),
-      "/media/tiger-hero-animation.mp4?v=1730000000000",
+      bustStorefrontFilm("/media/plumbers-hero-animation.mp4", 1730000000000),
+      "/media/plumbers-hero-animation.mp4?v=1730000000000",
     );
     assert.equal(resolveCatalogNiche("fitness"), "personal-trainer");
   });

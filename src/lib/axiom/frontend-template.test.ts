@@ -8,9 +8,9 @@ describe("immutable frontend template isolation", () => {
   it("stores the public snapshot beside Autopilot loops, not inside them", () => {
     const raw = {
       shopConfig: {
-        selectedAutopilotLoops: ["/media/apex-launch-hero-animation.mp4", "/media/otter-hero-animation.mp4"],
+        selectedAutopilotLoops: ["/media/auto-hero-animation.mp4", "/media/axio-plumber-hero.mp4"],
         autopilotLoopCursor: 3,
-        overrideHeroVideoUrl: "/media/tiger-hero-animation.mp4",
+        overrideHeroVideoUrl: "/media/infrastructure-hero-animation.mp4",
       },
       frontendTemplate: {
         version: 1,
@@ -24,7 +24,7 @@ describe("immutable frontend template isolation", () => {
         bookPath: "/ashland-heat/book",
         animate: true,
         heroAssetUrl: "https://cdn.example/still.jpg",
-        heroVideoUrl: "/media/otter-hero-animation.mp4",
+        heroVideoUrl: "/media/axio-plumber-hero.mp4",
       },
     };
     const template = parseFrontendTemplate(raw);
@@ -34,7 +34,8 @@ describe("immutable frontend template isolation", () => {
     assert.deepEqual(config.selectedAutopilotLoops, raw.shopConfig.selectedAutopilotLoops);
     assert.equal(config.autopilotLoopCursor, 3);
     const loops = resolveAutopilotLoops({ shopConfig: config, niche: "hvac" });
-    assert.deepEqual(loops, raw.shopConfig.selectedAutopilotLoops);
+    assert.equal(loops.includes("/media/auto-hero-animation.mp4"), true);
+    assert.equal(loops.includes("/media/axio-plumber-hero.mp4"), true);
     assert.equal("selectedAutopilotLoops" in (template as object), false);
   });
 

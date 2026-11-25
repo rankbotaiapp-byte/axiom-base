@@ -13,7 +13,7 @@ export const OUTREACH_ACTIVE_VERTICAL = "plumbing" as const satisfies ShopNiche;
 export const PLUMBING_LEAD_DATASET_SIZE = 20_330;
 export const PLUMBING_CAMPAIGN_HERO = "/media/axio-plumber-hero.mp4";
 export const PLUMBING_CAMPAIGN_GREETING =
-  "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4";
+  "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBING_CAMPAIGN_GREETING_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBING_CAMPAIGN_TEMPLATE = "/t/{slug}?niche=plumbing&greet=1";
 
@@ -57,12 +57,12 @@ export type OutreachNicheId = (typeof OUTREACH_NICHE_SEQUENCE)[number];
  */
 export const OUTREACH_NICHE_HERO_OVERRIDES: Partial<Record<OutreachNicheId, string>> = {
   plumbing: PLUMBING_CAMPAIGN_HERO,
-  "water-systems": "/media/otter-hero-animation.mp4",
+  "water-systems": PLUMBING_CAMPAIGN_HERO,
   electrical: "/media/electrician-hero-animation.mp4",
   auto: "/media/auto-hero-animation.mp4",
   contractor: "/media/infrastructure-hero-animation.mp4",
-  fabrication: "/media/polar-bear-hero-animation.mp4",
-  taxidermy: "/media/leopard-hero-animation.mp4",
+  fabrication: "/media/infrastructure-hero-animation.mp4",
+  taxidermy: "/media/infrastructure-hero-animation.mp4",
 };
 
 /** Pacific day index → niche for the staged daily queue (0 = Day 1 Plumbing). */

@@ -112,7 +112,7 @@ export const TRADE_FREQUENCIES: TradeFrequency[] = [
 ];
 
 /** Primary Axiom hero loop — clean path under public/media. */
-export const AXIOM_HERO_LOOP_SRC = "/media/axiom-robot-hero.mp4";
+export const AXIOM_HERO_LOOP_SRC = "/media/studio-cyan-fog-loop.mp4";
 
 export const THEMED_BACKGROUNDS: ThemedBackground[] = [
   {
@@ -124,13 +124,13 @@ export const THEMED_BACKGROUNDS: ThemedBackground[] = [
   {
     id: "bg-cyan",
     name: "Obsidian Cyan Pulse",
-    videoUrl: "/media/ai-guy.mp4",
+    videoUrl: "/media/studio-preview.mp4",
     previewColor: "from-cyan-600/40 to-[#030712]",
   },
   {
     id: "bg-amber",
     name: "Thermal Amber Stream",
-    videoUrl: "/media/axiom-robot-hero.mp4",
+    videoUrl: "/media/axio-plumber-hero.mp4",
     previewColor: "from-amber-500/40 to-[#030712]",
   },
 ];

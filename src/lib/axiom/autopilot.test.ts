@@ -49,13 +49,13 @@ test("simulation copy says the batch will not send", () => {
 test("local storefronts keep a film and service shards", async () => {
   const river = await fetchClientStorefront("rogue-river-outfitters");
   assert.equal(river?.name, "Rogue River Outfitters");
-  assert.equal(river?.heroVideoUrl, "/media/trout-fishin-hero-animation.mp4");
+  assert.equal(river?.heroVideoUrl, "/media/infrastructure-hero-animation.mp4");
   assert.equal(river?.ambience, "river");
   assert.ok((river?.shards.length ?? 0) >= 2);
   assert.equal(localStorefront("axiom-auto")?.name, "Apex Moto Labs");
   assert.equal(localStorefront("axiom-auto")?.niche, "auto");
   assert.equal(localStorefront("axiom-auto")?.heroVideoUrl, catalogFilmUrl("auto"));
-  assert.equal(localStorefront("high-desert-wildlife")?.heroVideoUrl, "/media/leopard-hero-animation.mp4");
+  assert.equal(localStorefront("high-desert-wildlife")?.heroVideoUrl, "/media/infrastructure-hero-animation.mp4");
   assert.equal(localStorefront("night-circuit")?.name, "Night Circuit");
   assert.equal(localStorefront("night-circuit")?.heroVideoUrl, catalogFilmUrl("auto"));
   assert.equal(localStorefront("ashland-barber")?.tagline, "A straight cut, a hot towel, and the chair by the front window.");

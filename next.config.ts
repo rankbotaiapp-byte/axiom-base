@@ -42,6 +42,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/showcase/:dir/:page", destination: "/showcase/:dir/:page/index.html" },
       { source: "/showcase/:dir", destination: "/showcase/:dir/index.html" },
+      { source: "/media/axiom-noir-hero-panel.svg", destination: "/axiom/landing/axiom-noir-hero-panel.svg" },
     ];
   },
   async headers() {

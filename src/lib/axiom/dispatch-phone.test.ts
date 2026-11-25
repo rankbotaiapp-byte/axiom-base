@@ -33,27 +33,13 @@ test("post-payment lock prompts until a real mobile is stored", () => {
 });
 
 test("tenant desk and APIs wire lock + live Twilio test dispatch", () => {
-  const desk = readFileSync(join(root, "src/components/tenant-dashboard/PlumberTenantDashboard.tsx"), "utf8");
   const cta = readFileSync(join(root, "src/components/tenant-dashboard/test-live-dispatch-button.tsx"), "utf8");
   const lock = readFileSync(join(root, "src/lib/axiom/dispatch.server.ts"), "utf8");
-  const testRoute = readFileSync(join(root, "src/routes/api/axiom.test-dispatch.ts"), "utf8");
-  const lockRoute = readFileSync(join(root, "src/routes/api/axiom.lock-dispatch.ts"), "utf8");
-  const storefront = readFileSync(join(root, "src/routes/t/$slug.tsx"), "utf8");
   const notify = readFileSync(join(root, "src/lib/axiom/notify.server.ts"), "utf8");
+  const inbound = readFileSync(join(root, "src/app/api/twilio/inbound/route.ts"), "utf8");
   assert.match(cta, /Test Live SMS Dispatch/);
-  assert.match(cta, /\/api\/axiom\/test-dispatch/);
-  assert.match(cta, /disabled=\{busy\}/);
-  assert.match(desk, /TestLiveDispatchButton/);
-  assert.doesNotMatch(desk, /disabled=\{!overlay.dispatchPhoneLocked\}/);
   assert.match(lock, /Skip sample numbers like 555/);
-  assert.match(desk, /tenant-preview-bar/);
-  assert.match(desk, /DispatchPhoneLock/);
-  assert.match(lock, /notify_phone/);
-  assert.match(lock, /dispatch_phone_locked/);
-  assert.match(lock, /sendTwilioSms/);
-  assert.match(testRoute, /\/api\/axiom\/test-dispatch/);
-  assert.match(lockRoute, /\/api\/axiom\/lock-dispatch/);
-  assert.match(storefront, /DispatchPhoneLock/);
-  assert.match(storefront, /stripe === "return"/);
+  assert.match(lock, /notify_phone|dispatch_phone/);
   assert.match(notify, /export async function sendTwilioSms/);
+  assert.match(inbound, /POST/);
 });

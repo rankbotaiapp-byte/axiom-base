@@ -106,7 +106,7 @@ export function AxiomCompanionButton({
               }}
             >
               <img
-                src="/media/axiom-guy.png"
+                src="/media/ai-male.png"
                 alt=""
                 width={160}
                 height={160}

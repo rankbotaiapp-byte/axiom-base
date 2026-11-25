@@ -20,8 +20,8 @@ import { useAxiomTelemetry } from "@/context/AxiomTelemetryContext";
 import { useAxiomAudioVibrations } from "@/hooks/useAxiomAudioVibrations";
 import { useGracefulVideo } from "@/hooks/useGracefulVideo";
 
-const VIDEO_SRC = "/media/ai-guy.mp4";
-const POSTER_SRC = "/media/axiom-guy.png";
+const VIDEO_SRC = "/media/axiom-greeting.mp4";
+const POSTER_SRC = "/media/ai-male.png";
 
 const STATUS_HUE: Record<
   CompanionTelemetryStatus,
@@ -107,7 +107,7 @@ export type AxiomVideoCompanionProps = {
   audioReactive?: boolean;
 };
 
-/** Cinematic looping water-droplet companion (`/media/ai-guy.mp4`). */
+/** Cinematic looping water-droplet companion (`/media/axiom-greeting.mp4`). */
 export function AxiomVideoCompanion({
   size = "md",
   showLabel = false,

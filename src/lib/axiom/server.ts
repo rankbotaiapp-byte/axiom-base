@@ -1,4 +1,5 @@
 ﻿import { createServerFn } from "@tanstack/react-start";
+import { authMiddleware } from "@/lib/auth/middleware";
 
 function stubFn<T extends Record<string, unknown> | unknown = Record<string, unknown>>(result?: unknown) {
   return createServerFn({ method: "POST" })
@@ -122,7 +123,16 @@ export const listStaffPortfolio = stubGet([]);
 export const setEmployeeAvailability = stubFn();
 export const moderatePortfolioItem = stubFn();
 export const updateStaffAvatar = stubFn();
-export const runShopAutopilotTick = stubFn({ ok: true });
+export const runShopAutopilotTick = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { slug: string }) => d)
+  .handler(async ({ data, context }) => {
+    const userId = String((context as { userId?: string } | undefined)?.userId ?? "").trim();
+    if (!userId) throw new Error("Sign in to run Autopilot.");
+    // Cron owns the live tick (`POST /api/outreach/cron`). Keep this desk
+    // action free of shop-autopilot.server so client admin bundles stay SSR-safe.
+    return { ok: true as const, slug: data.slug, ran: 0 };
+  });
 export const setAutopilotActive = stubFn();
 export const listAppointmentRequests = stubGet([]);
 export const reviewAppointmentRequest = stubFn();

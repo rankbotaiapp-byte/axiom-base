@@ -2,7 +2,7 @@ import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HeroLoopVideo } from "@/components/loop-video";
 
-const SHARK_LOOP = "/media/shark-hero-animation.mp4";
+const SHARK_LOOP = "/media/axio-plumber-hero.mp4";
 const SPRING = { type: "spring" as const, stiffness: 280, damping: 18 };
 
 const CREATURES = [

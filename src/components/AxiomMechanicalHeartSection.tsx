@@ -5,8 +5,8 @@ import { AXIOM_HUD_CYAN, AXIOM_VISUAL_LOCK } from "@/lib/axiom/visual-design";
 
 void AXIOM_VISUAL_LOCK;
 
-const HEART_SRC = "/media/heroes/axiom-landing.mp4";
-const HEART_FALLBACK = "/media/axioms-heart.mp4";
+const HEART_SRC = "/media/axio-plumber-hero.mp4";
+const HEART_FALLBACK = "/media/studio-preview.mp4";
 
 /**
  * Cinematic feature strip — Mechanical Heart Autopilot for social + SEO.

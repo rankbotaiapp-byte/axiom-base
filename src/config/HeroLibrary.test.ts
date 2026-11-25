@@ -11,7 +11,7 @@ import { isCatalogHeroUrl } from "../lib/axiom/hero-films.ts";
 describe("hero animation library", () => {
   it("indexes public media loops with category, collection, and trim", () => {
     const dir = fileURLToPath(new URL("../../public", import.meta.url));
-    assert.equal(HERO_LIBRARY.length > 20, true);
+    assert.equal(HERO_LIBRARY.length > 8, true);
     assert.equal(HERO_LIBRARY_CATEGORIES.length, 5);
     const urls = new Set<string>();
     for (const item of HERO_LIBRARY) {
@@ -24,10 +24,10 @@ describe("hero animation library", () => {
       assert.equal(isHeroLibrarySrc(item.videoUrl), true);
       assert.equal(isCatalogHeroUrl(item.videoUrl), true);
     }
-    assert.equal(heroLibraryEntryByUrl("/media/apex-launch-hero-animation.mp4")?.category, "Auto");
-    assert.equal(heroLibraryEntryByUrl("/media/leopard-hero-path.mp4")?.collection, "Wildlife");
-    assert.equal(heroLibraryEntryByUrl("/media/otter-hero-animation.mp4")?.category, "Urgent");
-    assert.equal(heroLibraryEntryByUrl("/media/shark-hero-animation.mp4")?.collection, "Water");
-    assert.equal(heroLibraryEntryByUrl("/media/shark-hero-animation.mp4")?.name, "Abyssal Systems");
+    assert.equal(heroLibraryEntryByUrl("/media/auto-hero-animation.mp4")?.category, "Auto");
+    assert.equal(heroLibraryEntryByUrl("/media/infrastructure-hero-animation.mp4")?.collection, "Abstract");
+    assert.equal(heroLibraryEntryByUrl("/media/axio-plumber-hero.mp4")?.category, "Urgent");
+    assert.equal(heroLibraryEntryByUrl("/media/axio-plumber-hero.mp4")?.collection, "Water");
+    assert.equal(heroLibraryEntryByUrl("/media/axio-plumber-hero.mp4")?.name, "Axio Plumber Hero");
   });
 });

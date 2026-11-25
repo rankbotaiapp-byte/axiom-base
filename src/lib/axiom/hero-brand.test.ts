@@ -49,17 +49,17 @@ test("a branded still is the shop hero and a catalog film is not", () => {
   assert.equal(shopIdFromBrandPath("/api/hero/brand/shop_abc"), "shop_abc");
   assert.equal(shopIdFromBrandPath("/api/hero/brand"), null);
   assert.equal(heroAtmosphereActive(path, ""), true);
-  assert.equal(heroAtmosphereActive("/media/heroes/salon.jpg", ""), false);
-  assert.equal(heroAtmosphereActive("/media/heroes/salon.jpg", "Open late"), true);
+  assert.equal(heroAtmosphereActive("/media/studio-cyan-fog-poster.jpg", ""), false);
+  assert.equal(heroAtmosphereActive("/media/studio-cyan-fog-poster.jpg", "Open late"), true);
   const media = resolveHeroMedia({
     niche: "barber",
     heroImageUrl: path,
     heroVideoUrl: null,
   });
-  assert.equal(media.imageUrl, path);
-  assert.equal(media.videoUrl, null);
+  assert.match(media.videoUrl, /\.mp4$/);
+  assert.equal(media.imageUrl, "");
   assert.deepEqual(ownerHeroMedia(null, path), { video: "", image: path });
-  assert.equal(ownerHeroMedia("/media/heroes/landscaper.mp4", "/media/heroes/landscaper.jpg"), null);
+  assert.equal(ownerHeroMedia("/media/infrastructure-hero-animation.mp4", "/media/heroes/landscaper.jpg"), null);
 });
 
 test("a missing hero column can live on the trade profile without dropping the rest", () => {
@@ -84,7 +84,7 @@ test("a missing hero column can live on the trade profile without dropping the r
   assert.equal(keepHeroBrand({ note: "Fades" }, "{}").includes("heroBrand"), false);
   assert.equal(isPublishableHeroStill("shop_abc", "/api/hero/brand/shop_abc?v=2"), true);
   assert.equal(isPublishableHeroStill("shop_abc", "data:image/jpeg;base64,aaaa"), true);
-  assert.equal(isPublishableHeroStill("shop_abc", "/media/heroes/salon.jpg"), false);
+  assert.equal(isPublishableHeroStill("shop_abc", "/media/studio-cyan-fog-poster.jpg"), false);
 });
 
 test("photo and film uploads are recognized by their file signature", () => {

@@ -51,7 +51,7 @@ describe("autopilot content sourcing + branding", () => {
       city: "Medford",
       bookUrl: "/rogue-plumbing/book",
       niche: "plumbing",
-      logoUrl: "/media/rogue-mark.png",
+      logoUrl: "/media/van.png",
       accent: "#00F2FE",
     });
     assert.match(composition.caption, /Rogue Plumbing/);
@@ -61,7 +61,7 @@ describe("autopilot content sourcing + branding", () => {
     assert.match(composition.caption, /#247Emergency/);
     assert.match(composition.posterSvg, /Rogue Plumbing/);
     assert.match(composition.posterSvg, /stroke="#00F2FE"/);
-    assert.match(composition.posterSvg, /\/media\/rogue-mark\.png/);
+    assert.match(composition.posterSvg, /\/media\/van\.png/);
     assert.match(composition.framedSvg, /Rogue Plumbing/);
     assert.match(composition.framedSvg, /stroke="#00F2FE"/);
     assert.match(composition.framedSvg, /images\.unsplash\.com|href=/);

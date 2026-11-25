@@ -60,7 +60,7 @@ const RETAIL_CATALOG: ShelfItem[] = [
     priceCents: 3200,
     stock: 24,
     attribute: "One size",
-    imageUrl: "/media/heroes/retail.svg",
+    imageUrl: "/media/defaults/proof-plate.svg",
   },
   {
     id: "print",
@@ -69,7 +69,7 @@ const RETAIL_CATALOG: ShelfItem[] = [
     priceCents: 2400,
     stock: 12,
     attribute: "18×24",
-    imageUrl: "/media/heroes/retail.svg",
+    imageUrl: "/media/defaults/proof-plate.svg",
   },
   {
     id: "bundle",
@@ -78,7 +78,7 @@ const RETAIL_CATALOG: ShelfItem[] = [
     priceCents: 4800,
     stock: 6,
     attribute: "Cap + print",
-    imageUrl: "/media/heroes/retail.svg",
+    imageUrl: "/media/defaults/proof-plate.svg",
   },
 ];
 
@@ -246,7 +246,7 @@ export function shelfFor(
       priceCents: line.priceCents,
       stock: known?.stock ?? 8,
       attribute: known?.attribute ?? "In stock",
-      imageUrl: known?.imageUrl || "/media/heroes/retail.svg",
+      imageUrl: known?.imageUrl || "/media/defaults/proof-plate.svg",
     };
   });
 }

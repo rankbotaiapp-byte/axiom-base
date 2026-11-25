@@ -24,17 +24,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MASTER_GLASS as GLASS, MasterCyberFrame } from "@/components/master/master-cyber-frame";
-import type {
-  AutopilotAction,
-  AutopilotState,
-  AutopilotStatus,
-  ChannelStats,
-  LogLevel,
-  MasterTelemetry,
-  MasterTenant,
-  ServerStatus,
-  SubscriptionStatus,
-  TenantsResponse,
+import {
+  firstLeadBillingAlert,
+  type AutopilotAction,
+  type AutopilotState,
+  type AutopilotStatus,
+  type ChannelStats,
+  type LogLevel,
+  type MasterTelemetry,
+  type MasterTenant,
+  type ServerStatus,
+  type SubscriptionStatus,
+  type TenantsResponse,
 } from "@/lib/axiom/master-dashboard";
 
 const nf = new Intl.NumberFormat("en-US");
@@ -661,7 +662,11 @@ function MasterBillingTab({ tenants, error }: { tenants: MasterTenant[] | null; 
       if (t.subscriptionStatus === "active") mrr += t.mrrCents;
       if (t.subscriptionStatus === "past_due" || t.subscriptionStatus === "unpaid") atRisk += t.mrrCents;
     }
-    const attention = list.filter((t) => ["past_due", "unpaid", "incomplete"].includes(t.subscriptionStatus));
+    const attention = list.filter(
+      (t) =>
+        ["past_due", "unpaid", "incomplete"].includes(t.subscriptionStatus) ||
+        firstLeadBillingAlert(t.firstLeadActivationReason),
+    );
     return { counts, mrr, atRisk, attention, total: list.length };
   }, [tenants]);
 
@@ -710,7 +715,9 @@ function MasterBillingTab({ tenants, error }: { tenants: MasterTenant[] | null; 
                 <span className="font-mono text-xs text-red-400">{usd.format(t.mrrCents / 100)}/mo</span>
                 <SubBadge status={t.subscriptionStatus} />
                 <span className="font-mono text-xs text-slate-500">
-                  renews {t.currentPeriodEnd ? new Date(t.currentPeriodEnd).toLocaleDateString() : "—"}
+                  {firstLeadBillingAlert(t.firstLeadActivationReason)
+                    ? t.firstLeadActivationReason
+                    : `renews ${t.currentPeriodEnd ? new Date(t.currentPeriodEnd).toLocaleDateString() : "—"}`}
                 </span>
               </div>
             ))}

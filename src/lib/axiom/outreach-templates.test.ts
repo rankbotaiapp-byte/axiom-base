@@ -11,8 +11,8 @@ import {
 test("plumbing templates pin the emergency cinematic and storefront copy", () => {
   const draft = outreachTemplatesForNiche("plumbing");
   assert.equal(draft, PLUMBING_OUTREACH_TEMPLATES);
-  assert.match(draft.text, /face-to-camera greeting/i);
-  assert.match(draft.emailBody, /Eric greets you face-to-camera first/i);
+  assert.match(draft.text, /\$1 trial|24\/7 AI booking/);
+  assert.match(draft.emailBody, /\$1 trial|AI booking/i);
 });
 
 test("plumbing campaign tokens resolve demo URL + greet + hero", () => {
@@ -31,5 +31,5 @@ test("plumbing campaign tokens resolve demo URL + greet + hero", () => {
   const sms = renderPlumbingOutreach("sms", tokens);
   assert.match(sms.body, /Rogue Rapid Plumbing/);
   assert.match(sms.body, /axio-plumber-hero\.mp4/);
-  assert.match(sms.body, /face-to-camera greeting/i);
+  assert.match(sms.body, /\$1 trial|24\/7/);
 });

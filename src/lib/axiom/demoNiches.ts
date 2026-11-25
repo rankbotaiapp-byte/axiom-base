@@ -32,7 +32,7 @@ export const DEMO_NICHES: readonly DemoNiche[] = [
     name: "Luxury watches",
     tagline: "Time, held in liquid metal.",
     substance: "liquid_chrome",
-    imageUrl: "/media/demo-niches/luxury-watches.png",
+    imageUrl: "/media/auto-hero.jpg",
     prompt:
       "The watch in the photo emerges from liquid chrome. The case catches a slow orbit as the metal settles into the bracelet. No words, no logo type, no watermark.",
     motion: { durationSec: 5, resolution: "480p", camera: "orbit" },
@@ -42,7 +42,7 @@ export const DEMO_NICHES: readonly DemoNiche[] = [
     name: "Organic skincare",
     tagline: "Light, caught in frost.",
     substance: "frosted_glass",
-    imageUrl: "/media/demo-niches/organic-skincare.png",
+    imageUrl: "/media/heroes/landscaper.jpg",
     prompt:
       "The jar in the photo forms inside frosted glass. Light rises through the frost and rests on the lid. No words, no logo type, no watermark.",
     motion: { durationSec: 5, resolution: "480p", camera: "rise" },
@@ -52,7 +52,7 @@ export const DEMO_NICHES: readonly DemoNiche[] = [
     name: "Craft bourbon",
     tagline: "Dark grain, cut from carbon.",
     substance: "obsidian_carbon",
-    imageUrl: "/media/demo-niches/craft-bourbon.png",
+    imageUrl: "/media/heroes/plumbing.jpg",
     prompt:
       "The bottle in the photo is cut from obsidian carbon. A slow push-in, amber held in the dark glass. No words, no logo type, no watermark.",
     motion: { durationSec: 5, resolution: "480p", camera: "push-in" },

@@ -31,8 +31,8 @@ export const OTTER_CONFIG = {
   },
 
   media: {
-    video: "/media/otter-hero-animation.mp4",
-    poster: "/media/otter-adventures-poster.jpg",
+    video: "/media/axio-plumber-hero.mp4",
+    poster: "/media/axio-plumber-hero.jpg",
     still: "/otter-swimming.png",
   },
 

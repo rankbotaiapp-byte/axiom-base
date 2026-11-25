@@ -78,7 +78,7 @@ test("sponsor chips sit inside the plate", () => {
   assert.equal(studioPlateLayout(0).badges.length, 0);
   assert.equal(isStudioPlate("/api/hero/brand/shop_abc?v=1"), true);
   assert.equal(isStudioPlate("data:image/jpeg;base64,aaa"), true);
-  assert.equal(isStudioPlate("/media/heroes/clean.jpg"), false);
+  assert.equal(isStudioPlate("/media/heroes/hvac.jpg"), false);
 });
 
 test("service buttons pick a three second craft from the trade", () => {

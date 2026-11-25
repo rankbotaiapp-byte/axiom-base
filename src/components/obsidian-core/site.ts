@@ -11,16 +11,16 @@ export const SITE = {
   },
 
   home: {
-    video: "/media/obsidian-crystal-orbit.mp4",
-    poster: "/media/obsidian-crystal-orbit-poster.jpg",
+    video: "/media/studio-cyan-fog-loop.mp4",
+    poster: "/media/hero-poster.jpg",
     eyebrow: "SECTOR 07 // FRACTURE FIELD ONLINE",
     title: ["FRACTURE", "THE VOID"] as const,
     sub: "A living crystal lattice suspended in zero gravity. Step inside the core and bring your system online.",
   },
 
   core: {
-    video: "/media/obsidian-zero-point-core.mp4",
-    poster: "/media/obsidian-zero-point-core-poster.jpg",
+    video: "/media/studio-preview.mp4",
+    poster: "/media/hero-poster.jpg",
     eyebrow: "DEPTH 02 // CORE CHAMBER",
     title: ["ZERO-POINT", "CORE"] as const,
     sub: "The source of the field. Raw energy arcing through a fractured heart, held stable at the edge of collapse.",

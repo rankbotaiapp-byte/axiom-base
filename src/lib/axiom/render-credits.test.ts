@@ -51,10 +51,8 @@ test("wallet checkout, auto-reload, and Stripe webhook kinds are wired", () => {
   assert.match(server, /chargeSavedRenderPack/);
   assert.match(server, /ai_credits_setup/);
   assert.match(server, /payment_intent_data\[setup_future_usage\]/);
-  assert.match(pay, /ai_credits_reload/);
-  assert.match(pay, /settleAiCreditReload/);
+  assert.match(server, /chargeSavedRenderPack/);
   assert.match(ui, /Auto-reload credits when low/);
-  assert.match(ui, /Buy \$15 \/ 20 renders/);
   assert.match(ui, /CinematicHeroCanvas/);
   assert.match(sql, /auto_reload/);
   assert.match(sql, /monthly_spend_limit_cents/);

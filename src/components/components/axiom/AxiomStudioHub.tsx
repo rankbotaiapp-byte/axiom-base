@@ -3,8 +3,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Facebook, FilePlus2, Instagram, Pencil, Upload, Youtube } from "lucide-react";
 
-const LOGO_LOOP = "/media/axiom/axiom-logo-loop.mp4";
-const LOGO_POSTER = "/media/axiom/axiom-logo-poster.jpg";
+const LOGO_LOOP = "/media/studio-cyan-fog-loop.mp4";
+const LOGO_POSTER = "/media/studio-cyan-fog-poster.jpg";
 
 type Phase = "idle" | "generating" | "ready";
 

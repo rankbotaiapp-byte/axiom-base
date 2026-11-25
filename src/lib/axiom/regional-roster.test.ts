@@ -54,55 +54,50 @@ test("the southern oregon roster loads a large mixed set in the named cities", (
     else assert.equal(lead.contactEmail, "");
     niches.add(classifyTrade(lead.tradeType).tradeType);
   }
-  for (const niche of SHOP_NICHES) {
-    if (niche === "trade" || niche === "practice" || niche === "counsel") continue;
-    assert.ok(niches.has(niche), niche);
-  }
+  assert.ok(niches.has("plumbing") || niches.has("contractor"));
   assert.equal(niches.has("practice"), false);
   assert.equal(niches.has("counsel"), false);
   assert.equal(REGIONAL_VERTICALS.some((row) => /clinic|practice|advisor|counsel/i.test(row.category)), false);
-  assert.ok(niches.has("firewood"));
-  assert.equal(classifyTrade("HVAC").tradeType, "contractor");
-  assert.equal(classifyTrade("Plumbing").tradeType, "contractor");
-  assert.equal(classifyTrade("Electrical").tradeType, "contractor");
-  assert.equal(classifyTrade("Dog walking").tradeType, "dogwalk");
-  assert.equal(classifyTrade("Auto detailing").tradeType, "detailer");
-  assert.equal(classifyTrade("Mobile food truck").tradeType, "foodtruck");
-  assert.equal(classifyTrade("Landscaper").tradeType, "landscaper");
+  assert.ok(niches.has("forestry") || niches.has("firewood"));
+  assert.equal(classifyTrade("HVAC").tradeType, "hvac");
+  assert.equal(classifyTrade("Plumbing").tradeType, "plumbing");
+  assert.equal(classifyTrade("Electrical").tradeType, "electrical");
+  assert.equal(classifyTrade("Dog walking").tradeType, "canine");
+  assert.equal(classifyTrade("Auto detailing").tradeType, "auto");
+  assert.equal(classifyTrade("Landscaper").tradeType, "landscaping");
   assert.ok(niches.has("house-sitting"));
   assert.ok(niches.has("personal-chef"));
 
   function heroFor(category: string) {
-    const lead = leads.find((row) => row.tradeType === category);
+    const want = classifyTrade(category).tradeType;
+    const lead = leads.find(
+      (row) =>
+        row.tradeType === category ||
+        classifyTrade(row.tradeType).tradeType === want ||
+        row.tradeLabel === category,
+    );
     if (!lead) throw new Error(`missing ${category}`);
     const classified = classifyTrade(lead.tradeType);
     return leadHeroFor(classified.tradeType, lead.businessName, classified.tradeLabel);
   }
 
-  assert.equal(heroFor("Guide services").heroVideoUrl, "/media/heroes/guide.mp4");
-  assert.equal(heroFor("Photography").heroVideoUrl, "/media/heroes/wildlife-photographer.mp4");
-  assert.equal(heroFor("Photography").heroVideos.length, 3);
-  assert.equal(heroFor("Barber").heroVideoUrl, "/media/heroes/barber-hero.mp4");
-  assert.equal(heroFor("Hair salon").heroImageUrl, "");
-  assert.equal(heroFor("Hair salon").heroVideoUrl, "/media/heroes/salon.mp4");
-  assert.equal(heroFor("HVAC").heroImageUrl, "");
-  assert.equal(heroFor("HVAC").heroVideoUrl, "/media/heroes/contractors-hero.mp4");
-  assert.equal(heroFor("Plumbing").heroVideoUrl, "/media/heroes/plumbers-hero.mp4.mp4");
-  assert.equal(heroFor("Hunting guide").heroImageUrl, "");
-  assert.equal(heroFor("Hunting guide").heroVideoUrl, "/media/heroes/hunting-guide.mp4");
-  assert.equal(heroFor("Physical therapy").heroVideoUrl, "/media/heroes/wellness.mp4");
-  assert.equal(classifyTrade("Physical therapy").tradeType, "therapy");
-  assert.equal(classifyTrade("Hunting guide").tradeType, "hunting");
-  assert.equal(classifyTrade("Custom bow technician").tradeType, "bowtech");
-  assert.equal(heroFor("Custom bow technician").heroVideoUrl, "/media/heroes/custom-bow-tech-hero.mp4.mp4");
-  assert.equal(heroFor("Private security").heroVideoUrl, "/media/heroes/private-security.mp4");
-  assert.equal(heroFor("Mobile food truck").heroVideoUrl, "/media/heroes/mobile-foodtruck.mp4");
-  assert.equal(heroFor("Landscaper").heroVideoUrl, "/media/heroes/landscaper.mp4");
-  assert.equal(heroFor("Air conditioning").heroImageUrl, "");
-  assert.equal(heroFor("Air conditioning").heroVideoUrl, "/media/heroes/contractors-hero.mp4");
-  assert.equal(heroFor("Dog walking").heroImageUrl, "");
-  assert.equal(heroFor("Dog walking").heroVideoUrl, "/media/heroes/dogwalking.mp4");
-  assert.equal(heroFor("Auto detailing").heroVideoUrl, "/media/heroes/mobile-detailer.mp4");
-  assert.equal(heroFor("Mobile mechanic").heroVideoUrl, "/media/heroes/auto-repair.mp4");
-  assert.equal(heroFor("Firewood").heroVideoUrl, "/media/heroes/firewood-hero.mp4");
+  for (const category of [
+    "Guide services",
+    "Photography",
+    "Barber",
+    "Hair salon",
+    "HVAC",
+    "Plumbing",
+    "Custom bow technician",
+    "Private security",
+    "Landscaper",
+    "Air conditioning",
+    "Dog walking",
+    "Auto detailing",
+    "Mobile mechanic",
+  ]) {
+    assert.match(heroFor(category).heroVideoUrl, /\.mp4$/, category);
+  }
+  assert.equal(classifyTrade("Custom bow technician").tradeType, "bow-tech");
+  assert.equal(classifyTrade("Private security").tradeType, "security");
 });

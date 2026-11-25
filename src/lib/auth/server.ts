@@ -33,7 +33,7 @@ import { betterAuth } from "better-auth";
 import { bearer, genericOAuth } from "better-auth/plugins";
 import { getCookie } from "@/lib/tanstack-start-server-shim";
 import { randomBytes } from "node:crypto";
-import { ensureDbReady, getHostedPgPool, getPglite } from "../db";
+import { DatabaseConfigError, ensureDbReady, getHostedPgPool, getPglite } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
 import { localDevAuthAllowed, localDevAuthBypass } from "./local-dev-bypass";
 import { supabaseIdentityBridge } from "./supabase-bridge";
@@ -171,9 +171,19 @@ const grokUserInfoUrl = `${issuerBase}/api/auth/oauth2/userinfo`;
 // CRITICAL: reuse `getHostedPgPool()` from `@/lib/db`. A second auth-only Pool
 // doubles connections against the Supabase/Neon pooler and is the usual cause of
 // `Connection terminated unexpectedly` during local Playwright + login storms.
-const database = databaseUrl
-  ? getHostedPgPool()
-  : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
+function authDatabase() {
+  if (!databaseUrl) return { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
+  try {
+    return getHostedPgPool();
+  } catch (err) {
+    if (err instanceof DatabaseConfigError) {
+      return { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
+    }
+    throw err;
+  }
+}
+
+const database = authDatabase();
 
 /** Session token cookie name -- also read by the live-preview popup completion page. */
 export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";

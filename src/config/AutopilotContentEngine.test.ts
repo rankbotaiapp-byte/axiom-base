@@ -18,28 +18,28 @@ import {
 describe("autopilot content engine", () => {
   it("defaults to the pinned storefront film plus the category master loop", () => {
     const loops = defaultAutopilotLoops({
-      pinnedHeroUrl: "/media/tiger-hero-animation.mp4",
+      pinnedHeroUrl: "/media/infrastructure-hero-animation.mp4",
       niche: "plumbing",
     });
-    assert.equal(loops.includes("/media/tiger-hero-animation.mp4"), true);
-    assert.equal(loops.includes("/media/otter-hero-animation.mp4"), true);
+    assert.equal(loops.includes("/media/infrastructure-hero-animation.mp4"), true);
+    assert.equal(loops.includes("/media/axio-plumber-hero.mp4"), true);
     assert.equal(loops.length >= AUTOPILOT_LOOP_MIN, true);
     assert.equal(loops.length <= AUTOPILOT_LOOP_MAX, true);
   });
 
   it("keeps the master cinematic category loop even when a tenant subset is pinned", () => {
     const picked = [
-      "/media/apex-launch-hero-animation.mp4",
-      "/media/leopard-hero-path.mp4",
-      "/media/shark-hero-animation.mp4",
+      "/media/auto-hero-animation.mp4",
+      "/media/infrastructure-hero-animation.mp4",
+      "/media/axio-plumber-hero.mp4",
     ];
     const loops = resolveAutopilotLoops({
       shopConfig: { selectedAutopilotLoops: picked },
-      pinnedHeroUrl: "/media/tiger-hero-animation.mp4",
+      pinnedHeroUrl: "/media/infrastructure-hero-animation.mp4",
       niche: "auto",
     });
     assert.equal(loops.includes(masterLoopForNiche("auto")), true);
-    assert.equal(loops.includes("/media/apex-launch-hero-animation.mp4"), true);
+    assert.equal(loops.includes("/media/auto-hero-animation.mp4"), true);
     assert.equal(loops.length <= AUTOPILOT_LOOP_MAX, true);
   });
 
@@ -56,7 +56,7 @@ describe("autopilot content engine", () => {
   });
 
   it("cycles sequentially and composites shop name, trade copy, city, and booking CTA", () => {
-    const loops = ["/media/apex-launch-hero-animation.mp4", "/media/otter-hero-animation.mp4"];
+    const loops = ["/media/auto-hero-animation.mp4", "/media/axio-plumber-hero.mp4"];
     assert.equal(pickAutopilotLoop(loops, 0).loopUrl, loops[0]);
     assert.equal(pickAutopilotLoop(loops, 1).loopUrl, loops[1]);
     assert.equal(pickAutopilotLoop(loops, 2).loopUrl, loops[0]);
@@ -87,7 +87,7 @@ describe("autopilot content engine", () => {
     assert.equal(parseShopConfig({ shopConfig: { selectedAutopilotLoops: loops } }).selectedAutopilotLoops?.length, 2);
     const mixed = parseShopConfig({
       shopConfig: { selectedAutopilotLoops: loops, autopilotLoopCursor: 1 },
-      frontendTemplate: { brandName: "Ashland Heat", selectedAutopilotLoops: ["/media/shark-hero-animation.mp4"] },
+      frontendTemplate: { brandName: "Ashland Heat", selectedAutopilotLoops: ["/media/axio-plumber-hero.mp4"] },
     });
     assert.deepEqual(mixed.selectedAutopilotLoops, loops);
     assert.equal(mixed.autopilotLoopCursor, 1);
@@ -96,10 +96,10 @@ describe("autopilot content engine", () => {
 
 function pickedOverflow() {
   return [
-    "/media/apex-launch-hero-animation.mp4",
-    "/media/otter-hero-animation.mp4",
-    "/media/leopard-hero-path.mp4",
-    "/media/polar-bear-hero-animation.mp4",
-    "/media/shark-hero-animation.mp4",
+    "/media/auto-hero-animation.mp4",
+    "/media/axio-plumber-hero.mp4",
+    "/media/infrastructure-hero-animation.mp4",
+    "/media/electrician-hero-animation.mp4",
+    "/media/studio-cyan-fog-loop.mp4",
   ];
 }

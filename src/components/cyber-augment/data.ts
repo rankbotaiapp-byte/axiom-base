@@ -1,8 +1,8 @@
 export const ASSETS = {
-  heroVideo: "/media/cyber-augment-loop.mp4",
-  heroPoster: "/media/cyber-augment-poster.jpg",
-  workshop: "/media/cyber-augment-workshop.jpg",
-  armory: "/media/cyber-augment-armory.jpg",
+  heroVideo: "/media/electrician-hero-animation.mp4",
+  heroPoster: "/media/hero-poster.jpg",
+  workshop: "/media/heroes/contractor.jpg",
+  armory: "/media/heroes/electrical.jpg",
 } as const;
 
 /** Native pixel size of both supplementary stills — keeps annotation coordinates aligned. */

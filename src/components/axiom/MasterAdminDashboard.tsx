@@ -9,6 +9,9 @@ import { AxiomSpaceOrbitCanvas } from "@/components/axiom/AxiomSpaceOrbitCanvas"
 import { AXIOM_COMPACT_FAB_CLASS } from "@/components/AxiomChatDrawer";
 import { AxiomTelemetryProvider, useAxiomTelemetry } from "@/context/AxiomTelemetryContext";
 import { masterDeskError, masterDeskFetch } from "@/lib/axiom/master-desk-client";
+import { claimMasterSession, fetchMasterSession } from "@/lib/axiom/master-session-client";
+import { OutreachDesk } from "@/components/master/outreach-desk";
+import { PrimeLeadCommand } from "@/components/master/prime-lead-command";
 
 const CREDIT_CENTS = 4;
 
@@ -87,6 +90,12 @@ function MasterAdminDashboardInner() {
     let cancelled = false;
     void (async () => {
       try {
+        const urlKey = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("key")?.trim() ?? "" : "";
+        if (urlKey.length >= 16) {
+          await claimMasterSession(urlKey).catch(() => undefined);
+        } else {
+          await fetchMasterSession().catch(() => undefined);
+        }
         const [telemetryRes, tenantsRes] = await Promise.all([
           masterDeskFetch("/api/master/telemetry"),
           masterDeskFetch("/api/master/tenants"),
@@ -279,21 +288,25 @@ function MasterAdminDashboardInner() {
           ) : null}
 
           {section === "leads" ? (
-            <Panel title="Autopilot leads">
-              {numbers.states.length === 0 ? (
-                <p className="text-sm text-white/60">No state breakdown yet. A dry sweep will not invent leads.</p>
-              ) : (
-                <ul className="grid gap-2">
-                  {numbers.states.map((row) => (
-                    <li key={row.state} className="flex items-center justify-between font-mono text-xs">
-                      <span>{row.state}</span>
-                      <span className="text-[#00ffcc]">{row.count}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="mt-4 text-sm text-white/55">{sweep}</p>
-            </Panel>
+            <>
+              <PrimeLeadCommand />
+              <OutreachDesk />
+              <Panel title="Autopilot leads">
+                {numbers.states.length === 0 ? (
+                  <p className="text-sm text-white/60">No state breakdown yet. A dry sweep will not invent leads.</p>
+                ) : (
+                  <ul className="grid gap-2">
+                    {numbers.states.map((row) => (
+                      <li key={row.state} className="flex items-center justify-between font-mono text-xs">
+                        <span>{row.state}</span>
+                        <span className="text-[#00ffcc]">{row.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-4 text-sm text-white/55">{sweep}</p>
+              </Panel>
+            </>
           ) : null}
 
           {section === "trials" ? (

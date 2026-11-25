@@ -13,8 +13,8 @@ import { CATALOG, CATALOG_BY_ID, catalogCardStill, type CatalogNiche } from "./c
 export const DEFAULT_PROOF_SVG = "/media/defaults/proof-plate.svg";
 export const DEFAULT_PROOF_BAY_SVG = "/media/defaults/proof-bay.svg";
 export const DEFAULT_PROOF_FINISH_SVG = "/media/defaults/proof-finish.svg";
-export const DEFAULT_GALLERY_FIELD_SVG = "/media/gallery/field-service.svg";
-export const DEFAULT_GALLERY_STUDIO_SVG = "/media/gallery/app-studio.svg";
+export const DEFAULT_GALLERY_FIELD_SVG = "/media/defaults/proof-bay.svg";
+export const DEFAULT_GALLERY_STUDIO_SVG = "/media/defaults/proof-finish.svg";
 
 /** Always-on local plates — checked into `public/media`. */
 export const LOCAL_PROOF_PLATES = [

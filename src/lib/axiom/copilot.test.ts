@@ -137,21 +137,21 @@ test("an action list maps a hero sentence onto a prompt plus style fields", () =
 
 test("apply and diff touch only the confirmed fields", () => {
   const patch = parseStylePatch({ accent: "#112233", borderGlow: false, blur: 40 });
-  const next = applyStylePatch({ ...DEFAULT_HUD, wash: "tide", heroPick: "film", heroUrl: "/media/heroes/live.jpg" }, patch);
+  const next = applyStylePatch({ ...DEFAULT_HUD, wash: "tide", heroPick: "film", heroUrl: "/media/hero-poster.jpg" }, patch);
   assert.equal(next.wash, "tide");
   assert.equal(next.rim, false);
   assert.equal(next.blur, 3);
   assert.equal(next.fade, DEFAULT_HUD.fade);
   assert.equal(next.heroPick, "film");
-  assert.equal(next.heroUrl, "/media/heroes/live.jpg");
+  assert.equal(next.heroUrl, "/media/hero-poster.jpg");
   const lines = styleDiff({ accent: "#C8F54A", hud: DEFAULT_HUD }, patch);
   assert.deepEqual(
     lines.map((line) => line.field),
     ["accent", "blur", "borderGlow"],
   );
   assert.equal(sanitizeAssetUrl("javascript:alert(1)"), "");
-  assert.equal(sanitizeAssetUrl("/media/heroes/leopard.mp4"), "/media/heroes/leopard.mp4");
-  assert.equal(sanitizeAssetUrl("/media/heroes/charging-bear.mp4"), "/media/heroes/charging-bear.mp4");
+  assert.equal(sanitizeAssetUrl("/media/infrastructure-hero-animation.mp4"), "/media/infrastructure-hero-animation.mp4");
+  assert.equal(sanitizeAssetUrl("/media/infrastructure-hero-animation.mp4"), "/media/infrastructure-hero-animation.mp4");
   assert.equal(sanitizeAssetUrl("/media/../secret.png"), "");
   assert.equal(sanitizeAssetUrl("https://cdn.example/tiger.png"), "https://cdn.example/tiger.png");
 });
@@ -159,7 +159,7 @@ test("apply and diff touch only the confirmed fields", () => {
 test("an unconfirmed staged hero is not the public hero", () => {
   const staged = stageHero("https://cdn.example/tiger.png", "image", "A tiger on obsidian");
   assert.ok(staged);
-  const live = { ...DEFAULT_HUD, heroPick: "film" as const, heroUrl: "/media/heroes/live.jpg" };
+  const live = { ...DEFAULT_HUD, heroPick: "film" as const, heroUrl: "/media/hero-poster.jpg" };
   assert.equal(publicHeroUrl(live, staged.url), "");
   assert.notEqual(publicHeroUrl(live, staged.url), staged.url);
   assert.equal(stageHero("javascript:alert(1)", "image", "tiger"), null);
@@ -190,12 +190,12 @@ test("an unconfirmed local film is not the public hero", () => {
   const leopard = stageLibraryHero("leopard");
   const bear = stageLibraryHero("bear");
   const kayak = stageLibraryHero("kayak");
-  assert.equal(leopard?.url, "/media/heroes/leopard.mp4");
-  assert.equal(bear?.url, "/media/heroes/charging-bear.mp4");
-  const confirmedBear = { ...DEFAULT_HUD, heroPick: "url" as const, heroUrl: "/media/heroes/charging-bear.mp4" };
-  assert.equal(publicHeroUrl(confirmedBear, leopard?.url ?? ""), "/media/heroes/charging-bear.mp4");
+  assert.equal(leopard?.url, "/media/infrastructure-hero-animation.mp4");
+  assert.equal(bear?.url, "/media/axio-plumber-hero.mp4");
+  const confirmedBear = { ...DEFAULT_HUD, heroPick: "url" as const, heroUrl: "/media/axio-plumber-hero.mp4" };
+  assert.equal(publicHeroUrl(confirmedBear, leopard?.url ?? ""), "/media/axio-plumber-hero.mp4");
   assert.notEqual(publicHeroUrl(confirmedBear, leopard?.url ?? ""), leopard?.url);
-  assert.equal(kayak?.url, "/media/heroes/white-water-rafting.mp4");
+  assert.equal(kayak?.url, "/media/studio-cyan-fog-loop.mp4");
   assert.equal(stageLibraryHero("javascript:alert(1)"), null);
   const live = { ...DEFAULT_HUD, heroPick: "film" as const, heroUrl: "" };
   const frame = stagingFrame(live, "#C8F54A", { accent: "#3366FF", glow: 75, blur: 28, edgeFeather: 44 }, leopard);

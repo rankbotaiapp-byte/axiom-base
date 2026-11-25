@@ -46,7 +46,13 @@ export type MasterTenant = {
   stripeCustomerId: string;
   currentPeriodEnd: string | null;
   lastWebhookAt: string | null;
+  firstLeadActivationReason: string;
 };
+
+export function firstLeadBillingAlert(reason: string | null | undefined): boolean {
+  const value = (reason ?? "").trim();
+  return value.startsWith("stripe_create_failed:") || value.startsWith("missing_saved_payment_method");
+}
 
 export type TenantsResponse = {
   tenants: MasterTenant[];

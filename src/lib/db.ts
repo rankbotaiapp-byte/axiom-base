@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { Pool, types as pgTypes } from "pg";
 import { isDatabaseUnavailable } from "../../scripts/db-availability.mjs";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { DatabaseConfigError, inspectDatabaseUrl } from "./db-url";
 
 export { isDatabaseUnavailable };
+export { DatabaseConfigError, inspectDatabaseUrl, databaseUrlUsable } from "./db-url";
 
 /** Which database backend is active. Music and contractor niches live in 0008. */
 export type DbSource = "neon" | "pglite";
@@ -64,13 +66,16 @@ function localDevelopment() {
   return process.env.NODE_ENV !== "production";
 }
 
-/** Local dev keeps serving when the hosted database cannot be reached. */
+/** DNS, pooler, and malformed DATABASE_URL must not crash the process. */
 function deferHostedDatabase(err: unknown) {
-  if (!localDevelopment() || !isDatabaseUnavailable(err)) return false;
+  const configFail = err instanceof DatabaseConfigError;
+  const unreachable = isDatabaseUnavailable(err);
+  if (!configFail && !unreachable) return false;
   if (!globalRef.__pgHostDeferred__) {
-    const message = err instanceof Error ? err.message : String(err);
     console.warn(
-      `[db] hosted postgres is unreachable (${message}). Local development is staying up without it.`,
+      configFail
+        ? "[db] DATABASE_URL is missing or not a usable Postgres URL. Queries stay empty until it is fixed."
+        : "[db] hosted postgres is unreachable (DNS or network). The process is staying up without it.",
     );
   }
   globalRef.__pgHostDeferred__ = true;
@@ -328,7 +333,11 @@ function migratePostgresOnce(): Promise<void> {
  */
 export function getHostedPgPool(): Pool {
   if (!databaseUrl) {
-    throw new Error("getHostedPgPool() requires DATABASE_URL");
+    throw new DatabaseConfigError("DATABASE_URL is not set");
+  }
+  const report = inspectDatabaseUrl(databaseUrl);
+  if (!report.protocolOk || !report.parseOk || report.placeholderHost) {
+    throw new DatabaseConfigError("DATABASE_URL is not a usable Postgres URL");
   }
   if (globalRef.__pgPool__) return globalRef.__pgPool__;
 
@@ -604,7 +613,7 @@ if (typeof window === "undefined") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     if (deferHostedDatabase(err)) return;
     globalBoot.__pgBootstrapPromise__ = undefined;
-    console.error("[db] bootstrap failed:", err);
-    throw err;
+    console.error("[db] bootstrap failed");
+    deferHostedDatabase(new DatabaseConfigError("Database bootstrap failed"));
   });
 }

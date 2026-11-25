@@ -1,5 +1,5 @@
 /** Timed drain-hero beats that drive the plumbing telemetry HUD. */
-export const PLUMBING_DRAIN_SRC = "/media/plumbers-outreach-hero-animation.mp4";
+export const PLUMBING_DRAIN_SRC = "/media/axio-plumber-hero.mp4";
 
 export const PLUMBING_SEQUENCE = {
   /** Camera finds the clog / camera snake in the line. */
@@ -14,7 +14,7 @@ export type PlumbingBeat = "locate" | "jet" | "clear" | "dispatch";
 
 export function isPlumbingDrainFilm(src: string | undefined | null): boolean {
   if (!src) return false;
-  return /plumbers-outreach-hero-animation(\.mp4)+$|pplubers-outreach-hero-animation(\.mp4)+$|plumbers-hero-animation(\.mp4)+$/i.test(
+  return /axio-plumber-hero(\.mp4)+$|plumbers-outreach-hero-animation(\.mp4)+$|pplubers-outreach-hero-animation(\.mp4)+$|plumbers-hero-animation(\.mp4)+$/i.test(
     src.split("?")[0] ?? "",
   );
 }

@@ -31,22 +31,22 @@ test("studio draft replaces the shop film and tagline", () => {
   });
   try {
     writeHeroDraft("Rogue-River", {
-      hero_video_url: "/media/leopard-hero-animation.mp4",
+      hero_video_url: "/media/infrastructure-hero-animation.mp4",
       tagline: "Night water",
     });
     const draft = readHeroDraft("rogue-river");
-    assert.equal(draft?.hero_video_url, "/media/leopard-hero-animation.mp4");
+    assert.equal(draft?.hero_video_url, "/media/infrastructure-hero-animation.mp4");
     const selection = resolveHeroSelection({
       draft,
-      shopVideoUrl: "/media/guide-service-hero-animation.mp4",
-      fallbackVideoUrl: "/media/orb-explosion-hero-animation.mp4",
+      shopVideoUrl: "/media/infrastructure-hero-animation.mp4",
+      fallbackVideoUrl: "/media/studio-cyan-fog-loop.mp4",
       shopTagline: "Old line",
     });
     assert.equal(selection.source, "studio");
-    assert.equal(selection.hero_video_url, "/media/leopard-hero-animation.mp4");
+    assert.equal(selection.hero_video_url, "/media/infrastructure-hero-animation.mp4");
     assert.equal(selection.tagline, "Night water");
     assert.equal(cleanHeroUrl("javascript:alert(1)"), "");
-    assert.equal(cleanHeroUrl("/media/leopard-hero-animation.mp4"), "/media/leopard-hero-animation.mp4");
+    assert.equal(cleanHeroUrl("/media/infrastructure-hero-animation.mp4"), "/media/infrastructure-hero-animation.mp4");
     assert.equal(cleanHeroUrl("/media/../secret.mp4"), "");
     assert.equal(heroPresets().every((preset) => preset.url.startsWith("/media/") && preset.url.endsWith(".mp4")), true);
   } finally {
@@ -62,23 +62,23 @@ test("auto and wildlife niches use the new animation loops", () => {
   assert.equal(boundHeroAnimation("guide", "outdoor expedition"), tradeLoopUrl("forestry"));
   const wild = resolveStorefrontFilm({
     draft: null,
-    shopVideoUrl: "/media/leopard-hero-animation.mp4",
+    shopVideoUrl: "/media/infrastructure-hero-animation.mp4",
     niche: "hunting",
     customNiche: "wildlife",
-    fallbackVideoUrl: "/media/owl-attack-hero-animation.mp4",
+    fallbackVideoUrl: "/media/infrastructure-hero-animation.mp4",
     shopTagline: "Night country",
   });
-  assert.equal(wild.hero_video_url, "/media/leopard-hero-animation.mp4");
+  assert.equal(wild.hero_video_url, "/media/infrastructure-hero-animation.mp4");
   const picked = resolveStorefrontFilm({
     draft: {
       hero_video_url: AUTO_HERO_ANIMATION,
       tagline: "Night garage",
       updatedAt: "2026-10-28T00:00:00.000Z",
     },
-    shopVideoUrl: "/media/leopard-hero-animation.mp4",
+    shopVideoUrl: "/media/infrastructure-hero-animation.mp4",
     niche: "hunting",
     customNiche: "wildlife",
-    fallbackVideoUrl: "/media/owl-attack-hero-animation.mp4",
+    fallbackVideoUrl: "/media/infrastructure-hero-animation.mp4",
     shopTagline: "Night country",
   });
   assert.equal(picked.source, "studio");
@@ -86,23 +86,23 @@ test("auto and wildlife niches use the new animation loops", () => {
   assert.equal(picked.tagline, "Night garage");
   const unbound = resolveStorefrontFilm({
     draft: null,
-    shopVideoUrl: "/media/heroes/legacy-guide.mp4",
+    shopVideoUrl: "/media/infrastructure-hero-animation.mp4",
     niche: "guide",
     customNiche: "guided river fishing",
-    fallbackVideoUrl: "/media/orb-explosion-hero-animation.mp4",
+    fallbackVideoUrl: "/media/studio-cyan-fog-loop.mp4",
     shopTagline: "Water",
   });
   assert.equal(unbound.source, "shop");
-  assert.equal(unbound.hero_video_url, "/media/heroes/legacy-guide.mp4");
+  assert.equal(unbound.hero_video_url, "/media/infrastructure-hero-animation.mp4");
   const uploaded = resolveStorefrontFilm({
     draft: {
       hero_video_url: "/api/hero-video/shop_demo?v=4",
       tagline: "Night yard",
       updatedAt: "2026-10-28T00:00:00.000Z",
     },
-    shopVideoUrl: "/media/leopard-hero-animation.mp4",
+    shopVideoUrl: "/media/infrastructure-hero-animation.mp4",
     niche: "landscaping",
-    fallbackVideoUrl: "/media/orb-explosion-hero-animation.mp4",
+    fallbackVideoUrl: "/media/studio-cyan-fog-loop.mp4",
     shopTagline: "Grounds",
   });
   assert.equal(uploaded.source, "studio");

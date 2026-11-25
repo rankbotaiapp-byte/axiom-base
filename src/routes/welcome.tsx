@@ -66,7 +66,7 @@ function Welcome() {
         <div className="mt-8 overflow-hidden rounded-[24px] bg-surface shadow-[0_0_0_1px_rgba(243,241,235,0.08)]">
           <HeroLoopVideo
             className="aspect-video w-full"
-            src="/media/heroes/intro-welcome.mp4"
+            src="/media/axiom-24-7-booking-for-contractors.mp4"
             autoPlay
             playsInline
             controls

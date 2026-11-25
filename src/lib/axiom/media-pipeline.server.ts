@@ -344,6 +344,14 @@ async function writeSocialCaption(shopName: string, trade: string, city: string)
   return { caption: text || fallback.caption, hashtags: fallback.hashtags };
 }
 
+export async function publishSocialPostForShop(
+  userId: string,
+  shopId: string,
+  postId: string,
+) {
+  return approveSocialPost(userId, shopId, postId);
+}
+
 export async function approveSocialPost(
   userId: string,
   shopId: string,

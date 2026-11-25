@@ -18,11 +18,20 @@ export default function TenantAdminPage({
 
   useEffect(() => {
     let cancelled = false;
+    void fetch(`/api/storefront/draft?slug=${encodeURIComponent(slug)}`)
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { phase?: string };
+      })
+      .then((json) => {
+        if (cancelled || !json?.phase) return;
+        setReadonly(json.phase === "locked");
+      })
+      .catch(() => undefined);
     void getOperatorData({ data: slug })
       .then((next) => {
         if (cancelled) return;
         setDesk(next);
-        setReadonly(next.mode === "preview");
       })
       .catch(() => undefined);
     return () => {
@@ -57,7 +66,6 @@ export default function TenantAdminPage({
             void getOperatorData({ data: slug })
               .then((next) => {
                 setDesk(next);
-                setReadonly(next.mode === "preview");
               })
               .catch(() => undefined);
           }}

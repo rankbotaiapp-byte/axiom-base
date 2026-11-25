@@ -10,16 +10,16 @@ import {
 describe("niche dataset pairing", () => {
   it("maps water systems to otter and plumbing to the emergency cinematic", () => {
     const water = bindingForTrade("water-systems");
-    assert.equal(water.primaryLoop, "/media/otter-hero-animation.mp4");
-    assert.ok(water.alternateLoops.includes("/media/shark-hero-animation.mp4"));
+    assert.equal(water.primaryLoop, "/media/axio-plumber-hero.mp4");
+    assert.ok(water.alternateLoops.includes("/media/plumbing-emergency-hero.mp4"));
     assert.equal(verifiedPrimaryLoop("plumbing"), "/media/axio-plumber-hero.mp4");
     assert.equal(verifiedPrimaryLoop("Emergency Plumbing"), "/media/axio-plumber-hero.mp4");
   });
 
   it("maps fabrication to polar-bear (universal is not on disk)", () => {
     const bind = bindingForTrade("fabrication", "Custom weld shop");
-    assert.equal(bind.primaryLoop, "/media/polar-bear-hero-animation.mp4");
-    assert.ok(bind.alternateLoops.some((url) => url.includes("polar-bear")));
+    assert.equal(bind.primaryLoop, "/media/infrastructure-hero-animation.mp4");
+    assert.ok(bind.alternateLoops.some((url) => url.includes("locksmith") || url.includes("infrastructure")));
   });
 
   it("maps auto to auto-hero", () => {
@@ -29,8 +29,8 @@ describe("niche dataset pairing", () => {
 
   it("maps taxidermy to leopard/raptor loops", () => {
     const bind = bindingForTrade("taxidermy");
-    assert.equal(bind.primaryLoop, "/media/leopard-hero-animation.mp4");
-    assert.ok(bind.alternateLoops.includes("/media/raptor-hero-animation.mp4"));
+    assert.equal(bind.primaryLoop, "/media/infrastructure-hero-animation.mp4");
+    assert.ok(bind.alternateLoops.includes("/media/locksmith-hero-animation.mp4"));
   });
 
   it("overlays business name, phone, and location onto the template preview", () => {
@@ -56,6 +56,6 @@ describe("niche dataset pairing", () => {
       resolveProvisionFilm({ niche: "plumbing", heroFilm: "/media/plumbers-hero-animation.mp4" }),
       "/media/plumbers-hero-animation.mp4",
     );
-    assert.equal(resolveProvisionFilm({ niche: "taxidermy" }), "/media/leopard-hero-animation.mp4");
+    assert.equal(resolveProvisionFilm({ niche: "taxidermy" }), "/media/infrastructure-hero-animation.mp4");
   });
 });

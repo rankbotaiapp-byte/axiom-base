@@ -821,9 +821,9 @@ async function startWebGL(tier) {
   engine.renderOrder = 0;
   scene.add(engine);
 
-  const useVideo = () => { engineMat.uniforms.uMap.value = videoTex; };
-  if (video.readyState >= 2 && !video.paused) useVideo();
-  else video.addEventListener('playing', useVideo, { once: true, signal: listeners.signal });
+  const applyVideoTexture = () => { engineMat.uniforms.uMap.value = videoTex; };
+  if (video.readyState >= 2 && !video.paused) applyVideoTexture();
+  else video.addEventListener('playing', applyVideoTexture, { once: true, signal: listeners.signal });
 
   /* ---- Volumetric particles ---- */
   const count = CONFIG.particles[tier === 'high' ? 'high' : 'mobile'];

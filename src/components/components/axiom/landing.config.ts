@@ -18,16 +18,16 @@ export const landingConfig = {
       "Regional leads, a cinematic 3D hero, and a desk that logs cash and checks in the field. $1 for 14 days, then $150/month, with one-click cancellation in Admin Billing.",
     feeLine:
       "Secure online bookings are a 1.5% Stripe Connect split. Cash and checks logged in the field with the Mobile Field Payment Logger are 0% platform fees.",
-    image: "/media/axiom/axiom-logo-poster.jpg",
-    imageAlt: "Obsidian stone A and AXIOM wordmark with a crimson core",
-    loop: "/media/axiom/axiom-logo-loop.mp4",
+    image: "/media/axiom-noir-hero-panel.svg",
+    imageAlt: "Dark industrial Noir HUD panel",
+    loop: "/media/studio-cyan-fog-loop.mp4",
     primaryCta: { label: "Start the $1 · 14-day trial", href: "#book" },
     secondaryCta: { label: "Preview templates", href: "#proof" },
   },
   /** Full-bleed autoplaying loop directly under the brand showcase. */
   pitch: {
-    src: "/media/axiom/axioms-heart.mp4",
-    poster: "/media/axiom/axioms-heart.jpg",
+    src: "/media/studio-preview.mp4",
+    poster: "/media/hero-poster.jpg",
     title: "Open 24/7, even when you are not.",
     body: "Axiom answers, books, and follows up while you are on the job. Card bookings settle at 1.5%. Field cash and checks stay at 0%.",
     chips: ["Regional leads", "Cinematic hero", "Field cash & checks"],
@@ -36,8 +36,8 @@ export const landingConfig = {
   features: {
     eyebrow: "Made for your trade",
     title: "One engine, re-skinned for every local business",
-    src: "/media/axiom/trades-reel.mp4",
-    poster: "/media/axiom/trades-reel.jpg",
+    src: "/media/plumber-field-operations.mp4",
+    poster: "/media/van.png",
     points: [
       { title: "Start from your trade", body: "Templates for plumbing, HVAC, electrical, and outfitters, live in about three minutes." },
       { title: "Mobile Field Payment Logger", body: "Log cash and checks on the truck at 0% platform fees. Card bookings stay on Stripe Connect at 1.5%." },
@@ -45,7 +45,7 @@ export const landingConfig = {
     ],
   },
   /** Logo sting, used as the transition band before the studio. */
-  sting: { src: "/media/axiom/obsidian-burst.mp4", poster: "/media/axiom/obsidian-burst.jpg" },
+  sting: { src: "/media/studio-preview.mp4", poster: "/media/hero-poster.jpg" },
   studio: {
     eyebrow: "Axiom Studio",
     title: "Build yours right here",
@@ -63,8 +63,8 @@ export const landingConfig = {
       { id: "lime", label: "Lime", value: "#a3e635" },
     ],
     slots: ["8:00 AM", "10:30 AM", "1:00 PM", "3:30 PM", "6:00 PM", "9:00 PM"],
-    previewVideo: "/media/axiom/axioms-heart.mp4",
-    previewPoster: "/media/axiom/axioms-heart.jpg",
+    previewVideo: "/media/studio-preview.mp4",
+    previewPoster: "/media/hero-poster.jpg",
     plans: [
       {
         id: "trial",

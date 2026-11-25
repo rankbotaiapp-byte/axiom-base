@@ -16,7 +16,7 @@ import { isShopNiche, SHOP_NICHES, type ShopNiche } from "./types.ts";
 export type HeroTone = "stage" | "site" | "backcountry" | "cinema";
 
 /** The same two people on every demo. Portraits are not per niche. */
-export const SHARED_STAFF = ["/media/alex-morgan.jpg", "/media/willa-grant.jpg"] as const;
+export const SHARED_STAFF = ["/media/eric.jpg", "/media/eric.jpg"] as const;
 
 export type NicheFilm = {
   heroImageUrl: string;

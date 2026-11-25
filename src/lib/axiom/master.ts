@@ -28,11 +28,44 @@ export const automateOutreachDesk = createServerFn({ method: "POST" }).handler(a
   slots: ["9:00 AM", "1:00 PM", "4:00 PM"],
 }));
 
-export const masterGate = createServerFn({ method: "GET" }).handler(async () => ({ ok: true }));
-export const masterEntry = createServerFn({ method: "GET" }).handler(async () => ({ ok: true }));
+export const masterGate = createServerFn({ method: "GET" }).handler(async () => {
+  if (typeof fetch === "undefined") return { open: true, ok: true };
+  const res = await fetch("/api/master/session", { credentials: "include" });
+  const body = (await res.json().catch(() => ({}))) as { attached?: boolean };
+  return { open: body.attached === true, ok: true };
+});
+export const masterEntry = createServerFn({ method: "GET" }).handler(async () => {
+  if (typeof fetch === "undefined") return { access: "signed-out" as const, configured: false, ok: true };
+  const res = await fetch("/api/master/session", { credentials: "include" });
+  const body = (await res.json().catch(() => ({}))) as {
+    access?: "bypass" | "session" | "signed-out";
+    configured?: boolean;
+    attached?: boolean;
+  };
+  return {
+    ok: true,
+    configured: body.configured === true,
+    access: body.attached ? "bypass" : "signed-out",
+  };
+});
 export const claimMasterBypass = createServerFn({ method: "POST" })
   .validator((d: { key?: string }) => d)
-  .handler(async () => ({ ok: true }));
+  .handler(async ({ data }: { data: { key?: string } }) => {
+    const key = String(data?.key ?? "").trim();
+    if (typeof fetch === "undefined") return { ok: true as const };
+    const res = await fetch("/api/master/session", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) throw new Error(typeof body.error === "string" ? body.error : "That key does not open the desk.");
+    if (typeof sessionStorage !== "undefined" && key.length >= 16) {
+      sessionStorage.setItem("axiom_master_bypass", key);
+    }
+    return { ok: true as const };
+  });
 export const getMasterDesk = createServerFn({ method: "GET" }).handler(async () => ({ ok: true }));
 
 export const ensureFunnelSession = createServerFn({ method: "POST" })

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Loader2, Monitor, Smartphone, Sparkles, Upload } from "lucide-react";
 import { handleGenerationGuardHttpStatus } from "@/lib/axiom/generation-checkout-client";
+import { animateRecreatedBackground } from "@/components/axiom/studioRemake";
+import { INLAY_PRESETS, MOTION_PRESETS, microMotionForNiche, type InlayPresetId, type MotionPresetId } from "@/lib/axiom/storefront-themes";
 import {
   buildLayoutConfig,
   INITIAL_SLOTS,
@@ -26,6 +28,7 @@ import {
   themeCssVars,
   type StorefrontThemeId,
 } from "@/lib/axiom/storefront-themes";
+import { resolveDemoLoop } from "@/lib/axiom/branded-demo-loop";
 import { CinematicLoop, CinematicMediaFrame } from "@/components/studio/CinematicMediaFrame";
 import { HudGlassPanel, HudMeter, HudSectionTitle } from "@/components/studio/ObsidianHudChrome";
 import type { CSSProperties } from "react";
@@ -64,8 +67,8 @@ export function StudioAutoBuildPanel({
   /** When false, panel assumes parent already applied AxiomStudioHudShell chrome. */
   embedInShell?: boolean;
 }) {
-  const [themeId, setThemeId] = useState<StorefrontThemeId>("sparta_gold");
-  const [heroLoop, setHeroLoop] = useState<string>(NICHE_HERO_LOOP_OPTIONS[0].url);
+  const [themeId, setThemeId] = useState<StorefrontThemeId>("cyber_cyan");
+  const [heroLoop, setHeroLoop] = useState<string>(() => resolveDemoLoop(niche));
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [slots, setSlots] = useState<Record<SlotKey, SlotDraft>>({
     heroFocal: { previewUrl: "", remoteUrl: "" },
@@ -77,10 +80,18 @@ export function StudioAutoBuildPanel({
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [atmosphereEnabled, setAtmosphereEnabled] = useState(false);
+  const [heroMotionUrl, setHeroMotionUrl] = useState("");
+  const [motionBusy, setMotionBusy] = useState(false);
+  const [inlay, setInlay] = useState<InlayPresetId>("surface");
+  const [motionPreset, setMotionPreset] = useState<MotionPresetId>(() => microMotionForNiche(niche));
 
   useEffect(() => {
     setAtmosphereEnabled(readAtmosphereEnabled(shopSlug));
   }, [shopSlug]);
+
+  useEffect(() => {
+    setMotionPreset(microMotionForNiche(niche));
+  }, [niche]);
 
   const cinemagraphPreset = useMemo(() => cinemagraphPresetForNiche(niche), [niche]);
 
@@ -133,6 +144,32 @@ export function StudioAutoBuildPanel({
     return "";
   }
 
+  async function animateHeroBackground() {
+    const src = slots.heroFocal.remoteUrl;
+    if (!/^https:\/\//i.test(src)) {
+      setError("Remake an uploaded photo first, then animate its background.");
+      return;
+    }
+    setMotionBusy(true);
+    setError("");
+    try {
+      const videoUrl = await animateRecreatedBackground({
+        imageUrl: src,
+        shopSlug,
+        niche,
+        shopName,
+        brandColor: theme.brandPrimary,
+        motion: motionPreset,
+      });
+      setHeroMotionUrl(videoUrl);
+      setAtmosphereEnabled(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Background motion failed");
+    } finally {
+      setMotionBusy(false);
+    }
+  }
+
   async function createFullSite() {
     if (readonly) {
       setError("Preview desk — switch to owner mode to deploy.");
@@ -149,21 +186,30 @@ export function StudioAutoBuildPanel({
       }
 
       const jobs: {
-        mode: "proof_touchup" | "ai_branded";
+        mode: "proof_touchup";
         shopSlug: string;
         slotLabel: string;
-        sourceImageUrl?: string;
+        sourceImageUrl: string;
         niche: string;
         shopName: string;
+        brandColor: string;
+        inlay: InlayPresetId;
       }[] = [];
 
       for (const key of SLOT_KEYS) {
         const label = SLOT_LABELS[key];
         const url = uploaded[key];
-        if (url && /^https:\/\//i.test(url)) {
-          jobs.push({ mode: "proof_touchup", shopSlug, slotLabel: label, sourceImageUrl: url, niche, shopName });
-        } else if (!url) {
-          jobs.push({ mode: "ai_branded", shopSlug, slotLabel: label, niche, shopName });
+        if (url && /^https:\/\//i.test(url) && !url.includes("/studio/cache/proof-")) {
+          jobs.push({
+            mode: "proof_touchup",
+            shopSlug,
+            slotLabel: label,
+            sourceImageUrl: url,
+            niche,
+            shopName,
+            brandColor: theme.brandPrimary,
+            inlay,
+          });
         }
       }
 
@@ -187,6 +233,16 @@ export function StudioAutoBuildPanel({
         for (const row of rows) {
           if (row?.imageUrl) generated.push(row.imageUrl);
         }
+        setSlots((prev) => {
+          const next = { ...prev };
+          let index = 0;
+          for (const key of SLOT_KEYS) {
+            const url = uploaded[key];
+            const remade = url && /^https:\/\//i.test(url) ? generated[index++] : "";
+            if (remade) next[key] = { ...prev[key], remoteUrl: remade, previewUrl: remade };
+          }
+          return next;
+        });
       }
 
       const heroUrl = generated[0] || uploaded.heroFocal || heroLoop;
@@ -488,7 +544,17 @@ export function StudioAutoBuildPanel({
                   ambientPreset={cinemagraphPreset}
                   niche={niche}
                 >
-                  {slots.heroFocal.previewUrl || slots.heroFocal.remoteUrl ? (
+                  {heroMotionUrl ? (
+                    <video
+                      src={heroMotionUrl}
+                      poster={slots.heroFocal.previewUrl || slots.heroFocal.remoteUrl}
+                      muted
+                      loop
+                      autoPlay
+                      playsInline
+                      className="h-full w-full object-cover"
+                    />
+                  ) : slots.heroFocal.previewUrl || slots.heroFocal.remoteUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={slots.heroFocal.previewUrl || slots.heroFocal.remoteUrl}
@@ -499,6 +565,44 @@ export function StudioAutoBuildPanel({
                     <div className="flex aspect-square items-center justify-center text-[9px] text-white/35">Focal</div>
                   )}
                 </CinematicMediaFrame>
+                <label className="mt-1 flex items-center gap-1 text-[10px] text-white/55">
+                  Inlay
+                  <select
+                    value={inlay}
+                    onChange={(event) => setInlay(event.target.value as InlayPresetId)}
+                    className="min-w-0 flex-1 rounded border border-white/15 bg-black/40 px-1 py-1 text-[10px] text-white"
+                  >
+                    {INLAY_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {/^https:\/\//i.test(slots.heroFocal.remoteUrl) ? (
+                  <div className="mt-1 flex gap-1">
+                    <select
+                      aria-label="Background motion"
+                      value={motionPreset}
+                      onChange={(event) => setMotionPreset(event.target.value as MotionPresetId)}
+                      className="min-w-0 flex-1 rounded border border-white/15 bg-black/40 px-1 py-1 text-[10px] text-white"
+                    >
+                      {MOTION_PRESETS.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="rounded border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-white/80"
+                      disabled={motionBusy}
+                      onClick={() => void animateHeroBackground()}
+                    >
+                      {motionBusy ? "…" : "Animate Background"}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

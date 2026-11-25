@@ -46,7 +46,7 @@ test("empty shops pad three proof frames with resilient local srcs", () => {
 });
 
 test("nextProofFallback walks the cascade then lands on the SVG plate", () => {
-  const chain = ["/media/defaults/hvac-1.jpg", "/media/heroes/hvac.jpg", "/media/defaults/proof-plate.svg"];
+  const chain = ["/media/heroes/hvac.jpg", "/media/heroes/plumbing.jpg", "/media/defaults/proof-plate.svg"];
   assert.equal(nextProofFallback(chain[0]!, chain), chain[1]);
   assert.equal(nextProofFallback(chain[1]!, chain), chain[2]);
   assert.equal(nextProofFallback("missing", []), "/media/defaults/proof-plate.svg");

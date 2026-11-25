@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OnboardTrialContinue } from "@/components/axiom/OnboardTrialContinue";
 import { resolveDemoNiche } from "@/lib/axiom/preview-link";
 import { NICHES } from "@/lib/axiom/niches";
 import { flatSearch } from "../search";
@@ -22,7 +23,10 @@ export default async function OnboardPage({
       <div className="max-w-md">
         <p className="text-sm uppercase tracking-[0.2em] text-muted">Claim</p>
         <h1 className="mt-3 font-display text-4xl">{label}</h1>
-        <p className="mt-4 text-muted">The preview stays open while the shop book is claimed.</p>
+        <p className="mt-4 text-muted">
+          Claim the shop, then edit the live template in Studio — photos, services, and booking — in minutes. This is not a two-week custom build.
+        </p>
+        <OnboardTrialContinue />
         <Link href={`/demo/${niche}?preview=true`} className="mt-6 inline-block text-sm text-fg">
           Back to the preview
         </Link>

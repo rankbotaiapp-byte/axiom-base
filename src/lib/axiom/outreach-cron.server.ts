@@ -34,6 +34,18 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
   const health = await import("./self-correction.server")
     .then((mod) => mod.maybeEvaluateOutreachHealthHourly())
     .catch(() => ({ ran: false, slot: null as string | null }));
+  const published = await import("./social-publish.server")
+    .then((mod) => mod.publishQueuedSocialPosts())
+    .catch(() => ({ published: 0, failed: 0, deliveries: 0 }));
+  const refreshed = await import("./social-publish.server")
+    .then((mod) => mod.refreshExpiringSocialTokens())
+    .catch(() => ({ refreshed: 0, failed: 0 }));
+  const engagement = await import("./autopilot-engagement.server")
+    .then((mod) => mod.tickSocialEngagement())
+    .catch(() => ({ scanned: 0, handled: 0 }));
+  const trustClosed = await import("./lifecycle.server")
+    .then((mod) => mod.sweepExpiredTrustWindows(sql))
+    .catch(() => 0);
   return Response.json({
     batchReleased: batch.released,
     nurtureReleased: nurture.released,
@@ -43,6 +55,11 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
     outboundPaused: outbound.paused,
     healthEvaluated: health.ran,
     healthSlot: health.slot,
+    socialPublished: published.published,
+    socialDeliveries: published.deliveries,
+    tokensRefreshed: refreshed.refreshed,
+    engagementHandled: engagement.handled,
+    trustWindowsClosed: trustClosed,
     cronEnabled,
   });
 }

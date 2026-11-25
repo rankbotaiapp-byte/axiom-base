@@ -39,7 +39,7 @@ export function outreachTemplatesForNiche(niche: string): OutreachTemplateDraft 
       "{owner} — {business} · $1 trial, AI books 24/7, $150/mo autopilot.\nEric: {founder_video}\nPreview: {url}",
     emailSubject: "{owner} — {business} is live to book jobs",
     emailBody:
-      "Hi {owner},\n\n{business} in {city} has a pre-built storefront with 24/7 AI booking and SMS dispatch.\n\n$1 trial · then $150/mo autopilot.\n\n{url}\n\nEric welcome: {founder_video}\nTrade film: {video}\n",
+      "Hi {owner},\n\n{business} in {city} has a 24/7 booking page with after-hours dispatch.\n\n$1 trial · then $150/mo autopilot.\n\n{url}\n\nEric welcome: {founder_video}\nTrade film: {video}\n",
   };
 }
 

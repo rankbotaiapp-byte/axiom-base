@@ -1,7 +1,7 @@
 import { OutboundStorefront } from "@/components/outbound/OutboundStorefront";
 import { firstQuery } from "@/lib/axiom/outbound-preview";
 import { resolveOutboundLead } from "@/lib/axiom/outbound-preview.server";
-import { previewStockForNiche } from "@/lib/axiom/preview-stock";
+import { previewStockForBusiness } from "@/lib/axiom/preview-stock";
 import { readStudioAccess } from "@/lib/axiom/studio-credits.server";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,11 @@ export default async function PreviewPage({
   return (
     <OutboundStorefront
       profile={profile}
-      stock={previewStockForNiche(profile.niche)}
+      stock={previewStockForBusiness({
+        niche: profile.niche,
+        businessName: profile.businessName,
+        city: profile.city,
+      })}
       studioUnlocked={access.isActive && access.credits > 0}
     />
   );

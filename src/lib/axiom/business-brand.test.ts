@@ -58,7 +58,7 @@ test("mapper drops unsafe logos and control characters", () => {
   assert.equal(brand.logoUrl, "");
   assert.equal(brand.businessName, "GlassEddy");
   assert.equal(brand.contactName, "AdaQuinn");
-  assert.equal(mapBusinessToTemplateBrand(sample({ logoUrl: "/media/mark.png" })).logoUrl, "/media/mark.png");
+  assert.equal(mapBusinessToTemplateBrand(sample({ logoUrl: "/media/van.png" })).logoUrl, "/media/van.png");
 });
 
 test("page size defaults to 50 and caps at 100", () => {

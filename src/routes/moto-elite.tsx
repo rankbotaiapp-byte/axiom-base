@@ -16,8 +16,8 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
 /* ───────────────────────── Config ───────────────────────── */
 
-const VIDEO_SRC = '/media/garage-loop.mp4'
-const POSTER_SRC = '/media/garage-poster.jpg'
+const VIDEO_SRC = '/media/auto-hero-animation.mp4'
+const POSTER_SRC = '/media/auto-hero.jpg'
 // Shared New Era demo endpoint — swap per client.
 const LEAD_ENDPOINT = 'https://formspree.io/f/xykrkdky'
 

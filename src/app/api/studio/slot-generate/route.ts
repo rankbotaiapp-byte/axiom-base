@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateAiBrandedSlot, generateProofTouchupSlot } from "@/lib/axiom/ai-client";
+import {
+  findCachedBackgroundMotion,
+  findCachedProofTouchup,
+  generateAiBrandedSlot,
+  generateBackgroundMotion,
+  generateProofTouchupSlot,
+} from "@/lib/axiom/ai-client";
 import {
   authorizeAndConsumeGeneration,
   generationGuardJson,
   refundGeneration,
 } from "@/lib/axiom/generation-guard";
 import { getSessionUser } from "@/lib/auth/verify.server";
-import { isTemplateSkinId } from "@/lib/axiom/storefront-themes";
+import { INLAY_PRESET_IDS, MOTION_PRESET_IDS, isTemplateSkinId } from "@/lib/axiom/storefront-themes";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -19,6 +25,21 @@ const proofTouchupSchema = z.object({
   slotLabel: z.string().max(80).optional(),
   niche: z.string().max(40).optional(),
   themeId: z.string().max(40).optional(),
+  shopName: z.string().max(80).optional(),
+  brandColor: z.string().max(24).optional(),
+  inlay: z.enum(INLAY_PRESET_IDS).optional(),
+  logoUrl: z.string().url().max(2000).optional(),
+});
+
+const backgroundMotionSchema = z.object({
+  mode: z.literal("background_motion"),
+  shopSlug: z.string().min(1).max(80),
+  sourceImageUrl: z.string().url().max(2000),
+  niche: z.string().max(40).optional(),
+  shopName: z.string().max(80).optional(),
+  brandColor: z.string().max(24).optional(),
+  motion: z.enum(MOTION_PRESET_IDS).optional(),
+  reactions: z.array(z.string().max(64)).max(2).optional(),
 });
 
 const aiBrandedSchema = z.object({
@@ -33,7 +54,7 @@ const aiBrandedSchema = z.object({
   shopName: z.string().max(80).optional(),
 });
 
-const slotJobSchema = z.discriminatedUnion("mode", [proofTouchupSchema, aiBrandedSchema]);
+const slotJobSchema = z.discriminatedUnion("mode", [proofTouchupSchema, backgroundMotionSchema, aiBrandedSchema]);
 
 const bodySchema = z.union([
   slotJobSchema,
@@ -64,6 +85,34 @@ async function runSlotJob(
   userId: string,
   request: Request,
 ): Promise<{ ok: true; result: unknown } | { ok: false; status: number; body: Record<string, unknown> }> {
+  if (job.mode === "proof_touchup" && /^https:\/\//i.test(job.sourceImageUrl)) {
+    const cached = await findCachedProofTouchup({
+      shopSlug: job.shopSlug,
+      sourceImageUrl: job.sourceImageUrl,
+      slotLabel: job.slotLabel,
+      niche: job.niche || defaults.niche,
+      themeId: job.themeId || defaults.themeId,
+      shopName: job.shopName || defaults.shopName,
+      brandColor: job.brandColor,
+      inlay: job.inlay,
+      logoUrl: job.logoUrl,
+    }).catch(() => null);
+    if (cached) return { ok: true, result: cached };
+  }
+
+  if (job.mode === "background_motion" && /^https:\/\//i.test(job.sourceImageUrl)) {
+    const cached = await findCachedBackgroundMotion({
+      shopSlug: job.shopSlug,
+      sourceImageUrl: job.sourceImageUrl,
+      niche: job.niche || defaults.niche,
+      shopName: job.shopName || defaults.shopName,
+      brandColor: job.brandColor,
+      motion: job.motion,
+      reactions: job.reactions,
+    }).catch(() => null);
+    if (cached) return { ok: true, result: cached };
+  }
+
   const guard = await authorizeAndConsumeGeneration(userId, request.headers);
   if (!guard.allowed) {
     return { ok: false, status: guard.status, body: generationGuardJson(guard) };
@@ -75,7 +124,8 @@ async function runSlotJob(
     return { ok: false, status: 400, body: { error: "Unknown shop" } };
   }
 
-  const themeId = job.mode === "ai_branded" ? job.themeId || job.templateSkin : job.themeId;
+  const themeId =
+    job.mode === "ai_branded" ? job.themeId || job.templateSkin : job.mode === "proof_touchup" ? job.themeId : undefined;
   const mergedTheme = themeId || defaults.themeId;
   if (!validateTheme(mergedTheme)) {
     await refundGeneration(guard.userId);
@@ -94,8 +144,44 @@ async function runSlotJob(
         slotLabel: job.slotLabel,
         niche: job.niche || defaults.niche,
         themeId: mergedTheme,
+        shopName: job.shopName || defaults.shopName,
+        brandColor: job.brandColor,
+        inlay: job.inlay,
+        logoUrl: job.logoUrl,
       });
       return { ok: true, result };
+    }
+
+    if (job.mode === "background_motion") {
+      if (!/^https:\/\//i.test(job.sourceImageUrl)) {
+        await refundGeneration(guard.userId);
+        return { ok: false, status: 400, body: { error: "sourceImageUrl must be a public https URL." } };
+      }
+      const reserved = await import("@/lib/axiom/hero-motion-studio.server").then((mod) => mod.reserveMicroMotion(shopSlug));
+      if (!reserved.ok) {
+        await refundGeneration(guard.userId);
+        return { ok: false, status: 402, body: { error: reserved.message, code: "CONTENT_BALANCE" } };
+      }
+      try {
+        const result = await generateBackgroundMotion({
+          shopSlug,
+          sourceImageUrl: job.sourceImageUrl,
+          niche: job.niche || defaults.niche,
+          shopName: job.shopName || defaults.shopName,
+          brandColor: job.brandColor,
+          motion: job.motion,
+          reactions: job.reactions,
+        });
+        if (result.cached) {
+          const { releaseMicroMotion } = await import("@/lib/axiom/hero-motion-studio.server");
+          await releaseMicroMotion(reserved.shopId);
+        }
+        return { ok: true, result };
+      } catch (err) {
+        const { releaseMicroMotion } = await import("@/lib/axiom/hero-motion-studio.server");
+        await releaseMicroMotion(reserved.shopId);
+        throw err;
+      }
     }
 
     const result = await generateAiBrandedSlot({

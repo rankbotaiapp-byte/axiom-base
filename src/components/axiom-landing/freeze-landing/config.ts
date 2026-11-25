@@ -131,8 +131,8 @@ export const DEFAULT_CONFIG: LandingConfig = {
     studioCta: { label: "Launch Axiom Studio →", url: STUDIO_HREF, glow: true, visible: true },
   },
   media: {
-    characterSrc: "/media/axiom-character.mp4",
-    heartSrc: "/media/heart-machine.mp4",
+    characterSrc: "/media/studio-preview.mp4",
+    heartSrc: "/media/studio-preview.mp4",
     heartAutoplay: true,
     heartLoop: true,
     studioSrc: "/media/studio-preview.mp4",

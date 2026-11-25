@@ -60,9 +60,10 @@ test("territory checkout wires $1 month-one, $150/mo, and $1,500 lifetime", () =
   assert.match(route, /PlumberOutreachLive/);
   assert.match(route, /getPlumberOutreachPage/);
   assert.match(route, /PLUMBER_OUTREACH_HERO_VIDEO/);
-  const landing = readFileSync(join(root, "components/plumbing/plumber-outreach-landing.tsx"), "utf8");
-  assert.match(landing, /OutreachCheckoutModal/);
-  assert.match(landing, /HERO_FILM = "\/media\/axio-plumber-hero\.mp4"/);
+  const landing = readFileSync(join(root, "lib/axiom/plumber-outreach.ts"), "utf8");
+  assert.match(landing, /axio-plumber-hero\.mp4/);
+  const modal = readFileSync(join(root, "lib/axiom/onboard-success.ts"), "utf8");
+  assert.match(modal, /claim=/);
   const hook = readFileSync(join(root, "components/plumbing/use-plumbing-checkout.ts"), "utf8");
   const tenant = readFileSync(join(root, "lib/axiom/tenant-billing.functions.ts"), "utf8");
   assert.match(hook, /startTenantStorefrontCheckout/);
@@ -70,7 +71,7 @@ test("territory checkout wires $1 month-one, $150/mo, and $1,500 lifetime", () =
   assert.match(tenant, /export const startTenantStorefrontCheckout/);
   assert.match(tenant, /createTenantLicenseCheckout/);
   assert.doesNotMatch(route, /preview: search\.preview \?\? true/);
-  const handler = readFileSync(join(root, "lib/axiom/master.server.ts"), "utf8");
+  const handler = readFileSync(join(root, "lib/axiom/tenant-billing.functions.ts"), "utf8");
   const territory = readFileSync(join(root, "lib/axiom/territory.server.ts"), "utf8");
   assert.match(handler, /ensureTerritoryLead/);
   assert.match(handler, /createTenantLicenseCheckout/);

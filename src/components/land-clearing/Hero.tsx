@@ -55,8 +55,8 @@ export default function Hero() {
         <video
           ref={videoRef}
           className="h-full w-full object-cover object-[62%_center] [filter:contrast(1.15)_saturate(1.1)_brightness(.9)]"
-          src="/media/land-clearing-loop.mp4"
-          poster="/media/land-clearing-poster.jpg"
+          src="/media/infrastructure-hero-animation.mp4"
+          poster="/media/heroes/contractor.jpg"
           autoPlay
           muted
           loop

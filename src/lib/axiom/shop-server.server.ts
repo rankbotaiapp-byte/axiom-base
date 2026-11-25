@@ -129,9 +129,10 @@ export async function provisionTerritoryForPayer(input: { leadSlug: string; user
     plan: feeSplit.plan,
     gear: { gear_guardian_bps: feeSplit.gear_guardian_bps, gear_guardian_issuer: "Gear Guardian LLC" },
   });
-  if (!ownerId) {
+  const unowned = !ownerId;
+  if (unowned) {
     const claimToken = await claimShopWithToken(shop.shopId);
-    return { ...shop, unowned: true, claimToken };
+    return { ...shop, unowned: !ownerId, claimToken };
   }
   const { syncGenerationQuotaForClaimedShopOwner } = await import("./generation-quota.server");
   await syncGenerationQuotaForClaimedShopOwner(ownerId, shop.slug).catch(() => undefined);

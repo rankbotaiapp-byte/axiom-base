@@ -79,6 +79,13 @@ test("stock branding module sources legal media and stamps tenant brand plate", 
   assert.match(cron, /stockBranded/);
 });
 
+test("autopilot prime pull prefers scored plumbing leads without rewriting the fallback query", () => {
+  const src = readFileSync(join(root, "src/lib/axiom/autopilot.server.ts"), "utf8");
+  assert.match(src, /coalesce\(prime_score, 0\) >= 75/);
+  assert.match(src, /qa_approved = true/);
+  assert.match(src, /nonFixedVoip/);
+});
+
 test("outbound engine respects daily SMS/email caps and OUTREACH_MODE gate", () => {
   const engine = readFileSync(join(root, "src/lib/axiom/outbound-engine.server.ts"), "utf8");
   const scheduler = readFileSync(join(root, "src/lib/axiom/outreach-scheduler.server.ts"), "utf8");

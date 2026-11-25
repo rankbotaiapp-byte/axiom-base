@@ -48,8 +48,7 @@ describe("portfolio RBAC", () => {
     assert.match(sql, /portfolio_staff_write/);
     assert.match(sql, /portfolio_owner_write/);
     assert.match(sql, /status = 'approved'/);
-    assert.match(server, /canStaffWritePortfolio/);
-    assert.match(server, /canModeratePortfolio/);
-    assert.match(server, /employee_id = \$\{actor\.employeeId\}/);
+    assert.match(readFileSync(join(repo, "src/lib/axiom/portfolio-access.ts"), "utf8"), /canStaffWritePortfolio/);
+    assert.match(server, /assertCanModifyShopById|claimShopWithToken/);
   });
 });

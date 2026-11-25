@@ -161,6 +161,9 @@ export async function queueAutopilotSocialClips(): Promise<{ queued: number }> {
 
 /** Background pass for armed tenants: stock brand, AI still, proof fill, social clip, owner notice. */
 export async function tickShopAutopilot(): Promise<{ ran: number; results: AutopilotTickResult[] }> {
+  await import("./social-publish.server")
+    .then((mod) => mod.publishQueuedSocialPosts())
+    .catch(() => undefined);
   const rows = (await selectArmedShops()).filter((row) => parseAutopilotActive(row));
   const results: AutopilotTickResult[] = [];
   const { generateArmedHeroForShop } = await import("./hero-motion-studio.server");
@@ -191,8 +194,14 @@ export async function tickShopAutopilot(): Promise<{ ran: number; results: Autop
     const proof = await cycleProofStill(row).catch(() => false);
     const social = (await queueSocialClip(row).catch(() => ({ queued: false }))).queued;
     const stockBrand = Boolean(stock.sourced && (stock.stored || stock.queued));
+    const { publishApprovedAutopilotBundle } = await import("./autopilot-publish.server");
+    const published = await publishApprovedAutopilotBundle(row).catch(() => ({
+      applied: false,
+      receipts: [],
+      detail: "Publish hook skipped.",
+    }));
     let notice = false;
-    if (hero.ok || proof || social || stockBrand) {
+    if (hero.ok || proof || social || stockBrand || published.applied) {
       await notifyShop(row.id, {
         kind: "inquiry",
         subject: "Autopilot ran",
@@ -200,9 +209,11 @@ export async function tickShopAutopilot(): Promise<{ ran: number; results: Autop
           ? "Fresh trade stock media was sourced and stamped with your shop name, city, and booking CTA."
           : social
             ? "A social clip is queued with your rotating cinematic loop, shop name, city, and booking line."
-            : hero.ok
-              ? "A fresh still is on your storefront. Proof plates stay in sync."
-              : "A proof plate was filled from your shop photo.",
+            : published.applied
+              ? "Storefront preview media is updated. Social posts were recorded in simulation."
+              : hero.ok
+                ? "A fresh still is on your storefront. Proof plates stay in sync."
+                : "A proof plate was filled from your shop photo.",
       }).catch(() => undefined);
       notice = true;
     }
@@ -213,12 +224,13 @@ export async function tickShopAutopilot(): Promise<{ ran: number; results: Autop
       proof,
       social,
       stockBrand,
+      published: published.applied,
       notice,
-      detail: stockBrand ? stock.detail : hero.detail,
+      detail: stockBrand ? stock.detail : published.applied ? published.detail : hero.detail,
     });
   }
   return {
-    ran: results.filter((row) => row.hero || row.proof || row.social || row.stockBrand).length,
+    ran: results.filter((row) => row.hero || row.proof || row.social || row.stockBrand || row.published).length,
     results,
   };
 }

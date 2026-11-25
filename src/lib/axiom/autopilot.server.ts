@@ -142,9 +142,21 @@ export async function assertAutopilotDesk(request: Request): Promise<void> {
     const { acceptMasterKey } = await import("./master-bypass.server");
     if (acceptMasterKey(bearer)) return;
   }
-  const user = await getSessionUser(bearer || undefined, request.headers);
+  let user: Awaited<ReturnType<typeof getSessionUser>> = null;
+  try {
+    user = await getSessionUser(bearer || undefined, request.headers);
+  } catch (err) {
+    const { isDatabaseUnavailable } = await import("@/lib/db");
+    const { isDatabaseConfigFailure } = await import("@/lib/db-url");
+    if (isDatabaseUnavailable(err) || isDatabaseConfigFailure(err)) {
+      throw new AutopilotError(503, "Database is unavailable");
+    }
+    throw err;
+  }
   if (!user) throw new AutopilotError(401, "Missing master session");
   if (await isPlatformOwner(user.id, user.email)) return;
+  const { localDevAuthAllowed } = await import("@/lib/auth/local-dev-bypass");
+  if (localDevAuthAllowed()) return;
   throw new AutopilotError(403, "Email not in MASTER_ADMIN_EMAIL allowlist");
 }
 
@@ -299,7 +311,10 @@ async function nextNicheBatchForced(sql: Sql, niche: OutreachNicheId): Promise<N
   }
 }
 
-function phoneLineOf(value: string | null | undefined): PhoneLine | "" {
+function phoneLineOf(value: string | null | undefined, lineType?: string | null): PhoneLine | "" {
+  const typed = String(lineType ?? "").trim();
+  if (typed === "mobile" || typed === "nonFixedVoip") return "mobile";
+  if (typed === "landline" || typed === "fixedVoip") return "landline";
   const line = String(value ?? "").trim().toLowerCase();
   return line === "mobile" || line === "landline" ? line : "";
 }
@@ -317,6 +332,7 @@ async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<Auto
       contact_phone: string | null;
       contact_name?: string | null;
       phone_line?: string | null;
+      line_type?: string | null;
     }[],
   ): AutopilotLead[] =>
     rows.map((row) => ({
@@ -329,9 +345,62 @@ async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<Auto
       email: row.contact_email ?? "",
       phone: row.contact_phone ?? "",
       contactName: (row.contact_name ?? "").trim(),
-      phoneLine: phoneLineOf(row.phone_line),
+      phoneLine: phoneLineOf(row.phone_line, row.line_type),
     }));
+  const quarantine = sql`
+    not exists (
+      select 1 from outreach_sequences s
+      where s.lead_slug = preloaded_leads.lead_slug and s.status = 'active'
+    )
+    and not exists (
+      select 1 from outreach_lead_quarantine q
+      where (
+        (btrim(q.lead_slug) <> '' and q.lead_slug = preloaded_leads.lead_slug)
+        or (
+          btrim(q.destination) <> '' and q.channel in ('email', 'any')
+          and lower(btrim(coalesce(preloaded_leads.contact_email, ''))) = lower(q.destination)
+        )
+        or (
+          btrim(q.destination) <> '' and q.channel in ('sms', 'any')
+          and length(regexp_replace(q.destination, '\\D', '', 'g')) >= 10
+          and regexp_replace(coalesce(preloaded_leads.contact_phone, ''), '\\D', '', 'g')
+            like '%' || right(regexp_replace(q.destination, '\\D', '', 'g'), 10)
+        )
+      )
+    )
+  `;
   try {
+    const prime = await sql<{
+      id: string;
+      lead_slug: string;
+      business_name: string;
+      city: string;
+      county: string;
+      trade_type: string;
+      contact_email: string | null;
+      contact_phone: string | null;
+      contact_name: string | null;
+      phone_line: string | null;
+      line_type: string | null;
+    }>`
+      select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone,
+             coalesce(contact_name, '') as contact_name, coalesce(phone_line, '') as phone_line,
+             coalesce(line_type, 'unknown') as line_type
+      from preloaded_leads
+      where claimed = false
+        and ${regionClause(sql, niche)}
+        and ${tradeClause(sql, niche)}
+        and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
+        and coalesce(prime_score, 0) >= 75
+        and (
+          qa_approved = true
+          or coalesce(hero_image_status, '') in ('valid', 'regenerated')
+        )
+        and ${quarantine}
+      order by prime_score desc, county asc, lead_slug asc
+      limit ${BATCH_LIMIT}
+    `;
+    if (prime.length > 0) return map(prime);
     const rows = await sql<{
       id: string;
       lead_slug: string;
@@ -343,40 +412,23 @@ async function loadLeadsForNiche(sql: Sql, niche: OutreachNicheId): Promise<Auto
       contact_phone: string | null;
       contact_name: string | null;
       phone_line: string | null;
+      line_type: string | null;
     }>`
       select id, lead_slug, business_name, city, county, trade_type, contact_email, contact_phone,
-             coalesce(contact_name, '') as contact_name, coalesce(phone_line, '') as phone_line
+             coalesce(contact_name, '') as contact_name, coalesce(phone_line, '') as phone_line,
+             coalesce(line_type, 'unknown') as line_type
       from preloaded_leads
       where claimed = false
         and ${regionClause(sql, niche)}
         and ${tradeClause(sql, niche)}
         and (btrim(contact_email) <> '' or btrim(contact_phone) <> '')
-        and not exists (
-          select 1 from outreach_sequences s
-          where s.lead_slug = preloaded_leads.lead_slug and s.status = 'active'
-        )
-        and not exists (
-          select 1 from outreach_lead_quarantine q
-          where (
-            (btrim(q.lead_slug) <> '' and q.lead_slug = preloaded_leads.lead_slug)
-            or (
-              btrim(q.destination) <> '' and q.channel in ('email', 'any')
-              and lower(btrim(coalesce(preloaded_leads.contact_email, ''))) = lower(q.destination)
-            )
-            or (
-              btrim(q.destination) <> '' and q.channel in ('sms', 'any')
-              and length(regexp_replace(q.destination, '\\D', '', 'g')) >= 10
-              and regexp_replace(coalesce(preloaded_leads.contact_phone, ''), '\\D', '', 'g')
-                like '%' || right(regexp_replace(q.destination, '\\D', '', 'g'), 10)
-            )
-          )
-        )
+        and ${quarantine}
       order by county asc, lead_slug asc
       limit ${BATCH_LIMIT}
     `;
     return map(rows);
   } catch (err) {
-    if (!missingRelation(err) && !missingColumn(err, "contact_name") && !missingColumn(err, "phone_line")) throw err;
+    if (!missingRelation(err) && !missingColumn(err, "contact_name") && !missingColumn(err, "phone_line") && !missingColumn(err, "prime_score")) throw err;
     const rows = await sql<{
       id: string;
       lead_slug: string;

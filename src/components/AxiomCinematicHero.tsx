@@ -5,8 +5,8 @@ import Link from "next/link";
 import AxiomCinematicExperienceLazy from "@/components/AxiomCinematicExperienceLazy";
 import { AxiomHeroBackground } from "@/components/AxiomHeroBackground";
 
-const LOGO_VIDEO = "/media/axiom/axiom-logo-loop.mp4";
-const LOGO_POSTER = "/media/axiom/axiom-logo-poster.jpg";
+const LOGO_VIDEO = "/media/studio-cyan-fog-loop.mp4";
+const LOGO_POSTER = "/media/studio-cyan-fog-poster.jpg";
 
 const BTN_BASE =
   "group relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full px-7 py-3 text-sm font-bold tracking-wide transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";

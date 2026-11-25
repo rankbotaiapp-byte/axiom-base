@@ -1,6 +1,7 @@
 import "server-only";
 import { getSql } from "@/lib/db";
 import { normalizeAccent } from "./accent-color";
+import { parseShowcaseThemeId, showcaseTheme } from "./outreach-desk";
 
 export type PublicShopRow = {
   id: string;
@@ -11,6 +12,12 @@ export type PublicShopRow = {
   description: string;
   address: string;
   accent: string;
+  ringColor: string;
+  neonAccent: string;
+  heroImageUrl: string;
+  heroVideoUrl: string | null;
+  phone: string;
+  showcaseThemeId: string;
 };
 
 /** Shop row addressed by public slug or internal id (`shop_dg`). */
@@ -29,14 +36,24 @@ export async function readPublicShop(key: string): Promise<PublicShopRow | null>
       address: string | null;
       neon_accent: string | null;
       ring_color: string | null;
+      hero_image_url: string | null;
+      hero_video_url: string | null;
+      notify_phone: string | null;
+      trade_profile: unknown;
     }>`
-      select id, slug, name, niche, tagline, description, address, neon_accent, ring_color
+      select id, slug, name, niche, tagline, description, address, neon_accent, ring_color,
+        hero_image_url, hero_video_url, notify_phone, trade_profile
       from shops
       where lower(slug) = lower(${value}) or id = ${value}
       limit 1
     `;
     const row = rows[0];
     if (!row) return null;
+    let showcaseThemeId = "";
+    const raw = row.trade_profile;
+    if (raw && typeof raw === "object" && !Array.isArray(raw) && "showcaseThemeId" in raw) {
+      showcaseThemeId = String((raw as { showcaseThemeId?: unknown }).showcaseThemeId ?? "");
+    }
     return {
       id: row.id,
       slug: row.slug,
@@ -46,6 +63,12 @@ export async function readPublicShop(key: string): Promise<PublicShopRow | null>
       description: row.description ?? "",
       address: row.address ?? "",
       accent: normalizeAccent(row.neon_accent) || normalizeAccent(row.ring_color),
+      ringColor: normalizeAccent(row.ring_color),
+      neonAccent: normalizeAccent(row.neon_accent),
+      heroImageUrl: row.hero_image_url ?? "",
+      heroVideoUrl: row.hero_video_url,
+      phone: row.notify_phone ?? "",
+      showcaseThemeId,
     };
   } catch (err) {
     console.error("[storefront] shop read failed", err instanceof Error ? err.message : err);
@@ -67,4 +90,28 @@ export async function readShopAccent(slug: string): Promise<string> {
     console.error("[storefront] accent read failed", err instanceof Error ? err.message : err);
     return "";
   }
+}
+
+export async function applyShowcaseThemeToShop(slug: string, themeId: string): Promise<void> {
+  const key = slug.trim().toLowerCase();
+  if (!/^[a-z0-9-]{2,80}$/.test(key)) return;
+  const theme = showcaseTheme(parseShowcaseThemeId(themeId));
+  const sql = await getSql();
+  const rows = await sql<{ id: string; trade_profile: unknown }>`
+    select id, trade_profile from shops where slug = ${key} limit 1
+  `;
+  const row = rows[0];
+  if (!row) return;
+  let profile: Record<string, unknown> = {};
+  if (row.trade_profile && typeof row.trade_profile === "object" && !Array.isArray(row.trade_profile)) {
+    profile = { ...(row.trade_profile as Record<string, unknown>) };
+  }
+  profile.showcaseThemeId = theme.id;
+  await sql`
+    update shops
+    set ring_color = ${theme.ring},
+        neon_accent = ${theme.book},
+        trade_profile = ${JSON.stringify(profile)}
+    where id = ${row.id}
+  `;
 }

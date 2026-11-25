@@ -74,7 +74,7 @@ export const CINEMATIC_EFFECTS: readonly CinematicEffect[] = [
     label: "High-Impact Water Burst",
     detail: "Shockwave spike, then a decaying ripple.",
     haptic: "waterBurst",
-    loopUrl: "/media/abyssal-hero-loop.mp4",
+    loopUrl: "/media/plumbing-drain-ride.mp4",
     cues: [
       { at: 0.15, pattern: [70, 24, 36] },
       { at: 1.8, pattern: [28, 40, 12] },
@@ -86,7 +86,7 @@ export const CINEMATIC_EFFECTS: readonly CinematicEffect[] = [
     label: "Heavy Splashing Wave",
     detail: "Mass water hit with a long wash-out.",
     haptic: "heavySplash",
-    loopUrl: "/media/otter-hero-animation.mp4",
+    loopUrl: "/media/plumber-field-operations.mp4",
     cues: [
       { at: 0.55, pattern: [60, 20, 40] },
       { at: 3.2, pattern: [36] },
@@ -110,7 +110,7 @@ export const CINEMATIC_EFFECTS: readonly CinematicEffect[] = [
     label: "Ambient Embers",
     detail: "Slow heat motes over carbon film.",
     haptic: "ambientEmbers",
-    loopUrl: "/media/polar-bear-hero-animation.mp4",
+    loopUrl: "/media/studio-cyan-fog-loop.mp4",
     cues: [{ at: 1.2, pattern: [10, 80, 8] }],
   },
   {

@@ -5,7 +5,6 @@
  */
 import {
   CATALOG_BY_ID,
-  catalogCardStill,
   catalogFilmPath,
   resolveCatalogNiche,
   tradeLoopUrl,
@@ -13,6 +12,7 @@ import {
 } from "../../config/catalog.ts";
 import { nicheForLead } from "./directory.ts";
 import { deskPreviewPath } from "./funnel.ts";
+import { demoPlatePath } from "./branded-demo-url.ts";
 import type { ShopNiche } from "./types.ts";
 
 export type VerifiedLoopBinding = {
@@ -33,16 +33,12 @@ const SPECIAL_LOOP_BINDINGS: Partial<
   Record<CatalogNiche, { primary: string; alternates: readonly string[] }>
 > = {
   "water-systems": {
-    primary: "otter-hero-animation.mp4",
-    alternates: ["shark-hero-animation.mp4", "master-defaults/sharks-loop.mp4"],
+    primary: "axio-plumber-hero.mp4",
+    alternates: ["plumbing-emergency-hero.mp4", "plumbers-hero-animation.mp4"],
   },
   plumbing: {
     primary: "axio-plumber-hero.mp4",
     alternates: [
-      "axiom-plumber-hero.mp4",
-      "plumbers-outreach-hero-animation.mp4",
-      "axiom-plumber-hero.mp4.mp4",
-      "axiom-plumber-hero-mobile.mp4",
       "axio-plumber-hero-mobile.mp4",
       "plumbing-emergency-hero.mp4",
       "plumbers-hero-animation.mp4",
@@ -54,21 +50,16 @@ const SPECIAL_LOOP_BINDINGS: Partial<
     alternates: ["locksmith-hero-animation.mp4"],
   },
   fabrication: {
-    // `universal-hero-animation.mp4` is not shipped; polar-bear is the verified loop.
-    primary: "polar-bear-hero-animation.mp4",
-    alternates: ["master-defaults/polar-bear-loop.mp4"],
+    primary: "infrastructure-hero-animation.mp4",
+    alternates: ["locksmith-hero-animation.mp4"],
   },
   auto: {
     primary: "auto-hero-animation.mp4",
-    alternates: ["auto-tuning-hero-animation.mp4", "apex-launch-hero-animation.mp4"],
+    alternates: ["cleaner-hero-animation.mp4"],
   },
   taxidermy: {
-    primary: "leopard-hero-animation.mp4",
-    alternates: [
-      "raptor-hero-animation.mp4",
-      "taxidermy-hero-animation.mp4",
-      "underwater-leapord-hero-animation.mp4",
-    ],
+    primary: "infrastructure-hero-animation.mp4",
+    alternates: ["locksmith-hero-animation.mp4"],
   },
 };
 
@@ -190,7 +181,12 @@ export function pairDatasetToNichePreview(record: DatasetBusinessRecord): Person
     tagline,
     heroVideoUrl: binding.primaryLoop,
     alternateLoops: binding.alternateLoops,
-    heroStillUrl: catalogCardStill(niche),
+    heroStillUrl: demoPlatePath({
+      businessName,
+      niche,
+      slot: "hero",
+      city: cleanLine(record.city, 80),
+    }),
     overlay: {
       businessName,
       phone,
@@ -214,23 +210,17 @@ export function pairDatasetToNichePreview(record: DatasetBusinessRecord): Person
  * Prefers an explicit pin when it is already a verified `/media` loop.
  */
 /** Graceful fallback when a niche loop is missing from `public/media`. */
-export const MASTER_DEFAULT_LOOP = "/media/master-defaults/leopard-loop.mp4";
+export const MASTER_DEFAULT_LOOP = "/media/axio-plumber-hero.mp4";
 
 const KNOWN_MISSING_LOOPS = new Set([
   "/media/universal-hero-animation.mp4",
 ]);
 
-/** Remap known-missing catalog paths onto shipped master-default loops. */
+/** Remap known-missing catalog paths onto shipped campaign loops. */
 export function withMediaFallback(url: string): string {
   const clean = url.trim().split("?")[0] ?? "";
   if (!clean) return MASTER_DEFAULT_LOOP;
-  if (KNOWN_MISSING_LOOPS.has(clean)) {
-    if (clean.includes("abyssal") || clean.includes("shark")) {
-      return "/media/master-defaults/sharks-loop.mp4";
-    }
-    if (clean.includes("universal")) return "/media/master-defaults/polar-bear-loop.mp4";
-    return MASTER_DEFAULT_LOOP;
-  }
+  if (KNOWN_MISSING_LOOPS.has(clean)) return MASTER_DEFAULT_LOOP;
   return clean;
 }
 

@@ -4,11 +4,12 @@ import { getSql } from "@/lib/db";
 import { STANDARD_MONTHLY_CENTS } from "@/lib/stripe/commercial";
 import { GEAR_GUARDIAN_BPS } from "./merchant-pricing";
 import { activateTerritory } from "./territory.server";
+import { mapStripeBillingStatus, type LifecycleBillingStatus } from "./lifecycle";
 
 /** Fee recipient for the 150 bps platform split. */
 export const GEAR_GUARDIAN_LLC = "Gear Guardian LLC";
 
-export type TenantBillingStatus = "trialing" | "active" | "canceled";
+export type TenantBillingStatus = LifecycleBillingStatus;
 
 export type GearGuardianStamp = {
   gear_guardian_bps: number;
@@ -24,6 +25,7 @@ export type ProvisionTenantInput = {
   status?: TenantBillingStatus;
   plan?: string;
   accent?: string;
+  showcaseThemeId?: string;
   gear?: Partial<GearGuardianStamp>;
   stripeCustomerId?: string;
   stripeSessionId?: string;
@@ -93,11 +95,7 @@ export function parseGearGuardianMetadata(meta: Record<string, string>): GearGua
 }
 
 export function mapSubscriptionStatus(raw: string, deleted: boolean): TenantBillingStatus {
-  if (deleted) return "canceled";
-  if (raw === "trialing") return "trialing";
-  if (raw === "active") return "active";
-  if (raw === "canceled" || raw === "unpaid" || raw === "incomplete_expired") return "canceled";
-  return "active";
+  return mapStripeBillingStatus(raw, deleted);
 }
 
 export function slugFromStripeObject(object: Record<string, unknown>): string {
@@ -313,6 +311,14 @@ export async function provisionTenant(input: ProvisionTenantInput): Promise<Prov
       console.error("[storefront] accent save failed", err instanceof Error ? err.message : err);
     }
   }
+  if (input.showcaseThemeId) {
+    try {
+      const { applyShowcaseThemeToShop } = await import("./shop-accent.server");
+      await applyShowcaseThemeToShop(slug, input.showcaseThemeId);
+    } catch (err) {
+      console.error("[storefront] showcase theme save failed", err instanceof Error ? err.message : err);
+    }
+  }
   await sql`
     insert into shop_billing (shop_id, plan, status, price_cents, gear_guardian_bps)
     values (${shopId}, ${plan}, ${status}, ${STANDARD_MONTHLY_CENTS}, ${gear.gear_guardian_bps})
@@ -349,6 +355,13 @@ export async function syncTenantSubscriptionStatus(slug: string, status: TenantB
       from shops
       where shops.id = billing.shop_id and shops.slug = ${key}
     `;
+    await sql`
+      update tenants
+      set plan_status = ${status}
+      from shops
+      where tenants.shop_id = shops.id and shops.slug = ${key}
+        and tenants.plan_status is distinct from 'lifetime'
+    `.catch(() => undefined);
   } catch (err) {
     console.error("[axiom] billing status sync failed", err instanceof Error ? err.message : err);
   }

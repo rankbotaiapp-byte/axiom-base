@@ -7,7 +7,7 @@ import { catalogFilmUrl } from "@/config/catalog";
 import { attachLoopTailTrim } from "@/lib/axiom/loop-trim";
 
 const ORB_FILM = catalogFilmUrl("contractor");
-const ORB_POSTER = "/media/goopy-orb-base.jpg";
+const ORB_POSTER = "/media/hero-poster.jpg";
 
 export function storefrontFilm(
   video: string | readonly string[] | null | undefined,

@@ -12,7 +12,7 @@ test("template tracker flags empty hero, plate, and service slots", () => {
   assert.equal(empty.ready, false);
   assert.deepEqual(empty.missing, ["hero-loop", "branded-plate", "service-media"]);
   const ready = inspectTemplateAssets({
-    heroLoop: "/media/otter-hero-animation.mp4",
+    heroLoop: "/media/axio-plumber-hero.mp4",
     brandedPlate: "/media/heroes/plumbing.jpg",
     serviceOnboarded: true,
   });

@@ -3,6 +3,8 @@
  * Serializable for layout config (SSR-safe).
  */
 
+import { CATALOG_BY_ID, CORE_PUBLIC_NICHES, type CatalogNiche } from "@/config/catalog";
+import { resolveDemoLoop } from "@/lib/axiom/branded-demo-loop";
 import { composeNeuralPrompt } from "@/lib/axiom/studio-engine";
 
 export const STOREFRONT_OBSIDIAN = "#050507";
@@ -238,21 +240,193 @@ export function buildSlotBrandedPrompt(input: {
   });
 }
 
+export const INLAY_PRESET_IDS = ["surface", "vehicle", "glass", "tool"] as const;
+export type InlayPresetId = (typeof INLAY_PRESET_IDS)[number];
+
+export const INLAY_PRESETS: { id: InlayPresetId; label: string; instruction: string }[] = [
+  {
+    id: "surface",
+    label: "Surface inlay",
+    instruction: "Paint or inlay the business name into a wall, board, or job-site surface that is already in the photograph.",
+  },
+  {
+    id: "vehicle",
+    label: "Vehicle door",
+    instruction: "Letter the business name on a vehicle door or panel already in the frame. Leave the rest of the vehicle real.",
+  },
+  {
+    id: "glass",
+    label: "Glass etch",
+    instruction: "Etch the business name into glass or a window already in the frame. Keep the reflections physical.",
+  },
+  {
+    id: "tool",
+    label: "Tool stamp",
+    instruction: "Stamp a small business mark onto a tool, case, or material already in the frame.",
+  },
+];
+
+export function inlayInstruction(id?: string | null): string {
+  return INLAY_PRESETS.find((preset) => preset.id === id)?.instruction || INLAY_PRESETS[0].instruction;
+}
+
+export const MOTION_PRESET_IDS = [
+  "rain",
+  "fog",
+  "smoke",
+  "passing-vehicle",
+  "motorcycle",
+  "subtle",
+  "headlight-neon-flicker",
+  "slow-steering-turn",
+  "leaf-blowing",
+  "tree-leaves-rustle",
+  "subtle-river-flow",
+  "shooting-star",
+  "power-led-on",
+  "screen-light-up",
+] as const;
+export type MotionPresetId = (typeof MOTION_PRESET_IDS)[number];
+
+const MICRO =
+  "Move only that one detail a short distance. Do not warp the frame, move the camera, or restage the photograph.";
+
+export const MOTION_PRESETS: { id: MotionPresetId; label: string; instruction: string }[] = [
+  {
+    id: "rain",
+    label: "Rain",
+    instruction: `A few rain streaks in the far background. ${MICRO}`,
+  },
+  {
+    id: "fog",
+    label: "Fog",
+    instruction: `A thin fog bank drifts behind the subject. ${MICRO}`,
+  },
+  {
+    id: "smoke",
+    label: "Smoke",
+    instruction: `A small wisp of smoke moves behind the subject. ${MICRO}`,
+  },
+  {
+    id: "passing-vehicle",
+    label: "Passing car",
+    instruction: `One distant car crosses the far street. ${MICRO}`,
+  },
+  {
+    id: "motorcycle",
+    label: "Motorcycle",
+    instruction: `One distant motorcycle crosses the far background. ${MICRO}`,
+  },
+  {
+    id: "subtle",
+    label: "Subtle drift",
+    instruction: `A little background light shifts. Add nothing. ${MICRO}`,
+  },
+  {
+    id: "headlight-neon-flicker",
+    label: "Headlight flicker",
+    instruction: `One headlight or neon tube already in the frame flickers softly once. ${MICRO}`,
+  },
+  {
+    id: "slow-steering-turn",
+    label: "Slow steer",
+    instruction: `The front wheels of a vehicle already in frame ease a few degrees. ${MICRO}`,
+  },
+  {
+    id: "leaf-blowing",
+    label: "Leaves blowing",
+    instruction: `A few leaves already on the ground drift along the edge of the frame. ${MICRO}`,
+  },
+  {
+    id: "tree-leaves-rustle",
+    label: "Leaf rustle",
+    instruction: `Leaves on a tree already in the background shiver. ${MICRO}`,
+  },
+  {
+    id: "subtle-river-flow",
+    label: "River flow",
+    instruction: `Water already in the frame drifts a short way. Banks and the subject stay locked. ${MICRO}`,
+  },
+  {
+    id: "shooting-star",
+    label: "Shooting star",
+    instruction: `One faint streak crosses open sky. If there is no sky, a single glint on an existing surface. ${MICRO}`,
+  },
+  {
+    id: "power-led-on",
+    label: "LED on",
+    instruction: `One existing power LED eases on and holds. ${MICRO}`,
+  },
+  {
+    id: "screen-light-up",
+    label: "Screen glow",
+    instruction: `One existing screen or phone brightens slightly. ${MICRO}`,
+  },
+];
+
+export function motionInstruction(id?: string | null): string {
+  return MOTION_PRESETS.find((preset) => preset.id === id)?.instruction || MOTION_PRESETS.find((preset) => preset.id === "subtle")!.instruction;
+}
+
+/** Autopilot picks one restrained detail that fits the trade. */
+export function microMotionForNiche(niche?: string | null): MotionPresetId {
+  const id = (niche || "").toLowerCase();
+  if (/pool|water|irrigat|river|marine|plumb/.test(id)) return "subtle-river-flow";
+  if (/landscap|lawn|garden|tree|nursery/.test(id)) return "leaf-blowing";
+  if (/roof|gutter|exterior/.test(id)) return "tree-leaves-rustle";
+  if (/electric|hvac|solar|appliance/.test(id)) return "power-led-on";
+  if (/sign|print|screen|media|it|computer|phone/.test(id)) return "screen-light-up";
+  if (/auto|mechanic|detail|tow|fleet|transport/.test(id)) return "headlight-neon-flicker";
+  if (/driv|steer|wheel/.test(id)) return "slow-steering-turn";
+  if (/night|bar|event|photo|astro/.test(id)) return "shooting-star";
+  return "subtle";
+}
+
 export function buildProofTouchupPrompt(input: {
   slotLabel?: string;
   niche?: string;
   themeId?: string;
+  shopName?: string;
+  brandColor?: string;
+  inlay?: string | null;
+  logoUrl?: string | null;
 }): string {
   const slot = (input.slotLabel || "Proof of Work").trim().slice(0, 80);
   const niche = (input.niche || "contractor").trim().slice(0, 40);
+  const shop = (input.shopName || "").trim().slice(0, 80);
   const theme = resolveStorefrontTheme(input.themeId);
+  const accent = normalizeBrandHex(input.brandColor) || theme.brandPrimary;
+  const logo = (input.logoUrl || "").trim();
   return [
-    `Enhance this real ${niche} job-site photo for storefront slot "${slot}".`,
-    `Preserve composition, subjects, tools, materials, and scene geometry — structure-preserving sharpen only.`,
-    `Lift exposure and local contrast; clean noise; recover detail in shadows without halos.`,
-    `Subtle brand rim light ${theme.brandPrimary} and secondary ${theme.brandSecondary} on edges only.`,
-    `Dissolve into obsidian mat ${STOREFRONT_OBSIDIAN} — feathered alpha, no hard rectangle, no box crop.`,
-    `No extra people. No stock swap. No watermark.`,
+    `Recreate this uploaded ${niche} photograph as a finished branded still for ${shop || "the shop"}.`,
+    `Use the uploaded photo as the only source. Do not substitute a library, stock, or animal plate.`,
+    `Keep the real subject, tools, materials, and place. Upgrade it: sharp, high contrast, cinematic lighting, controlled shadows.`,
+    inlayInstruction(input.inlay),
+    `The readable name is "${shop || niche}". Color the mark ${accent}. It sits on a real surface, not a caption bar or slot label.`,
+    logo.startsWith("https://") ? `Match the lettering to the shop mark at ${logo}. Paint it into the scene. Do not float a sticker.` : "",
+    `Slot intent: ${slot}. Obsidian field ${STOREFRONT_OBSIDIAN}, secondary ${theme.brandSecondary}.`,
+    `No extra people. No watermark. No text block that names the slot.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function buildBackgroundMotionPrompt(input: {
+  niche?: string;
+  shopName?: string;
+  brandColor?: string;
+  motion?: string | null;
+}): string {
+  const niche = (input.niche || "contractor").trim().slice(0, 40);
+  const shop = (input.shopName || "").trim().slice(0, 80);
+  const accent = normalizeBrandHex(input.brandColor) || "#00FFCC";
+  return [
+    `Animate only the background of this exact ${niche} photograph${shop ? ` for ${shop}` : ""}.`,
+    `Keep the foreground subject, tools, materials, framing, and the embedded business name locked in place.`,
+    `This is a micro-motion. One surrounding detail moves. The photograph does not warp.`,
+    motionInstruction(input.motion),
+    `Accent rim ${accent} may glow. Seamless loop.`,
+    `Do not replace the photo. Do not add stock footage, animals, captions, or a different scene.`,
   ].join(" ");
 }
 
@@ -264,11 +438,11 @@ export const STUDIO_ARCHETYPE_PRESETS = [
   { themeId: "forge_orange" as const, label: "Axis Works", accent: "Industrial Orange / Grey" },
 ];
 
-export const NICHE_HERO_LOOP_OPTIONS = [
-  { id: "axiom-robot", label: "Axiom Robot Loop", url: "/media/axiom-robot-hero.mp4" },
-  { id: "studio-ref", label: "Studio Reference Loop", url: "/media/studio-references/hero-loop-optimized.mp4" },
-  { id: "heart-machine", label: "Heart Machine", url: "/media/heart-machine.mp4" },
-  { id: "character", label: "Character Plate", url: "/media/axiom-character.mp4" },
-  { id: "ai-guy", label: "AI Guy Pulse", url: "/media/ai-guy.mp4" },
-  { id: "plumber", label: "Contractor 24/7", url: "/media/Axiom_24_7 Booking for Contractors_720p_caption.mp4" },
-] as const;
+/** Studio loop picker: catalog trades only. Animal films stay on wildlife niches. */
+const STUDIO_LOOP_NICHES = [...CORE_PUBLIC_NICHES, "electrical", "hvac"] as const satisfies readonly CatalogNiche[];
+
+export const NICHE_HERO_LOOP_OPTIONS = STUDIO_LOOP_NICHES.map((id) => ({
+  id,
+  label: CATALOG_BY_ID[id].label,
+  url: resolveDemoLoop(id),
+}));

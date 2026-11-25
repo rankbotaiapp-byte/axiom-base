@@ -22,7 +22,7 @@ describe("storefront film hierarchy", () => {
   });
 
   it("keeps heart gears aliased from the brief and liquid/meter as distinct mechanics films", () => {
-    assert.equal(HEART_GEARS_SRC, "/media/axioms-heart.mp4");
+    assert.equal(HEART_GEARS_SRC, "/media/studio-preview.mp4");
     assert.deepEqual(
       HERO_FEED.map((tab) => tab.src),
       [HEART_GEARS_SRC, LIQUID_WRENCH_SRC, ELECTRICAL_METER_SRC],

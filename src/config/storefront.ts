@@ -55,12 +55,9 @@ export const plans: Record<
 /** Hero timing + framing. All times are seconds into the source clip. */
 export const hero = {
   sources: [
-    { src: "/media/heroes/axiom-landing.mp4", type: "video/mp4" },
-    { src: "/media/heroes/axiom-burnout.mp4", type: "video/mp4" },
-    { src: "/media/hero-1280.webm", type: "video/webm", media: "(min-width: 768px)" },
-    { src: "/media/hero-1280.mp4", type: "video/mp4", media: "(min-width: 768px)" },
-    { src: "/media/hero-854.webm", type: "video/webm" },
-    { src: "/media/hero-854.mp4", type: "video/mp4" },
+    { src: "/media/axio-plumber-hero.mp4", type: "video/mp4" },
+    { src: "/media/studio-cyan-fog-loop.mp4", type: "video/mp4" },
+    { src: "/media/infrastructure-hero-animation.mp4", type: "video/mp4" },
   ],
   poster: "/media/hero-poster.jpg",
   videoAspect: 16 / 9,

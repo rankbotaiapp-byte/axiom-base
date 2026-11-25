@@ -74,7 +74,8 @@ export async function getSessionUser(
     if (!session?.user) return null;
     return { id: session.user.id, email: session.user.email ?? null };
   } catch (err) {
-    if (process.env.NODE_ENV !== "production" && isDatabaseUnavailable(err)) {
+    const { isDatabaseConfigFailure } = await import("@/lib/db-url");
+    if (isDatabaseUnavailable(err) || isDatabaseConfigFailure(err)) {
       console.warn("[auth] hosted database is unreachable; continuing signed out");
       return null;
     }

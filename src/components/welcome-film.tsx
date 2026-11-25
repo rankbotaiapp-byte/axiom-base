@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { HeroLoopVideo } from "@/components/loop-video";
 
 const EMPLOYEE_SEEN_PREFIX = "axiom:employee-welcome:";
-export const EMPLOYEE_WELCOME_SRC = "/media/heroes/employee-welcome.mp4";
-export const OUTREACH_WELCOME_SRC = "/media/heroes/outreach-welcome.mp4";
+export const EMPLOYEE_WELCOME_SRC = "/media/axiom-greeting.mp4";
+export const OUTREACH_WELCOME_SRC = "/media/welcome-to-axiom.mp4";
 const OUTREACH_DELAY_MS = 2500;
 
 function welcomeSeen(key: string): boolean {

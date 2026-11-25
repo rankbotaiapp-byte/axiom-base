@@ -9,11 +9,11 @@ export const CYBER_STINGER = {
 
   media: {
     /** 16:9 loop — desktop / landscape */
-    loop: '/media/cyber-stinger-loop.mp4',
-    poster: '/media/cyber-stinger-poster.jpg',
+    loop: '/media/electrician-hero-animation.mp4',
+    poster: '/media/hero-poster.jpg',
     /** 3:4 loop — phones held upright */
-    portraitLoop: '/media/cyber-stinger-portrait.mp4',
-    portraitPoster: '/media/cyber-stinger-portrait-poster.jpg',
+    portraitLoop: '/media/studio-preview.mp4',
+    portraitPoster: '/media/hero-poster.jpg',
     /** When to switch to the portrait cut */
     portraitQuery: '(orientation: portrait) and (max-width: 900px)',
   },

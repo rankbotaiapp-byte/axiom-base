@@ -8,9 +8,9 @@ import { useEffect, useRef } from "react";
  */
 
 const OBSIDIAN = "#030712";
-const LOGO_DEFAULT = "/media/axiom/axiom-logo-loop.mp4";
-const LOGO_POSTER = "/media/axiom/axiom-logo-poster.jpg";
-const LOGO_FALLBACK = "/media/axiom/obsidian-burst.mp4";
+const LOGO_DEFAULT = "/media/studio-cyan-fog-loop.mp4";
+const LOGO_POSTER = "/media/studio-cyan-fog-poster.jpg";
+const LOGO_FALLBACK = "/media/studio-preview.mp4";
 
 type ParticleKind = "metal" | "ember" | "quartz" | "shard";
 

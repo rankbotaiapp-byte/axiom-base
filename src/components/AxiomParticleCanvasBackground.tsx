@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AxiomDarkAxiomAtmosphereLazy from "@/components/AxiomDarkAxiomAtmosphereLazy";
 
 /** Particle-break film that ends on the locked DarkAxiom constellation frame. */
-export const AXIOM_PARTICLE_FILM = "/media/particle-logo-axiom.mp4";
+export const AXIOM_PARTICLE_FILM = "/media/studio-cyan-fog-loop.mp4";
 const FILM_FALLBACKS = [
-  "/media/heroes/axiom-landing.mp4",
-  "/media/axiom/axiom-logo-loop.mp4",
+  "/media/axio-plumber-hero.mp4",
+  "/media/studio-cyan-fog-loop.mp4",
 ] as const;
 
 /**

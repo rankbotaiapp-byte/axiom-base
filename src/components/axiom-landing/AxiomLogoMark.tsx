@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const LOGO_LOOP = "/media/axiom/axiom-logo-loop.mp4";
-const LOGO_POSTER = "/media/axiom/axiom-logo-poster.jpg";
+const LOGO_LOOP = "/media/studio-cyan-fog-loop.mp4";
+const LOGO_POSTER = "/media/studio-cyan-fog-poster.jpg";
 
 /**
  * Nav and hero lockup. The first paint is the resting logo so reduced-motion

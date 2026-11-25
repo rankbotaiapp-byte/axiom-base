@@ -19,8 +19,8 @@ const DRAFT_KEY = "axiom:plumbing-studio-draft";
 const PREVIEW_PATH = "/demo/plumbing?studio=1&greet=1";
 
 const VIDEO_CHOICES = [
-  { label: "Axiom plumber hero", url: "/media/axiom-plumber-hero.mp4", mobile: "/media/axiom-plumber-hero-mobile.mp4", poster: "/media/axiom-plumber-hero.jpg" },
-  { label: "Axio plumber hero (alias)", url: "/media/axio-plumber-hero.mp4", mobile: "/media/axio-plumber-hero-mobile.mp4", poster: "/media/axio-plumber-hero.jpg" },
+  { label: "Axio plumber hero", url: "/media/axio-plumber-hero.mp4", mobile: "/media/axio-plumber-hero-mobile.mp4", poster: "/media/axio-plumber-hero.jpg" },
+  { label: "Plumbing emergency", url: "/media/plumbing-emergency-hero.mp4", mobile: "/media/plumbing-emergency-hero-mobile.mp4", poster: "/media/plumbing-emergency-hero.jpg" },
   { label: "Plumbers (catalog film)", url: "/media/plumbers-hero-animation.mp4", mobile: "/media/plumbers-hero-animation.mp4", poster: "/media/heroes/plumbing.jpg" },
 ];
 
