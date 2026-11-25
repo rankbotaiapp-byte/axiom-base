@@ -1,7 +1,7 @@
 {
   "installCommand": "(git lfs pull || true) && npm install --omit=dev --no-audit --no-fund",
   "buildCommand": "npm run build",
-  "framework": null,
+  "framework": "nextjs",
   "trailingSlash": false,
   "crons": [
     { "path": "/api/autopilot/cron", "schedule": "12 15 * * *" },
