@@ -19,24 +19,61 @@ function cookieSecure(request: Request): boolean {
   }
 }
 
+const DESK_BUDGET_MS = 6_000;
+
+function unavailableMasterSession() {
+  return NextResponse.json(
+    {
+      attached: false,
+      configured: bypassConfigured(),
+      access: "signed-out",
+      session: null,
+      user: null,
+      code: "DB_UNAVAILABLE",
+      error: "Database is unavailable",
+    },
+    { status: 503, headers: { "cache-control": "no-store" } },
+  );
+}
+
 async function deskAttached(request: Request): Promise<boolean> {
   try {
     await assertAutopilotDesk(request);
     return true;
-  } catch {
+  } catch (err) {
+    if (err instanceof AutopilotError && err.status === 503) throw err;
     return false;
+  }
+}
+
+async function withDeskBudget<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new AutopilotError(503, "Database is unavailable")), DESK_BUDGET_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
 export async function GET(request: Request) {
   setAmbientRequest(request);
   const configured = bypassConfigured();
-  const attached = await deskAttached(request);
-  return NextResponse.json({
-    attached,
-    configured,
-    access: attached ? (configured ? "bypass" : "session") : "signed-out",
-  });
+  try {
+    const attached = await withDeskBudget(deskAttached(request));
+    return NextResponse.json({
+      attached,
+      configured,
+      access: attached ? (configured ? "bypass" : "session") : "signed-out",
+    });
+  } catch (err) {
+    if (err instanceof AutopilotError && err.status === 503) return unavailableMasterSession();
+    throw err;
+  }
 }
 
 export async function POST(request: Request) {
@@ -72,6 +109,7 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (err) {
+    if (err instanceof AutopilotError && err.status === 503) return unavailableMasterSession();
     const status = err instanceof AutopilotError ? err.status : 500;
     const error = err instanceof Error ? err.message : "Master session failed.";
     return NextResponse.json({ error }, { status });
