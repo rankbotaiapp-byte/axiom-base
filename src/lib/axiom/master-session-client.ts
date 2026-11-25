@@ -1,5 +1,6 @@
 "use client";
 
+import { DESK_CHECK_BUDGET_MS } from "@/lib/auth/desk-budget";
 import { masterDeskError, masterDeskFetch, rememberMasterBypassKey } from "./master-desk-client";
 
 export type MasterSessionState = {
@@ -24,6 +25,7 @@ export async function claimMasterSession(key: string): Promise<MasterSessionStat
     credentials: "include",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ key }),
+    signal: AbortSignal.timeout(DESK_CHECK_BUDGET_MS),
   });
   if (!res.ok) throw new Error(await masterDeskError(res));
   rememberMasterBypassKey(key);

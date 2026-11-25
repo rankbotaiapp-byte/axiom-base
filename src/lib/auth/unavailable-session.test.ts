@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  AUTH_SESSION_TIMEOUT_CODE,
   AUTH_SESSION_UNAVAILABLE_CODE,
   isAuthGetSessionPath,
+  timeoutAuthSessionResponse,
   unavailableAuthSessionBody,
   unavailableAuthSessionResponse,
 } from "./unavailable-session";
@@ -27,4 +29,15 @@ test("get-session unavailable response is 503 JSON", async () => {
 test("get-session path matcher", () => {
   assert.equal(isAuthGetSessionPath("/api/auth/get-session"), true);
   assert.equal(isAuthGetSessionPath("/api/auth/sign-in"), false);
+});
+
+test("get-session timeout payload uses DESK_CHECK_TIMEOUT not DB_UNAVAILABLE", async () => {
+  const res = timeoutAuthSessionResponse();
+  assert.equal(res.status, 503);
+  const json = await res.json();
+  assert.equal(json.session, null);
+  assert.equal(json.user, null);
+  assert.equal(json.code, AUTH_SESSION_TIMEOUT_CODE);
+  assert.equal(json.code, "DESK_CHECK_TIMEOUT");
+  assert.notEqual(json.code, AUTH_SESSION_UNAVAILABLE_CODE);
 });

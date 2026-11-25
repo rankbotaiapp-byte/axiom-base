@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AutopilotError, assertAutopilotDesk } from "@/lib/axiom/autopilot.server";
+import { AutopilotError } from "@/lib/axiom/autopilot.server";
 import { bypassConfigured, bypassSecret, acceptMasterKey } from "@/lib/axiom/master-bypass.server";
 import { signMasterPass } from "@/lib/axiom/master-bypass";
 import { MASTER_COOKIE, MASTER_MAX_AGE_SECONDS } from "@/lib/axiom/master-owner";
+import { failClosedMasterSession } from "@/lib/axiom/master-session-response";
+import { resolveMasterSessionGet } from "@/lib/axiom/master-session.server";
 import { setAmbientRequest } from "@/lib/tanstack-start-server-shim";
 
 export const runtime = "nodejs";
@@ -19,60 +21,12 @@ function cookieSecure(request: Request): boolean {
   }
 }
 
-const DESK_BUDGET_MS = 6_000;
-
-function unavailableMasterSession() {
-  return NextResponse.json(
-    {
-      attached: false,
-      configured: bypassConfigured(),
-      access: "signed-out",
-      session: null,
-      user: null,
-      code: "DB_UNAVAILABLE",
-      error: "Database is unavailable",
-    },
-    { status: 503, headers: { "cache-control": "no-store" } },
-  );
-}
-
-async function deskAttached(request: Request): Promise<boolean> {
-  try {
-    await assertAutopilotDesk(request);
-    return true;
-  } catch (err) {
-    if (err instanceof AutopilotError && err.status === 503) throw err;
-    return false;
-  }
-}
-
-async function withDeskBudget<T>(work: Promise<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      work,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new AutopilotError(503, "Database is unavailable")), DESK_BUDGET_MS);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
 export async function GET(request: Request) {
   setAmbientRequest(request);
-  const configured = bypassConfigured();
   try {
-    const attached = await withDeskBudget(deskAttached(request));
-    return NextResponse.json({
-      attached,
-      configured,
-      access: attached ? (configured ? "bypass" : "session") : "signed-out",
-    });
+    return await resolveMasterSessionGet(request);
   } catch (err) {
-    if (err instanceof AutopilotError && err.status === 503) return unavailableMasterSession();
-    throw err;
+    return failClosedMasterSession(err, bypassConfigured());
   }
 }
 
@@ -83,11 +37,11 @@ export async function POST(request: Request) {
     const key = String(body.key ?? "").trim();
     const secret = bypassSecret();
     if (!secret) {
-      return NextResponse.json({ error: "Master bypass is not configured" }, { status: 409 });
+      return NextResponse.json({ error: "Master bypass is not configured", session: null, user: null }, { status: 409 });
     }
     if (!acceptMasterKey(key)) {
       await new Promise((resolve) => setTimeout(resolve, 400));
-      return NextResponse.json({ error: "That key does not open the desk." }, { status: 401 });
+      return NextResponse.json({ error: "That key does not open the desk.", session: null, user: null }, { status: 401 });
     }
     const exp = Math.floor(Date.now() / 1000) + MASTER_MAX_AGE_SECONDS;
     const token = signMasterPass(secret, exp);
@@ -99,7 +53,14 @@ export async function POST(request: Request) {
       secure: cookieSecure(request),
       maxAge: MASTER_MAX_AGE_SECONDS,
     });
-    const response = NextResponse.json({ ok: true, attached: true, configured: true, access: "bypass" });
+    const response = NextResponse.json({
+      ok: true,
+      attached: true,
+      configured: true,
+      access: "bypass",
+      session: { ok: true },
+      user: { ok: true },
+    });
     response.cookies.set(MASTER_COOKIE, token, {
       path: "/",
       httpOnly: true,
@@ -109,9 +70,9 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (err) {
-    if (err instanceof AutopilotError && err.status === 503) return unavailableMasterSession();
-    const status = err instanceof AutopilotError ? err.status : 500;
-    const error = err instanceof Error ? err.message : "Master session failed.";
-    return NextResponse.json({ error }, { status });
+    if (err instanceof AutopilotError && err.status === 401) {
+      return NextResponse.json({ error: err.message, session: null, user: null }, { status: 401 });
+    }
+    return failClosedMasterSession(err, bypassConfigured());
   }
 }

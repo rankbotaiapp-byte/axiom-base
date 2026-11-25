@@ -12,7 +12,7 @@ import { newStopToken, hashStopToken } from "./funnel-guard";
 import { finalizeOutreachBody } from "./legal-notices";
 import { outreachDestination } from "./preview-link";
 import { verifyMasterPass } from "./master-bypass";
-import { bypassSecret } from "./master-bypass.server";
+import { acceptMasterKey, bypassSecret } from "./master-bypass.server";
 import { MASTER_COOKIE } from "./master-owner";
 import { isPlatformOwner } from "./platform-owner.server";
 import {
@@ -79,9 +79,11 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 
 export class AutopilotError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -125,6 +127,15 @@ function sameDeskOrigin(request: Request): boolean {
   return candidates.some((host) => hostKey(host) === key);
 }
 
+export function hasMasterBypass(request: Request): boolean {
+  const secret = bypassSecret();
+  const token = readCookie(request, MASTER_COOKIE);
+  if (secret && token && verifyMasterPass(secret, token, Math.floor(Date.now() / 1000))) return true;
+  const header = request.headers.get("authorization") ?? "";
+  const bearer = /^Bearer\s+(\S+)$/i.exec(header.trim())?.[1] ?? "";
+  return Boolean(bearer && acceptMasterKey(bearer));
+}
+
 export async function assertAutopilotDesk(request: Request): Promise<void> {
   // Automated schedulers: CRON_SECRET / OUTREACH_CRON_SECRET (timing-safe).
   const { cronTokenValid } = await import("./cron-auth.server");
@@ -133,23 +144,25 @@ export async function assertAutopilotDesk(request: Request): Promise<void> {
   if (!sameDeskOrigin(request)) {
     throw new AutopilotError(403, "Cross-origin master desk request");
   }
-  const secret = bypassSecret();
-  const token = readCookie(request, MASTER_COOKIE);
-  if (secret && token && verifyMasterPass(secret, token, Math.floor(Date.now() / 1000))) return;
+  if (hasMasterBypass(request)) return;
   const header = request.headers.get("authorization") ?? "";
-  const bearer = /^Bearer\s+(\S+)$/i.exec(header.trim())?.[1] ?? "";
-  if (bearer) {
-    const { acceptMasterKey } = await import("./master-bypass.server");
-    if (acceptMasterKey(bearer)) return;
-  }
+  const sessionBearer = /^Bearer\s+(\S+)$/i.exec(header.trim())?.[1] ?? "";
   let user: Awaited<ReturnType<typeof getSessionUser>> = null;
   try {
-    user = await getSessionUser(bearer || undefined, request.headers);
+    user = await getSessionUser(sessionBearer || undefined, request.headers);
   } catch (err) {
+    const { SessionProbeError, DB_UNAVAILABLE_CODE, DESK_CHECK_TIMEOUT_CODE, isAbortTimeoutError } =
+      await import("@/lib/auth/desk-budget");
+    if (err instanceof SessionProbeError) {
+      throw new AutopilotError(503, err.message, err.code);
+    }
+    if (isAbortTimeoutError(err)) {
+      throw new AutopilotError(503, "Desk check timed out", DESK_CHECK_TIMEOUT_CODE);
+    }
     const { isDatabaseUnavailable } = await import("@/lib/db");
     const { isDatabaseConfigFailure } = await import("@/lib/db-url");
     if (isDatabaseUnavailable(err) || isDatabaseConfigFailure(err)) {
-      throw new AutopilotError(503, "Database is unavailable");
+      throw new AutopilotError(503, "Database is unavailable", DB_UNAVAILABLE_CODE);
     }
     throw err;
   }

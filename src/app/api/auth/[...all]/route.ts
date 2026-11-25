@@ -2,7 +2,14 @@ import { isDatabaseUnavailable } from "@/lib/db";
 import { isDatabaseConfigFailure } from "@/lib/db-url";
 import { publicJsonError } from "@/lib/axiom/public-api-error";
 import {
+  DESK_CHECK_TIMEOUT_CODE,
+  SessionProbeError,
+  isAbortTimeoutError,
+  runWithAbortBudget,
+} from "@/lib/auth/desk-budget";
+import {
   isAuthGetSessionPath,
+  timeoutAuthSessionResponse,
   unavailableAuthSessionResponse,
 } from "@/lib/auth/unavailable-session";
 
@@ -23,10 +30,22 @@ function isDbFailure(err: unknown): boolean {
 
 async function handle(request: Request): Promise<Response> {
   try {
-    const { auth } = await import("@/lib/auth/server");
-    return await auth.handler(request);
+    const run = async () => {
+      const { auth } = await import("@/lib/auth/server");
+      return await auth.handler(request);
+    };
+    const response = isGetSession(request) ? await runWithAbortBudget(() => run()) : await run();
+    return response;
   } catch (err) {
-    if (isDbFailure(err) && isGetSession(request)) return unavailableAuthSessionResponse();
+    if (isGetSession(request)) {
+      if (err instanceof SessionProbeError) {
+        return err.code === DESK_CHECK_TIMEOUT_CODE
+          ? timeoutAuthSessionResponse()
+          : unavailableAuthSessionResponse();
+      }
+      if (isAbortTimeoutError(err)) return timeoutAuthSessionResponse();
+      if (isDbFailure(err)) return unavailableAuthSessionResponse();
+    }
     if (isDbFailure(err)) return publicJsonError(err, "Database is unavailable");
     return publicJsonError(err, "Authentication is unavailable");
   }

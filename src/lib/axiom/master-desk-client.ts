@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient, getBearerToken } from "@/lib/auth/client";
+import { DESK_CHECK_BUDGET_MS } from "@/lib/auth/desk-budget";
 
 const MASTER_BYPASS_STORAGE = "axiom_master_bypass";
 
@@ -32,7 +33,12 @@ export async function masterDeskFetch(input: string, init: RequestInit = {}): Pr
     }
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  return fetch(input, { ...init, credentials: "include", headers });
+  return fetch(input, {
+    ...init,
+    credentials: "include",
+    headers,
+    signal: init.signal ?? AbortSignal.timeout(DESK_CHECK_BUDGET_MS),
+  });
 }
 
 export async function masterDeskError(res: Response): Promise<string> {

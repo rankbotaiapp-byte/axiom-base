@@ -1,5 +1,14 @@
 import { getRequest } from "@/lib/tanstack-start-server-shim";
 import { isDatabaseUnavailable } from "../db";
+import { isDatabaseConfigFailure } from "../db-url";
+import {
+  DB_UNAVAILABLE_CODE,
+  DESK_CHECK_BUDGET_MS,
+  DESK_CHECK_TIMEOUT_CODE,
+  SessionProbeError,
+  isAbortTimeoutError,
+  runWithAbortBudget,
+} from "./desk-budget";
 import { gateIdentityEnabled } from "./gate-identity.server";
 import { auth, authConfigured } from "./server";
 
@@ -58,6 +67,7 @@ export type VerifiedUser = { id: string; email: string | null };
 export async function getSessionUser(
   bearerToken?: string,
   sourceHeaders?: Headers,
+  signal?: AbortSignal,
 ): Promise<VerifiedUser | null> {
   if (!authConfigured && !gateIdentityEnabled()) return null;
   let headers: Headers;
@@ -70,14 +80,21 @@ export async function getSessionUser(
   }
   if (bearerToken) headers.set("Authorization", `Bearer ${bearerToken}`);
   try {
-    const session = await auth.api.getSession({ headers });
+    const session = await runWithAbortBudget(async (budget) => {
+      if (budget.aborted || signal?.aborted) {
+        throw new SessionProbeError(DESK_CHECK_TIMEOUT_CODE, "Desk check timed out");
+      }
+      return await auth.api.getSession({ headers });
+    }, DESK_CHECK_BUDGET_MS);
     if (!session?.user) return null;
     return { id: session.user.id, email: session.user.email ?? null };
   } catch (err) {
-    const { isDatabaseConfigFailure } = await import("@/lib/db-url");
+    if (err instanceof SessionProbeError) throw err;
+    if (isAbortTimeoutError(err)) {
+      throw new SessionProbeError(DESK_CHECK_TIMEOUT_CODE, "Desk check timed out");
+    }
     if (isDatabaseUnavailable(err) || isDatabaseConfigFailure(err)) {
-      console.warn("[auth] hosted database is unreachable; continuing signed out");
-      return null;
+      throw new SessionProbeError(DB_UNAVAILABLE_CODE, "Database is unavailable");
     }
     throw err;
   }
