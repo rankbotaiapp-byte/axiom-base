@@ -667,7 +667,7 @@ export async function createStorefrontUnlockCheckout(opts: {
   const { STOREFRONT_UNLOCK_CENTS } = await import("./hydrate-storefront");
   const shopSlug = cleanShopSlug(opts.slug);
   const origin = opts.origin.replace(/\/$/, "");
-  const success = `${origin}/${encodeURIComponent(shopSlug)}/admin?unlocked=1&session_id=${ONBOARD_SUCCESS_SESSION_PLACEHOLDER}`;
+  const success = `${origin}/t/${encodeURIComponent(shopSlug)}/welcome?unlocked=1&session_id=${ONBOARD_SUCCESS_SESSION_PLACEHOLDER}`;
   const cancel = `${origin}/t/${encodeURIComponent(shopSlug)}`;
   const params = new URLSearchParams({
     mode: "payment",
@@ -1070,6 +1070,20 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
           city: meta.city,
         });
         if (settled.shopId) {
+          try {
+            const { provisionAxiomNumberAfterUnlock } = await import("./axiom-business-number.server");
+            await provisionAxiomNumberAfterUnlock({
+              shopId: settled.shopId,
+              slug: settled.shopSlug,
+              businessName: meta.business_name || meta.shop_name || settled.shopSlug,
+              ownerPhone: meta.phone,
+            });
+          } catch (err) {
+            console.error(
+              "[stripe-webhook] axiom number provision threw",
+              err instanceof Error ? err.message.slice(0, 200) : err,
+            );
+          }
           try {
             const lifecycle = await import("./lifecycle.server");
             let card = { customerId, paymentMethodId: "" };

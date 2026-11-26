@@ -250,9 +250,17 @@ export async function settleStorefrontUnlock(input: {
     await sql`
       update shops
       set owner_user_id = coalesce(owner_user_id, ${ownerId}),
-          name = case when name = '' then ${businessName} else name end
+          name = case when name = '' then ${businessName} else name end,
+          notify_phone = case
+            when coalesce(notify_phone, '') = '' then ${input.phone || ""}
+            else notify_phone
+          end,
+          notification_phone = case
+            when coalesce(notification_phone, '') = '' then ${input.phone || ""}
+            else notification_phone
+          end
       where id = ${shopId}
-    `;
+    `.catch(() => undefined);
   }
   if (ownerId) {
     await sql`

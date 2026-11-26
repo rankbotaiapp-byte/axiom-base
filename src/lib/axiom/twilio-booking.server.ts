@@ -123,6 +123,17 @@ export async function handleTwilioInboundSms(form: URLSearchParams) {
     kind: "inbound_inquiry",
   });
 
+  const { isMessagingOptOut, OPT_OUT_CONFIRMATION } = await import("./legal-notices");
+  if (isMessagingOptOut(body)) {
+    try {
+      const { suppressContact } = await import("./lifecycle.server");
+      await suppressContact({ phone: from, reason: "stop" });
+    } catch {
+      /* optional */
+    }
+    return { ok: true, reply: OPT_OUT_CONFIRMATION, booked: false };
+  }
+
   const mms = shop
     ? await ingestInboundMmsProofs(form, shop).catch(() => ({ stored: 0 }))
     : { stored: 0 };

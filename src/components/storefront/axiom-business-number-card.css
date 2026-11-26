@@ -1,0 +1,96 @@
+.abn-card {
+  border: 1px solid color-mix(in srgb, #00ffcc 28%, transparent);
+  background: #050507;
+  color: #f4f7fb;
+  border-radius: 24px;
+  padding: 1.25rem 1.25rem 1.4rem;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ffe500 12%, transparent);
+}
+
+.abn-kicker {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #00ffcc;
+}
+
+.abn-number {
+  margin: 0.55rem 0 0;
+  font-size: clamp(1.8rem, 6vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: #ffe500;
+}
+
+.abn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.abn-btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.abn-btn-gold {
+  background: #ffe500;
+  color: #050507;
+  border: 0;
+}
+
+.abn-btn-cyan {
+  background: transparent;
+  color: #00ffcc;
+  border: 1px solid #00ffcc;
+}
+
+.abn-steps {
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.abn-steps li {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: 0.7rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, #f4f7fb 88%, transparent);
+}
+
+.abn-steps strong {
+  color: #00ffcc;
+}
+
+.abn-index {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #ffe500;
+}
+
+.abn-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.15rem;
+}
+
+.abn-pending {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, #f4f7fb 70%, transparent);
+}
