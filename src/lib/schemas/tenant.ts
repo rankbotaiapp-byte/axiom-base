@@ -13,12 +13,15 @@ export const ThemeTokensSchema = z.object({
   callCta: HexColor.default("#FF9900"),
   bookCta: HexColor.default("#00ffcc"),
   showcaseThemeId: z.enum(SHOWCASE_THEME_IDS).default("solar_gold"),
+  cinemaGrade: z.boolean().default(true),
 });
 
 export const MediaSlotSchema = z.object({
   kind: z.enum(["image", "cinemagraph", "loop-video"]),
   posterUrl: z.string().min(1).max(2000),
   videoUrl: z.string().max(2000).optional(),
+  assignedPosterUrl: z.string().max(2000).optional(),
+  assignedVideoUrl: z.string().max(2000).optional(),
   alt: z.string().max(180).default(""),
   focalPoint: z
     .object({
@@ -26,6 +29,7 @@ export const MediaSlotSchema = z.object({
       y: z.number().min(0).max(100),
     })
     .default({ x: 50, y: 50 }),
+  cinemaGrade: z.boolean().optional(),
 });
 
 export const HeroSectionSchema = z.object({
@@ -65,6 +69,7 @@ export const BeforeAfterProjectSchema = z.object({
   summary: z.string().max(280).default(""),
   beforeUrl: z.string().min(1).max(2000),
   afterUrl: z.string().min(1).max(2000),
+  cinemaGrade: z.boolean().optional(),
 });
 
 export const TestimonialSchema = z.object({

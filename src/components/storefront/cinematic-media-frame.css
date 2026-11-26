@@ -1,0 +1,108 @@
+.cmf-frame {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.cmf-media {
+  position: relative;
+  z-index: 0;
+  height: 100%;
+  min-height: 100%;
+  width: 100%;
+}
+
+.cmf-media--grade :is(img, video) {
+  filter: contrast(1.06) saturate(1.08) brightness(0.97);
+}
+
+.cmf-overlays {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cmf-frame :is(a, button, label, input, select, textarea, [data-cmf-ui]) {
+  position: relative;
+  z-index: 3;
+}
+
+.cmf-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 52%, color-mix(in srgb, #050507 72%, transparent) 100%),
+    linear-gradient(to top, color-mix(in srgb, #050507 78%, transparent) 0%, transparent 42%);
+}
+
+.cmf-rim {
+  position: absolute;
+  inset: 0;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #00ffcc 38%, transparent),
+    inset 0 0 18px color-mix(in srgb, #00ffcc 16%, transparent),
+    inset 0 0 36px color-mix(in srgb, #ffe500 10%, transparent),
+    0 0 12px color-mix(in srgb, #00ffcc 18%, transparent);
+}
+
+.cmf-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+}
+
+.cmf-corner-tl {
+  top: 8px;
+  left: 8px;
+  border-top: 1px solid #00ffcc;
+  border-left: 1px solid #00ffcc;
+  box-shadow: -2px -2px 8px color-mix(in srgb, #00ffcc 45%, transparent);
+}
+
+.cmf-corner-tr {
+  top: 8px;
+  right: 8px;
+  border-top: 1px solid #ffe500;
+  border-right: 1px solid #ffe500;
+  box-shadow: 2px -2px 8px color-mix(in srgb, #ffe500 40%, transparent);
+}
+
+.cmf-corner-bl {
+  bottom: 8px;
+  left: 8px;
+  border-bottom: 1px solid #ffe500;
+  border-left: 1px solid #ffe500;
+  box-shadow: -2px 2px 8px color-mix(in srgb, #ffe500 32%, transparent);
+}
+
+.cmf-corner-br {
+  bottom: 8px;
+  right: 8px;
+  border-bottom: 1px solid #00ffcc;
+  border-right: 1px solid #00ffcc;
+  box-shadow: 2px 2px 8px color-mix(in srgb, #00ffcc 40%, transparent);
+}
+
+.cmf-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+.cmf-specular {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 28%;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, #ffffff 14%, transparent),
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.35;
+}

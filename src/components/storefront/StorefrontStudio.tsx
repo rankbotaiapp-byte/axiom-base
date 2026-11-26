@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { TenantStorefrontConfig } from "@/lib/schemas/tenant";
 import { UnlockCheckoutButton } from "./UnlockCheckoutButton";
 import { ShowcaseThemePicker } from "./showcase-theme-picker";
+import { StorefrontMediaEditor } from "./StorefrontMediaEditor";
 import { parseShowcaseThemeId, showcaseTheme, type ShowcaseThemeId } from "@/lib/axiom/outreach-desk";
 
 type DeskPayload = {
@@ -27,6 +28,7 @@ export function StorefrontStudio({ slug }: { slug: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"save" | "publish" | "plan" | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   async function load() {
     const response = await fetch(`/api/storefront/draft?slug=${encodeURIComponent(slug)}`);
@@ -184,7 +186,7 @@ export function StorefrontStudio({ slug }: { slug: string }) {
           <button
             type="button"
             onClick={() => void goLive()}
-            disabled={busy !== null}
+            disabled={busy !== null || uploading}
             className="rounded-full bg-[#00f2fe] px-4 py-2 text-sm font-semibold text-[#050507] disabled:opacity-60"
           >
             {desk.phase === "published" ? "Published" : busy === "publish" ? "Publishing…" : "Publish Live"}
@@ -210,6 +212,15 @@ export function StorefrontStudio({ slug }: { slug: string }) {
               <input className={fieldClass} value={draft.theme.secondaryAccent} onChange={(event) => patch({ ...draft, theme: { ...draft.theme, secondaryAccent: event.target.value } })} />
             </label>
           </div>
+          <label className="flex items-center gap-3 text-sm text-white/70">
+            <input
+              type="checkbox"
+              className="size-4 accent-[#00f2fe]"
+              checked={draft.theme.cinemaGrade !== false}
+              onChange={(event) => patch({ ...draft, theme: { ...draft.theme, cinemaGrade: event.target.checked } })}
+            />
+            Cinematic grade on hero and proof photos
+          </label>
           <label className="text-sm text-white/70">
             Headline
             <input className={fieldClass} value={draft.hero.headline} onChange={(event) => patch({ ...draft, hero: { ...draft.hero, headline: event.target.value } })} />
@@ -218,36 +229,14 @@ export function StorefrontStudio({ slug }: { slug: string }) {
             Subheadline
             <input className={fieldClass} value={draft.hero.subheadline} onChange={(event) => patch({ ...draft, hero: { ...draft.hero, subheadline: event.target.value } })} />
           </label>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="text-sm text-white/70">
-              Hero media
-              <select
-                className={fieldClass}
-                value={draft.hero.media.kind}
-                onChange={(event) =>
-                  patch({
-                    ...draft,
-                    hero: {
-                      ...draft.hero,
-                      media: { ...draft.hero.media, kind: event.target.value as TenantStorefrontConfig["hero"]["media"]["kind"] },
-                    },
-                  })
-                }
-              >
-                <option value="image">image</option>
-                <option value="cinemagraph">cinemagraph</option>
-                <option value="loop-video">loop-video</option>
-              </select>
-            </label>
-            <label className="text-sm text-white/70">
-              Poster URL
-              <input className={fieldClass} value={draft.hero.media.posterUrl} onChange={(event) => patch({ ...draft, hero: { ...draft.hero, media: { ...draft.hero.media, posterUrl: event.target.value } } })} />
-            </label>
-            <label className="text-sm text-white/70">
-              Loop URL
-              <input className={fieldClass} value={draft.hero.media.videoUrl ?? ""} onChange={(event) => patch({ ...draft, hero: { ...draft.hero, media: { ...draft.hero.media, videoUrl: event.target.value || undefined } } })} />
-            </label>
-          </div>
+          <StorefrontMediaEditor
+            slug={slug}
+            draft={draft}
+            disabled={busy !== null || uploading}
+            onChange={patch}
+            onError={setError}
+            onBusy={setUploading}
+          />
           {draft.services.map((service, index) => (
             <div key={service.id} className="grid gap-2 rounded-xl border border-white/10 p-3 sm:grid-cols-2">
               <label className="text-sm text-white/70">
@@ -288,46 +277,6 @@ export function StorefrontStudio({ slug }: { slug: string }) {
               </label>
             </div>
           ))}
-          {draft.projects.map((project, index) => (
-            <div key={project.id} className="grid gap-2 rounded-xl border border-white/10 p-3 sm:grid-cols-2">
-              <label className="text-sm text-white/70 sm:col-span-2">
-                Proof title
-                <input
-                  className={fieldClass}
-                  value={project.title}
-                  onChange={(event) => {
-                    const projects = draft.projects.slice();
-                    projects[index] = { ...project, title: event.target.value };
-                    patch({ ...draft, projects });
-                  }}
-                />
-              </label>
-              <label className="text-sm text-white/70">
-                Before URL
-                <input
-                  className={fieldClass}
-                  value={project.beforeUrl}
-                  onChange={(event) => {
-                    const projects = draft.projects.slice();
-                    projects[index] = { ...project, beforeUrl: event.target.value };
-                    patch({ ...draft, projects });
-                  }}
-                />
-              </label>
-              <label className="text-sm text-white/70">
-                After URL
-                <input
-                  className={fieldClass}
-                  value={project.afterUrl}
-                  onChange={(event) => {
-                    const projects = draft.projects.slice();
-                    projects[index] = { ...project, afterUrl: event.target.value };
-                    patch({ ...draft, projects });
-                  }}
-                />
-              </label>
-            </div>
-          ))}
           <ShowcaseThemePicker
             value={parseShowcaseThemeId(draft.theme.showcaseThemeId)}
             onChange={(id: ShowcaseThemeId) => {
@@ -348,13 +297,13 @@ export function StorefrontStudio({ slug }: { slug: string }) {
             }}
           />
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" onClick={() => void save()} disabled={busy !== null} className="w-fit rounded-full border border-[#00f2fe] px-4 py-2 text-sm font-semibold text-[#00f2fe] disabled:opacity-60">
+            <button type="button" onClick={() => void save()} disabled={busy !== null || uploading} className="w-fit rounded-full border border-[#00f2fe] px-4 py-2 text-sm font-semibold text-[#00f2fe] disabled:opacity-60">
               {busy === "save" ? "Saving…" : "Save draft"}
             </button>
             <button
               type="button"
               onClick={() => void goLive()}
-              disabled={busy !== null}
+              disabled={busy !== null || uploading}
               className="rounded-full bg-[#FF9900] px-4 py-2 text-sm font-semibold text-[#050507] disabled:opacity-60"
             >
               {desk.phase === "published" ? "Published" : busy === "publish" ? "Publishing…" : "Publish"}

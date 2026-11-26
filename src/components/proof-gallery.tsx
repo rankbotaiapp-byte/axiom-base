@@ -14,6 +14,7 @@ import {
 import { addPortfolioItem, listShopPortfolio, removePortfolioItem } from "@/lib/axiom/server";
 import type { ShopNiche } from "@/lib/axiom/types";
 import { Input, Label } from "@/components/ui/input";
+import { CinematicMediaFrame } from "@/components/storefront/CinematicMediaFrame";
 
 export function ProofGallery({
   heading,
@@ -140,6 +141,7 @@ function FrameMedia({ frame, quiet = false }: { frame: ProofFrame; quiet?: boole
   }
   if (frame.kind === "video") {
     return (
+      <CinematicMediaFrame className="block w-full">
       <HeroLoopVideo
         src={src || frame.src}
         className="aspect-[4/3] w-full object-cover"
@@ -157,9 +159,11 @@ function FrameMedia({ frame, quiet = false }: { frame: ProofFrame; quiet?: boole
           else setExhausted(true);
         }}
       />
+      </CinematicMediaFrame>
     );
   }
   return (
+    <CinematicMediaFrame className="block w-full">
     <img
       src={src || frame.src}
       alt={frame.caption}
@@ -173,6 +177,7 @@ function FrameMedia({ frame, quiet = false }: { frame: ProofFrame; quiet?: boole
         else setExhausted(true);
       }}
     />
+    </CinematicMediaFrame>
   );
 }
 

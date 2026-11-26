@@ -4,7 +4,7 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
-  serverExternalPackages: ["pg", "@electric-sql/pglite"],
+  serverExternalPackages: ["pg", "@electric-sql/pglite", "sharp"],
   turbopack: {
     root: process.cwd(),
     resolveAlias: {

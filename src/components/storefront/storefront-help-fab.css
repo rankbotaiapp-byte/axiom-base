@@ -1,0 +1,30 @@
+.storefront-help-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 60;
+  display: grid;
+  height: 4rem;
+  width: 4rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid #00ffcc;
+  background: #10131a;
+  box-shadow: 0 0 24px color-mix(in srgb, #00ffcc 40%, transparent);
+  color: #00ffcc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .storefront-help-fab {
+    right: 1.5rem;
+    bottom: 1.5rem;
+  }
+}
+
+.storefront-help-fab.storefront-help-fab--raised {
+  bottom: 7.5rem;
+}

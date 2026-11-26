@@ -101,52 +101,106 @@ export async function persistLayoutToSupabase(
   return { ok: true, target: "local" };
 }
 
-export async function uploadLayoutAssetToStorage(
-  slug: string,
-  file: File,
+export type StoredLayoutAsset = {
+  url: string;
+  thumbnailUrl?: string;
+};
+
+function asFetchBody(body: BodyInit | Buffer | Uint8Array, mime: string): Blob | BodyInit {
+  if (body instanceof Blob) return body;
+  if (typeof body === "string") return body;
+  const bytes = body instanceof Uint8Array ? body : new Uint8Array(body as ArrayBuffer);
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new Blob([copy], { type: mime });
+}
+
+async function uploadObjectToAxiomMedia(
+  objectPath: string,
+  body: BodyInit | Buffer | Uint8Array,
+  mime: string,
 ): Promise<string | null> {
   const supabase = supabaseAdmin();
   if (!supabase) return null;
 
-  const safeSlug = slug
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "shop";
-  const lower = file.name.toLowerCase();
-  const ext = lower.match(/\.(webm|png|webp|jpe?g|gif|mp4|mov)$/)?.[1] || "bin";
-  const objectPath = `layout/${safeSlug}/${Date.now()}.${ext}`;
-  const mime =
-    file.type ||
-    (ext === "png"
-      ? "image/png"
-      : ext === "webp"
-        ? "image/webp"
-        : ext === "jpg" || ext === "jpeg"
-          ? "image/jpeg"
-          : ext === "webm"
-            ? "video/webm"
-            : "video/mp4");
-
+  const buckets = ["axiom-media", "media", "app-uploads"] as const;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 25000);
   try {
-    const response = await fetch(`${supabase.url}/storage/v1/object/media/${objectPath}`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        apikey: supabase.key,
-        authorization: `Bearer ${supabase.key}`,
-        "content-type": mime,
-        "x-upsert": "true",
-      },
-      body: file,
-    });
-    if (!response.ok) return null;
-    return `${supabase.url}/storage/v1/object/public/media/${objectPath}`;
+    for (const bucket of buckets) {
+      const response = await fetch(`${supabase.url}/storage/v1/object/${bucket}/${objectPath}`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          apikey: supabase.key,
+          authorization: `Bearer ${supabase.key}`,
+          "content-type": mime,
+          "x-upsert": "true",
+        },
+        body: asFetchBody(body, mime),
+      });
+      if (response.ok) {
+        return `${supabase.url}/storage/v1/object/public/${bucket}/${objectPath}`;
+      }
+    }
+    return null;
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+function safeShopSlug(slug: string): string {
+  return (
+    slug
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "shop"
+  );
+}
+
+export async function uploadEnhancedImageToStorage(
+  slug: string,
+  bytes: Buffer | Uint8Array,
+  kind: "hero" | "proof" | "mms" = "proof",
+): Promise<StoredLayoutAsset | null> {
+  const { enhanceJobPhoto } = await import("./cinematic-enhance.server");
+  const enhanced = await enhanceJobPhoto(bytes);
+  const stamp = Date.now();
+  const prefix = `layout/${safeShopSlug(slug)}/${kind}-${stamp}`;
+  const url = await uploadObjectToAxiomMedia(`${prefix}.webp`, enhanced.webp, "image/webp");
+  if (!url) return null;
+  const thumbnailUrl =
+    (await uploadObjectToAxiomMedia(`${prefix}-thumb.webp`, enhanced.thumb, "image/webp")) || undefined;
+  return { url, thumbnailUrl };
+}
+
+export async function uploadLayoutAssetToStorage(
+  slug: string,
+  file: File,
+  kind: "hero" | "proof" = "proof",
+): Promise<string | null> {
+  const stored = await uploadLayoutAssetBundle(slug, file, kind);
+  return stored?.url ?? null;
+}
+
+export async function uploadLayoutAssetBundle(
+  slug: string,
+  file: File,
+  kind: "hero" | "proof" = "proof",
+): Promise<StoredLayoutAsset | null> {
+  const { isRasterJobPhoto } = await import("./cinematic-enhance.server");
+  const lower = file.name.toLowerCase();
+  if (isRasterJobPhoto(file.type, file.name)) {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    return uploadEnhancedImageToStorage(slug, bytes, kind);
+  }
+
+  const ext = lower.match(/\.(webm|mp4|mov)$/)?.[1] || "bin";
+  const objectPath = `layout/${safeShopSlug(slug)}/${Date.now()}.${ext}`;
+  const mime = file.type || (ext === "webm" ? "video/webm" : "video/mp4");
+  const url = await uploadObjectToAxiomMedia(objectPath, file, mime);
+  return url ? { url } : null;
 }

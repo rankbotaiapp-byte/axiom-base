@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { uploadLayoutAssetToStorage } from "@/lib/axiom/storefront-layout.server";
+import { uploadLayoutAssetBundle } from "@/lib/axiom/storefront-layout.server";
 import { DEFAULT_SHOP_SLUG } from "@/lib/axiom/storefront-layout";
+import { validateStorefrontUpload, type StorefrontUploadKind } from "@/lib/axiom/storefront-media";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,32 +11,35 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const file = form.get("file");
     const slugRaw = form.get("slug");
+    const kindRaw = String(form.get("kind") ?? "hero");
+    const kind: StorefrontUploadKind = kindRaw === "proof" ? "proof" : "hero";
     const slug =
       typeof slugRaw === "string" && slugRaw.trim() ? slugRaw.trim() : DEFAULT_SHOP_SLUG;
 
     if (!(file instanceof File) || file.size <= 0) {
       return NextResponse.json({ ok: false, error: "Missing file." }, { status: 400 });
     }
-    if (file.size > 40 * 1024 * 1024) {
-      return NextResponse.json({ ok: false, error: "File exceeds 40MB limit." }, { status: 413 });
+    const check = validateStorefrontUpload(file, kind);
+    if (!check.ok) {
+      return NextResponse.json({ ok: false, error: check.error }, { status: 400 });
     }
 
-    const remoteUrl = await uploadLayoutAssetToStorage(slug, file);
-    if (!remoteUrl) {
-      return NextResponse.json({
-        ok: true,
-        remote: false,
-        url: null,
-        message: "Supabase storage unavailable — use local object URL on client.",
-      });
+    const stored = await uploadLayoutAssetBundle(slug, file, kind);
+    if (!stored?.url) {
+      return NextResponse.json(
+        { ok: false, error: "Supabase storage (axiom-media) is unavailable." },
+        { status: 503 },
+      );
     }
 
     return NextResponse.json({
       ok: true,
       remote: true,
-      url: remoteUrl,
+      url: stored.url,
+      thumbnailUrl: stored.thumbnailUrl ?? null,
+      kind: check.media,
       name: file.name,
-      mime: file.type || "application/octet-stream",
+      mime: check.media === "image" ? "image/webp" : file.type || "application/octet-stream",
     });
   } catch (err) {
     const error = err instanceof Error ? err.message : "Upload failed.";

@@ -123,6 +123,10 @@ export async function handleTwilioInboundSms(form: URLSearchParams) {
     kind: "inbound_inquiry",
   });
 
+  const mms = shop
+    ? await ingestInboundMmsProofs(form, shop).catch(() => ({ stored: 0 }))
+    : { stored: 0 };
+
   const lower = body.toLowerCase();
   const wantsBook = /\b(book|schedule|appointment|dispatch|emergency|help|yes)\b/.test(lower);
   let reply =
@@ -139,6 +143,9 @@ export async function handleTwilioInboundSms(form: URLSearchParams) {
       timeZone: "America/Los_Angeles",
     });
     reply = `${shopName} locked a hold for ${whenLabel} PT. Reply CONFIRM to keep it, or STOP to cancel. We'll text a pre-arrival reminder 1 hour before.`;
+    if (mms.stored > 0) {
+      reply = `Received ${mms.stored} job photo${mms.stored === 1 ? "" : "s"}. ${reply}`;
+    }
 
     const confirm = await sendSms(from, reply);
     await persistConversation({
@@ -186,8 +193,58 @@ export async function handleTwilioInboundSms(form: URLSearchParams) {
     return { ok: true, reply, booked: true };
   }
 
-  await pulse("twilio.sms.inbound", "good", `SMS from ${from.slice(-4)}`, shopId, { messageSid });
+  if (mms.stored > 0) {
+    reply = `${shopName} received ${mms.stored} proof-of-work photo${mms.stored === 1 ? "" : "s"}. ${reply}`;
+  }
+
+  await pulse("twilio.sms.inbound", "good", `SMS from ${from.slice(-4)}`, shopId, { messageSid, mms: mms.stored });
   return { ok: true, reply, booked: false };
+}
+
+async function ingestInboundMmsProofs(
+  form: URLSearchParams,
+  shop: { id: string; slug: string },
+): Promise<{ stored: number }> {
+  const count = Number(form.get("NumMedia") || 0);
+  if (!Number.isFinite(count) || count <= 0) return { stored: 0 };
+  const auth = twilioAuth();
+  const { isRasterJobPhoto } = await import("./cinematic-enhance.server");
+  const { uploadEnhancedImageToStorage } = await import("./storefront-layout.server");
+  const sql = await getSql();
+  const staff = await sql<{ id: string }>`
+    select id from employees where shop_id = ${shop.id} order by created_at asc limit 1
+  `.catch(() => [] as { id: string }[]);
+  const employeeId = staff[0]?.id ?? null;
+  let stored = 0;
+
+  for (let index = 0; index < Math.min(count, 8); index += 1) {
+    const mediaUrl = form.get(`MediaUrl${index}`) || "";
+    const contentType = form.get(`MediaContentType${index}`) || "";
+    if (!mediaUrl || !isRasterJobPhoto(contentType, mediaUrl)) continue;
+    try {
+      const headers: HeadersInit = {};
+      if (auth) {
+        headers.Authorization = `Basic ${Buffer.from(`${auth.sid}:${auth.token}`).toString("base64")}`;
+      }
+      const response = await fetch(mediaUrl, { headers, signal: AbortSignal.timeout(15_000) });
+      if (!response.ok) continue;
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.byteLength < 32 || bytes.byteLength > 8 * 1024 * 1024) continue;
+      const uploaded = await uploadEnhancedImageToStorage(shop.slug, bytes, "mms");
+      if (!uploaded?.url) continue;
+      const caption = (form.get("Body") || "Field proof of work").slice(0, 140);
+      if (employeeId) {
+        await sql`
+          insert into portfolio_items (id, shop_id, employee_id, image_url, caption)
+          values (${newId("pf")}, ${shop.id}, ${employeeId}, ${uploaded.url}, ${caption})
+        `.catch(() => undefined);
+      }
+      stored += 1;
+    } catch {
+      /* skip a bad attachment */
+    }
+  }
+  return { stored };
 }
 
 /** Twilio MessageStatus callback — delivery telemetry. */

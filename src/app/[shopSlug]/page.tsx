@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
-import { OutboundStorefront } from "@/components/outbound/OutboundStorefront";
 import { TradeShowcasePage } from "@/components/storefront/trade-showcase-page";
 import { firstQuery } from "@/lib/axiom/outbound-preview";
 import { resolveOutboundLead } from "@/lib/axiom/outbound-preview.server";
-import { previewStockForBusiness } from "@/lib/axiom/preview-stock";
 import { readPublicShop } from "@/lib/axiom/shop-accent.server";
-import { readStudioAccess } from "@/lib/axiom/studio-credits.server";
 
 export default async function ShopPage({
   params,
@@ -19,55 +16,49 @@ export default async function ShopPage({
   const shop = await readPublicShop(shopSlug);
   const lead = firstQuery(query.lead);
 
-  if (!lead) {
-    if (!shop) notFound();
+  if (!shop && !lead) notFound();
 
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      name: shop.name,
-      description: `Open 24/7 for emergency ${shop.niche} bookings.`,
-      url: `/${shop.slug}`,
-    };
+  const profile = lead
+    ? await resolveOutboundLead({
+        slug: shopSlug,
+        lead,
+        name: firstQuery(query.name),
+        city: firstQuery(query.city),
+        county: firstQuery(query.county),
+        niche: firstQuery(query.niche),
+      })
+    : null;
 
-    return (
-      <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
-        />
-        <TradeShowcasePage shop={shop} />
-      </>
-    );
-  }
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: profile?.businessName || shop?.name || shopSlug,
+    description: `Open 24/7 for emergency ${(profile?.niche || shop?.niche || "service")} bookings.`,
+    url: `/${shopSlug}`,
+  };
 
-  // --- OUTBOUND LEAD PREVIEW FLOW ---
-  const accent = shop?.accent ?? "";
-  const theme = accent ? <style>{`.immutable-storefront{--shop-accent:${accent} !important}`}</style> : null;
-
-  const profile = await resolveOutboundLead({
-    slug: shopSlug,
-    lead,
-    name: firstQuery(query.name),
-    city: firstQuery(query.city),
-    county: firstQuery(query.county),
-    niche: firstQuery(query.niche),
-  });
-  
-  const access = await readStudioAccess(profile.slug);
-  
   return (
     <>
-      {theme}
-      <OutboundStorefront
-        profile={profile}
-        stock={previewStockForBusiness({
-          niche: profile.niche,
-          businessName: profile.businessName,
-          city: profile.city,
-          accent,
-        })}
-        studioUnlocked={access.isActive && access.credits > 0}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
+      <TradeShowcasePage
+        shop={{
+          slug: shopSlug,
+          name: profile?.businessName || shop?.name || shopSlug,
+          niche: profile?.niche || shop?.niche || "contractor",
+          tagline: profile?.tagline || shop?.tagline,
+          description: shop?.description,
+          address: profile?.city || shop?.address,
+          accent: shop?.accent,
+          ringColor: shop?.ringColor,
+          neonAccent: shop?.neonAccent,
+          heroImageUrl: shop?.heroImageUrl,
+          heroVideoUrl: shop?.heroVideoUrl,
+          phone: profile?.phone || shop?.phone,
+          showcaseThemeId: shop?.showcaseThemeId,
+        }}
       />
     </>
   );

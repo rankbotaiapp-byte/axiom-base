@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { CalendarDays, Phone, ShieldCheck } from "lucide-react";
 import { HeroLoopVideo } from "@/components/loop-video";
+import { CinematicMediaFrame } from "@/components/storefront/CinematicMediaFrame";
+import { StorefrontHelpFab } from "@/components/storefront/StorefrontHelpFab";
 import { DEFAULT_SHOWCASE_THEME_ID, showcaseTheme, type ShowcaseThemeId } from "@/lib/axiom/outreach-desk";
 import "./trade-showcase.css";
 
@@ -19,6 +21,7 @@ export type TradeShowcaseProps = {
   videoUrl?: string | null;
   bookHref: string;
   themeId?: ShowcaseThemeId | string;
+  cinemaGrade?: boolean;
 };
 
 export function TradeShowcase({
@@ -34,6 +37,7 @@ export function TradeShowcase({
   videoUrl,
   bookHref,
   themeId = DEFAULT_SHOWCASE_THEME_ID,
+  cinemaGrade = true,
 }: TradeShowcaseProps) {
   const theme = showcaseTheme(themeId);
   const [muted, setMuted] = useState(true);
@@ -74,20 +78,22 @@ export function TradeShowcase({
             <span className="ts-tick ts-tick-tr" aria-hidden />
             <span className="ts-tick ts-tick-bl" aria-hidden />
             <span className="ts-tick ts-tick-br" aria-hidden />
-            {videoUrl ? (
-              <HeroLoopVideo
-                src={videoUrl}
-                poster={posterUrl}
-                muted={muted}
-                autoPlay
-                loop
-                playsInline
-                preload="metadata"
-                aria-label={`${businessName} hero loop`}
-              />
-            ) : (
-              <img src={posterUrl} alt="" />
-            )}
+            <CinematicMediaFrame cinemaGrade={cinemaGrade} className="absolute inset-0 h-full w-full">
+              {videoUrl ? (
+                <HeroLoopVideo
+                  src={videoUrl}
+                  poster={posterUrl}
+                  muted={muted}
+                  autoPlay
+                  loop
+                  playsInline
+                  preload="metadata"
+                  aria-label={`${businessName} hero loop`}
+                />
+              ) : (
+                <img src={posterUrl} alt="" />
+              )}
+            </CinematicMediaFrame>
             <span className="ts-badge">24/7</span>
             {videoUrl ? (
               <button type="button" className="ts-mute" onClick={() => setMuted((value) => !value)}>
@@ -126,9 +132,7 @@ export function TradeShowcase({
         </div>
       </div>
 
-      <a className="ts-orb" href="#help" aria-label="Help">
-        HELP
-      </a>
+      <StorefrontHelpFab shopName={businessName} phone={phone} bookHref={bookHref} className="storefront-help-fab--raised" />
       <nav className="ts-sticky" aria-label="Call or book">
         <a className="ts-sticky-call" href={callHref}>
           <Phone className="size-4" /> Call

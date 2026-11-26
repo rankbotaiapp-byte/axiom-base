@@ -5,6 +5,9 @@ import type { CSSProperties } from "react";
 import type { BeforeAfterProject, TenantStorefrontConfig } from "@/lib/schemas/tenant";
 import { ConversionDrawer } from "./ConversionDrawer";
 import { HeroMediaSlot } from "./HeroMediaSlot";
+import { CinematicMediaFrame } from "./CinematicMediaFrame";
+import { StorefrontHelpFab } from "./StorefrontHelpFab";
+import { resolveCinemaGrade } from "@/lib/axiom/cinematic-media";
 import { UnlockCheckoutButton } from "./UnlockCheckoutButton";
 import type { UnlockPhase } from "@/lib/axiom/hydrate-storefront";
 
@@ -113,6 +116,7 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
           </div>
           <HeroMediaSlot
             media={config.hero.media}
+            cinemaGrade={theme.cinemaGrade}
             className="relative aspect-[4/5] min-h-[320px] overflow-hidden rounded-3xl border border-white/10 sm:aspect-[5/4]"
           />
         </section>
@@ -165,7 +169,7 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
           <h2 className="text-2xl font-semibold tracking-tight">Proof of work</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {config.projects.map((project) => (
-              <CompareCard key={project.id} project={project} />
+              <CompareCard key={project.id} project={project} cinemaGrade={theme.cinemaGrade} />
             ))}
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -215,6 +219,12 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
         serviceId={drawer?.serviceId ?? null}
         urgency={drawer?.urgency ?? false}
       />
+      <StorefrontHelpFab
+        shopName={config.businessName}
+        phone={conversion.displayPhone}
+        onBook={() => openBooking()}
+        onEmergency={() => openEmergency()}
+      />
     </div>
   );
 }
@@ -228,11 +238,18 @@ function TrustFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompareCard({ project }: { project: BeforeAfterProject }) {
+function CompareCard({
+  project,
+  cinemaGrade,
+}: {
+  project: BeforeAfterProject;
+  cinemaGrade?: boolean;
+}) {
   const [split, setSplit] = useState(52);
+  const grade = resolveCinemaGrade(cinemaGrade, project.cinemaGrade);
   return (
     <figure className="overflow-hidden rounded-2xl border border-white/10 bg-[var(--surfaceBg)]">
-      <div className="relative aspect-[4/5] sm:aspect-[5/4]">
+      <CinematicMediaFrame cinemaGrade={grade} className="relative aspect-[4/5] sm:aspect-[5/4]">
         <img src={project.beforeUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <img
           src={project.afterUrl}
@@ -240,11 +257,15 @@ function CompareCard({ project }: { project: BeforeAfterProject }) {
           className="absolute inset-0 h-full w-full object-cover"
           style={{ clipPath: `inset(0 0 0 ${split}%)` }}
         />
-        <div className="pointer-events-none absolute inset-y-0" style={{ left: `${split}%` }}>
+        <div className="pointer-events-none absolute inset-y-0" style={{ left: `${split}%` }} data-cmf-ui>
           <span className="absolute top-0 h-full w-px -translate-x-1/2 bg-[var(--primaryAccent)]" />
         </div>
-        <span className="absolute left-3 top-3 rounded-full bg-[var(--canvasBg)]/80 px-2 py-1 text-[10px] uppercase tracking-[0.14em]">Before</span>
-        <span className="absolute right-3 top-3 rounded-full bg-[var(--canvasBg)]/80 px-2 py-1 text-[10px] uppercase tracking-[0.14em]">After</span>
+        <span className="absolute left-3 top-3 z-[3] rounded-full bg-[var(--canvasBg)]/80 px-2 py-1 text-[10px] uppercase tracking-[0.14em]" data-cmf-ui>
+          Before
+        </span>
+        <span className="absolute right-3 top-3 z-[3] rounded-full bg-[var(--canvasBg)]/80 px-2 py-1 text-[10px] uppercase tracking-[0.14em]" data-cmf-ui>
+          After
+        </span>
         <label className="absolute inset-x-3 bottom-3">
           <span className="sr-only">Compare before and after for {project.title}</span>
           <input
@@ -256,7 +277,7 @@ function CompareCard({ project }: { project: BeforeAfterProject }) {
             className="w-full accent-[var(--primaryAccent)]"
           />
         </label>
-      </div>
+      </CinematicMediaFrame>
       <figcaption className="p-4">
         <p className="font-semibold">{project.title}</p>
         {project.summary ? <p className="mt-1 text-sm text-white/65">{project.summary}</p> : null}
