@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   callerNameMatchesBusiness,
+  commandLeadMatchesNiche,
   computePrimeScore,
   featuredCommandRank,
   isPrimeAutopilotReady,
@@ -14,6 +15,7 @@ import {
   readImageWidthFromBytes,
   sortCommandLeads,
 } from "./lead-verification.ts";
+import { isPrimeCandidate, selectTopPrimeCandidates } from "./prime-conversion.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -87,4 +89,28 @@ test("command desk pins Stedfast and Grants Pass Electric, plumbing first", () =
   );
   assert.equal(sorted[0]?.businessName, "Stedfast Plumbing & Drain");
   assert.equal(sorted[1]?.businessName, "Grants Pass Electric");
+  assert.equal(commandLeadMatchesNiche({ tradeType: "plumbing" }, "plumbing"), true);
+  assert.equal(
+    selectTopPrimeCandidates(
+      [
+        {
+          id: "1",
+          businessName: "Night Shift Plumbing",
+          tradeType: "plumbing",
+          tradeLabel: "24/7 emergency",
+          contactPhone: "5415550100",
+          contactEmail: "a@b.co",
+          city: "Medford",
+          website: "https://night.example",
+          datasetImages: ["https://cdn.example/a.jpg"],
+          lineType: "mobile",
+          reviewCount: 12,
+          reviewScore: 5,
+        },
+      ],
+      { niche: "plumbing", limit: 1 },
+    ).length,
+    1,
+  );
+  assert.equal(isPrimeCandidate({ contactPhone: "" }), false);
 });

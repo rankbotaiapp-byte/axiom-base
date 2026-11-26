@@ -52,8 +52,12 @@ export type DatasetLeadRecord = {
   heroImageStatus?: string;
   heroImageWidth?: number | null;
   primeScore?: number;
+  primeReasons?: string[];
   qaApproved?: boolean;
   qaNotes?: string;
+  reviewCount?: number;
+  reviewScore?: number;
+  hasWebsite?: boolean;
 };
 
 export const SHOWCASE_THEME_IDS = ["solar_gold", "pure_cyan", "emergency_amber", "cobalt_ice"] as const;

@@ -96,7 +96,7 @@ export async function getSessionUser(
     if (isDatabaseUnavailable(err) || isDatabaseConfigFailure(err)) {
       throw new SessionProbeError(DB_UNAVAILABLE_CODE, "Database is unavailable");
     }
-    throw err;
+    throw new SessionProbeError(DB_UNAVAILABLE_CODE, "Database is unavailable");
   }
 }
 

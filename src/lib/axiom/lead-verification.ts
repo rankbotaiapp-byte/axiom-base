@@ -7,7 +7,7 @@ export const SMS_CAPABLE_LINE_TYPES = ["mobile", "nonFixedVoip"] as const;
 export const LINE_TYPES = ["mobile", "landline", "fixedVoip", "nonFixedVoip", "unknown"] as const;
 export const HERO_IMAGE_STATUSES = ["unchecked", "valid", "missing", "low_res", "regenerated"] as const;
 
-export type CommandLeadFilter = "all" | "prime" | "needs_hero" | "needs_phone";
+export type CommandLeadFilter = "all" | "prime" | "prime_candidates" | "needs_hero" | "needs_phone";
 export type CommandLeadNiche = "plumbing" | "electrical" | "hvac" | "all";
 
 export const COMMAND_NICHES: { id: CommandLeadNiche; label: string }[] = [

@@ -17,9 +17,17 @@ import {
   type HeroImageStatus,
   type LeadLineType,
 } from "./lead-verification";
-import { isOutreachNicheId, tradeTypeMatchersForNiche } from "./outreach-niche-batch";
+import { isOutreachNicheId, outreachNicheHero, tradeTypeMatchersForNiche } from "./outreach-niche-batch";
 import type { DatasetLeadRecord } from "./outreach-desk";
-import { parseDatasetImages, parseVisualMode, parseVisualStatus } from "./outreach-desk";
+import { parseDatasetImages, parseVisualMode, parseVisualStatus, VISUAL_MODE_SAMPLE } from "./outreach-desk";
+import {
+  PRIME_CANDIDATE_THRESHOLD,
+  PRIME_HERO_COMPILE_MAX,
+  evaluatePrimeCandidate,
+  parsePrimeBatchLimit,
+  planPrimeBatch,
+  selectTopPrimeCandidates,
+} from "./prime-conversion";
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 
@@ -32,6 +40,7 @@ export type VerifiedLeadRow = DatasetLeadRecord & {
   heroImageStatus: HeroImageStatus;
   heroImageWidth: number | null;
   primeScore: number;
+  primeReasons: string[];
   qaApproved: boolean;
   qaNotes: string;
   reviewCount: number;
@@ -39,6 +48,11 @@ export type VerifiedLeadRow = DatasetLeadRecord & {
   hasWebsite: boolean;
   lookupMode: "live" | "simulation";
 };
+
+function withPrimeConversion(lead: VerifiedLeadRow): VerifiedLeadRow {
+  const scored = evaluatePrimeCandidate(lead);
+  return { ...lead, primeScore: scored.score, primeReasons: scored.reasons };
+}
 
 function missingColumn(err: unknown, column: string): boolean {
   const message = err instanceof Error ? err.message : String(err);
@@ -76,6 +90,24 @@ function asVerified(row: Record<string, unknown>, lookupMode: "live" | "simulati
     heroImageStatus: parseHeroImageStatus(row.hero_image_status),
     heroImageWidth: typeof row.hero_image_width === "number" ? row.hero_image_width : Number(row.hero_image_width) || null,
     primeScore: Number(row.prime_score ?? 0) || 0,
+    primeReasons: evaluatePrimeCandidate({
+      businessName: String(row.business_name ?? ""),
+      tradeType: String(row.trade_type ?? ""),
+      tradeLabel: String(row.trade_label ?? ""),
+      contactName: String(row.contact_name ?? ""),
+      contactPhone: String(row.contact_phone ?? ""),
+      contactEmail: String(row.contact_email ?? ""),
+      streetAddress: String(row.street_address ?? ""),
+      city: String(row.city ?? ""),
+      website: String(row.website ?? ""),
+      hasWebsite: Boolean(row.has_website),
+      datasetImages: parseDatasetImages(row.dataset_images),
+      heroImageUrl: String(row.hero_image_url ?? row.poster_url ?? ""),
+      lineType: parseLeadLineType(row.line_type),
+      reviewCount: Number(row.review_count ?? 0) || 0,
+      reviewScore: Number(row.review_score ?? 0) || 0,
+      qaNotes: String(row.qa_notes ?? ""),
+    }).reasons,
     qaApproved: Boolean(row.qa_approved),
     qaNotes: String(row.qa_notes ?? ""),
     reviewCount: Number(row.review_count ?? 0) || 0,
@@ -212,7 +244,10 @@ export async function listCommandLeads(
 
 export function filterCommandLeads(leads: VerifiedLeadRow[], filter?: CommandLeadFilter): VerifiedLeadRow[] {
   if (!filter || filter === "all") return leads;
-  if (filter === "prime") return leads.filter((lead) => lead.primeScore >= 75);
+  if (filter === "prime_candidates") {
+    return leads.filter((lead) => evaluatePrimeCandidate(lead).score >= PRIME_CANDIDATE_THRESHOLD);
+  }
+  if (filter === "prime") return leads.filter((lead) => evaluatePrimeCandidate(lead).score >= 75);
   if (filter === "needs_hero") {
     return leads.filter((lead) => lead.heroImageStatus === "missing" || lead.heroImageStatus === "low_res" || lead.heroImageStatus === "unchecked");
   }
@@ -230,7 +265,9 @@ export function finalizeCommandLeads(
     if (niche === "all") return true;
     return commandLeadMatchesNiche(lead, niche);
   });
-  return sortCommandLeads(filterCommandLeads(filtered, input.filter), niche, search).slice(0, input.limit ?? 40);
+  return sortCommandLeads(filterCommandLeads(filtered, input.filter), niche, search)
+    .map(withPrimeConversion)
+    .slice(0, input.limit ?? 40);
 }
 
 function twilioReady(): boolean {
@@ -496,4 +533,133 @@ export async function markHeroRegenerated(leadId: string, imageUrl: string, widt
     }
   }
   void imageUrl;
+}
+
+export async function assignNicheFallbackHero(leadId: string, nicheHint?: string): Promise<VerifiedLeadRow> {
+  const sql = await getSql();
+  const current = await loadLeadById(sql, leadId);
+  if (!current) throw new AutopilotError(404, "Lead not found");
+  const loop = outreachNicheHero(nicheHint || current.tradeType, current.tradeLabel);
+  try {
+    await sql`
+      update preloaded_leads
+      set hero_video_url = ${loop},
+          visual_mode = ${VISUAL_MODE_SAMPLE},
+          visual_status = ${"unverified"}
+      where id = ${current.id}
+    `;
+  } catch (err) {
+    if (!missingColumn(err, "hero_video_url")) throw err;
+  }
+  const next = await loadLeadById(sql, current.id);
+  if (!next) throw new AutopilotError(404, "Lead not found");
+  return withPrimeConversion({ ...next, heroVideoUrl: loop });
+}
+
+export async function pullPrimeConversionBatch(
+  request: Request,
+  input: {
+    niche?: CommandLeadNiche;
+    limit?: number;
+    leadIds?: string[];
+    compileHero?: boolean;
+    assignFallback?: boolean;
+    queueOutreach?: boolean;
+  },
+): Promise<{
+  selected: VerifiedLeadRow[];
+  heroes: VerifiedLeadRow[];
+  fallbacks: VerifiedLeadRow[];
+  queued: number;
+  skippedOutreach: Array<{ id: string; reason: string }>;
+  mode: "simulation" | "live";
+  errors: Array<{ id: string; error: string }>;
+}> {
+  await assertAutopilotDesk(request);
+  const niche: CommandLeadNiche =
+    input.niche === "electrical" || input.niche === "hvac" || input.niche === "all" ? input.niche : "plumbing";
+  const listed = await listCommandLeads(request, {
+    filter: input.leadIds?.length ? "all" : "prime_candidates",
+    niche,
+    limit: 80,
+  });
+  const selectedIds =
+    input.leadIds?.length ?
+      input.leadIds.map((id) => id.trim()).filter(Boolean).slice(0, PRIME_HERO_COMPILE_MAX + 20)
+    : selectTopPrimeCandidates(listed, { niche, limit: parsePrimeBatchLimit(input.limit) }).map((lead) => lead.id);
+  const selected = listed.filter((lead) => selectedIds.includes(lead.id));
+  const { occupancyToday, enqueueOutreachBatch } = await import("./outreach-scheduler.server");
+  const { parseOutreachMode } = await import("./outreach-queue");
+  const { env } = await import("@/lib/env.server");
+  const sql = await getSql();
+  const [smsOcc, emailOcc] = await Promise.all([occupancyToday(sql, "sms"), occupancyToday(sql, "email")]);
+  const plan = planPrimeBatch(selected.length ? selected : listed, {
+    selectedIds,
+    smsRemaining: smsOcc.remaining,
+    emailRemaining: emailOcc.remaining,
+  });
+
+  const errors: Array<{ id: string; error: string }> = [];
+  const heroes: VerifiedLeadRow[] = [];
+  const fallbacks: VerifiedLeadRow[] = [];
+
+  if (input.compileHero !== false) {
+    const { recreateAnimatedHero } = await import("./outreach-desk.server");
+    for (const id of plan.heroRecreateIds) {
+      try {
+        const lead = selected.find((row) => row.id === id);
+        const compiled = await recreateAnimatedHero(request, {
+          leadId: id,
+          imageUrl: lead?.heroImageUrl || lead?.datasetImages[0],
+          shopName: lead?.businessName,
+          city: lead?.city,
+          niche: lead?.tradeType || niche,
+        });
+        await markHeroRegenerated(id, compiled.heroImageUrl, compiled.heroImageWidth ?? null);
+        const saved = await loadLeadById(sql, id);
+        if (saved) heroes.push(withPrimeConversion(saved));
+      } catch (err) {
+        errors.push({ id, error: err instanceof Error ? err.message : "Hero compile failed" });
+      }
+    }
+  }
+
+  if (input.assignFallback !== false) {
+    for (const id of plan.fallbackHeroIds) {
+      try {
+        fallbacks.push(await assignNicheFallbackHero(id, niche === "all" ? undefined : niche));
+      } catch (err) {
+        errors.push({ id, error: err instanceof Error ? err.message : "Fallback hero failed" });
+      }
+    }
+  }
+
+  let queued = 0;
+  if (input.queueOutreach !== false) {
+    const rows = plan.outreach
+      .map((item) => {
+        const lead = selected.find((row) => row.id === item.id);
+        if (!lead) return null;
+        return {
+          businessName: lead.businessName,
+          phone: lead.contactPhone,
+          email: lead.contactEmail,
+          niche: niche === "all" ? lead.tradeType || "plumbing" : niche,
+          channel: item.channel,
+          leadSlug: lead.leadSlug,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+    queued = await enqueueOutreachBatch(sql, rows);
+  }
+
+  return {
+    selected: selected.map(withPrimeConversion),
+    heroes,
+    fallbacks,
+    queued,
+    skippedOutreach: plan.skippedOutreach,
+    mode: parseOutreachMode(env("OUTREACH_MODE")),
+    errors,
+  };
 }

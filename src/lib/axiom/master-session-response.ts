@@ -64,6 +64,8 @@ export function failClosedMasterSession(err: unknown, configured = false) {
   if (isDatabaseUnavailable(err) || isDatabaseConfigFailure(err)) {
     return masterSessionUnavailable(DB_UNAVAILABLE_CODE, configured);
   }
-  const error = err instanceof Error ? err.message : "Master session failed.";
-  return noStoreJson({ error, session: null, user: null }, status && status >= 400 ? status : 500);
+  return noStoreJson(
+    { error: "Master session failed.", session: null, user: null },
+    status && status >= 400 ? status : 500,
+  );
 }

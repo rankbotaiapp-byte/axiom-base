@@ -7,7 +7,7 @@ import {
   recreateAnimatedHero,
   saveLeadPhone,
 } from "@/lib/axiom/outreach-desk.server";
-import { listCommandLeads, saveLeadIdentity, setLeadQa } from "@/lib/axiom/lead-verification.server";
+import { listCommandLeads, pullPrimeConversionBatch, saveLeadIdentity, setLeadQa } from "@/lib/axiom/lead-verification.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +21,12 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const view = url.searchParams.get("view") || "batches";
     if (view === "command") {
-      const filter = (url.searchParams.get("filter") || "all") as "all" | "prime" | "needs_hero" | "needs_phone";
+      const filter = (url.searchParams.get("filter") || "all") as
+        | "all"
+        | "prime"
+        | "prime_candidates"
+        | "needs_hero"
+        | "needs_phone";
       const niche = (url.searchParams.get("niche") || "plumbing") as "plumbing" | "electrical" | "hvac" | "all";
       const leads = await listCommandLeads(request, {
         filter,
@@ -61,7 +66,24 @@ export async function POST(request: Request) {
       city?: string;
       qaApproved?: boolean;
       notes?: string;
+      niche?: "plumbing" | "electrical" | "hvac" | "all";
+      limit?: number;
+      leadIds?: string[];
+      compileHero?: boolean;
+      assignFallback?: boolean;
+      queueOutreach?: boolean;
     };
+    if (body.action === "prime-batch") {
+      const result = await pullPrimeConversionBatch(request, {
+        niche: body.niche,
+        limit: body.limit,
+        leadIds: body.leadIds,
+        compileHero: body.compileHero,
+        assignFallback: body.assignFallback,
+        queueOutreach: body.queueOutreach,
+      });
+      return NextResponse.json(result);
+    }
     const leadId = String(body.leadId ?? "").trim();
     if (!leadId) return NextResponse.json({ error: "Missing lead." }, { status: 400 });
     if (body.action === "save-identity") {

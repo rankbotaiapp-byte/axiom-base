@@ -140,7 +140,7 @@ function transientDbError(err: unknown) {
     code === "08003" ||
     code === "08006" ||
     code === "57P01" ||
-    /connection terminated|connection timeout|timeout expired|ENOTFOUND|ECONNRESET|EAI_AGAIN/i.test(message)
+    /connection terminated|connection timeout|timeout expired|ENOTFOUND|ECONNRESET|EAI_AGAIN|getaddrinfo/i.test(message)
   );
 }
 
@@ -346,7 +346,9 @@ export function getHostedPgPool(): Pool {
   pgTypes.setTypeParser(OID_INTERVAL, identity);
 
   const local = localDevelopment();
-  const pool = new Pool({
+  let pool: Pool;
+  try {
+    pool = new Pool({
     connectionString: databaseUrl,
     // Local E2E + Vite SSR share one process — keep this well under the
     // typical Supabase pooler budget (~15). Production stays at 10.
@@ -355,6 +357,11 @@ export function getHostedPgPool(): Pool {
     connectionTimeoutMillis: local ? 4_000 : 15_000,
     allowExitOnIdle: local,
   });
+  } catch (err) {
+    throw err instanceof DatabaseConfigError
+      ? err
+      : new DatabaseConfigError("DATABASE_URL could not open a Postgres pool");
+  }
   // A reset from the pooler emits `error` on an idle client. Without a
   // listener Node treats that as fatal and exits the dev server.
   pool.on("error", (err) => {
@@ -376,8 +383,15 @@ function createNeonSql(): Promise<Sql> {
     const pool = getHostedPgPool();
     return toSql(async <T>(text: string, params: unknown[]) =>
       withDbRetry(async () => {
-        const res = await pool.query(text, params);
-        return res.rows as T[];
+        try {
+          const res = await pool.query(text, params);
+          return res.rows as T[];
+        } catch (err) {
+          if (deferHostedDatabase(err)) {
+            throw new DatabaseConfigError("Hosted Postgres is unreachable");
+          }
+          throw err;
+        }
       }),
     );
   })().catch((err) => {

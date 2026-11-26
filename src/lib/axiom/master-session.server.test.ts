@@ -28,7 +28,7 @@ test("fail-closed maps abort and probe errors without throwing", async () => {
   assert.equal(typed.status, 500);
   const typedBody = await typed.json();
   assert.equal(typedBody.session, null);
-  assert.equal(typeof typedBody.error, "string");
+  assert.equal(typedBody.error, "Master session failed.");
 
   const missing = failClosedMasterSession(Object.assign(new Error("Missing master session"), { status: 401 }));
   assert.equal(missing.status, 401);

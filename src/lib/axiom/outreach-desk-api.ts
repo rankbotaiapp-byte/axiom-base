@@ -133,3 +133,29 @@ export async function compileMasterHero(
   const json = await readJson<{ lead: DatasetLeadRecord }>(res);
   return json.lead;
 }
+
+export type PrimeBatchResult = {
+  selected: DatasetLeadRecord[];
+  heroes: DatasetLeadRecord[];
+  fallbacks: DatasetLeadRecord[];
+  queued: number;
+  skippedOutreach: Array<{ id: string; reason: string }>;
+  mode: "simulation" | "live";
+  errors: Array<{ id: string; error: string }>;
+};
+
+export async function pullPrimeConversionBatch(input: {
+  niche?: CommandLeadNiche;
+  limit?: number;
+  leadIds?: string[];
+  compileHero?: boolean;
+  assignFallback?: boolean;
+  queueOutreach?: boolean;
+}): Promise<PrimeBatchResult> {
+  const res = await masterDeskFetch("/api/master/outreach-desk", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "prime-batch", ...input }),
+  });
+  return readJson<PrimeBatchResult>(res);
+}
