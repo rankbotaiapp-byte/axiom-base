@@ -9,6 +9,8 @@ import AxiomStudioFunnel from "./AxiomStudioFunnel";
 import { AxiomPageSpecks } from "./AxiomAtmosphere";
 import { startAxiomTrial } from "./axiomCheckout";
 import type { AxiomStudioApi, OnboardPayload } from "./types";
+import { RunwayStrips } from "@/components/autopilot/RunwayStrips";
+import ap from "@/components/autopilot/autopilot.module.css";
 import "./axiom.css";
 
 interface AxiomLandingProps {
@@ -43,9 +45,18 @@ export default function AxiomLanding({ api, onCheckout = startAxiomTrial }: Axio
   );
 
   return (
-    <main className="ax-root">
+    <main className={`ax-root ${ap.stack}`} id="top">
+      <RunwayStrips />
       <AxiomPageSpecks />
       <div className="relative z-[1]">
+      <header className={ap.nav}>
+        <a className={ap.navMark} href="#top">
+          AXIOM
+        </a>
+        <button type="button" className={ap.navCta} onClick={() => scrollTo(studioRef.current)}>
+          Start for $1
+        </button>
+      </header>
       <AxiomHeroStage onStart={() => scrollTo(studioRef.current)} onProof={() => scrollTo(proofRef.current)} />
       <div ref={proofRef}>
         <AxiomProofCompare />
