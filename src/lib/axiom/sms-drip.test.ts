@@ -92,9 +92,10 @@ describe("3-step SMS drip engine", () => {
       county: "Jackson County",
       origin: "https://axiom.example",
     });
-    assert.match(url, /^https:\/\/axiom\.example\/t\/rogue-rapid-plumbing\?/);
+    assert.match(url, /^https:\/\/axiom\.example\/\?/);
+    assert.match(url, /trade=plumbing/);
+    assert.match(url, /b=Rogue\+Rapid\+Plumbing/);
     assert.match(url, /greet=1/);
-    assert.match(url, /b=rogue-rapid-plumbing/);
 
     const day1 = renderSmsDripBody("day1-preview", {
       firstName: "Sarah",

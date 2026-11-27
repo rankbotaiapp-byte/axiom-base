@@ -1,0 +1,23 @@
+/* Desk shell that does not depend on Tailwind `hidden` / `md:hidden` (those two
+   utilities were painting a second copy of the same section nav). */
+.axiom-master-shell,
+.axiom-master-desk {
+  position: relative;
+  z-index: 10;
+  min-height: 100dvh;
+  isolation: isolate;
+  overflow-x: hidden;
+  background: #050507;
+  color: #f8fafc;
+}
+
+.axiom-master-desk nav.axiom-master-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
+
+.axiom-master-desk nav.axiom-master-nav button {
+  cursor: pointer;
+}

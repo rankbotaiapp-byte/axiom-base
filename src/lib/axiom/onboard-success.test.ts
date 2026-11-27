@@ -8,6 +8,7 @@ import {
   isCheckoutSessionId,
   onboardSuccessHref,
   shopAdminHref,
+  shopDay1Href,
   territoryCheckoutSuccessUrl,
 } from "./onboard-success.ts";
 
@@ -21,6 +22,10 @@ test("territory checkout success lands on the PWA handshake", () => {
     "https://app.axiom.test/onboard/success?session_id={CHECKOUT_SESSION_ID}",
   );
   assert.equal(shopAdminHref("accurate-plumbing", "tok"), "/accurate-plumbing/admin?claim=tok");
+  assert.equal(
+    shopDay1Href("accurate-plumbing", { claimToken: "tok", phone: "+15415550100" }),
+    "/t/accurate-plumbing/welcome?setup=1&claim=tok&phone=%2B15415550100",
+  );
   assert.equal(isCheckoutSessionId("cs_live_12345678"), true);
   assert.equal(isCheckoutSessionId("not-a-session"), false);
 });
@@ -35,6 +40,7 @@ test("stripe, embedded checkout, and Grant & Launch are wired to onboard success
   assert.match(payments, /settleTerritorySession\(object\.id/);
   assert.match(modal, /export function onboardSuccessHref/);
   assert.match(page, /Grant & Launch/);
+  assert.match(page, /shopDay1Href/);
   assert.match(page, /grantOnboardLaunch/);
   assert.match(pwa, /beforeinstallprompt/);
   assert.match(pwa, /Add to Phone \(One Tap\)/);

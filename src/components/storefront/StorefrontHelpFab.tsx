@@ -6,6 +6,7 @@ import "./storefront-help-fab.css";
 
 export type StorefrontHelpFabProps = {
   shopName: string;
+  slug?: string;
   phone?: string;
   bookHref?: string;
   onBook?: () => void;
@@ -22,6 +23,7 @@ function telHref(phone: string): string | null {
 /** Lightweight bottom-right HELP control — no 3D companion, no studio. */
 export function StorefrontHelpFab({
   shopName,
+  slug = "",
   phone = "",
   bookHref,
   onBook,
@@ -29,8 +31,32 @@ export function StorefrontHelpFab({
   className = "",
 }: StorefrontHelpFabProps) {
   const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [thread, setThread] = useState<Array<{ role: "you" | "desk"; text: string }>>([]);
   const titleId = useId();
   const call = telHref(phone);
+
+  async function askHelper() {
+    const message = prompt.trim();
+    if (!message || !slug || busy) return;
+    setBusy(true);
+    setThread((rows) => [...rows, { role: "you", text: message }]);
+    setPrompt("");
+    try {
+      const response = await fetch("/api/storefront/helper", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slug, message }),
+      });
+      const json = (await response.json().catch(() => ({}))) as { reply?: string; error?: string };
+      setThread((rows) => [...rows, { role: "desk", text: json.reply || json.error || "Dispatch could not answer." }]);
+    } catch {
+      setThread((rows) => [...rows, { role: "desk", text: "Check the connection and try again." }]);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +92,7 @@ export function StorefrontHelpFab({
                 <h2 id={titleId} className="mt-1 text-xl font-semibold">
                   {shopName}
                 </h2>
-                <p className="mt-1 text-sm text-white/65">Book a visit or reach a live dispatcher.</p>
+                <p className="mt-1 text-sm text-white/65">Ask hours, area, or book a visit. Name + mobile locks a desk request.</p>
               </div>
               <button
                 type="button"
@@ -77,6 +103,45 @@ export function StorefrontHelpFab({
                 <X className="size-4" />
               </button>
             </div>
+            {thread.length ? (
+              <div className="mt-3 grid max-h-40 gap-2 overflow-y-auto text-sm">
+                {thread.map((row, index) => (
+                  <p key={`${row.role}-${index}`} className={row.role === "you" ? "text-white/80" : "text-[#00ffcc]"}>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/40">
+                      {row.role === "you" ? "You" : "Desk"} ·{" "}
+                    </span>
+                    {row.text}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            {slug ? (
+              <form
+                className="mt-3 grid gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void askHelper();
+                }}
+              >
+                <label className="sr-only" htmlFor={`${titleId}-ask`}>
+                  Ask dispatch
+                </label>
+                <input
+                  id={`${titleId}-ask`}
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  placeholder="Hours? Book Ada 541-555-0148"
+                  className="min-h-11 rounded-xl border border-white/15 bg-[#050507] px-3 text-sm outline-none focus:border-[#00ffcc]"
+                />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#00ffcc] text-sm font-semibold text-[#00ffcc]"
+                >
+                  {busy ? "Sending…" : "Ask dispatch"}
+                </button>
+              </form>
+            ) : null}
             <div className="mt-4 grid gap-2">
               {call ? (
                 <a

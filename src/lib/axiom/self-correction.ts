@@ -73,7 +73,7 @@ export type HealthAssessment = {
 };
 
 const SMS_FAIL = new Set(["undelivered", "failed"]);
-const EMAIL_FAIL = new Set(["bounced", "complained", "bounce", "complaint"]);
+const EMAIL_FAIL = new Set(["bounced", "complained", "bounce", "complaint", "failed"]);
 
 export function normalizeErrorCode(value: unknown): string {
   return String(value ?? "").trim();

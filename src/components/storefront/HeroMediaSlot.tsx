@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DefaultAssetPlaceholder } from "@/components/default-asset-placeholder";
 import { CinematicMediaFrame } from "@/components/storefront/CinematicMediaFrame";
 import { resolveCinemaGrade } from "@/lib/axiom/cinematic-media";
 import type { MediaSlot } from "@/lib/schemas/tenant";
@@ -18,6 +19,7 @@ function prefersReducedMotion(): boolean {
 /** Poster paints immediately. Motion video overlays only when it is allowed to play. */
 export function HeroMediaSlot({ media, className, cinemaGrade }: HeroMediaSlotProps) {
   const [videoFailed, setVideoFailed] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
   const [motionReady, setMotionReady] = useState(false);
 
   useEffect(() => {
@@ -38,14 +40,19 @@ export function HeroMediaSlot({ media, className, cinemaGrade }: HeroMediaSlotPr
       cinemaGrade={grade}
       className={className ?? "relative h-full min-h-[280px] w-full overflow-hidden"}
     >
-      <img
-        src={media.posterUrl}
-        alt={media.alt}
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{ objectPosition: position }}
-        fetchPriority="high"
-        decoding="async"
-      />
+      {posterFailed || !media.posterUrl ? (
+        <DefaultAssetPlaceholder label="Hero still — replace in Studio" />
+      ) : (
+        <img
+          src={media.posterUrl}
+          alt={media.alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: position }}
+          fetchPriority="high"
+          decoding="async"
+          onError={() => setPosterFailed(true)}
+        />
+      )}
       {canPlay && media.videoUrl ? (
         <video
           className="absolute inset-0 h-full w-full object-cover"

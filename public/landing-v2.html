@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050507">
+<title>AXIOM — 24/7 booking storefronts for local trades</title>
+<meta name="description" content="Axiom turns your business into a 24/7 customer-booking machine: a live storefront, AI receptionist and autopilot social posts, live in minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050507;--cyan:#00ffcc;--gold:#FFE500;--amber:#FF7A00;--glass:rgba(18,20,26,.72);--line:rgba(255,255,255,.08);--text:#f2f4f6;--mut:#9aa3ad;--ac:#ff7a00}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px;overflow-x:clip}
+body{background:var(--bg);color:var(--text);font-family:"Plus Jakarta Sans",Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
+a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:8px}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:16px 26px;border-radius:999px;font-weight:800;font-size:16px;letter-spacing:-.01em;transition:transform .2s,box-shadow .2s,background .2s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn.gold{background:var(--gold);color:#000;box-shadow:0 10px 40px rgba(255,229,0,.28)}
+.btn.gold:hover{box-shadow:0 12px 54px rgba(255,229,0,.45);transform:translateY(-1px)}
+.btn.amber{background:linear-gradient(90deg,var(--gold),var(--amber));color:#000;box-shadow:0 10px 40px rgba(255,122,0,.3)}
+.btn.ghost{border:1.5px solid rgba(0,255,204,.55);color:var(--cyan);background:rgba(0,255,204,.05)}
+.btn.ghost:hover{background:rgba(0,255,204,.1);box-shadow:0 0 30px rgba(0,255,204,.2)}
+.btn.sm{padding:10px 18px;font-size:14px}
+
+/* ---------- nav ---------- */
+nav.top{position:fixed;top:0;left:0;right:0;z-index:50;border-bottom:1px solid var(--line);background:rgba(5,5,7,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+nav.top .wrap{display:flex;align-items:center;height:64px;gap:28px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.22em;font-size:16px}
+.brand i{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-style:normal;letter-spacing:0;color:#002a22;background:var(--cyan);box-shadow:0 0 22px rgba(0,255,204,.55);font-size:15px}
+nav.top .links{display:flex;gap:26px;margin-left:auto;font-size:14.5px;color:#c8ced5;font-weight:500}
+nav.top .links a:hover{color:#fff}
+@media(max-width:900px){nav.top .links{display:none}nav.top .btn{margin-left:auto}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:118px 0 0;text-align:center}
+.hero::before{content:"";position:absolute;left:50%;top:40px;width:1100px;height:900px;transform:translateX(-50%);pointer-events:none;
+  background:radial-gradient(closest-side,rgba(0,255,204,.10),transparent 70%),radial-gradient(closest-side at 50% 75%,color-mix(in srgb,var(--ac) 14%,transparent),transparent 70%);transition:background 1s}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border-radius:999px;border:1px solid rgba(0,255,204,.3);background:rgba(0,255,204,.06);color:var(--cyan);font-size:11.5px;font-weight:800;letter-spacing:.16em}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.3}}
+h1{font-size:clamp(34px,5.6vw,66px);line-height:1.02;letter-spacing:-.035em;font-weight:800;max-width:980px;margin:22px auto 0}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),var(--amber));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:720px;margin:20px auto 0;color:#b6bec7;font-size:clamp(16px,1.6vw,19px);line-height:1.55}
+.cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+.pbar{display:flex;gap:8px;align-items:center;max-width:640px;margin:20px auto 0;padding:6px 6px 6px 20px;border-radius:999px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:border-color .3s,box-shadow .3s}
+.pbar:focus-within{border-color:rgba(0,255,204,.5);box-shadow:0 0 30px rgba(0,255,204,.12)}
+.pbar input{flex:1;min-width:0;background:none;border:0;color:#fff;font:inherit;font-size:15.5px;font-weight:500;padding:10px 0}
+.pbar input::placeholder{color:#7d8792}
+.pbar input:focus{outline:none}
+.pbar select{background:#111318;border:1px solid rgba(255,255,255,.1);color:#dfe4e8;font:inherit;font-size:14px;font-weight:600;padding:10px 12px;border-radius:999px;cursor:pointer}
+.pbar .btn{padding:11px 20px;font-size:14.5px;background:var(--cyan);color:#00221b;box-shadow:0 0 24px rgba(0,255,204,.3)}
+.pbar.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media(max-width:600px){.pbar{flex-wrap:wrap;border-radius:22px;padding:10px}.pbar input{flex:1 1 100%;padding:8px 8px}.pbar select{flex:1}.pbar .btn{flex:1}}
+.proof{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin-top:22px;color:var(--mut);font-size:13.5px}
+.proof span::before{content:"✓ ";color:var(--cyan);font-weight:800}
+
+/* ---------- 3D stage ---------- */
+#live-apps{position:relative;margin-top:40px;overflow-x:clip;overflow-y:visible}
+.stage{position:relative;height:870px;perspective:2000px;perspective-origin:50% 30%;touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab;outline:none}
+.stage.drag{cursor:grabbing}
+.floor{position:absolute;left:50%;bottom:112px;width:min(1240px,98%);height:190px;transform:translateX(-50%) rotateX(74deg);border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--ac) 16%,transparent),rgba(10,12,16,.92) 62%,rgba(5,5,7,0) 100%);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--ac) 35%,transparent),0 0 90px color-mix(in srgb,var(--ac) 16%,transparent),inset 0 0 70px rgba(0,0,0,.9);transition:box-shadow .8s,background .8s}
+.floor::after{content:"";position:absolute;inset:7%;border-radius:50%;background:conic-gradient(from var(--spin,0deg),transparent 0 70%,color-mix(in srgb,var(--ac) 45%,transparent) 78%,transparent 86%);animation:spin 10s linear infinite;filter:blur(2px)}
+@property --spin{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes spin{to{--spin:360deg}}
+.track{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+.ph{--w:300px;pointer-events:auto;position:absolute;left:50%;top:44px;width:var(--w);margin-left:calc(var(--w)/-2);transform-style:preserve-3d;will-change:transform,opacity}
+.ph .frame{position:relative;aspect-ratio:390/844;border-radius:44px;overflow:hidden;background:#000;isolation:isolate;
+  box-shadow:0 0 0 9px #0b0c10,0 0 0 11px #2a2e36,0 50px 80px rgba(0,0,0,.75),0 0 70px color-mix(in srgb,var(--pc) 22%,transparent)}
+.ph iframe{position:absolute;top:0;left:0;width:390px;height:844px;border:0;transform-origin:0 0;background:#000}
+.ph .isl{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:26px;border-radius:16px;background:#000;z-index:3;pointer-events:none}
+.ph .catch{position:absolute;inset:-12px;z-index:4;cursor:pointer;border-radius:50px}
+.ph.front .catch{cursor:zoom-in}
+.ph .open{position:absolute;left:50%;bottom:-58px;transform:translateX(-50%) translateY(6px);z-index:5;opacity:0;pointer-events:none;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:99px;background:rgba(18,20,26,.85);border:1px solid var(--pc);color:#fff;font-size:12.5px;font-weight:800;letter-spacing:.08em;white-space:nowrap;transition:opacity .35s,transform .35s;box-shadow:0 0 22px color-mix(in srgb,var(--pc) 35%,transparent)}
+.ph.front .open{opacity:1;transform:translateX(-50%);pointer-events:auto;cursor:pointer;animation:nudge 2.4s ease-in-out infinite}
+@keyframes nudge{50%{box-shadow:0 0 34px color-mix(in srgb,var(--pc) 60%,transparent)}}
+.ph.front .frame{box-shadow:0 0 0 9px #0b0c10,0 0 0 11px color-mix(in srgb,var(--pc) 55%,#2a2e36),0 60px 100px rgba(0,0,0,.8),0 0 110px color-mix(in srgb,var(--pc) 38%,transparent)}
+
+/* ---------- real-size phone viewer ---------- */
+.viewer{position:fixed;inset:0;z-index:120;display:grid;place-items:center;pointer-events:none}
+.viewer[hidden]{display:none}
+.viewer.on{pointer-events:auto}
+.v-scrim{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,color-mix(in srgb,var(--vc) 16%,rgba(5,5,7,.88)),rgba(5,5,7,.96));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;transition:opacity .45s}
+.viewer.on .v-scrim{opacity:1}
+.v-wrap{position:relative;display:flex;align-items:center;gap:56px}
+.v-phone{position:relative;width:calc(390px*var(--k));height:calc(844px*var(--k));border-radius:calc(56px*var(--k));background:#000;transform-origin:0 0;
+  box-shadow:0 0 0 calc(12px*var(--k)) #0b0c10,0 0 0 calc(14px*var(--k)) #3a3f48,0 0 0 calc(15px*var(--k)) #111,0 80px 140px rgba(0,0,0,.8),0 0 140px color-mix(in srgb,var(--vc) 30%,transparent)}
+.v-phone .clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;isolation:isolate}
+.v-phone iframe{position:absolute;top:0;left:0;width:390px;height:844px;border:0;transform:scale(var(--k));transform-origin:0 0;background:#000}
+.v-phone .isl{position:absolute;top:calc(11px*var(--k));left:50%;transform:translateX(-50%);width:calc(120px*var(--k));height:calc(34px*var(--k));border-radius:99px;background:#000;z-index:3;pointer-events:none}
+.v-phone .btns::before,.v-phone .btns::after{content:"";position:absolute;width:4px;border-radius:3px;background:#2b3038}
+.v-phone .btns::before{left:calc(-18px*var(--k));top:22%;height:13%;box-shadow:0 calc(130px*var(--k)) 0 #2b3038}
+.v-phone .btns::after{right:calc(-18px*var(--k));top:28%;height:17%}
+.v-side{width:300px;opacity:0;transform:translateX(20px);transition:opacity .45s .15s,transform .45s .15s}
+.viewer.on .v-side{opacity:1;transform:none}
+.v-side small{font-size:11.5px;letter-spacing:.18em;font-weight:800;color:var(--vc)}
+.v-side h3{font-size:30px;letter-spacing:-.03em;line-height:1.1;margin:10px 0 10px}
+.v-side p{color:var(--mut);font-size:15px;line-height:1.55;margin-bottom:22px}
+.v-side .btn{width:100%}
+.v-nav{display:flex;gap:10px;margin-top:14px}
+.v-nav button{flex:1;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--glass);font-weight:700;font-size:14px;color:#cfd5db}
+.v-nav button:hover{border-color:var(--vc);color:#fff}
+.v-x{position:absolute;top:20px;right:20px;z-index:3;width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(18,20,26,.8);font-size:20px;opacity:0;transition:opacity .3s}
+.viewer.on .v-x{opacity:1}
+.v-mbar{display:none}
+@media(max-width:860px){.v-side{display:none}}
+/* on a real phone: the demo takes the whole screen, exactly like the live app */
+@media(max-width:600px){
+  .v-wrap{position:absolute;inset:0;display:block}
+  .v-phone{position:absolute;left:0;right:0;bottom:0;top:calc(52px + env(safe-area-inset-top));width:100%;height:auto;border-radius:0;box-shadow:none}
+  .v-phone iframe{width:100%;height:100%;transform:none}
+  .v-phone .isl,.v-phone .btns{display:none}
+  .v-x{display:none}
+  .v-mbar{position:absolute;left:0;right:0;top:0;height:calc(52px + env(safe-area-inset-top));padding:calc(8px + env(safe-area-inset-top)) 10px 8px;z-index:5;display:flex;gap:8px;align-items:center;justify-content:space-between;background:#050507;border-bottom:1px solid var(--line);opacity:0;transition:opacity .3s .3s;pointer-events:none}
+  .viewer.on .v-mbar{opacity:1}
+  .v-mbar button{pointer-events:auto;padding:9px 14px;border-radius:99px;font-size:13px;font-weight:800;background:rgba(5,5,7,.78);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);color:#fff}
+  .v-mbar .claim{background:var(--gold);color:#000;border:0}
+}
+.ph .shine{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:44px;background:linear-gradient(115deg,rgba(255,255,255,.07),transparent 30%)}
+.ph .refl{position:absolute;left:8%;right:8%;top:100%;margin-top:14px;height:110px;border-radius:40px;background:linear-gradient(color-mix(in srgb,var(--pc) 22%,transparent),transparent);filter:blur(18px);opacity:.5;pointer-events:none}
+.ph .load{position:absolute;inset:0;display:grid;place-items:center;color:var(--mut);font-size:12px;letter-spacing:.2em}
+.caption{position:absolute;left:0;right:0;bottom:6px;z-index:300;text-align:center;pointer-events:none}
+.caption b{display:block;font-size:17px;letter-spacing:-.01em;color:var(--ac);transition:color .5s}
+.caption span{font-size:14px;color:var(--mut)}
+.nav-arrow{position:absolute;top:340px;z-index:300;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(18,20,26,.7);backdrop-filter:blur(8px);font-size:22px;color:#fff;display:grid;place-items:center;transition:border-color .2s,box-shadow .2s}
+.nav-arrow:hover{border-color:var(--ac);box-shadow:0 0 24px color-mix(in srgb,var(--ac) 40%,transparent)}
+.nav-arrow.l{left:max(8px,calc(50% - 600px))}.nav-arrow.r{right:max(8px,calc(50% - 600px))}
+.pills{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:var(--glass);font-size:13.5px;font-weight:600;color:#c9cfd6;transition:all .25s}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--pc)}
+.pill.on{border-color:var(--pc);color:#fff;box-shadow:0 0 22px color-mix(in srgb,var(--pc) 30%,transparent);background:color-mix(in srgb,var(--pc) 10%,rgba(18,20,26,.8))}
+.hint{text-align:center;color:#6c757f;font-size:12.5px;margin-top:12px}
+
+/* trade-synced conversion bar */
+.cbar{margin:22px auto 0;max-width:820px;display:flex;align-items:center;gap:18px;padding:14px 14px 14px 22px;border-radius:22px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 0 0 1px color-mix(in srgb,var(--ac) 18%,transparent),0 20px 60px rgba(0,0,0,.5);transition:box-shadow .6s}
+.cbar .t{flex:1;min-width:0;text-align:left}
+.cbar .t small{display:block;font-size:11.5px;letter-spacing:.16em;color:var(--mut);font-weight:700}
+.cbar .t b{display:block;font-size:17px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cbar .dot{width:12px;height:12px;border-radius:50%;background:var(--ac);box-shadow:0 0 14px var(--ac);flex:none;transition:background .5s}
+@media(max-width:640px){.cbar{flex-direction:column;align-items:stretch;text-align:center;padding:16px}.cbar .dot{display:none}.cbar .t{text-align:center}.cbar .btn{white-space:normal}}
+
+body.lead-focus .cta-row .btn.ghost{display:none}
+body.lead-focus .pills,body.lead-focus .hint,body.lead-focus .nav-arrow{display:none}
+body.lead-focus .ph:not(.front){display:none!important}
+body.lead-focus .ph .catch{display:none}
+body.lead-focus .pbar{display:none}
+body.lead-focus .stage{height:420px}
+body.lead-focus .trade-switch{display:block}
+.trade-switch{display:none;text-align:center;margin:10px 0 0;font-size:13px;color:var(--cyan);font-weight:700;cursor:pointer;background:none;border:0}
+.edit-details{display:none;margin-top:10px;font-size:13.5px;color:var(--cyan);font-weight:700;cursor:pointer;background:none;border:0}
+body.lead-focus .edit-details{display:inline}
+.sticky-claim{display:none}
+body.lead-focus .sticky-claim{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:10px;align-items:center;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(5,5,7,.92);border-top:1px solid var(--line);backdrop-filter:blur(12px)}
+body.lead-focus .sticky-claim .btn{flex:1}
+body.lead-focus{padding-bottom:84px}
+.help-sim{display:none;margin:22px auto 0;max-width:440px;text-align:left;padding:16px 16px 12px;border-radius:24px;border:1px solid rgba(0,255,204,.35);background:rgba(18,20,26,.78);box-shadow:0 0 40px rgba(0,255,204,.08)}
+body.lead-focus .help-sim{display:block}
+.help-sim-label{font-size:11px;letter-spacing:.18em;font-weight:800;color:var(--cyan)}
+.help-sim-copy{margin:8px 0 12px;color:#b6bec7;font-size:14.5px;line-height:1.45}
+#helpHost{position:relative}
+#helpHost #ax-help{position:relative;right:auto;bottom:auto;z-index:2;margin:0 0 10px auto;width:max-content}
+#helpHost #ax-drawer{position:relative;left:auto;right:auto;bottom:auto;transform:none;height:380px;border-radius:22px;z-index:1}
+#helpHost #ax-scrim{display:none!important}
+#helpHost #ax-sms{position:absolute;left:8px;right:8px;top:8px;transform:translateY(-120%)}
+#helpHost #ax-sms.on{transform:none}
+@media(max-width:520px){body.lead-focus .stage{height:300px}body.lead-focus .hero{padding-top:84px}}
+
+@media(max-width:900px){
+  .stage{height:750px;perspective:1300px}
+  .ph{--w:250px}
+  .ph .frame{border-radius:36px}.ph .shine{border-radius:36px}
+  .nav-arrow{top:290px;width:44px;height:44px}
+  .floor{bottom:110px;height:120px}
+}
+@media(max-width:520px){.stage{height:668px}.ph{--w:220px}.nav-arrow{top:255px}.floor{bottom:104px}.caption b{font-size:15px}}
+
+/* ---------- sections ---------- */
+section.sec{padding:110px 0 0}
+.kicker{color:var(--cyan);font-size:12px;letter-spacing:.2em;font-weight:800;text-transform:uppercase}
+h2{font-size:clamp(28px,3.8vw,46px);letter-spacing:-.03em;line-height:1.08;font-weight:800;margin-top:12px}
+.sub{color:#aab3bc;font-size:17px;line-height:1.6;margin-top:14px;max-width:640px}
+.center{text-align:center}.center .sub{margin-left:auto;margin-right:auto}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:24px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:0;margin-top:40px;overflow:hidden;border-radius:28px;background:rgba(18,20,26,.72);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 40px 100px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05)}
+.calc .in{padding:34px 32px;border-right:1px solid rgba(255,255,255,.07)}
+.calc .out{padding:30px 30px 32px;background:radial-gradient(ellipse at 30% 0%,rgba(255,122,0,.12),transparent 60%),radial-gradient(ellipse at 90% 100%,rgba(0,255,204,.08),transparent 60%)}
+.sl{margin-bottom:32px}
+.sl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.sl label{font-weight:700;font-size:15px;color:#dfe4e8}
+.sl output{font-size:28px;font-weight:800;letter-spacing:-.03em;color:#fff}
+.sl .ends{display:flex;justify-content:space-between;color:#5f6872;font-size:12px;margin-top:9px;font-weight:600}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:99px;cursor:pointer;background:linear-gradient(90deg,#FF7A00,#FFE500 var(--p,30%),#1d2129 var(--p,30%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#050507;border:4px solid #FFB020;box-shadow:0 0 0 4px rgba(255,176,32,.15),0 0 22px rgba(255,140,0,.55);transition:transform .15s}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#050507;border:4px solid #FFB020;box-shadow:0 0 22px rgba(255,140,0,.55)}
+.fine{color:#6f7882;font-size:12.5px;line-height:1.5}
+.vs{display:grid;grid-template-columns:minmax(0,1.25fr) auto minmax(0,1fr);gap:12px;align-items:stretch}
+.tile{border-radius:20px;padding:18px 18px 16px;background:rgba(5,5,7,.6);border:1px solid rgba(255,255,255,.08);min-width:0}
+.tile small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.16em;color:#8b949e;line-height:1.35}
+.tile .v{font-size:clamp(30px,3.6vw,44px);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-top:10px;white-space:nowrap}
+.tile .v span{font-size:15px;letter-spacing:0;font-weight:700;opacity:.75}
+.tile.lost{border-color:rgba(255,140,0,.45);box-shadow:inset 0 0 40px rgba(255,122,0,.08)}
+.tile.lost .v{color:#FFB347;text-shadow:0 0 26px rgba(255,122,0,.6),0 0 2px rgba(255,180,70,.6)}
+.tile.ax{border-color:rgba(0,255,204,.4)}
+.tile.ax small{color:#00ffcc}
+.tile.ax .v{color:#00ffcc;text-shadow:0 0 22px rgba(0,255,204,.45)}
+.vsx{align-self:center;font-weight:800;color:#5f6872;font-size:13px}
+.gap{margin-top:16px;border-radius:20px;padding:16px 18px;background:rgba(5,5,7,.6);border:1px solid rgba(255,229,0,.22)}
+.gap .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.gap small{font-size:11px;font-weight:800;letter-spacing:.16em;color:#cfd5db}
+.gap b{font-size:26px;letter-spacing:-.03em;color:#FFE500}
+.gap .meter{position:relative;height:12px;border-radius:99px;margin:12px 0 10px;background:linear-gradient(90deg,#FF7A00,#FFB347);overflow:hidden;box-shadow:0 0 18px rgba(255,122,0,.35)}
+.gap .meter i{position:absolute;left:0;top:0;bottom:0;width:var(--ax,2%);min-width:4px;background:#00ffcc;box-shadow:0 0 12px #00ffcc;transition:width .35s}
+.gap p{font-size:13.5px;color:#aab3bc;line-height:1.45}
+.gap p em{font-style:normal;color:#FFE500;font-weight:800}
+.recover{display:flex;width:100%;margin-top:18px;font-size:17px;padding:18px 24px;white-space:normal;text-align:center;line-height:1.25;animation:goldpulse 2s ease-in-out infinite}
+@keyframes goldpulse{0%,100%{box-shadow:0 10px 36px rgba(255,229,0,.28),0 0 0 0 rgba(255,229,0,.45)}50%{box-shadow:0 12px 54px rgba(255,229,0,.5),0 0 0 10px rgba(255,229,0,0)}}
+@media(max-width:860px){.calc{grid-template-columns:minmax(0,1fr)}.calc .in{border-right:0;border-bottom:1px solid rgba(255,255,255,.07);padding:26px 22px}.calc .out{padding:24px 20px 26px}}
+@media(max-width:520px){.vs{grid-template-columns:minmax(0,1fr)}.vsx{justify-self:center}.tile .v{font-size:38px}}
+
+/* old way vs axiom */
+.cmp-toggle{display:inline-flex;margin:26px auto 0;padding:5px;border-radius:999px;background:rgba(18,20,26,.8);border:1px solid rgba(255,255,255,.08)}
+.cmp-toggle button{padding:10px 20px;border-radius:999px;font-weight:800;font-size:14px;color:#8b949e;transition:all .3s}
+.cmp-toggle button[aria-selected=true]{color:#000;background:#00ffcc;box-shadow:0 0 22px rgba(0,255,204,.4)}
+.cmp-toggle button.old[aria-selected=true]{background:#3a3f47;color:#e6e9ec;box-shadow:none}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;margin-top:28px;align-items:stretch}
+.cmp .side{position:relative;border-radius:28px;padding:26px;display:flex;flex-direction:column;transition:opacity .5s,transform .5s,filter .5s}
+.cmp .old{background:#141518;border:1px solid #26282d;color:#9aa0a8;filter:grayscale(1)}
+.cmp .ax{background:radial-gradient(ellipse at 50% 0%,rgba(0,255,204,.12),transparent 60%),rgba(10,12,16,.85);border:1px solid rgba(0,255,204,.45);box-shadow:0 0 0 1px rgba(0,255,204,.12),0 30px 90px rgba(0,255,204,.12);backdrop-filter:blur(14px)}
+.cmp[data-show=old] .ax,.cmp[data-show=ax] .old{opacity:.45;transform:scale(.98)}
+.cmp[data-show=ax] .old{opacity:.6}
+.side .lbl{font-size:11.5px;font-weight:800;letter-spacing:.18em}
+.old .lbl{color:#6b7078}.ax .lbl{color:#00ffcc}
+.side h3{font-size:24px;letter-spacing:-.02em;margin:8px 0 18px;color:#fff}
+.old h3{color:#b9bec5}
+.scr{position:relative;height:200px;border-radius:18px;overflow:hidden;margin-bottom:20px}
+.old .scr{background:#1d1f23;border:1px solid #2a2d32}
+.old .url{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid #2a2d32;font-size:11px;color:#6b7078}
+.old .url i{width:8px;height:8px;border-radius:50%;background:#3a3d42}
+.old .url span{margin-left:8px;flex:1;padding:4px 10px;border-radius:6px;background:#26282d}
+.skel{padding:14px;display:grid;gap:9px}
+.skel b{display:block;height:12px;border-radius:5px;background:linear-gradient(90deg,#26282d 0%,#30333a 50%,#26282d 100%);background-size:200% 100%;animation:skel 1.6s linear infinite}
+@keyframes skel{to{background-position:-200% 0}}
+.loadbar{position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#18191c;border-top:1px solid #2a2d32;font-size:12px;font-weight:700;color:#8b9098}
+.loadbar .trk{flex:1;height:5px;border-radius:9px;background:#2a2d32;overflow:hidden}
+.loadbar .trk i{display:block;height:100%;width:0;background:#5c6068;animation:crawl 6.2s cubic-bezier(.2,.1,.1,1) infinite}
+@keyframes crawl{0%{width:0}85%{width:78%}100%{width:82%}}
+.ax .scr{border:1px solid rgba(0,255,204,.3);background:#000}
+.ax .scr video,.ax .scr img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ax .scr::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(5,5,7,.85))}
+.ax .scr .ov{position:absolute;left:12px;right:12px;bottom:12px;z-index:2;display:flex;gap:8px;align-items:center}
+.ax .scr .ov b{flex:1;font-size:14px;color:#fff}
+.ax .scr .ov span{padding:8px 14px;border-radius:99px;background:#00ffcc;color:#00221b;font-weight:800;font-size:12px}
+.ax .scr .ping{position:absolute;top:10px;right:10px;z-index:2;padding:7px 11px;border-radius:12px;background:rgba(18,20,26,.9);border:1px solid rgba(255,176,32,.5);font-size:11.5px;font-weight:700;color:#FFB347;animation:ping 6s ease-in-out infinite}
+@keyframes ping{0%,15%{opacity:0;transform:translateY(-8px)}22%,80%{opacity:1;transform:none}90%,100%{opacity:0}}
+.ax .scr .fast{position:absolute;top:10px;left:10px;z-index:2;padding:6px 10px;border-radius:99px;background:rgba(0,255,204,.15);border:1px solid rgba(0,255,204,.5);font-size:11px;font-weight:800;color:#00ffcc;letter-spacing:.06em}
+.rows{list-style:none;display:grid;gap:0;margin-bottom:22px}
+.rows li{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid rgba(255,255,255,.06);font-size:15px;line-height:1.4}
+.old .rows li{border-color:#222428}
+.rows li i{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:900;margin-top:-1px}
+.old .rows li i{background:#26282d;color:#7a7f87}
+.ax .rows li i{background:rgba(0,255,204,.14);color:#00ffcc;box-shadow:0 0 12px rgba(0,255,204,.25)}
+.rows li b{display:block;color:#e6e9ec;font-size:15px}
+.old .rows li b{color:#a7acb3;font-weight:700}
+.rows li span{font-size:13.5px;color:#8b949e}
+.old .rows li span{color:#6b7078}
+.side .foot{margin-top:auto}
+.old .foot{font-size:13px;color:#5f646b;font-style:italic;text-align:center;padding:14px;border:1px dashed #2a2d32;border-radius:14px}
+.ax .foot .btn{width:100%;font-size:16.5px;white-space:normal;text-align:center}
+@media(max-width:860px){
+  .cmp{grid-template-columns:minmax(0,1fr)}
+  .cmp[data-show=ax] .old,.cmp[data-show=old] .ax{display:none}
+  .cmp .side{opacity:1!important;transform:none!important}
+}
+@media(min-width:861px){.cmp-toggle{display:inline-flex}}
+@media(max-width:1000px){.ax .scr .ping{top:46px;left:10px;right:auto}}
+
+/* how it works + value stack */
+.steps3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:40px}
+.step{padding:26px}
+.step .n{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:800;color:#000;background:var(--cyan);box-shadow:0 0 20px rgba(0,255,204,.4)}
+.step h3{font-size:19px;margin:16px 0 8px;letter-spacing:-.02em}.step p{color:var(--mut);line-height:1.55;font-size:15px}
+.stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:22px}
+.val{padding:28px;display:flex;flex-direction:column}
+.val .ic{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:rgba(0,255,204,.08);border:1px solid rgba(0,255,204,.25);color:var(--cyan)}
+.val h3{font-size:20px;margin:18px 0 8px;letter-spacing:-.02em}.val p{color:var(--mut);line-height:1.55;font-size:15px}
+.val ul{list-style:none;margin-top:16px;display:grid;gap:8px;font-size:14.5px;color:#cfd5db}
+.val li::before{content:"✓";color:var(--cyan);font-weight:800;margin-right:9px}
+.demo-box{margin-top:auto;padding-top:20px}
+.recept{display:flex;gap:12px;align-items:center;margin-top:14px;padding:12px;border-radius:16px;background:rgba(0,0,0,.35);border:1px solid var(--line)}
+.avatar{width:52px;height:52px;flex:none;border-radius:50%;display:grid;place-items:center;overflow:hidden}
+.avatar svg{width:100%;height:100%}
+.avatar.orb{background:radial-gradient(circle at 35% 30%,#3a4248,#0b0f12);border:2px solid var(--cyan);color:#fff;box-shadow:0 0 26px color-mix(in srgb,var(--cyan) 50%,transparent);animation:breathe 2.6s ease-in-out infinite}
+.avatar.orb svg{width:26px;height:26px}
+@keyframes breathe{50%{box-shadow:0 0 12px color-mix(in srgb,var(--cyan) 35%,transparent)}}
+.recept p{font-size:13.5px;color:#dfe4e8;line-height:1.45}
+.recept p small{display:block;color:var(--cyan);font-weight:700;font-size:11px;letter-spacing:.12em;margin-bottom:3px}
+.feed{margin-top:14px;display:grid;gap:8px}
+.post{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:rgba(0,0,0,.35);border:1px solid var(--line);font-size:13px}
+.post .th{width:40px;height:40px;border-radius:10px;flex:none;background:linear-gradient(135deg,#1c2a33,#0c1116);display:grid;place-items:center;color:var(--gold)}
+.post b{display:block;font-size:13px}.post span{color:var(--mut);font-size:12px}
+.post .st{margin-left:auto;font-size:11px;font-weight:800;color:var(--cyan);letter-spacing:.08em;white-space:nowrap}
+@media(max-width:900px){.steps3,.stack{grid-template-columns:minmax(0,1fr)}}
+
+/* pricing */
+.prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:40px;align-items:stretch}
+.price{padding:30px;display:flex;flex-direction:column;position:relative}
+.price.feat{border-color:rgba(255,229,0,.5);box-shadow:0 0 0 1px rgba(255,229,0,.25),0 30px 80px rgba(255,229,0,.08)}
+.price .tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);padding:6px 14px;border-radius:99px;background:var(--gold);color:#000;font-size:11.5px;font-weight:800;letter-spacing:.1em;white-space:nowrap}
+.price h3{font-size:16px;color:#cfd5db;font-weight:700}
+.price .amt{font-size:54px;font-weight:800;letter-spacing:-.04em;margin:10px 0 2px}
+.price .amt small{font-size:17px;color:var(--mut);font-weight:600;letter-spacing:0}
+.price .per{color:var(--mut);font-size:14px}
+.price ul{list-style:none;margin:22px 0 26px;display:grid;gap:10px;font-size:15px;color:#d6dbe0}
+.price li::before{content:"✓";color:var(--cyan);font-weight:800;margin-right:10px}
+.price .btn{margin-top:auto;width:100%}
+@media(max-width:900px){.prices{grid-template-columns:minmax(0,1fr)}}
+
+/* faq */
+.faq{max-width:820px;margin:36px auto 0}
+.faq details{border-bottom:1px solid var(--line);padding:20px 4px}
+.faq summary{list-style:none;cursor:pointer;font-weight:700;font-size:17px;display:flex;justify-content:space-between;gap:20px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--cyan);font-size:24px;line-height:1;transition:transform .3s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{color:var(--mut);line-height:1.6;margin-top:12px;font-size:15.5px}
+
+/* bottom banner + footer */
+.banner{margin:110px auto 0;padding:56px 30px;text-align:center;border-radius:30px;background:radial-gradient(ellipse at 50% 0%,rgba(255,229,0,.16),transparent 60%),radial-gradient(ellipse at 50% 100%,rgba(0,255,204,.1),transparent 60%),var(--glass);border:1px solid rgba(255,229,0,.22)}
+.banner h2{margin:0 auto;max-width:760px}
+.banner .btn{margin-top:26px;font-size:18px;padding:18px 32px}
+footer{padding:46px 0 120px;text-align:center;color:#6c757f;font-size:13.5px}
+footer b{color:#cfd5db}
+
+/* ---------- slide-over funnel ---------- */
+.scrim{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .35s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;top:0;right:0;bottom:0;z-index:90;width:min(480px,100%);background:#0b0c10;border-left:1px solid var(--line);box-shadow:-30px 0 80px rgba(0,0,0,.6);
+  transform:translateX(105%);transition:transform .5s cubic-bezier(.2,.85,.2,1);display:flex;flex-direction:column}
+.sheet.on{transform:none}
+@media(max-width:640px){.sheet{top:auto;height:92vh;width:100%;border-left:0;border-top:1px solid var(--line);border-radius:26px 26px 0 0;transform:translateY(105%)}}
+.sh-head{display:flex;align-items:center;gap:12px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.sh-head .tdot{width:10px;height:10px;border-radius:50%;background:var(--fc);box-shadow:0 0 12px var(--fc)}
+.sh-head b{font-size:15px}.sh-head small{display:block;color:var(--mut);font-size:12px}
+.sh-head .x{margin-left:auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);font-size:18px}
+.prog{display:flex;gap:6px;padding:16px 22px 0}
+.prog i{flex:1;height:4px;border-radius:9px;background:#1f232a;transition:background .4s}
+.prog i.on{background:var(--fc)}
+.sh-body{flex:1;overflow:auto;padding:22px}
+.stepx{display:none}.stepx.on{display:block;animation:inx .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes inx{from{opacity:0;transform:translateX(24px)}}
+.stepx h3{font-size:24px;letter-spacing:-.02em}
+.stepx>p{color:var(--mut);margin:6px 0 20px;font-size:15px;line-height:1.5}
+.fld{display:block;margin-bottom:14px;font-size:13px;font-weight:700;color:#b9c1c9}
+.fld input,.fld select{display:block;width:100%;margin-top:7px;padding:15px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:#111318;color:#fff;font:inherit;font-size:16px;font-weight:500}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--fc);box-shadow:0 0 0 3px color-mix(in srgb,var(--fc) 20%,transparent)}
+.fld.err input{border-color:#ff4d5e}
+.err-msg{color:#ff6b78;font-size:12.5px;margin-top:6px;display:none}.fld.err .err-msg{display:block}
+.live{margin-top:6px;padding:18px;border-radius:18px;background:linear-gradient(160deg,color-mix(in srgb,var(--fc) 12%,#0e1014),#0b0c10);border:1px solid color-mix(in srgb,var(--fc) 35%,transparent)}
+.live small{font-size:11px;letter-spacing:.16em;color:var(--fc);font-weight:800}
+.live b{display:block;font-size:22px;letter-spacing:-.02em;margin-top:6px;overflow-wrap:anywhere}
+.live span{color:var(--mut);font-size:14px}
+.live code{display:block;margin-top:10px;font-size:13px;color:#cfd5db;font-family:ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--mut);line-height:1.45;margin-top:4px}
+.consent input{margin-top:3px;accent-color:var(--cyan)}
+.plans{display:grid;gap:10px;margin:4px 0 16px}
+.plan{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:16px;border:1px solid var(--line);cursor:pointer;background:#0f1115}
+.plan input{accent-color:var(--gold)}
+.plan b{font-size:15px}.plan span{display:block;color:var(--mut);font-size:13px}
+.plan .p{margin-left:auto;font-weight:800;white-space:nowrap}
+.plan:has(input:checked){border-color:rgba(255,229,0,.55);background:rgba(255,229,0,.05)}
+.sum{border-radius:18px;border:1px solid var(--line);padding:6px 16px;margin-bottom:16px}
+.sum div{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.sum div:last-child{border:0}.sum span{color:var(--mut)}.sum b{text-align:right;overflow-wrap:anywhere}
+.today{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 6px}
+.today b{font-size:30px;letter-spacing:-.03em}
+.terms{color:var(--mut);font-size:12.5px;line-height:1.5;margin-bottom:16px}
+.sh-foot{padding:16px 22px 22px;border-top:1px solid var(--line);display:flex;gap:10px}
+.sh-foot .btn{flex:1;white-space:normal;text-align:center;padding:16px 18px}
+.sh-foot .back{flex:0 0 auto;border:1px solid var(--line);color:#cfd5db}
+.done{text-align:center;padding-top:20px}
+.done .ok{width:74px;height:74px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:var(--fc);color:#000;font-size:34px;box-shadow:0 0 40px color-mix(in srgb,var(--fc) 60%,transparent);animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+.linkbox{display:flex;gap:8px;margin:18px 0 10px;padding:6px 6px 6px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--fc) 45%,transparent);background:#0f1115;align-items:center}
+.linkbox code{flex:1;text-align:left;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spin{width:18px;height:18px;border-radius:50%;border:3px solid rgba(0,0,0,.25);border-top-color:#000;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* preview modal */
+.modal{position:fixed;left:50%;top:50%;z-index:90;width:min(460px,calc(100% - 28px));transform:translate(-50%,-46%) scale(.96);opacity:0;pointer-events:none;transition:all .35s cubic-bezier(.2,.8,.2,1);padding:28px}
+.modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.modal h3{font-size:24px;letter-spacing:-.02em}.modal>p{color:var(--mut);margin:6px 0 20px}
+.modal .x{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line)}
+
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);z-index:100;padding:12px 18px;border-radius:14px;background:#111318;border:1px solid var(--cyan);font-weight:600;font-size:14px;opacity:0;transition:all .3s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ================= flagship polish ================= */
+/* 1 · depth: architectural micro-grid + film grain behind everything */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 30%,transparent 85%);mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 30%,transparent 85%)}
+body::after{content:"";position:fixed;inset:-50%;z-index:-1;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation:grain 1.2s steps(6) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-3%)}60%{transform:translate(-2%,-1%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
+/* breathing cyan ↔ amber spotlight behind the front phone */
+.spot{position:absolute;left:50%;top:400px;width:900px;height:900px;margin:-450px 0 0 -450px;pointer-events:none;border-radius:50%}
+.spot i{position:absolute;inset:0;border-radius:50%;filter:blur(30px)}
+.spot .c{background:radial-gradient(closest-side,rgba(0,255,204,.22),rgba(0,255,204,.06) 45%,transparent 70%);animation:breatheC 11s ease-in-out infinite}
+.spot .a{background:radial-gradient(closest-side,rgba(255,140,30,.22),rgba(255,122,0,.06) 45%,transparent 70%);animation:breatheA 11s ease-in-out infinite}
+@keyframes breatheC{0%,100%{opacity:.95;transform:scale(1)}50%{opacity:.15;transform:scale(.92)}}
+@keyframes breatheA{0%,100%{opacity:.12;transform:scale(.92)}50%{opacity:.9;transform:scale(1.04)}}
+@media(max-width:900px){.spot{top:330px;width:620px;height:620px;margin:-310px 0 0 -310px}}
+
+/* 2 · glass: 1px specular top edge + diagonal reflection sweep */
+.rim{position:relative}
+.rim::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:6;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.12) 14%,rgba(255,255,255,0) 40%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.rim::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:6;opacity:0;
+  background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.13) 47%,rgba(255,255,255,.04) 53%,transparent 62%);background-size:250% 100%;background-position:130% 0}
+.rim.sweep::after{animation:glass 1.1s cubic-bezier(.3,.6,.2,1)}
+@media(hover:hover){.rim:hover::after{animation:glass 1.1s cubic-bezier(.3,.6,.2,1)}}
+@keyframes glass{0%{opacity:1;background-position:130% 0}100%{opacity:1;background-position:-30% 0}}
+.ph .frame.rim::before{border-radius:44px}
+.ph:not(.front) .frame.rim::before{opacity:.25}
+
+/* 3 · staggered reveals */
+.reveal{transition-delay:var(--d,0ms);filter:blur(6px)}
+.reveal.in{filter:none}
+.reveal{transition-property:opacity,transform,filter}
+
+/* 4 · tactile primary buttons: sheen sweep + crisp press */
+.btn{position:relative;overflow:hidden;isolation:isolate;transform:translateZ(0)}
+.btn::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 48%,rgba(255,255,255,.15) 54%,transparent 68%);transform:translateX(-130%)}
+.btn.ghost::after,.btn.back::after{background:linear-gradient(110deg,transparent 30%,rgba(0,255,204,.22) 48%,transparent 66%)}
+@media(hover:hover){.btn:hover::after{transform:translateX(130%);transition:transform .75s cubic-bezier(.3,.6,.2,1)}}
+.btn:active{transform:scale(.98)!important;transition:transform .08s}
+.btn.gold,.pbar .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 0 rgba(0,0,0,.18),0 10px 40px rgba(255,229,0,.28)}
+.pbar .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(0,0,0,.18),0 0 24px rgba(0,255,204,.3)}
+.calc output,.calc .v,.gap b,#roiLine em{font-variant-numeric:tabular-nums}
+.sl output{min-width:4.2ch;text-align:right}
+@media (prefers-reduced-motion:reduce){body::after{animation:none}.spot i{animation:none}.reveal{filter:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <a class="brand" href="#top" aria-label="Axiom home"><i>A</i>AXIOM</a>
+  <div class="links"><a href="#live-apps">Live apps</a><a href="#how">How it works</a><a href="#lost-job-calculator">Lost-job calculator</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+  <button class="btn gold sm" data-unlock>$1 Unlock</button>
+</div></nav>
+
+<main id="top">
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow reveal"><i></i>BUILT FOR TRADES &amp; LOCAL PROS • READY IN 60 SECONDS</div>
+    <h1 class="reveal" id="heroH1">Stop Losing <em>$3,000+ Jobs</em> While You're Under a Sink or Up on a Ladder.</h1>
+    <p class="lede reveal" id="heroLede">Axiom puts a live plumbing booking page on your name and number. Missed calls become booked jobs. $1.00 today unlocks 14 days, then $150/mo or $1,500 lifetime. 1.5% on online card bookings.</p>
+    <div class="cta-row reveal">
+      <button class="btn gold" id="heroClaim" data-unlock>Claim Your Storefront — $1 Unlock</button>
+    </div>
+    <button type="button" class="edit-details" id="editDetails">Edit details</button>
+    <section class="help-sim" id="helpSim" aria-label="Missed-call booking simulator">
+      <div class="help-sim-label">HELP · missed-call booking</div>
+      <p class="help-sim-copy">24/7 live AI call answering quotes your price book, locks a real calendar slot, and texts a Stripe deposit — plus this HELP SMS demo if the caller hangs up.</p>
+      <div id="helpHost"></div>
+    </section>
+    <form class="pbar reveal" id="pbar" novalidate>
+      <input id="pbName" maxlength="60" autocomplete="organization" placeholder="Enter your business name to preview live…" aria-label="Your business name">
+      <select id="pbTrade" aria-label="Your trade"></select>
+      <button class="btn">Preview Mine</button>
+    </form>
+    <div class="proof reveal"><span>No contracts</span><span>Cancel in one click</span><span>Your name &amp; number in 60 seconds</span></div>
+  </div>
+
+  <!-- ===== 7-phone 3D stage: each phone runs a real storefront demo ===== -->
+  <div id="live-apps">
+    <div class="stage" id="stage" tabindex="0" aria-roledescription="carousel" aria-label="Live storefront demos. Use left and right arrow keys to switch.">
+      <div class="spot" aria-hidden="true"><i class="c"></i><i class="a"></i></div>
+      <div class="floor" aria-hidden="true"></div>
+      <div class="track" id="track"></div>
+      <button class="nav-arrow l" id="prev" aria-label="Previous demo">‹</button>
+      <button class="nav-arrow r" id="next" aria-label="Next demo">›</button>
+      <div class="caption" aria-live="polite"><b id="capTier"></b><span id="capNiche"></span></div>
+    </div>
+    <div class="wrap">
+      <div class="pills" id="pills" role="tablist" aria-label="Jump to a trade"></div>
+      <p class="hint">Swipe, scroll sideways, or tap any phone. Tap the front phone to open it full-size.</p>
+      <button type="button" class="trade-switch" id="tradeSwitch">Show other trades</button>
+      <div class="cbar" id="cbar">
+        <span class="dot"></span>
+        <div class="t"><small>YOU'RE VIEWING</small><b id="cbarTitle"></b></div>
+        <button class="btn gold" id="cbarBtn"></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== lost-job calculator ===== -->
+<section class="sec" id="lost-job-calculator"><div class="wrap">
+  <div class="center reveal"><div class="kicker">Lost-job calculator</div><h2>What are missed calls costing you?</h2><p class="sub">Every call that goes to voicemail while you're on a job is a customer calling the next shop on Google.</p></div>
+  <div class="calc rim reveal">
+    <div class="in">
+      <div class="sl"><div class="row"><label for="mc">Missed calls per week</label><output id="mcO" class="num" for="mc">3</output></div>
+        <input type="range" id="mc" min="1" max="15" step="1" value="3" aria-describedby="calcNote"><div class="ends"><span>1</span><span>15</span></div></div>
+      <div class="sl"><div class="row"><label for="tk">Average job value</label><output id="tkO" class="num" for="tk">$850</output></div>
+        <input type="range" id="tk" min="150" max="5000" step="50" value="850" aria-describedby="calcNote"><div class="ends"><span>$150</span><span>$5,000</span></div></div>
+      <p class="fine" id="calcNote">Monthly lost revenue = missed calls × average job value × 4.33 weeks. Assumes each missed call was a job you could have booked.</p>
+    </div>
+    <div class="out" aria-live="polite">
+      <div class="vs">
+        <div class="tile lost"><small>MONTHLY LOST REVENUE</small><div class="v num" id="lossMo">$11,042<span>/mo</span></div></div>
+        <div class="vsx">VS</div>
+        <div class="tile ax"><small>AXIOM FULL AUTOPILOT</small><div class="v num">$150<span>/mo</span></div></div>
+      </div>
+      <div class="gap">
+        <div class="row"><small>NET ROI GAP</small><b class="num" id="netGap">$10,892/mo</b></div>
+        <div class="meter" aria-hidden="true"><i id="axShare"></i></div>
+        <p id="roiLine">Recovering these calls puts <em>$130,704 a year</em> back in your pocket after AXIOM. That's a <em>74×</em> return.</p>
+      </div>
+      <button class="btn gold recover" data-unlock>Recover These Jobs — Unlock for $1 →</button>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===== old way vs axiom ===== -->
+<section class="sec" id="compare"><div class="wrap">
+  <div class="center reveal"><div class="kicker">Side by side</div><h2>Typical contractor site vs. AXIOM 24/7 Storefront</h2>
+    <p class="sub">Same customer, same 9 PM emergency. One site loses the job. One books it.</p>
+    <div class="cmp-toggle" role="tablist" aria-label="Compare">
+      <button class="old" role="tab" aria-selected="false" data-show="old">The Old Way</button>
+      <button role="tab" aria-selected="true" data-show="ax">AXIOM 24/7 Machine</button>
+    </div>
+  </div>
+  <div class="cmp reveal" id="cmp" data-show="ax">
+    <div class="side old" aria-label="The old way">
+      <div class="lbl">THE OLD WAY</div><h3>Typical contractor site</h3>
+      <div class="scr" aria-hidden="true">
+        <div class="url"><i></i><i></i><i></i><span>yourbusiness-1234.websitebuilder.com</span></div>
+        <div class="skel"><b style="width:60%"></b><b style="width:90%"></b><b style="width:75%"></b><b style="width:40%;height:28px"></b></div>
+        <div class="loadbar">Loading… <div class="trk"><i></i></div> 6.2s</div>
+      </div>
+      <ul class="rows">
+        <li><i>✕</i><div><b>6-second load times</b><span>Most emergency callers bounce and tap the next plumber on Google.</span></div></li>
+        <li><i>✕</i><div><b>"Fill out this contact form and wait 48 hours"</b><span>The customer calls the next shop on Google.</span></div></li>
+        <li><i>✕</i><div><b>Missed calls go to voicemail</b><span>Nobody leaves a voicemail for a burst pipe.</span></div></li>
+        <li><i>✕</i><div><b>Zero after-hours booking</b><span>Every job after 5 PM goes to whoever answers.</span></div></li>
+      </ul>
+      <div class="foot">Customer gave up. Job went to the competition.</div>
+    </div>
+    <div class="side ax rim" aria-label="AXIOM 24/7 machine">
+      <div class="lbl">AXIOM 24/7 MACHINE</div><h3>Your live storefront</h3>
+      <div class="scr">
+        <video id="cmpVid" muted loop playsinline preload="none" poster="demos/plumbing-night/poster.jpg" aria-hidden="true"><source src="demos/plumbing-night/hero-loop.mp4" type="video/mp4"></video>
+        <div class="fast">⚡ Instant Mobile Load</div>
+        <div class="ping">📲 New booked job · 9:04 PM</div>
+        <div class="ov"><b>Burst pipe? We're on the way.</b><span>BOOK</span></div>
+      </div>
+      <ul class="rows">
+        <li><i>✓</i><div><b>Instant mobile load</b><span>Built for phones first. Opens before they can bounce.</span></div></li>
+        <li><i>✓</i><div><b>Live looping hero visuals</b><span>Cinematic video of your trade that stops the scroll.</span></div></li>
+        <li><i>✓</i><div><b>60-second self-booking</b><span>Customers pick a time themselves, day or night.</span></div></li>
+        <li><i>✓</i><div><b>Instant SMS dispatch</b><span>Every booked job texts your cell the second it lands.</span></div></li>
+      </ul>
+      <div class="foot"><button class="btn gold" id="cmpClaim">Claim Your Trade App for $1 →</button></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===== how it works + value stack ===== -->
+<section class="sec" id="how"><div class="wrap">
+  <div class="center reveal"><div class="kicker">How it works</div><h2>Live in 60 seconds. Booking jobs tonight.</h2></div>
+  <div class="steps3">
+    <div class="card step reveal"><div class="n">1</div><h3>Pick your trade</h3><p>Flick through the live apps above and grab the one that fits. It's already built and tested.</p></div>
+    <div class="card step reveal"><div class="n">2</div><h3>Drop in your name &amp; number</h3><p>Your business name, area and cell go in. Calls and bookings route straight to your phone.</p></div>
+    <div class="card step reveal"><div class="n">3</div><h3>Go back to work</h3><p>Customers book 24/7, the AI receptionist answers questions, and posts go out on autopilot.</p></div>
+  </div>
+  <div class="stack">
+    <div class="card val reveal">
+      <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></svg></div>
+      <h3>60-second live storefront</h3>
+      <p>A cinematic mobile storefront with your name, services, booking form and one-tap call. Like the ones above.</p>
+      <ul><li>Live-video or animated hero</li><li>Sticky CALL / BOOK bar</li><li>Your own link to share and text</li></ul>
+    </div>
+    <div class="card val reveal">
+      <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2" y="14" width="5" height="7" rx="2"/><rect x="17" y="14" width="5" height="7" rx="2"/></svg></div>
+      <h3>24/7 Live AI Call Answering + Instant Slot Booking</h3>
+      <p>AXIOM picks up live, quotes your service/price book, locks a real calendar window, and texts a 1.5% Connect deposit link before they hang up. Missed calls still get the HELP SMS 1/2 recovery.</p>
+      <div class="demo-box">
+        <div class="recept"><div class="avatar orb" id="avatar"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 13v1M15 13v1M2 13v3M22 13v3"/></svg></div><p><small>AXIOM</small><span>"Hi! You've reached the shop. Want me to get a tech out to you today?"</span></p></div>
+      </div>
+    </div>
+    <div class="card val reveal">
+      <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8z"/></svg></div>
+      <h3>Hands-free social autopilot</h3>
+      <p>Snap a job photo. Axiom writes the post and schedules it to Facebook and Instagram. You approve with one tap.</p>
+      <div class="demo-box feed">
+        <div class="post"><div class="th">★</div><div><b>Water heater swap, done in 3 hrs</b><span>Facebook · Instagram</span></div><span class="st">TUE 9:00</span></div>
+        <div class="post"><div class="th">✓</div><div><b>5-star review from Medford</b><span>Google · Facebook</span></div><span class="st">WED 12:30</span></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===== pricing ===== -->
+<section class="sec" id="pricing"><div class="wrap">
+  <div class="center reveal"><div class="kicker">Pricing</div><h2>Less than one missed job.</h2><p class="sub">Start for a dollar. Keep it monthly, or own it for life.</p></div>
+  <div class="prices">
+    <div class="card price reveal"><h3>Test Drive</h3><div class="amt num">$1</div><div class="per">14 days, full access</div>
+      <ul><li>Your live storefront &amp; link</li><li>24/7 live AI call answering + slot booking</li><li>Social autopilot</li><li>Cancel in one click</li></ul>
+      <button class="btn ghost" data-unlock data-plan="monthly">Start for $1</button></div>
+    <div class="card price feat reveal"><div class="tag">MOST POPULAR</div><h3>Monthly Autopilot</h3><div class="amt num">$150<small>/mo</small></div><div class="per">After 14 days · 1.5% on online cards</div>
+      <ul><li>Everything in Test Drive</li><li>Unlimited bookings &amp; leads</li><li>Daily autopilot posts</li><li>SMS alerts to your cell</li></ul>
+      <button class="btn gold" data-unlock data-plan="monthly">Unlock for $1</button></div>
+    <div class="card price reveal"><h3>Lifetime License</h3><div class="amt num">$1,500</div><div class="per">One time. Yours forever.</div>
+      <ul><li>Everything in Monthly</li><li>No monthly bill, ever</li><li>Founder pricing locked</li><li>Priority setup help</li></ul>
+      <button class="btn ghost" data-unlock data-plan="lifetime">Start for $1, go Lifetime</button></div>
+  </div>
+</div></section>
+
+<!-- ===== faq ===== -->
+<section class="sec" id="faq"><div class="wrap">
+  <div class="center reveal"><div class="kicker">FAQ</div><h2>Straight answers.</h2></div>
+  <div class="faq reveal">
+    <details><summary>Do I need a website already?</summary><p>No. Your Axiom storefront is your website. You get your own link to put on Google, your truck and your texts.</p></details>
+    <details><summary>How fast is it really live?</summary><p>About a minute. Pick your trade, add your name, area and cell, and your storefront link is ready.</p></details>
+    <details><summary>What happens after the $1 unlock?</summary><p>$1.00 today unlocks your storefront for 14 days. Then $150/mo until you cancel, or $1,500 once for a lifetime license. Cancel in Admin Billing. Online card bookings include a 1.5% Gear Guardian LLC platform fee (0% on cash and checks logged in the field).</p></details>
+    <details><summary>Where do bookings and calls go?</summary><p>Straight to your cell. You get a text for every booking with the customer's name, number and what they need.</p></details>
+    <details><summary>Can I change the photos and wording?</summary><p>Yes. Everything — name, services, prices, hours, photos — is editable from your phone in the Axiom dashboard.</p></details>
+    <details><summary>I'm not a plumber. Does it work for my trade?</summary><p>Yes. There are ready storefronts for plumbing, electrical, HVAC, auto repair, barbers, tattoo studios and salons, and more trades are added every week.</p></details>
+  </div>
+
+  <div class="banner reveal">
+    <h2>Your next customer is searching right now. Be the one who answers.</h2>
+    <button class="btn gold" data-unlock>Unlock Axiom for $1 Now →</button>
+  </div>
+</div></section>
+</main>
+
+<footer><b>Gear Guardian LLC</b> · New Era Apps / Axiom · © <span id="yr"></span>
+  · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
+  · Reply STOP to opt out · HELP for help · START to resume</footer>
+<div class="sticky-claim"><button class="btn gold" id="stickyClaim" data-unlock>Claim Your Storefront — $1 Unlock</button></div>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- ===== 3-step $1 funnel (slide-over) ===== -->
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shT">
+  <div class="sh-head"><span class="tdot"></span><div><b id="shT">Claim your app</b><small id="shSub"></small></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="prog"><i class="on"></i><i></i><i></i></div>
+  <div class="sh-body">
+    <div class="stepx on" data-s="1">
+      <h3>Name your app</h3><p>This is what customers see at the top of your storefront.</p>
+      <label class="fld" id="f1n">Business name<input id="fName" placeholder="e.g. Rogue Valley Plumbing" autocomplete="organization"><span class="err-msg">Add your business name.</span></label>
+      <label class="fld" id="f1c">City / service area<input id="fCity" placeholder="e.g. Medford" autocomplete="address-level2"><span class="err-msg">Add the city or area you serve.</span></label>
+      <div class="live"><small>LIVE PREVIEW</small><b id="lvName">Your Business</b><span id="lvSub"></span><code id="lvUrl"></code></div>
+    </div>
+    <div class="stepx" data-s="2">
+      <h3>Where should jobs go?</h3><p>Bookings, calls and alerts route to you. Nothing is shown publicly except your business number.</p>
+      <label class="fld" id="f2p">Owner cell<input id="fCell" type="tel" inputmode="tel" placeholder="(541) 555-0123" autocomplete="tel"><span class="err-msg">Enter a 10-digit cell number.</span></label>
+      <label class="fld" id="f2e">Owner email<input id="fEmail" type="email" placeholder="you@shop.com" autocomplete="email"><span class="err-msg">Enter a valid email.</span></label>
+      <label class="consent"><input type="checkbox" id="fSms" checked>Text me booking alerts and call routing at this number. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help, START to resume.</label>
+    </div>
+    <div class="stepx" data-s="3">
+      <h3>Activate for $1</h3><p>14 days of full access. Then $150/mo or $1,500 lifetime. 1.5% on online card bookings.</p>
+      <div class="plans">
+        <label class="plan"><input type="radio" name="plan" value="monthly" checked><div><b>Monthly Autopilot</b><span>$150/mo after day 7</span></div><span class="p">$150/mo</span></label>
+        <label class="plan"><input type="radio" name="plan" value="lifetime"><div><b>Lifetime License</b><span>One-time, after day 7</span></div><span class="p">$1,500</span></label>
+      </div>
+      <div class="sum" id="sum"></div>
+      <div class="today"><span>Due today</span><b class="num">$1.00</b></div>
+      <p class="terms" id="terms"></p>
+    </div>
+    <div class="stepx" data-s="4">
+      <div class="done"><div class="ok">✓</div><h3 id="doneH">You're live.</h3><p style="color:var(--mut);margin-top:8px">Your storefront link is ready. Text it to a customer to test it.</p>
+        <div class="linkbox"><code id="doneUrl"></code><button class="btn gold sm" id="copyUrl">Copy</button></div>
+        <p class="fine" id="doneNote"></p></div>
+    </div>
+  </div>
+  <div class="sh-foot"><button class="btn back" id="shBack">Back</button><button class="btn gold" id="shNext">Continue →</button></div>
+</aside>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Full-size demo" hidden>
+  <div class="v-scrim" data-vclose></div>
+  <button class="v-x" data-vclose aria-label="Close">✕</button>
+  <div class="v-wrap">
+    <div class="v-phone" id="vPhone"><div class="clip"><iframe id="vFrame" title="Full-size storefront demo"></iframe></div><div class="isl"></div><div class="btns"></div></div>
+    <div class="v-side"><small id="vTier"></small><h3 id="vTrade"></h3><p>This is exactly what your customers see on their phone. Scroll it, tap CALL or BOOK, try the help bot.</p>
+      <button class="btn gold" id="vClaim"></button>
+      <div class="v-nav"><button id="vPrev">‹ Previous</button><button id="vNext">Next ›</button></div></div>
+  </div>
+  <div class="v-mbar"><button data-vclose>✕ Back</button><button class="claim" id="vClaimM">Claim for $1</button></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================== CONFIG: wire to your backend =================== */
+const AXIOM = {
+  storefrontUrl: slug => `${location.origin}/t/${slug}`,
+  checkout: async payload => {
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        shopSlug: payload.slug,
+        planId: 'unlock',
+        businessName: payload.businessName,
+        niche: payload.template === 'plumbing-night' ? 'plumbing' : String(payload.trade || '').toLowerCase(),
+        selectedTrade: payload.trade,
+        leadId: payload.leadId || undefined,
+        phone: payload.cell,
+        email: payload.email,
+        city: payload.city,
+        origin: location.origin,
+        unlockPlan: payload.plan,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.url) throw new Error(json.error || 'Checkout failed');
+    return json;
+  },
+  monthly: 150, lifetime: 1500,
+  offerMonthly: '$1.00 today unlocks your storefront for 14 days. Then $150/mo until you cancel, or switch to the $1,500 Lifetime License. Cancel in Admin Billing. Online card bookings include a 1.5% Gear Guardian LLC platform fee (0% on cash and checks logged in the field).',
+  offerLifetime: '$1.00 today unlocks your storefront for 14 days. On day 15 you are charged $1,500 once for the Lifetime License — no monthly bill. Cancel before then in Admin Billing. Online card bookings include a 1.5% Gear Guardian LLC platform fee (0% on cash and checks logged in the field).',
+};
+/* The 7 real storefront demos. path = the demo page; title = the element that
+   shows the business name, so a visitor's name appears live inside the phone. */
+const DEMOS = [
+  {slug:'barbershop',    trade:'Barbershop',          tier:'Rapid 24/7 Booking Storefront',     niche:'Barbershop · walk-ins & bookings',  pc:'#FFE500', title:'.hero-title small'},
+  {slug:'tattoo',        trade:'Tattoo Studio',       tier:'Cinematic AI Brand Showcase',       niche:'Tattoo studio · consults',          pc:'#ff2d55', title:'#title'},
+  {slug:'electrician',   trade:'Electrical',          tier:'Full Autopilot Local Authority Suite', niche:'Electrician · 24/7 on call',     pc:'#00ffcc', title:'h1.big'},
+  {slug:'plumbing-night',trade:'Plumbing',            tier:'Night-Shift Emergency Storefront',  niche:'Plumbing • 24/7 dispatch',          pc:'#ff7a00', title:'#brand'},
+  {slug:'hvac',          trade:'HVAC',                tier:'Comfort Rescue Storefront',         niche:'Heating & air · same-day',          pc:'#3ff2ff', title:'#title'},
+  {slug:'auto',          trade:'Auto Repair',         tier:'Auto & Fabrication Bay',            niche:'Auto repair · diagnostics',         pc:'#ff7a1a', title:'#title'},
+  {slug:'salon',         trade:'Beauty & Salon',      tier:'Glam Booking Showcase',             niche:'Hair & beauty salon',               pc:'#ff3d9a', title:'#title'},
+];
+const START = 'plumbing-night';
+/* Personalized links: ?b=Ace+Plumbing&trade=plumbing  (also ?name=, ?business=, &city=) */
+const TRADE_KEYS = {plumbing:'plumbing-night',plumber:'plumbing-night',hvac:'hvac',heating:'hvac',ac:'hvac',electrical:'electrician',electrician:'electrician',electric:'electrician',
+  barber:'barbershop',barbershop:'barbershop',tattoo:'tattoo',auto:'auto','auto-repair':'auto',mechanic:'auto',salon:'salon',beauty:'salon',hair:'salon'};
+const TRADE_PARAM = {'plumbing-night':'plumbing',hvac:'hvac',electrician:'electrical',barbershop:'barber',tattoo:'tattoo',auto:'auto',salon:'salon'};
+const QS = new URLSearchParams(location.search);
+const clean = (v, max) => (v || '').replace(/\s+/g, ' ').trim().slice(0, max);
+let qName = clean(QS.get('b') || QS.get('name') || QS.get('business') || QS.get('biz'), 60);
+let qCity = clean(QS.get('city'), 40);
+const qPhone = clean(QS.get('phone'), 40);
+const qEmail = clean(QS.get('email'), 120);
+const qLeadId = clean(QS.get('lead_id') || QS.get('lead'), 80);
+const qSlug = clean(QS.get('slug'), 64);
+let qTrade = TRADE_KEYS[clean(QS.get('trade'), 20).toLowerCase()];
+if (!qTrade && (qLeadId || qName || qSlug)) qTrade = 'plumbing-night';
+const leadFocus = Boolean(qLeadId || qSlug || qName || QS.get('trade'));
+if (leadFocus) document.body.classList.add('lead-focus');
+/* ==================================================================== */
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const n = DEMOS.length, root = document.documentElement;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slugify = s => String(s).toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g,'').trim().replace(/[\s_]+/g,'-').replace(/-+/g,'-').slice(0,48) || 'your-business';
+const toast = t => { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2400); };
+$('#yr').textContent = new Date().getFullYear();
+
+/* ---------------- build the phones ---------------- */
+const track = $('#track');
+track.innerHTML = DEMOS.map((d, i) => `
+  <div class="ph" data-i="${i}" style="--pc:${d.pc}">
+    <div class="frame rim"><div class="load">LOADING</div><iframe title="${esc(d.trade)} live storefront demo" loading="lazy" tabindex="-1"></iframe><div class="isl"></div><div class="shine"></div></div>
+    <div class="refl"></div>
+    <button class="catch" aria-label="Show the ${esc(d.trade)} demo"></button>
+    <button class="open" tabindex="-1">⤢ TAP TO OPEN FULL-SIZE</button>
+  </div>`).join('');
+const phones = $$('.ph');
+$('#pills').innerHTML = DEMOS.map((d, i) => `<button class="pill" role="tab" data-i="${i}" style="--pc:${d.pc}"><i></i>${esc(d.trade)}</button>`).join('');
+const pills = $$('.pill');
+$('#pbTrade').innerHTML = DEMOS.map((d, i) => `<option value="${i}">${esc(d.trade)}</option>`).join('');
+
+/* scale each 390x844 demo to its bezel */
+const fitFrames = () => phones.forEach(p => { const f = p.querySelector('iframe'), w = p.querySelector('.frame').clientWidth; f.style.transform = `scale(${w/390})`; });
+addEventListener('resize', fitFrames);
+
+/* lazy-load: front + neighbours first, the rest once idle */
+const loaded = new Set();
+const load = i => { if (loaded.has(i)) return; loaded.add(i); const f = phones[i].querySelector('iframe');
+  f.addEventListener('load', () => { phones[i].querySelector('.load').remove(); applyName(i); bridge(i); }, {once:true});
+  f.src = demoSrc(DEMOS[i].slug, false); };
+
+function demoSrc(slug, play) {
+  const q = slug === 'plumbing-night' ? (play ? '?play=1' : '?poster=1') : '';
+  return `demos/${slug}/index.html${q}`;
+}
+
+/* ---------------- carousel physics ---------------- */
+let pos = DEMOS.findIndex(d => d.slug === (qTrade || START)), target = pos, active = -1, vel = 0;
+const wrapD = d => { d = ((d % n) + n) % n; return d > n/2 ? d - n : d; };
+const geo = () => { const w = innerWidth; return w < 520 ? {R:300, ang:.62, rot:26} : w < 900 ? {R:420, ang:.55, rot:24} : {R:820, ang:.4, rot:20}; };
+
+const deepBlur = innerWidth > 900 && !reduce;
+function layout() {
+  const g = geo();
+  phones.forEach((p, i) => {
+    const d = wrapD(i - pos), a = Math.abs(d);
+    const x = Math.sin(d * g.ang) * g.R, z = (Math.cos(d * g.ang) - 1) * g.R * .95 - a * 30;
+    const s = a < 1 ? 1.1 - .2 * a : Math.max(.6, 1 - .1 * a), o = a > 3.2 ? 0 : Math.max(0, 1 - .17 * a);
+    p.style.transform = `translate3d(${x}px,${a*8}px,${z}px) rotateY(${-d * g.rot}deg) scale(${s})`;
+    p.style.opacity = o; p.style.zIndex = 100 - Math.round(a * 10);
+    p.style.filter = a < .05 ? 'none' : `brightness(${Math.max(.42, 1 - a*.18)}) saturate(${Math.max(.6, 1 - a*.12)})${deepBlur ? ` blur(${Math.min(2.4, a * 1.1).toFixed(2)}px)` : ''}`;
+    p.style.pointerEvents = a > 3.2 ? 'none' : '';
+    p.classList.toggle('front', a < .5);
+  });
+  const ai = ((Math.round(pos) % n) + n) % n;
+  if (ai !== active) setActive(ai);
+}
+
+function setActive(i) {
+  const fr = phones[i] && phones[i].querySelector('.frame');
+  if (fr && active !== -1) { fr.classList.remove('sweep'); void fr.offsetWidth; fr.classList.add('sweep'); setTimeout(() => fr.classList.remove('sweep'), 1200); }
+  active = i; const d = DEMOS[i];
+  root.style.setProperty('--ac', d.pc);
+  $('#capTier').textContent = d.tier; $('#capNiche').textContent = d.niche;
+  pills.forEach((p, k) => { p.classList.toggle('on', k === i); p.setAttribute('aria-selected', k === i); });
+  $('#cbarTitle').textContent = lead.name && i === lead.idx ? `${lead.name} · ${d.trade}` : `${d.tier} · ${d.trade}`;
+  $('#pbTrade').value = i;
+  $('#cbarBtn').textContent = claimLabel();
+  applyHero();
+  if (leadFocus) load(i);
+  else [0, 1, -1].forEach(k => load(((i + k) % n + n) % n));
+}
+
+/* weighted spring: stiffness + damping give a soft, slightly settling stop */
+let raf = 0, sv = 0, lastTs = 0;
+const STIFF = 120, DAMP = 19;
+function animate(ts) {
+  let dt = Math.min(.25, lastTs ? (ts - lastTs) / 1000 : .016); lastTs = ts;
+  if (!dragging) {
+    if (reduce) { pos = target; sv = 0; }
+    else while (dt > 0) { const h = Math.min(dt, 1 / 240); sv += ((target - pos) * STIFF - sv * DAMP) * h; pos += sv * h; dt -= h; }   /* fixed sub-steps: same feel at 30, 60 or 120 fps */
+    if (Math.abs(target - pos) < .0008 && Math.abs(sv) < .002) { pos = target; sv = 0; layout(); raf = 0; lastTs = 0; return; }
+  }
+  layout(); raf = requestAnimationFrame(animate);
+}
+const kick = () => { if (!raf) raf = requestAnimationFrame(animate); };
+function go(i) { const d = wrapD(i - pos); target = Math.round(pos + d); kick(); }
+const step = k => { target = Math.round(target) + k; kick(); };
+$('#prev').onclick = () => step(-1); $('#next').onclick = () => step(1);
+pills.forEach(p => p.onclick = () => go(+p.dataset.i));
+phones.forEach(p => { const tap = e => { if (moved) return; const i = +p.dataset.i; p.classList.contains('front') ? openViewer(i) : go(i); };
+  p.querySelector('.catch').addEventListener('click', tap); p.querySelector('.open').addEventListener('click', tap); });
+$('#stage').addEventListener('keydown', e => { if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); } if (e.key === 'ArrowRight') { step(1); e.preventDefault(); } });
+
+/* drag / swipe with momentum (the live front phone keeps its own scrolling) */
+let dragging = false, moved = false, sx = 0, sp = 0, lx = 0, lt = 0;
+const stage = $('#stage'), spacing = () => Math.min(innerWidth * .55, 320);
+stage.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || e.target.closest('.nav-arrow')) return;
+  dragging = true; moved = false; sx = lx = e.clientX; sp = pos; lt = performance.now(); vel = 0;
+  stage.classList.add('drag'); kick();
+});
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - sx; if (Math.abs(dx) > 6) moved = true;
+  const now = performance.now(); vel = (e.clientX - lx) / Math.max(1, now - lt); lx = e.clientX; lt = now;
+  pos = sp - dx / spacing();
+});
+const endDrag = () => { if (!dragging) return; dragging = false; stage.classList.remove('drag');
+  sv = -vel * 1000 / spacing() * .6; target = Math.round(pos - vel * 260 / spacing()); kick(); setTimeout(() => moved = false, 0); };
+addEventListener('pointerup', endDrag); addEventListener('pointercancel', endDrag);
+
+/* trackpad / wheel flick: sideways gestures, or shift+wheel */
+let wAcc = 0, wT = 0, wLock = 0;
+function onWheel(e) {
+  const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+  if (!dx) return; e.preventDefault();
+  wAcc += dx; clearTimeout(wT); wT = setTimeout(() => wAcc = 0, 180);
+  const now = performance.now();
+  if (Math.abs(wAcc) > 60 && now > wLock) { step(Math.sign(wAcc)); wAcc = 0; wLock = now + 380; }
+}
+stage.addEventListener('wheel', onWheel, {passive:false});
+/* the front phone is a live page: forward sideways flicks and swipes from inside it */
+function bridge(i) {
+  try { const w = phones[i].querySelector('iframe').contentWindow; let tx = 0, ty = 0;
+    w.addEventListener('wheel', onWheel, {passive:false});
+    w.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+    w.addEventListener('touchend', e => { const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.6) step(dx < 0 ? 1 : -1); }, {passive:true});
+  } catch (e) {}
+}
+
+/* ---------------- put the visitor's name inside the phones ---------------- */
+const lead = { id:qLeadId, idx:-1, name:qName, city:qCity, cell:qPhone, email:qEmail, sms:true, plan:'monthly', trade:null, licenseVerified:false };
+const funnelOpened = Date.now();
+function pingFunnel(event, extra) {
+  const id = lead.id || qLeadId || qSlug;
+  if (!id) return;
+  const d = DEMOS[lead.idx >= 0 ? lead.idx : 0] || DEMOS[0];
+  const payload = JSON.stringify({
+    leadId: id, event, trade: d.trade || 'plumbing', city: lead.city || qCity || '',
+    dwellMs: extra && extra.dwellMs || 0
+  });
+  try {
+    fetch('/api/funnel/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') pingFunnel('dwell_ms', { dwellMs: Date.now() - funnelOpened });
+});
+window.addEventListener('pagehide', () => pingFunnel('dwell_ms', { dwellMs: Date.now() - funnelOpened }));
+function claimLabel() {
+  return lead.name ? `Claim ${lead.name} — $1 Unlock` : 'Claim Your Storefront — $1 Unlock';
+}
+function leadReady() {
+  const phone = String(lead.cell || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+  return Boolean(lead.name && lead.city && phone.length === 10);
+}
+function applyHero() {
+  const h = $('#heroH1'), lede = $('#heroLede');
+  if (lead.name && lead.city) {
+    h.innerHTML = `${esc(lead.name)}: Never Lose Another Emergency Plumbing Call in <em>${esc(lead.city)}</em>`;
+    lede.textContent = `This is the ${lead.city} plumbing page customers hit after hours. $1.00 unlocks it for 14 days, then $150/mo or $1,500 lifetime. 1.5% on online card bookings.`;
+  } else if (lead.name) {
+    h.innerHTML = `${esc(lead.name)}: Never Lose Another Emergency Plumbing Call`;
+  } else if (leadFocus) {
+    h.innerHTML = `Never Lose Another Emergency Plumbing Call${lead.city ? ` in <em>${esc(lead.city)}</em>` : ''}`;
+  }
+  const label = claimLabel();
+  ['#heroClaim', '#stickyClaim', '#cbarBtn', '#vClaimM', 'nav.top .btn'].forEach(sel => { const el = $(sel); if (el) el.textContent = label; });
+  document.body.classList.toggle('lead-focus', leadFocus);
+}
+const NEUTRAL_BADGE = 'Fast Local Dispatch · Upfront Pricing';
+const NEUTRAL_TRUST = ['Fast Local Dispatch', 'Upfront Pricing'];
+/* the visitor's name goes on the one trade they picked; every other phone keeps its own name */
+const orig = {};
+function hydratePlumbing(doc, mine) {
+  if (!doc) return;
+  if (mine && lead.city) doc.querySelectorAll('[data-area]').forEach(el => { el.textContent = lead.city; });
+  if (mine && lead.cell) {
+    const tel = 'tel:' + String(lead.cell).replace(/[^\d+]/g, '');
+    for (const id of ['phIcon', 'ctaCall', 'dockCall', 'fCall']) {
+      const el = doc.getElementById(id);
+      if (el) { el.href = tel; if (id === 'fCall') el.textContent = lead.cell; }
+    }
+    const ph = doc.getElementById('phIcon');
+    if (ph) ph.setAttribute('aria-label', 'Call ' + (lead.name || 'shop') + ' at ' + lead.cell);
+  }
+  if (!mine) return;
+  const verified = lead.licenseVerified === true;
+  const badge = doc.getElementById('badge');
+  if (badge) badge.textContent = verified ? '24/7 Emergency · Instant dispatch' : NEUTRAL_BADGE;
+  const trust = doc.getElementById('trust');
+  if (trust) {
+    const labels = verified ? ['Licensed & insured', '24/7 live dispatch'] : NEUTRAL_TRUST;
+    [...trust.querySelectorAll('span')].forEach((s, i) => { if (labels[i]) s.textContent = labels[i]; });
+  }
+  const fBrand = doc.getElementById('fBrand');
+  if (fBrand) fBrand.textContent = verified ? 'Licensed plumbing contractor' : 'Local plumbing · ' + NEUTRAL_BADGE.replace(' · ', ' • ');
+}
+function applyName(i) {
+  try { const doc = phones[i].querySelector('iframe').contentDocument, el = doc && doc.querySelector(DEMOS[i].title);
+    if (!el) return;
+    if (!(i in orig)) orig[i] = [el.textContent, doc.title];
+    const mine = !!(lead.name && i === lead.idx);
+    el.textContent = mine ? lead.name : orig[i][0]; doc.title = mine ? lead.name : orig[i][1];
+    if (DEMOS[i].slug === 'plumbing-night') {
+      hydratePlumbing(doc, mine);
+      if (i === active) installHelp(doc, DEMOS[i], mine ? lead.name : null);
+    }
+  } catch (e) {}
+}
+const applyAll = () => loaded.forEach(applyName);
+
+/* ---------------- preview modal ---------------- */
+const scrim = $('#scrim'), sheet = $('#sheet');
+let lastFocus = null;
+const closeAll = () => { sheet.classList.remove('on'); scrim.classList.remove('on'); document.body.style.overflow = ''; lastFocus && lastFocus.focus(); };
+$$('[data-close]').forEach(b => b.onclick = closeAll); scrim.onclick = closeAll;
+addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (vOpen) closeViewer(); else closeAll(); });
+
+/* ---------------- AXIOM HELP: in-phone chat demo (full-size view only) ----------------
+   Injected into the demo page when a phone is opened full-size. Hides the demo's own
+   help button, adds the AXIOM HELP robot in the same spot, and runs a short booking
+   simulation for that trade that ends with the owner's text notification. */
+const HELP_SCRIPTS = {
+  'plumbing-night': { q:"My water heater is leaking in the garage, can someone come today?", quote:"Water heater leak repairs usually run $180–$450. If it needs replacing, the plumber quotes that on site before any work starts.", range:'$180–$450',
+    ask:"I can get a plumber out today. Which time works?", slots:['Today 2:00 PM','Today 4:30 PM','Tomorrow 8:00 AM'], tip:"Until then, turn the cold-water valve on top of the heater to off.", job:'Water heater leak', where:'Garage', who:'Tech', title:'NEW BOOKED JOB' },
+  electrician: { q:"Half my house lost power and the breaker keeps tripping. Can you come out today?", quote:"Breaker and circuit troubleshooting usually runs $150–$400, depending on what we find.", range:'$150–$400',
+    ask:"I have an electrician free today. Pick a time:", slots:['Today 1:30 PM','Today 4:00 PM','Tomorrow 9:00 AM'], tip:"Leave that breaker off until we get there.", job:'Breaker tripping / partial outage', where:'Main panel', who:'Electrician', title:'NEW BOOKED JOB' },
+  hvac: { q:"AC is running but blowing warm air and it's 95 out. Can someone come today?", quote:"No-cool diagnostics plus a common fix like a capacitor or refrigerant top-off usually lands around $150–$450.", range:'$150–$450',
+    ask:"I can get a tech to you today. Which works?", slots:['Today 2:00 PM','Today 5:00 PM','Tomorrow 8:00 AM'], tip:"Switch the system off for now so the coil doesn't freeze.", job:'AC blowing warm air', where:'Central AC', who:'Tech', title:'NEW BOOKED JOB' },
+  auto: { q:"Check engine light came on and the car shakes at stoplights. Can you look at it today?", quote:"Diagnostics are $89–$129, and common misfire fixes like plugs or coils usually run $180–$480.", range:'$89–$480',
+    ask:"We have a bay open today. Pick a drop-off time:", slots:['Today 1:00 PM','Today 3:30 PM','Tomorrow 8:00 AM'], tip:"If the light starts flashing, pull over and call us.", job:'Check engine + rough idle', where:'Drop-off', who:'Mechanic', title:'NEW BOOKED JOB' },
+  barbershop: { q:"Can I get a skin fade and beard trim today after work?", quote:"A skin fade with a beard trim is $45–$55.", range:'$45–$55',
+    ask:"Here's what's open today:", slots:['Today 5:30 PM','Today 6:15 PM','Tomorrow 10:00 AM'], tip:"", job:'Skin fade + beard trim', where:'Chair 2', who:'Barber', title:'NEW BOOKING' },
+  tattoo: { q:"I want a fine-line floral piece on my forearm, about palm-sized. How much and when can I come in?", quote:"Palm-sized fine-line work usually runs $200–$400 depending on detail. The consult is free.", range:'$200–$400',
+    ask:"Open consult times:", slots:['Thu 3:00 PM','Fri 12:30 PM','Sat 11:00 AM'], tip:"Bring any reference photos you like.", job:'Consult: fine-line floral, forearm', where:'Studio', who:'Artist', title:'NEW CONSULT BOOKED' },
+  salon: { q:"I need a balayage refresh and a trim before Saturday. Do you have anything?", quote:"A balayage refresh with a trim typically runs $180–$260, depending on length.", range:'$180–$260',
+    ask:"These are open before Saturday:", slots:['Thu 10:00 AM','Fri 1:30 PM','Sat 9:00 AM'], tip:"Come with dry, product-free hair if you can.", job:'Balayage refresh + trim', where:'Color chair', who:'Stylist', title:'NEW BOOKING' },
+};
+const BOT_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 13v1M15 13v1M2 13v3M22 13v3"/></svg>';
+const HELP_CSS = `
+.bot,.orb{display:none!important}
+#ax-help,#ax-help *,#ax-drawer,#ax-drawer *,#ax-sms,#ax-sms *{box-sizing:border-box;font-family:"Plus Jakarta Sans",Inter,-apple-system,system-ui,sans-serif;letter-spacing:normal}
+#ax-help{position:fixed;right:16px;bottom:118px;z-index:2147483000;text-align:center}
+#ax-help button{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3a4248,#0b0f12);border:2px solid #00ffcc;box-shadow:0 0 26px rgba(0,255,204,.5);display:grid;place-items:center;color:#fff;cursor:pointer;padding:0;animation:axb 2.6s ease-in-out infinite}
+@keyframes axb{50%{box-shadow:0 0 12px rgba(0,255,204,.35)}}
+#ax-help small{display:block;margin-top:4px;color:#00ffcc;font-weight:800;letter-spacing:.35em;font-size:12px;text-shadow:0 0 8px #00ffcc}
+#ax-scrim{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s}
+#ax-scrim.on{opacity:1;pointer-events:auto}
+#ax-drawer{position:fixed;left:0;right:0;bottom:0;height:76%;z-index:2147483002;background:#050507;border-radius:26px 26px 0 0;border-top:1px solid rgba(0,255,204,.45);box-shadow:0 -20px 60px rgba(0,255,204,.12);display:flex;flex-direction:column;transform:translateY(102%);transition:transform .45s cubic-bezier(.2,.85,.2,1);color:#eef3f5}
+#ax-drawer.on{transform:none}
+.ax-grab{width:42px;height:5px;border-radius:9px;background:#2a2e36;margin:9px auto 0}
+.ax-head{display:flex;align-items:center;gap:11px;padding:10px 16px 12px;border-bottom:1px solid rgba(255,255,255,.07)}
+.ax-av{width:38px;height:38px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#3a4248,#0b0f12);border:2px solid #00ffcc;display:grid;place-items:center;color:#fff;box-shadow:0 0 14px rgba(0,255,204,.4)}
+.ax-av svg{width:19px;height:19px}
+.ax-head b{display:block;font-size:15px;font-weight:800;letter-spacing:.06em}
+.ax-head span{font-size:11.5px;color:#00ffcc;font-weight:600}
+.ax-head span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#00ffcc;margin-right:6px;box-shadow:0 0 6px #00ffcc;vertical-align:1px}
+.ax-x{margin-left:auto;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:none;color:#cfd5db;font-size:15px;cursor:pointer}
+.ax-body{flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth}
+.ax-intro{text-align:center;color:#8b949e;font-size:12.5px;line-height:1.5;padding:4px 10px 6px}
+.ax-m{max-width:84%;padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.45;animation:axin .3s ease-out}
+@keyframes axin{from{opacity:0;transform:translateY(6px)}}
+.ax-m.c{align-self:flex-end;background:#16313a;border:1px solid rgba(0,255,204,.18);border-bottom-right-radius:6px}
+.ax-m.a{align-self:flex-start;background:#0f1116;border:1px solid rgba(0,255,204,.35);border-bottom-left-radius:6px}
+.ax-m.a::before{content:"AXIOM";display:block;font-size:9.5px;font-weight:800;letter-spacing:.18em;color:#00ffcc;margin-bottom:3px}
+.ax-m small{display:block;color:#7d8792;font-size:10.5px;margin-top:4px}
+.ax-typing{align-self:flex-start;display:flex;gap:4px;padding:12px 14px;border-radius:18px;background:#0f1116;border:1px solid rgba(0,255,204,.25)}
+.ax-typing i{width:6px;height:6px;border-radius:50%;background:#00ffcc;animation:axd 1s infinite}
+.ax-typing i:nth-child(2){animation-delay:.15s}.ax-typing i:nth-child(3){animation-delay:.3s}
+@keyframes axd{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+.ax-slots{display:flex;flex-wrap:wrap;gap:7px;align-self:flex-start;animation:axin .3s ease-out}
+.ax-slots button{padding:9px 13px;border-radius:99px;border:1px solid rgba(255,170,60,.55);background:rgba(255,122,0,.08);color:#ffcf8a;font-size:13px;font-weight:700;cursor:pointer}
+.ax-slots button.pick{background:linear-gradient(90deg,#FFE500,#FF7A00);color:#000;border-color:transparent}
+.ax-slots button:disabled{cursor:default}
+.ax-card{align-self:stretch;border-radius:18px;padding:13px 14px;background:linear-gradient(160deg,rgba(255,122,0,.14),#0f1116 70%);border:1px solid rgba(255,170,60,.45);animation:axin .35s ease-out}
+.ax-card small{font-size:10px;font-weight:800;letter-spacing:.18em;color:#FFB347}
+.ax-card b{display:block;font-size:16px;margin:4px 0 6px}
+.ax-card div{display:flex;justify-content:space-between;font-size:12.5px;color:#aab3bc;padding:3px 0}
+.ax-card div span:last-child{color:#eef3f5;font-weight:600}
+.ax-foot{padding:10px 12px 14px;border-top:1px solid rgba(255,255,255,.07);display:grid;gap:9px}
+.ax-run{width:100%;padding:13px;border:0;border-radius:99px;background:linear-gradient(90deg,#FFE500,#FF7A00);color:#000;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 8px 26px rgba(255,122,0,.28)}
+.ax-run:disabled{opacity:.45;cursor:default}
+.ax-in{display:flex;gap:8px}
+.ax-in input{flex:1;min-width:0;padding:12px 15px;border-radius:99px;border:1px solid rgba(255,255,255,.12);background:#0f1116;color:#fff;font-size:16px}
+.ax-in input:focus{outline:none;border-color:#00ffcc}
+.ax-in button{width:46px;border-radius:50%;border:0;background:#00ffcc;color:#00221b;font-weight:900;font-size:18px;cursor:pointer}
+#ax-sms{position:fixed;left:10px;right:10px;top:50px;z-index:2147483600;border-radius:22px;padding:12px 14px;background:rgba(22,24,30,.94);border:1px solid rgba(0,255,204,.35);box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 30px rgba(0,255,204,.15);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#eef3f5;transform:translateY(-190%);transition:transform .55s cubic-bezier(.2,1.2,.3,1);cursor:pointer}
+#ax-sms.on{transform:none}
+.ax-sh{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#9aa3ad;font-weight:600}
+.ax-sh i{width:22px;height:22px;border-radius:6px;background:#00ffcc;color:#00221b;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:12px}
+.ax-sh em{margin-left:auto;font-style:normal}
+.ax-st{font-size:13px;font-weight:900;color:#FFB347;letter-spacing:.06em;margin:7px 0 2px}
+.ax-sb{font-size:14px;line-height:1.4;font-weight:600}
+.ax-sm{font-size:12px;color:#9aa3ad;margin-top:4px}
+.ax-tag{position:fixed;left:50%;top:0;transform:translate(-50%,-100%);z-index:2147483599;font-size:10px;font-weight:800;letter-spacing:.2em;color:#00ffcc;padding:4px 10px;border-radius:0 0 10px 10px;background:#050507;border:1px solid rgba(0,255,204,.3);border-top:0;transition:transform .4s .35s}
+.ax-tag.on{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#ax-drawer,#ax-sms,.ax-m,.ax-card,.ax-slots{transition:none!important;animation:none!important}}
+`;
+
+function installHelp(doc, demo, bizName, host) {
+  if (!doc || !doc.body) return;
+  const root = host || doc.body;
+  if (root.querySelector('#ax-help')) return;
+  const S = HELP_SCRIPTS[demo.slug]; if (!S) return;
+  const shop = bizName || 'the shop';
+  const el = (tag, cls, text) => { const e = doc.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  if (!doc.getElementById('ax-help-css')) {
+    const style = el('style'); style.id = 'ax-help-css'; style.textContent = HELP_CSS; doc.head.appendChild(style);
+  }
+
+  const help = el('div'); help.id = 'ax-help';
+  const hb = el('button'); hb.setAttribute('aria-label', 'Chat with AXIOM'); hb.innerHTML = BOT_SVG; help.append(hb, el('small', '', 'HELP'));
+  const scrim = el('div'); scrim.id = 'ax-scrim';
+  const dr = el('div'); dr.id = 'ax-drawer'; dr.setAttribute('role', 'dialog'); dr.setAttribute('aria-label', 'AXIOM assistant');
+  const head = el('div', 'ax-head'); const av = el('div', 'ax-av'); av.innerHTML = BOT_SVG;
+  const ht = el('div'); ht.append(el('b', '', 'AXIOM'), el('span', '', 'Online · replies in 1s'));
+  const x = el('button', 'ax-x', '✕'); x.setAttribute('aria-label', 'Close'); head.append(av, ht, x);
+  const body = el('div', 'ax-body');
+  const foot = el('div', 'ax-foot');
+  const run = el('button', 'ax-run', '▶ Run the 15-second demo');
+  const form = el('form', 'ax-in'); const inp = el('input'); inp.placeholder = 'Or type what you need…'; inp.maxLength = 140; inp.setAttribute('aria-label', 'Message AXIOM');
+  const send = el('button', '', '↑'); send.setAttribute('aria-label', 'Send'); form.append(inp, send); foot.append(run, form);
+  dr.append(el('div', 'ax-grab'), head, body, foot);
+  const sms = el('div'); sms.id = 'ax-sms'; sms.setAttribute('role', 'status');
+  if (host) { root.append(help, dr, sms); dr.classList.add('on'); }
+  else root.append(help, scrim, dr, sms);
+
+  let token = 0, timers = [];
+  const later = (ms, fn) => { const t = token; timers.push(setTimeout(() => { if (t === token) fn(); }, ms)); };
+  const reset = () => { token++; timers.forEach(clearTimeout); timers = []; };
+  const scroll = () => { body.scrollTop = body.scrollHeight; };
+  const say = (who, text) => { const m = el('div', 'ax-m ' + who, text); body.appendChild(m); scroll(); return m; };
+  const typing = (ms, then) => { const t = el('div', 'ax-typing'); t.append(el('i'), el('i'), el('i')); body.appendChild(t); scroll(); later(ms, () => { t.remove(); then(); }); };
+  const intro = () => { body.textContent = ''; body.appendChild(el('div', 'ax-intro', `This is AXIOM answering for ${shop} at 2 AM, on a Sunday, or while you're on a job. Run the demo or type a message.`)); };
+
+  function slots(onPick, auto) {
+    const row = el('div', 'ax-slots');
+    S.slots.forEach(s => { const b = el('button', '', s); b.onclick = () => pick(b); row.appendChild(b); });
+    body.appendChild(row); scroll();
+    function pick(b) { [...row.children].forEach(c => c.disabled = true); b.classList.add('pick'); onPick(b.textContent); }
+    if (auto) later(auto, () => pick(row.children[0]));
+  }
+  function book(slot, job) {
+    say('c', `${slot} works.`);
+    typing(1000, () => {
+      say('a', `You're booked for ${slot}. ${S.tip ? S.tip + ' ' : ''}You'll get a text when your ${S.who.toLowerCase()} is on the way.`);
+      const c = el('div', 'ax-card'); c.appendChild(el('small', '', 'CONFIRMED'));
+      c.appendChild(el('b', '', job));
+      [['When', slot], ['Where', S.where], ['Ballpark', S.range]].forEach(([k, v]) => { const r = el('div'); r.append(el('span', '', k), el('span', '', v)); c.appendChild(r); });
+      body.appendChild(c); scroll();
+      later(900, () => notify(job, slot));
+      later(1400, () => { run.disabled = false; run.textContent = '↺ Replay the demo'; });
+    });
+  }
+  function notify(job, slot) {
+    sms.textContent = '';
+    const h = el('div', 'ax-sh'); h.append(el('i', '', 'A'), el('span', '', `Owner's phone · AXIOM${bizName ? ' → ' + bizName : ''}`), el('em', '', 'now'));
+    sms.append(h, el('div', 'ax-st', S.title + ':'), el('div', 'ax-sb', `${job} — ${slot}`),
+      el('div', 'ax-sm', `Jordan M. · (541) 555-0142 · Est. ${S.range} · Tap to call`));
+    sms.classList.add('on');
+    later(6500, hideSms);
+  }
+  const hideSms = () => sms.classList.remove('on');
+  sms.onclick = hideSms;
+
+  function runDemo() {
+    reset(); hideSms(); intro(); run.disabled = true; run.textContent = 'Running…';
+    later(400, () => {
+      say('c', S.q);
+      typing(1000, () => {
+        say('a', `Hi! I'm AXIOM, answering for ${shop}. ${S.quote}`);
+        typing(1000, () => { say('a', S.ask); slots(slot => book(slot, S.job), 2200); });
+      });
+    });
+  }
+  function ask(text) {
+    run.disabled = true; say('c', text);
+    const job = text.length > 42 ? text.slice(0, 40).trim() + '…' : text;
+    typing(1000, () => {
+      say('a', `Got it. ${S.quote}`);
+      typing(1000, () => { say('a', S.ask); slots(slot => book(slot, job)); });
+    });
+  }
+  const open = () => { reset(); intro(); run.disabled = false; run.textContent = '▶ Run the 15-second demo'; if (!host) { scrim.classList.add('on'); dr.classList.add('on'); } };
+  const close = () => { reset(); if (host) return; dr.classList.remove('on'); scrim.classList.remove('on'); };
+  const markHelp = () => { try { pingFunnel('help_sim_used'); } catch (e) {} };
+  hb.onclick = () => { markHelp(); open(); }; x.onclick = close; scrim.onclick = close;
+  run.onclick = () => { markHelp(); runDemo(); };
+  if (host) { intro(); later(500, () => { markHelp(); runDemo(); }); }
+  form.onsubmit = e => { e.preventDefault(); const t = inp.value.replace(/\s+/g, ' ').trim(); if (!t) return; inp.value = ''; reset(); hideSms(); if (body.querySelector('.ax-intro')) body.textContent = ''; ask(t); };
+  doc.addEventListener('keydown', e => { if (e.key === 'Escape' && dr.classList.contains('on')) { e.stopPropagation(); close(); } });
+}
+
+/* ---------------- real-size viewer (opens from the front phone) ---------------- */
+const viewer = $('#viewer'), vPhone = $('#vPhone'), vFrame = $('#vFrame');
+let vOpen = false, vIdx = 0;
+const isPhone = () => innerWidth <= 600;
+const fitViewer = () => { const k = Math.min(1, (innerHeight - 70) / 844, (innerWidth - 40) / 390); viewer.style.setProperty('--k', k.toFixed(4)); };
+function fillViewer(i) {
+  vIdx = i; const d = DEMOS[i];
+  viewer.style.setProperty('--vc', d.pc);
+  $('#vTier').textContent = d.tier.toUpperCase(); $('#vTrade').textContent = lead.name && i === lead.idx ? lead.name : d.trade;
+  $('#vClaim').textContent = claimLabel();
+  vFrame.onload = () => { try { const doc = vFrame.contentDocument, mine = !!(lead.name && vIdx === lead.idx), el = mine && doc.querySelector(d.title); if (el) el.textContent = lead.name; if (d.slug === 'plumbing-night') hydratePlumbing(doc, mine); installHelp(doc, d, mine ? lead.name : null); } catch (e) { console.warn('help', e); } };
+  vFrame.src = demoSrc(d.slug, true);
+}
+function openViewer(i) {
+  lastFocus = document.activeElement; fitViewer(); fillViewer(i);
+  viewer.hidden = false; document.body.style.overflow = 'hidden';
+  const from = phones[i].querySelector('.frame').getBoundingClientRect();
+  requestAnimationFrame(() => {
+    const to = vPhone.getBoundingClientRect();
+    if (!reduce && to.width) {
+      vPhone.animate([{transform:`translate(${from.left - to.left}px,${from.top - to.top}px) scale(${from.width / to.width},${from.height / to.height})`, borderRadius:'44px'},{transform:'none'}],
+        {duration: 520, easing: 'cubic-bezier(.2,.85,.2,1)'});
+    }
+    viewer.classList.add('on'); vOpen = true; setTimeout(() => vFrame.focus(), 300);
+  });
+}
+function closeViewer() {
+  if (!vOpen) return; vOpen = false; viewer.classList.remove('on');
+  const done = () => { viewer.hidden = true; vFrame.src = 'about:blank'; document.body.style.overflow = ''; lastFocus && lastFocus.focus(); };
+  if (reduce) return done();
+  const to = phones[vIdx].querySelector('.frame').getBoundingClientRect(), from = vPhone.getBoundingClientRect();
+  const a = vPhone.animate([{transform:'none',opacity:1},{transform:`translate(${to.left - from.left}px,${to.top - from.top}px) scale(${to.width / from.width},${to.height / from.height})`,opacity:.2}],
+    {duration: 380, easing: 'cubic-bezier(.4,0,.2,1)'});
+  a.onfinish = done;
+}
+$$('[data-vclose]').forEach(b => b.addEventListener('click', closeViewer));
+const vStep = k => { const i = ((vIdx + k) % n + n) % n; go(i); fillViewer(i); };
+$('#vPrev').onclick = () => vStep(-1); $('#vNext').onclick = () => vStep(1);
+const vClaim = () => { const i = vIdx; closeViewer(); go(i); setTimeout(() => openFunnel(), reduce ? 0 : 420); };
+$('#vClaim').onclick = vClaim; $('#vClaimM').onclick = vClaim;
+addEventListener('resize', () => vOpen && fitViewer());
+const openPreview = $('#openPreview');
+if (openPreview) openPreview.onclick = () => { const f = $('#pbar'); f.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'center'}); setTimeout(() => $('#pbName').focus({preventScroll:true}), reduce ? 0 : 450); };
+function personalize(name, i, {scroll = true, quiet = false} = {}) {
+  lead.name = name; lead.idx = i; applyAll(); load(i); go(i);
+  try { const u = new URL(location.href); u.searchParams.set('b', name); u.searchParams.set('trade', TRADE_PARAM[DEMOS[i].slug]);
+    ['name','business'].forEach(k => u.searchParams.delete(k)); history.replaceState(null, '', u); } catch (e) {}
+  if (scroll) stage.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'center'});
+  if (!quiet) toast(`${name} is live in the ${DEMOS[i].trade} app. Tap the phone to try it.`);
+  applyHero();
+}
+$('#pbar').addEventListener('submit', e => { e.preventDefault();
+  const name = clean($('#pbName').value, 60), f = $('#pbar');
+  if (!name) { f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); $('#pbName').focus(); return; }
+  personalize(name, +$('#pbTrade').value);
+});
+
+/* ---------------- 3-step $1 funnel ---------------- */
+let st = 1;
+function openFunnel(plan, opts) {
+  lastFocus = document.activeElement;
+  lead.trade = active; if (plan) lead.plan = plan;
+  const forceForm = opts && opts.forceForm;
+  if (leadReady() && !forceForm) { startCheckout(); return; }
+  const d = DEMOS[active]; sheet.style.setProperty('--fc', d.pc);
+  $('#shT').textContent = lead.name ? `Claim ${lead.name}` : `Claim the ${d.trade} app`;
+  $('#shSub').textContent = `$1 unlock · 14 days, then $150/mo`;
+  $('#fName').value = lead.name; $('#fCity').value = lead.city; $('#fCell').value = lead.cell; $('#fEmail').value = lead.email;
+  $$('input[name=plan]').forEach(r => r.checked = r.value === lead.plan);
+  show(1); updateLive(); sheet.classList.add('on'); scrim.classList.add('on'); document.body.style.overflow = 'hidden';
+  setTimeout(() => $('#fName').focus(), 350);
+}
+$$('[data-unlock]').forEach(b => b.addEventListener('click', () => openFunnel(b.dataset.plan)));
+const editDetails = $('#editDetails');
+if (editDetails) editDetails.onclick = () => openFunnel(undefined, { forceForm: true });
+const tradeSwitch = $('#tradeSwitch');
+if (tradeSwitch) tradeSwitch.onclick = () => { document.body.classList.remove('lead-focus'); [0, 1, -1].forEach(k => load(((active + k) % n + n) % n)); };
+$('#cbarBtn').onclick = () => openFunnel();
+
+function updateLive() {
+  const d = DEMOS[lead.trade ?? active], nm = $('#fName').value.trim(), city = $('#fCity').value.trim();
+  $('#lvName').textContent = nm || 'Your Business';
+  $('#lvSub').textContent = `${d.trade}${city ? ' · ' + city : ''} · open 24/7 for bookings`;
+  $('#lvUrl').textContent = AXIOM.storefrontUrl(slugify(nm || 'your-business'));
+  const prev = lead.idx; lead.name = nm; lead.city = city; lead.idx = lead.trade ?? active; if (prev >= 0 && prev !== lead.idx) applyName(prev); applyName(lead.idx);
+}
+['#fName','#fCity'].forEach(s => $(s).addEventListener('input', updateLive));
+
+const digits = s => s.replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');
+$('#fCell').addEventListener('input', e => { const v = digits(e.target.value).slice(0,10);
+  e.target.value = v.length > 6 ? `(${v.slice(0,3)}) ${v.slice(3,6)}-${v.slice(6)}` : v.length > 3 ? `(${v.slice(0,3)}) ${v.slice(3)}` : v; });
+const mark = (id, bad) => { $(id).classList.toggle('err', bad); return !bad; };
+function valid(s) {
+  if (s === 1) return [mark('#f1n', !$('#fName').value.trim()), mark('#f1c', !$('#fCity').value.trim())].every(Boolean);
+  if (s === 2) return [mark('#f2p', digits($('#fCell').value).length !== 10), mark('#f2e', !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($('#fEmail').value.trim()))].every(Boolean);
+  return true;
+}
+function summary() {
+  const d = DEMOS[lead.trade]; lead.plan = $('input[name=plan]:checked').value;
+  const rows = [['Template', `${d.trade} — ${d.tier}`], ['Business', lead.name], ['Area', lead.city], ['Alerts to', $('#fCell').value]];
+  $('#sum').innerHTML = rows.map(([a,b]) => `<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('');
+  $('#terms').textContent = lead.plan === 'lifetime' ? AXIOM.offerLifetime : AXIOM.offerMonthly;
+}
+async function startCheckout() {
+  const d = DEMOS[lead.trade ?? active];
+  const slug = slugify(lead.name || 'your-business');
+  const payload = { trade: d.trade, template: d.slug, businessName: lead.name, city: lead.city, cell: digits(lead.cell) || lead.cell, email: lead.email, smsConsent: lead.sms, plan: lead.plan, slug, amountToday: 1, leadId: lead.id, selectedTrade: d.trade };
+  try { sessionStorage.setItem('axiom_claim', JSON.stringify(payload)); } catch (e) {}
+  pingFunnel('checkout_opened');
+  toast('Opening secure $1 checkout…');
+  try {
+    const res = await AXIOM.checkout(payload);
+    if (res && res.url) { (window.top || window).location.href = res.url; return; }
+    toast((res && res.error) || 'Checkout needs a couple more details.');
+    openFunnel(lead.plan, { forceForm: true });
+  } catch (err) {
+    toast('Checkout failed. Please try again.');
+    openFunnel(lead.plan, { forceForm: true });
+  }
+}
+$$('input[name=plan]').forEach(r => r.addEventListener('change', summary));
+
+function show(s) {
+  st = s; $$('.stepx').forEach(x => x.classList.toggle('on', +x.dataset.s === s));
+  $$('.prog i').forEach((b, k) => b.classList.toggle('on', k < Math.min(s, 3)));
+  $('#shBack').style.display = s > 1 && s < 4 ? '' : 'none';
+  const nx = $('#shNext'); nx.disabled = false;
+  nx.innerHTML = s === 3 ? 'Activate My App for $1 Now' : s === 4 ? 'Done' : 'Continue →';
+  if (s === 3) summary();
+}
+$('#shBack').onclick = () => show(st - 1);
+$('#shNext').onclick = async () => {
+  if (st === 4) return closeAll();
+  if (!valid(st)) return;
+  if (st === 2) { lead.cell = $('#fCell').value; lead.email = $('#fEmail').value.trim(); lead.sms = $('#fSms').checked; }
+  if (st < 3) return show(st + 1);
+  const nx = $('#shNext'); nx.disabled = true; nx.innerHTML = '<span class="spin"></span> Activating…';
+  await startCheckout();
+  nx.disabled = false; nx.innerHTML = 'Activate My App for $1 Now';
+};
+$('#copyUrl').onclick = async () => { try { await navigator.clipboard.writeText($('#doneUrl').textContent); toast('Link copied'); } catch (e) { toast($('#doneUrl').textContent); } };
+
+/* ---------------- lost-job calculator ---------------- */
+const money = v => '$' + Math.round(v).toLocaleString('en-US');
+const WEEKS_PER_MONTH = 4.33;
+function calc() {
+  const mc = +$('#mc').value, tk = +$('#tk').value;
+  const lost = Math.round(mc * tk * WEEKS_PER_MONTH), net = lost - AXIOM.monthly, roi = lost / AXIOM.monthly;
+  $('#mcO').textContent = mc; $('#tkO').textContent = money(tk);
+  $('#lossMo').innerHTML = `${money(lost)}<span>/mo</span>`;
+  $('#netGap').textContent = (net >= 0 ? '' : '−') + money(Math.abs(net)) + '/mo';
+  $('#axShare').style.setProperty('--ax', Math.min(100, AXIOM.monthly / lost * 100).toFixed(2) + '%');
+  $('#roiLine').innerHTML = net > 0
+    ? `Recovering these calls puts <em>${money(net * 12)} a year</em> back in your pocket after AXIOM. That's a <em>${roi >= 10 ? Math.round(roi) : roi.toFixed(1)}×</em> return.`
+    : `AXIOM costs more than these missed calls. Most shops miss more than they think.`;
+  ['#mc','#tk'].forEach(sel => { const r = $(sel); r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min) * 100) + '%'); });
+}
+['#mc','#tk'].forEach(sel => $(sel).addEventListener('input', calc)); calc();
+
+/* ---------------- old way vs AXIOM ---------------- */
+const cmp = $('#cmp');
+$$('.cmp-toggle button').forEach(b => b.addEventListener('click', () => {
+  cmp.dataset.show = b.dataset.show;
+  $$('.cmp-toggle button').forEach(x => x.setAttribute('aria-selected', x === b));
+}));
+$('#cmpClaim').addEventListener('click', () => openFunnel());
+const cmpVid = $('#cmpVid');
+new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting && !reduce) { cmpVid.preload = 'auto'; cmpVid.play().catch(() => {}); } else cmpVid.pause();
+}), {threshold:.3}).observe(cmpVid);
+
+/* ---------------- scroll reveal ---------------- */
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold:.12});
+$$('.reveal').forEach(el => {
+  const sib = [...el.parentElement.children].filter(c => c.classList.contains('reveal'));
+  el.style.setProperty('--d', Math.min(sib.indexOf(el), 6) * 90 + 'ms'); io.observe(el);
+});
+
+/* ---------------- start ---------------- */
+fitFrames(); layout();
+applyHero();
+if (qName) lead.idx = active;
+if (qName) { $('#pbName').value = qName; setActive(active); applyHero(); }
+if (leadFocus) {
+  const d = DEMOS[Math.max(0, active)] || DEMOS.find(x => x.slug === 'plumbing-night');
+  const host = $('#helpHost');
+  if (d && host) installHelp(document, d, lead.name, host);
+}
+async function hydrateFromDataset() {
+  const id = qLeadId;
+  const slug = qSlug || (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(qName) ? qName : '');
+  if (!id && !slug) return;
+  try {
+    const u = new URL('/api/landing/lead', location.origin);
+    if (id) u.searchParams.set('lead_id', id);
+    if (slug) u.searchParams.set('slug', slug);
+    const r = await fetch(u);
+    const j = await r.json();
+    if (!j || !j.ok || !j.lead) return;
+    const L = j.lead;
+    lead.id = L.id || lead.id;
+    if (L.businessName) lead.name = L.businessName;
+    if (L.phone) lead.cell = L.phone;
+    if (L.email) lead.email = L.email;
+    if (L.city) lead.city = L.city;
+    lead.licenseVerified = L.licenseVerified === true;
+    const plumbingIdx = DEMOS.findIndex(d => d.slug === 'plumbing-night');
+    if (plumbingIdx >= 0) {
+      lead.idx = plumbingIdx;
+      $('#pbName').value = lead.name;
+      personalize(lead.name, plumbingIdx, { scroll: false, quiet: true });
+    }
+    applyAll();
+    applyHero();
+  } catch (e) {}
+}
+hydrateFromDataset();
+</script>
+</body>
+</html>

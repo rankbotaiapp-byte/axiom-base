@@ -77,8 +77,11 @@ test("companion HUD modal and chrome are wired on storefront and admin", () => {
   assert.match(hud, /useCompanionLiveFeed/);
   assert.match(feed, /getOperatorData/);
   assert.match(storefront, /FunnelLayout/);
+  assert.match(storefront, /StorefrontHelpFab/);
+  assert.doesNotMatch(storefront, /CyberCompanionHud/);
   const funnel = readFileSync(join(root, "src/components/funnel/FunnelLayout.tsx"), "utf8");
   assert.match(funnel, /ObsidianHudChrome/);
-  assert.match(admin, /AxiomStudioHudShell|ObsidianHudChrome/);
   assert.match(admin, /AdminShellInner|LiveDeskTelemetry/);
+  assert.match(admin, /StorefrontStudio/);
+  assert.doesNotMatch(admin, /CyberCompanionHud|AxiomStudioInterface|StudioAutoBuildPanel/);
 });

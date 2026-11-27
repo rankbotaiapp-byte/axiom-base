@@ -18,7 +18,7 @@ export const PLUMBER_OUTREACH_SLUG = "plumbers-outreach";
 export const PLUMBER_OUTREACH_DRAFT_CHANNEL = "axiom-plumber-outreach";
 export const PLUMBER_OUTREACH_DRAFT_MESSAGE = "axiom:plumber-outreach-draft";
 
-export const PLUMBER_OUTREACH_HERO_VIDEO = "/media/axio-plumber-hero.mp4";
+export const PLUMBER_OUTREACH_HERO_VIDEO = "/media/hero-loop.mp4";
 
 /** Industrial pipe-diagnostic campaign — never otter, bubbles, or generic FilmStage. */
 export function isPlumbingCampaign(value?: string | null): boolean {
@@ -41,8 +41,8 @@ export function plumberCampaignPath(slug: string, opts?: { greet?: boolean; stud
   if (opts?.studio) params.set("studio", "1");
   return `/t/${safe}?${params.toString()}`;
 }
-export const PLUMBER_OUTREACH_HERO_VIDEO_MOBILE = "/media/axio-plumber-hero-mobile.mp4";
-export const PLUMBER_OUTREACH_HERO_POSTER = "/media/axio-plumber-hero.jpg";
+export const PLUMBER_OUTREACH_HERO_VIDEO_MOBILE = "/media/hero-loop.mp4";
+export const PLUMBER_OUTREACH_HERO_POSTER = "/media/hero-poster.jpg";
 export const PLUMBER_OUTREACH_GREETING_VIDEO =
   "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBER_OUTREACH_GREETING_VIDEO_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
@@ -574,6 +574,30 @@ export type OutreachTenant = {
   live: boolean;
   /** True when the slug maps to a territory that card checkout can be bound to. */
   known: boolean;
+  /** Master Dashboard `tenant.hero` overlay for HeroLoop. */
+  hero?: Partial<{
+    videoSrc: string;
+    poster: string;
+    businessName: string;
+    phone: string;
+    tagline: string;
+    headline: string;
+    subhead: string;
+    logoSrc: string;
+    bg: string;
+    zoom: number;
+    focusX: number;
+    cropBottom: number;
+    reflectRows: number;
+    topOffset: number;
+    billboardText: string | false;
+    showBillboard: boolean;
+    vanCallout: string | false;
+    vanPhone: string | false;
+    showVanCallout: boolean;
+    primaryCta: { label: string; href?: string };
+    secondaryCta: { label: string; href: string };
+  }>;
 };
 
 export function emptyOutreachTenant(slug: string): OutreachTenant {

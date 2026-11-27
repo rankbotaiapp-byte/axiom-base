@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   trailingSlash: false,
+  skipTrailingSlashRedirect: true,
   async redirects() {
     return [
       {

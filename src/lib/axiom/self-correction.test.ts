@@ -54,6 +54,11 @@ test("parses Twilio undelivered / 30007 and Resend bounce / complaint payloads",
     data: { email_id: "em_9", to: ["lead@example.com"], from: "Axiom <desk@axiom.example>" },
   });
   assert.equal(bounced?.eventType, "bounced");
+  const deliveredMail = parseResendWebhook({
+    type: "email.delivered",
+    data: { email_id: "em_7", to: ["lead@example.com"] },
+  });
+  assert.equal(deliveredMail?.eventType, "delivered");
   const complained = parseResendWebhook({ type: "email.complained", data: { email_id: "em_8", to: "x@y.z" } });
   assert.equal(complained?.eventType, "complained");
   assert.equal(detectTelemetrySource("application/x-www-form-urlencoded", "MessageStatus=failed&ErrorCode=30007"), "twilio");

@@ -1,5 +1,11 @@
-﻿import { createHmac, timingSafeEqual } from "node:crypto";
-import { getSql } from "@/lib/db";
+﻿import { getSql } from "@/lib/db";
+import {
+  classifyStripeEventType,
+  rememberStripeEvent,
+  stripeEventIsDuplicate,
+  verifyStripeSignature,
+} from "./stripe-webhook-crypto";
+import { stripeEventClaimed } from "./stripe-event-claim";
 import { env } from "@/lib/env.server";
 import { resolveStripeKeys } from "@/lib/stripe/keys";
 import { stampCheckoutSessionShare } from "@/lib/stripe/connect-fee";
@@ -24,18 +30,9 @@ import {
   resolveStripeOwnerUserId,
   syncGenerationQuotaFromCheckoutSession,
 } from "./generation-quota.server";
+import { isPaidStorefrontUnlockSession } from "./unlock-welcome";
 
-export const HANDLED_STRIPE_EVENTS = [
-  "checkout.session.completed",
-  "customer.subscription.created",
-  "customer.subscription.updated",
-  "customer.subscription.deleted",
-  "invoice.payment_succeeded",
-  "invoice.payment_failed",
-  "payment_intent.payment_failed",
-  "payment_intent.succeeded",
-  "account.updated",
-] as const;
+export { HANDLED_STRIPE_EVENTS } from "./stripe-webhook-crypto";
 
 type StripeObject = Record<string, unknown> & {
   error?: { message?: string; code?: string };
@@ -663,6 +660,8 @@ export async function createStorefrontUnlockCheckout(opts: {
   phone?: string;
   email?: string;
   city?: string;
+  selectedTrade?: string;
+  unlockPlan?: string;
 }) {
   const { STOREFRONT_UNLOCK_CENTS } = await import("./hydrate-storefront");
   const shopSlug = cleanShopSlug(opts.slug);
@@ -694,6 +693,12 @@ export async function createStorefrontUnlockCheckout(opts: {
   if (opts.phone) params.set("metadata[phone]", opts.phone.slice(0, 28));
   if (opts.email) params.set("metadata[email]", opts.email.slice(0, 120));
   if (opts.city) params.set("metadata[city]", opts.city.slice(0, 80));
+  const selectedTrade = (opts.selectedTrade || opts.niche || "").trim().slice(0, 40);
+  if (selectedTrade) {
+    params.set("metadata[selectedTrade]", selectedTrade);
+    params.set("metadata[selected_trade]", selectedTrade);
+  }
+  if (opts.unlockPlan) params.set("metadata[unlock_plan]", opts.unlockPlan.slice(0, 20));
   const session = await stripeFetch("checkout/sessions", params);
   if (!session.id || !session.url) throw new Error("Stripe did not return a checkout session");
   return { id: session.id, url: session.url, clientSecret: "" };
@@ -713,6 +718,8 @@ export async function createTenantLicenseCheckout(opts: {
   phone?: string;
   email?: string;
   city?: string;
+  selectedTrade?: string;
+  unlockPlan?: string;
   showcaseThemeId?: string;
 }) {
   const { clampNamedPriceCents, NAME_YOUR_PRICE_MIN_CENTS } = await import("@/lib/stripe/commercial");
@@ -880,10 +887,19 @@ export async function settlePaidSession(sessionId: string) {
   if (row.payment_status === "paid") {
     return { appointmentId: row.id, shopId, already: true };
   }
+  let quoteFullPay = true;
+  try {
+    const closed = await import("./closed-job.server");
+    const quote = await closed.markQuotePaid(sessionId, Number(session.amount_total) || Number(row.payment_cents));
+    if (quote) quoteFullPay = quote.fullPay;
+  } catch {
+    /* quotes table may be missing */
+  }
   await sql`
     update appointments
-    set payment_status = 'paid'
-    where id = ${row.id} and shop_id = ${shopId}
+    set payment_status = ${quoteFullPay ? "paid" : "processing"},
+        status = 'confirmed'
+    where id = ${row.id} and shop_id = ${shopId} and payment_status is distinct from 'paid'
   `;
   await recordPlatformFee({
     shopId,
@@ -892,6 +908,18 @@ export async function settlePaidSession(sessionId: string) {
     stripeRef: sessionId,
     feeCents: Number(session.metadata?.gear_guardian_cents) || gearGuardianFeeCents(Number(row.payment_cents)),
   });
+  if (quoteFullPay) {
+    try {
+      const closed = await import("./closed-job.server");
+      await closed.fireClosedJobAtom({
+        shopId,
+        appointmentId: row.id,
+        paidCents: Number(session.amount_total) || Number(row.payment_cents),
+      });
+    } catch {
+      /* atom is best-effort after money is recorded */
+    }
+  }
   return { appointmentId: row.id, shopId, already: false };
 }
 
@@ -932,25 +960,73 @@ export async function settlePaidIntent(paymentIntentId: string) {
     stripeRef: paymentIntentId,
     feeCents: Number(intent.metadata?.gear_guardian_cents) || gearGuardianFeeCents(Number(row.payment_cents)),
   });
+  try {
+    const closed = await import("./closed-job.server");
+    await closed.fireClosedJobAtom({
+      shopId,
+      appointmentId: row.id,
+      paidCents: paid,
+    });
+  } catch {
+    /* atom is best-effort after money is recorded */
+  }
   return { appointmentId: row.id, shopId, already: false };
 }
 
-function verifyStripeSignature(payload: string, header: string, secret: string) {
-  const parts = header.split(",").map((part) => {
-    const idx = part.indexOf("=");
-    return [part.slice(0, idx), part.slice(idx + 1)] as const;
-  });
-  const timestamp = parts.find((part) => part[0] === "t")?.[1];
-  const signatures = parts.filter((part) => part[0] === "v1").map((part) => part[1]);
-  if (!timestamp || signatures.length === 0) return false;
-  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
-  if (!Number.isFinite(age) || age > 300) return false;
-  const expected = createHmac("sha256", secret).update(`${timestamp}.${payload}`).digest("hex");
-  const expectedBuf = Buffer.from(expected);
-  return signatures.some((sig) => {
-    if (sig.length !== expected.length) return false;
-    return timingSafeEqual(Buffer.from(sig), expectedBuf);
-  });
+const recentStripeEventIds = new Map<string, number>();
+
+async function claimDurableStripeEvent(eventId: string): Promise<"claimed" | "duplicate" | "skipped"> {
+  const id = eventId.trim();
+  if (!id) return "skipped";
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ id: string }>`
+      insert into stripe_events (id) values (${id})
+      on conflict (id) do nothing
+      returning id
+    `;
+    if (!stripeEventClaimed(rows, id)) return "duplicate";
+    return "claimed";
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/stripe_events/i.test(message) && /does not exist|undefined table/i.test(message)) {
+      return "skipped";
+    }
+    throw err;
+  }
+}
+
+async function releaseDurableStripeEvent(eventId: string): Promise<void> {
+  const id = eventId.trim();
+  if (!id) return;
+  try {
+    const sql = await getSql();
+    await sql`delete from stripe_events where id = ${id}`;
+  } catch {
+    /* retry path still returns 500 */
+  }
+}
+
+async function fireUnlockWelcomeSms(
+  object: StripeObject | undefined,
+  settled?: { shopId?: string; shopSlug?: string },
+): Promise<void> {
+  if (!isPaidStorefrontUnlockSession(object)) return;
+  const meta = object?.metadata ?? {};
+  try {
+    const { sendUnlockWelcomeSms } = await import("./sprint2-dispatch.server");
+    await sendUnlockWelcomeSms({
+      shopId: settled?.shopId,
+      slug: settled?.shopSlug || meta.shop_slug || meta.lead_slug || meta.slug || "",
+      ownerPhone: meta.phone,
+      shopName: meta.business_name || meta.shop_name,
+    });
+  } catch (err) {
+    console.error(
+      "[stripe-webhook] unlock welcome SMS threw",
+      err instanceof Error ? err.message.slice(0, 200) : err,
+    );
+  }
 }
 
 function benignCheckoutError(err: unknown) {
@@ -983,6 +1059,21 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
   }
 
   const object = event.data?.object;
+
+  if (event.id && stripeEventIsDuplicate(recentStripeEventIds, event.id)) {
+    await fireUnlockWelcomeSms(object);
+    return Response.json({ received: true, duplicate: true, eventId: event.id });
+  }
+
+  let durableClaim: "claimed" | "duplicate" | "skipped" = "skipped";
+  if (event.id) {
+    durableClaim = await claimDurableStripeEvent(event.id);
+    if (durableClaim === "duplicate") {
+      await fireUnlockWelcomeSms(object);
+      return Response.json({ received: true, duplicate: true, eventId: event.id });
+    }
+  }
+  const family = classifyStripeEventType(event.type);
   try {
     const { recordStripeCompanionPulse } = await import("./companion-telemetry.server");
     const eventType = event.type ?? "unknown";
@@ -1008,16 +1099,30 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
       return Response.json({ received: true, kind: "booking_intent" });
     }
 
-    if (event.type === "invoice.payment_failed" || event.type === "payment_intent.payment_failed") {
+    if (family === "invoice_failed") {
       const slug = slugFromStripeObject(object ?? {});
       if (slug) await syncTenantSubscriptionStatus(slug, "past_due");
+      if (event.id) rememberStripeEvent(recentStripeEventIds, event.id);
       return Response.json({ received: true, companion: "alert", status: "past_due", shopSlug: slug });
     }
 
-    if (event.type === "invoice.payment_succeeded") {
+    if (family === "invoice_paid") {
       const slug = slugFromStripeObject(object ?? {});
+      const paid = Number(object?.amount_paid || object?.amount_total || 0);
+      if (paid >= 15000) {
+        void import("./growth-engine.server")
+          .then((mod) =>
+            mod.recordFunnelEvent({
+              leadId: slug || "invoice",
+              event: "mrr_active",
+              revenueCents: paid >= 150000 ? 150000 : 15000,
+            }),
+          )
+          .catch(() => undefined);
+      }
       // Do not force `active` here: $1 unlock + awaiting_first_real_lead shops
       // stay on hold until a real lead. Subscription events carry Stripe status.
+      if (event.id) rememberStripeEvent(recentStripeEventIds, event.id);
       return Response.json({ received: true, kind: "invoice", shopSlug: slug || undefined });
     }
 
@@ -1112,7 +1217,22 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
               err instanceof Error ? err.message.slice(0, 200) : err,
             );
           }
+          await fireUnlockWelcomeSms(object, settled);
+        } else {
+          await fireUnlockWelcomeSms(object, settled);
         }
+        void import("./growth-engine.server")
+          .then((mod) =>
+            mod.recordFunnelEvent({
+              leadId: meta.lead_id || meta.lead_slug || settled.shopSlug,
+              event: "dollar_unlocked",
+              trade: meta.niche || "plumbing",
+              city: meta.city || "",
+              variantId: String(meta.variant_id || meta.pitch_angle_id || ""),
+              revenueCents: 100,
+            }),
+          )
+          .catch(() => undefined);
         return Response.json({
           received: true,
           kind: "storefront_unlock",
@@ -1345,9 +1465,13 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
     const message = err instanceof Error ? err.message : "";
     if (benignCheckoutError(err)) return Response.json({ received: true });
     console.error("[stripe-webhook]", message.slice(0, 200));
+    if (durableClaim === "claimed" && event.id) {
+      await releaseDurableStripeEvent(event.id);
+    }
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 
+  if (event.id) rememberStripeEvent(recentStripeEventIds, event.id);
   return Response.json({ received: true });
 }
 

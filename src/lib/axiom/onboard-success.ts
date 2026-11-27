@@ -19,6 +19,16 @@ export function shopAdminHref(slug: string, claimToken?: string): string {
   return token ? `${path}?claim=${encodeURIComponent(token)}` : path;
 }
 
+export function shopDay1Href(slug: string, opts?: { claimToken?: string; phone?: string }): string {
+  const path = `/t/${encodeURIComponent(slug)}/welcome`;
+  const qs = new URLSearchParams({ setup: "1" });
+  const token = (opts?.claimToken ?? "").trim();
+  if (token) qs.set("claim", token);
+  const phone = (opts?.phone ?? "").trim();
+  if (phone) qs.set("phone", phone);
+  return `${path}?${qs.toString()}`;
+}
+
 export function isCheckoutSessionId(value: unknown): value is string {
   return typeof value === "string" && /^cs_[A-Za-z0-9_]{8,200}$/.test(value.trim());
 }

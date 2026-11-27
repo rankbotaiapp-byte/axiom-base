@@ -12,6 +12,7 @@
   background: var(--ax-bg);
   color: #fff;
   overflow-x: clip; /* no horizontal scrollbar, keeps position:sticky working */
+  scroll-behavior: smooth;
 }
 
 /* ── Hero atmosphere ─────────────────────────────────────── */

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { getOnboardSuccess, grantOnboardLaunch } from "@/lib/axiom/plumber-outreach.functions";
 import { checkDispatchMobile } from "@/lib/axiom/plumber-outreach";
-import { isCheckoutSessionId, shopAdminHref, type OnboardSuccessRead } from "@/lib/axiom/onboard-success";
+import { isCheckoutSessionId, shopDay1Href, type OnboardSuccessRead } from "@/lib/axiom/onboard-success";
 import { isNotifyEmail } from "@/lib/axiom/notify-target";
 
 type Search = { session_id?: string };
@@ -80,10 +80,16 @@ function OnboardSuccess() {
       }
     }
     try {
-      const launched = await grantOnboardLaunch({
+      const launched = (await grantOnboardLaunch({
         data: { sessionId, phone, email, sms, emailChannel, push },
-      });
-      window.location.assign(launched.deskPath || shopAdminHref(launched.shopSlug, launched.claimToken));
+      })) as { deskPath?: string; shopSlug?: string; claimToken?: string };
+      window.location.assign(
+        launched.deskPath ||
+          shopDay1Href(launched.shopSlug || page?.shopSlug || page?.leadSlug || "", {
+            claimToken: launched.claimToken,
+            phone,
+          }),
+      );
     } catch (err) {
       setLaunching(false);
       setFieldError(err instanceof Error ? err.message : "Launch did not finish. Try again.");

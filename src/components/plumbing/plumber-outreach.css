@@ -704,3 +704,11 @@ body:has(.po-root) .avatar-help {
 
 /* Studio frame: keep the nav clear of the preview banner. */
 .po-studio-flag ~ .po-hero { padding-top: 1.7rem; }
+
+.po-hero-follow {
+  padding: 1.25rem var(--po-pad) 2rem;
+  display: grid;
+  gap: 1rem;
+  max-width: 56rem;
+  margin-inline: auto;
+}

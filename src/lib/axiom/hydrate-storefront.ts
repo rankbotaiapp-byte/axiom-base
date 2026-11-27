@@ -18,6 +18,7 @@ export type LeadHydrationInput = {
   city?: string;
   leadId?: string;
   tenantId?: string;
+  licenseVerified?: boolean;
 };
 
 export function cleanShopSlug(value: string): string {
@@ -77,7 +78,7 @@ export function hydrateLeadStorefront(input: LeadHydrationInput): TenantStorefro
     tenantId: (input.tenantId || `tenant_${slug}`).slice(0, 80),
     slug,
     businessName,
-    licenseBadge: "Licensed",
+    licenseBadge: input.licenseVerified ? "Licensed" : "Local dispatch",
     theme: {
       canvasBg: "#050507",
       surfaceBg: "#0B0D12",
@@ -106,7 +107,7 @@ export function hydrateLeadStorefront(input: LeadHydrationInput): TenantStorefro
     },
     trust: {
       licenseNumber: "",
-      insuredAndBonded: true,
+      insuredAndBonded: Boolean(input.licenseVerified),
       yearsInBusiness: 0,
       warrantyHeadline: "Workmanship on the booked job",
       ratingSummary: { score: 5, count: 0, label: "New on Axiom" },

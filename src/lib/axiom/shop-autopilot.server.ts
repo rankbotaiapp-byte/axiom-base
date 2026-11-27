@@ -7,6 +7,7 @@ import {
   resolveAutopilotLoops,
 } from "../../config/AutopilotContentEngine.ts";
 import { shopCity } from "./avatar";
+import { extractProofAtoms } from "./autopilot-caption.ts";
 import { isCustomStorefrontAsset } from "./gallery";
 import { notifyShop } from "./notify.server";
 import { parseAutopilotActive, type AutopilotTickResult } from "./shop-autopilot";
@@ -94,14 +95,33 @@ async function queueSocialClip(shop: ArmedShop): Promise<{ queued: boolean; capt
   });
   const pick = pickAutopilotLoop(loops, config.autopilotLoopCursor ?? 0);
   const city = shopCity(shop.address);
+  let profile: Record<string, unknown> = {};
+  try {
+    profile = shop.trade_profile ? (JSON.parse(shop.trade_profile) as Record<string, unknown>) : {};
+  } catch {
+    profile = {};
+  }
+  let extras: { caption: string }[] = [];
+  try {
+    extras = await sql<{ caption: string }>`
+      select caption from portfolio_items where shop_id = ${shop.id} and caption is not null limit 8
+    `;
+  } catch {
+    extras = [];
+  }
+  const proofAtom = extractProofAtoms(profile, extras.map((row) => row.caption))[0] ?? "";
   const clip = composeAutopilotClip({
     loopUrl: pick.loopUrl,
     shopName: shop.name,
     city,
     bookUrl: `/${shop.slug}/book`,
     niche: shop.niche,
+    proofAtom,
   });
-  const body = `${clip.caption}\nFilm: ${clip.loopUrl}\nMaster: ${clip.masterLoopUrl}`;
+  const status = clip.needsCopy ? "queued_needs_copy" : "queued";
+  const body = clip.needsCopy
+    ? "queued_needs_copy"
+    : `${clip.caption}\nFilm: ${clip.loopUrl}\nMaster: ${clip.masterLoopUrl}`;
   const id = newId("soc");
   try {
     await sql`
@@ -111,8 +131,8 @@ async function queueSocialClip(shop: ArmedShop): Promise<{ queued: boolean; capt
         ${shop.id},
         ${clip.loopUrl},
         ${body},
-        ${JSON.stringify(["facebook", "instagram", "x"])},
-        ${"queued"},
+        ${JSON.stringify(["facebook", "instagram", "gbp"])},
+        ${status},
         now()
       )
     `;
@@ -129,13 +149,6 @@ async function queueSocialClip(shop: ArmedShop): Promise<{ queued: boolean; capt
   } catch {
     /* events table is optional on older snapshots */
   }
-  let profile: Record<string, unknown> = {};
-  try {
-    const parsed = shop.trade_profile ? JSON.parse(shop.trade_profile) : {};
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = parsed as Record<string, unknown>;
-  } catch {
-    profile = {};
-  }
   const shopConfig =
     profile.shopConfig && typeof profile.shopConfig === "object" && !Array.isArray(profile.shopConfig)
       ? { ...(profile.shopConfig as Record<string, unknown>) }
@@ -147,7 +160,7 @@ async function queueSocialClip(shop: ArmedShop): Promise<{ queued: boolean; capt
   } catch {
     /* older databases may not have trade_profile */
   }
-  return { queued: true, caption: clip.caption, city };
+  return { queued: !clip.needsCopy, caption: clip.caption, city };
 }
 
 export async function queueAutopilotSocialClips(): Promise<{ queued: number }> {
@@ -210,7 +223,9 @@ export async function tickShopAutopilot(): Promise<{ ran: number; results: Autop
           : social
             ? "A social clip is queued with your rotating cinematic loop, shop name, city, and booking line."
             : published.applied
-              ? "Storefront preview media is updated. Social posts were recorded in simulation."
+              ? published.detail.includes("Simulation")
+                ? "Storefront preview media is updated. Social was not counted as live."
+                : "Storefront preview media is updated and live social posts went out."
               : hero.ok
                 ? "A fresh still is on your storefront. Proof plates stay in sync."
                 : "A proof plate was filled from your shop photo.",

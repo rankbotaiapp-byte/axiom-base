@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { COMMAND_NICHES, type CommandLeadFilter, type CommandLeadNiche } from "@/lib/axiom/lead-verification";
 import type { DatasetLeadRecord } from "@/lib/axiom/outreach-desk";
 import { claimMasterSession, fetchMasterSession } from "@/lib/axiom/master-session-client";
+import { beginMasterSessionClaimOnce, captureMasterUrlKeyOnce } from "@/lib/axiom/master-session-url";
 import {
   compileMasterHero,
   fetchCommandLeads,
@@ -36,7 +37,7 @@ function scoreTone(score: number): string {
   return "border-white/20 text-white/55";
 }
 
-export function PrimeLeadCommand() {
+export function PrimeLeadCommand({ sessionAttached }: { sessionAttached?: boolean }) {
   const [filter, setFilter] = useState<CommandLeadFilter>("prime_candidates");
   const [niche, setNiche] = useState<CommandLeadNiche>("plumbing");
   const [search, setSearch] = useState("");
@@ -46,7 +47,7 @@ export function PrimeLeadCommand() {
   const [pullCount, setPullCount] = useState(PRIME_BATCH_PULL_DEFAULT);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [attached, setAttached] = useState(false);
+  const [attached, setAttached] = useState(sessionAttached === true);
   const [configured, setConfigured] = useState(false);
   const [keyDraft, setKeyDraft] = useState("");
 
@@ -57,16 +58,20 @@ export function PrimeLeadCommand() {
   }, [filter, niche, query]);
 
   useEffect(() => {
+    if (sessionAttached === true) {
+      setAttached(true);
+      return;
+    }
+    if (sessionAttached === false) {
+      setAttached(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      const params = new URLSearchParams(window.location.search);
-      const urlKey = params.get("key")?.trim() ?? "";
       try {
-        if (urlKey.length >= 16) {
+        const urlKey = captureMasterUrlKeyOnce();
+        if (urlKey.length >= 16 && beginMasterSessionClaimOnce()) {
           await claimMasterSession(urlKey);
-          params.delete("key");
-          const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
-          window.history.replaceState({}, "", next);
         }
         const session = await fetchMasterSession();
         setConfigured(session.configured);
@@ -79,7 +84,7 @@ export function PrimeLeadCommand() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sessionAttached]);
 
   useEffect(() => {
     if (!attached) return;
@@ -124,7 +129,7 @@ export function PrimeLeadCommand() {
         </button>
       </div>
 
-      {!attached ? (
+      {!attached && sessionAttached === undefined ? (
         <form
           className="mt-4 grid gap-3 rounded-xl border border-[#FFE500]/30 bg-[#050507] p-4 sm:grid-cols-[1fr_auto]"
           onSubmit={(event) => {

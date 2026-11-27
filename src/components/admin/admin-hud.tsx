@@ -62,6 +62,7 @@ export function NeonBadge({ tone, pulse, children }: { tone: Tone; pulse?: boole
 const STATUS_TONE: Record<AppointmentStatus, Tone> = {
   pending: "amber",
   confirmed: "cyan",
+  en_route: "emerald",
   completed: "emerald",
   cancelled: "rose",
 };
@@ -274,6 +275,11 @@ export function ConciergeDeck({
                   <div className="flex flex-wrap items-center gap-2">
                     {reviewed ? (
                       <NeonBadge tone="slate">Reviewed</NeonBadge>
+                    ) : isBooking && item.appointment.status === "en_route" ? (
+                      <NeonBadge tone="emerald" pulse>
+                        En Route
+                        {item.appointment.etaMinutes ? ` · ${item.appointment.etaMinutes}m` : ""}
+                      </NeonBadge>
                     ) : isBooking ? (
                       <NeonBadge tone="amber" pulse>
                         Awaiting confirm

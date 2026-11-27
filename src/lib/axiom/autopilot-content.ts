@@ -267,6 +267,7 @@ export function composeBrandedStock(input: {
     city: overlay.city,
     bookUrl: overlay.bookUrl,
     niche: input.niche,
+    proofAtom: overlay.tradeLine,
   });
   const keywords = tradeKeywordsForNiche(input.niche);
   const posterSvg = brandedStockPosterSvg(overlay, input.base);

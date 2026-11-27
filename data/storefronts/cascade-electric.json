@@ -1,0 +1,106 @@
+{
+  "tenantId": "tenant_cascade_electric",
+  "slug": "cascade-electric",
+  "businessName": "Cascade Electric",
+  "licenseBadge": "CCB 214908",
+  "theme": {
+    "canvasBg": "#050507",
+    "surfaceBg": "#0B0D12",
+    "primaryAccent": "#00f2fe",
+    "secondaryAccent": "#ff2a3d"
+  },
+  "hero": {
+    "eyebrow": "Licensed electrical · Rogue Valley",
+    "headline": "Power restored before the next shift.",
+    "subheadline": "Panel upgrades, lighting, and after-hours outages. A real person confirms the window.",
+    "responseSlaBadge": "Emergency reply under 15 min",
+    "primaryCtaLabel": "Book a visit",
+    "secondaryCtaLabel": "Dispatch now",
+    "media": {
+      "kind": "image",
+      "posterUrl": "/textures/car-driving-night.png",
+      "alt": "Night service truck on a lit street",
+      "focalPoint": { "x": 58, "y": 46 }
+    }
+  },
+  "trust": {
+    "licenseNumber": "CCB 214908",
+    "insuredAndBonded": true,
+    "yearsInBusiness": 18,
+    "warrantyHeadline": "Workmanship warranty on every panel",
+    "ratingSummary": { "score": 4.9, "count": 126, "label": "Google reviews" }
+  },
+  "services": [
+    {
+      "id": "panel",
+      "title": "Panel upgrade",
+      "summary": "200-amp changeouts with the permit filed and the inspection booked.",
+      "startingPriceLabel": "From $2,400",
+      "estimatedDuration": "1 day",
+      "isEmergencyEligible": false
+    },
+    {
+      "id": "outage",
+      "title": "Outage & troubleshooting",
+      "summary": "Dead circuits, burning smell, or a panel that trips when the heat starts.",
+      "startingPriceLabel": "Dispatch fee $89",
+      "estimatedDuration": "Same day",
+      "isEmergencyEligible": true
+    },
+    {
+      "id": "lighting",
+      "title": "Lighting & dedicated circuits",
+      "summary": "Shop lights, EV circuits, and kitchen splits that stop the nuisance trips.",
+      "startingPriceLabel": "From $480",
+      "estimatedDuration": "Half day",
+      "isEmergencyEligible": false
+    }
+  ],
+  "projects": [
+    {
+      "id": "panel-swap",
+      "title": "Medford panel swap",
+      "summary": "Federal Pacific out. New 200-amp gear in before dinner.",
+      "beforeUrl": "/textures/livingroom-obsidean.png",
+      "afterUrl": "/textures/car-driving-night.png"
+    }
+  ],
+  "testimonials": [
+    {
+      "id": "lena",
+      "quote": "They answered while I was still in the driveway. The lights were back before the kids' bedtime.",
+      "author": "Lena P.",
+      "detail": "Central Point"
+    }
+  ],
+  "conversion": {
+    "mode": "hybrid-dispatch",
+    "displayPhone": "(541) 555-0148",
+    "notificationEmail": "desk@cascade-electric.example",
+    "serviceCities": ["Medford", "Central Point", "Ashland", "Grants Pass"],
+    "primaryCtaLabel": "Book a visit",
+    "emergencyCtaLabel": "Dispatch now",
+    "intakeQuestions": [
+      {
+        "id": "service",
+        "label": "What needs power?",
+        "kind": "select",
+        "required": true,
+        "options": ["Panel upgrade", "Outage & troubleshooting", "Lighting & dedicated circuits", "Not sure"]
+      },
+      {
+        "id": "urgency",
+        "label": "How soon?",
+        "kind": "urgency",
+        "required": true,
+        "options": ["Right now", "Today", "This week"]
+      },
+      {
+        "id": "notes",
+        "label": "What should the crew know?",
+        "kind": "text",
+        "required": false
+      }
+    ]
+  }
+}

@@ -180,6 +180,8 @@ export function smsDripStorefrontPath(input: {
   city?: string;
   county?: string;
   tradeLabel?: string;
+  phone?: string;
+  email?: string;
   origin?: string;
 }): string {
   const path = demoStorefrontPath({
@@ -190,6 +192,8 @@ export function smsDripStorefrontPath(input: {
     city: input.city,
     county: input.county,
     tradeLabel: input.tradeLabel,
+    phone: input.phone,
+    email: input.email,
   });
   if (!path.includes("greet=1")) {
     const join = path.includes("?") ? "&" : "?";

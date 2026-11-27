@@ -184,27 +184,16 @@ export async function sendLeadAlertEmail(input: {
   guestMessage: string;
   holdUntil?: string;
   ownerEmail?: string;
+  guestName?: string;
+  guestEmail?: string;
+  city?: string;
+  service?: string;
 }) {
   const to = input.ownerEmail || (await ownerEmailForShop(input.shopId));
   if (!to) return { ok: false, detail: "No owner email on file" } as SendResult;
 
-  const when = input.holdUntil
-    ? new Date(input.holdUntil).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
-    : "ASAP";
-  const subject = `Lead alert · ${input.shopName} · ${input.guestPhone}`;
-  const body = [
-    `New customer inquiry for ${input.shopName}.`,
-    "",
-    `From: ${input.guestPhone}`,
-    `Hold / window: ${when}`,
-    "",
-    `Message:`,
-    input.guestMessage.slice(0, 800),
-    "",
-    "Open your admin desk to confirm or reassign.",
-    "",
-    "— Axiom Dispatch",
-  ].join("\n");
+  const { composeLeadAlertCopy } = await import("./lead-alert");
+  const { subject, body } = composeLeadAlertCopy(input);
 
   const result = await resendSend(to, subject, body, ["lead_alert"]);
   await logEmail({

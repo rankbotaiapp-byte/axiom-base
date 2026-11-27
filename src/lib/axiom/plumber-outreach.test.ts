@@ -28,7 +28,7 @@ test("junk input falls back to the full default page", () => {
   const parsed = parsePlumberOutreach(null);
   assert.deepEqual(parsed, DEFAULT_PLUMBER_OUTREACH);
   assert.deepEqual(parsePlumberOutreach("{not json"), parsed);
-  assert.equal(parsed.hero.videoUrl, "/media/axio-plumber-hero.mp4");
+  assert.equal(parsed.hero.videoUrl, "/media/hero-loop.mp4");
   assert.equal(PLUMBER_OUTREACH_GREETING_VIDEO, "/media/axiom-24-7-booking-for-contractors.mp4");
   assert.equal(parsed.hero.mobileVideoUrl, "");
   assert.equal(parsed.hero.headline, "Never miss another emergency call in {city}.");

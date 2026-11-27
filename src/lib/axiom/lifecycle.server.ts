@@ -1,7 +1,8 @@
 import "server-only";
-import { getSql } from "@/lib/db";
+import { getSql, withTransaction } from "@/lib/db";
 import { newId } from "@/lib/utils";
 import { notifyShop } from "./notify.server";
+import type { NotifyShopResult } from "./notify-dispatch";
 import {
   simulatedTestAlert,
   TRUST_WINDOW_HOURS,
@@ -17,6 +18,12 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 function missingColumn(err: unknown, column: string): boolean {
   const message = err instanceof Error ? err.message : String(err);
   return new RegExp(column, "i").test(message);
+}
+
+function uniqueViolation(err: unknown): boolean {
+  const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code ?? "") : "";
+  const message = err instanceof Error ? err.message : String(err);
+  return code === "23505" || /duplicate key|unique constraint/i.test(message);
 }
 
 export async function markAwaitingFirstRealLead(input: {
@@ -59,9 +66,17 @@ export async function recordIntakeLead(input: {
   answers: Record<string, string>;
   sourceRoute: string;
   isSimulated: boolean;
-}): Promise<{ id: string; isSimulated: boolean }> {
+  idempotencyKey?: string;
+  twilioMessageSid?: string;
+}): Promise<{ id: string; isSimulated: boolean; duplicate?: boolean }> {
   const sql = await getSql();
   const city = (input.answers.city || input.slug).slice(0, 80);
+  const idempotencyKey = (input.idempotencyKey || "").trim().slice(0, 120);
+  const twilioMessageSid = (input.twilioMessageSid || "").trim().slice(0, 64);
+  const bookingFingerprint =
+    input.shopId && input.phone
+      ? `${input.shopId}|${input.phone}|${Math.floor(Date.now() / 60_000)}`.slice(0, 160)
+      : "";
   const meta = JSON.stringify({
     source: "storefront-intake",
     slug: input.slug,
@@ -69,12 +84,54 @@ export async function recordIntakeLead(input: {
     answers: input.answers,
     sourceRoute: input.sourceRoute,
     is_simulated: input.isSimulated,
+    idempotency_key: idempotencyKey,
+    twilio_message_sid: twilioMessageSid,
   });
+
+  const findDuplicate = async (): Promise<string> => {
+    if (twilioMessageSid) {
+      const hit = await sql<{ id: string }>`
+        select id::text as id from consumer_leads
+        where twilio_message_sid = ${twilioMessageSid}
+        limit 1
+      `.catch(() => [] as { id: string }[]);
+      if (hit[0]?.id) return hit[0].id;
+    }
+    if (idempotencyKey) {
+      const hit = await sql<{ id: string }>`
+        select id::text as id from consumer_leads
+        where idempotency_key = ${idempotencyKey}
+        limit 1
+      `.catch(() => [] as { id: string }[]);
+      if (hit[0]?.id) return hit[0].id;
+    }
+    if (bookingFingerprint) {
+      const hit = await sql<{ id: string }>`
+        select id::text as id from consumer_leads
+        where booking_fingerprint = ${bookingFingerprint}
+        limit 1
+      `.catch(() => [] as { id: string }[]);
+      if (hit[0]?.id) return hit[0].id;
+    }
+    if (input.shopId && input.phone) {
+      const hit = await sql<{ id: string }>`
+        select id::text as id from consumer_leads
+        where shop_id = ${input.shopId}
+          and contact_phone = ${input.phone}
+          and created_at >= now() - interval '90 seconds'
+        order by created_at desc
+        limit 1
+      `.catch(() => [] as { id: string }[]);
+      if (hit[0]?.id) return hit[0].id;
+    }
+    return "";
+  };
+
   try {
     const rows = await sql<{ id: string }>`
       insert into consumer_leads (
         niche, city, county, contact_name, contact_phone, contact_meta,
-        shop_id, is_simulated, trust_window_expires_at
+        shop_id, is_simulated, trust_window_expires_at, idempotency_key, twilio_message_sid, booking_fingerprint
       )
       values (
         ${input.mode},
@@ -85,19 +142,61 @@ export async function recordIntakeLead(input: {
         ${meta}::jsonb,
         ${input.shopId},
         ${input.isSimulated},
-        now() + (${TRUST_WINDOW_HOURS} || ' hours')::interval
+        now() + (${TRUST_WINDOW_HOURS} || ' hours')::interval,
+        ${idempotencyKey || null},
+        ${twilioMessageSid || null},
+        ${bookingFingerprint || null}
       )
       returning id::text
     `;
-    return { id: rows[0]?.id || "", isSimulated: input.isSimulated };
+    const leadId = rows[0]?.id || "";
+    if (input.shopId && leadId) {
+      const requestId = newId("arq");
+      await sql`
+        insert into appointment_requests (
+          id, consumer_lead_id, shop_id, caller_name, caller_phone, requested_service, transcript, vapi_call_id, status
+        ) values (
+          ${requestId},
+          ${leadId}::uuid,
+          ${input.shopId},
+          ${input.name},
+          ${input.phone},
+          ${(input.answers.service || input.mode).slice(0, 120)},
+          ${JSON.stringify(input.answers).slice(0, 2000)},
+          ${`intake_${leadId}`},
+          'new'
+        )
+      `.catch(() => undefined);
+    }
+    return { id: leadId, isSimulated: input.isSimulated };
   } catch (err) {
-    if (!missingColumn(err, "is_simulated") && !missingColumn(err, "shop_id")) throw err;
-    const rows = await sql<{ id: string }>`
-      insert into consumer_leads (niche, city, county, contact_name, contact_phone, contact_meta)
-      values (${input.mode}, ${city}, ${""}, ${input.name}, ${input.phone}, ${meta}::jsonb)
-      returning id::text
-    `;
-    return { id: rows[0]?.id || "", isSimulated: input.isSimulated };
+    if (uniqueViolation(err)) {
+      const existing = await findDuplicate();
+      if (existing) return { id: existing, isSimulated: input.isSimulated, duplicate: true };
+    }
+    if (
+      !missingColumn(err, "is_simulated") &&
+      !missingColumn(err, "shop_id") &&
+      !missingColumn(err, "idempotency_key") &&
+      !missingColumn(err, "twilio_message_sid") &&
+      !missingColumn(err, "booking_fingerprint")
+    ) {
+      throw err;
+    }
+    try {
+      const rows = await sql<{ id: string }>`
+        insert into consumer_leads (niche, city, county, contact_name, contact_phone, contact_meta)
+        values (${input.mode}, ${city}, ${""}, ${input.name}, ${input.phone}, ${meta}::jsonb)
+        returning id::text
+      `;
+      return { id: rows[0]?.id || "", isSimulated: input.isSimulated };
+    } catch (inner) {
+      if (uniqueViolation(inner)) {
+        const existing = await findDuplicate();
+        if (existing) return { id: existing, isSimulated: input.isSimulated, duplicate: true };
+      }
+      throw inner;
+    }
   }
 }
 
@@ -106,11 +205,13 @@ export async function alertOwnerForRealLead(input: {
   shopName: string;
   guestName: string;
   guestPhone: string;
-}): Promise<void> {
-  await notifyShop(input.shopId, {
+  service?: string;
+}): Promise<NotifyShopResult> {
+  const service = (input.service || "dispatch").slice(0, 80);
+  return notifyShop(input.shopId, {
     kind: "booking_request",
-    subject: `Emergency job — ${input.shopName}`,
-    body: `${input.guestName} needs a dispatcher. Phone ${input.guestPhone}. 24-hour trust window is open. is_simulated=false`,
+    subject: `New booking · ${input.guestName}`,
+    body: `${input.guestName} requested ${service}. Phone ${input.guestPhone}. 24-hour trust window is open. is_simulated=false`,
   });
 }
 
@@ -130,81 +231,87 @@ export async function activateAfterFirstRealLead(
   if (opts?.isSimulated === true) {
     return { outcome: "skipped", reason: "simulated_lead" };
   }
-  const sql = await getSql();
-  let row: BillingActivationRow | undefined;
-  let planStatus = "";
   try {
-    const rows = await sql<BillingActivationRow>`
-      select awaiting_first_real_lead, plan, status, stripe_customer_id, stripe_payment_method_id,
-             stripe_subscription_id
-      from shop_billing
-      where shop_id = ${shopId}
-      limit 1
-    `;
-    row = rows[0];
+    return await withTransaction(async (sql) => {
+      let row: BillingActivationRow | undefined;
+      let planStatus = "";
+      try {
+        const rows = await sql<BillingActivationRow>`
+          select awaiting_first_real_lead, plan, status, stripe_customer_id, stripe_payment_method_id,
+                 stripe_subscription_id
+          from shop_billing
+          where shop_id = ${shopId}
+          for update
+        `;
+        row = rows[0];
+      } catch (err) {
+        if (missingColumn(err, "awaiting_first_real_lead")) return { outcome: "skipped" as const, reason: "schema_missing" };
+        throw err;
+      }
+      if (!row) return { outcome: "skipped" as const, reason: "no_billing_row" };
+      try {
+        const tenants = await sql<{ plan_status: string | null }>`
+          select plan_status from tenants where shop_id = ${shopId} limit 1
+        `;
+        planStatus = tenants[0]?.plan_status || "";
+      } catch {
+        planStatus = "";
+      }
+
+      const decision = decideFirstLeadActivation({
+        isSimulated: false,
+        awaitingFirstRealLead: row.awaiting_first_real_lead === true,
+        plan: row.plan || "",
+        planStatus,
+        billingStatus: row.status || "",
+        stripeCustomerId: row.stripe_customer_id || "",
+        stripePaymentMethodId: row.stripe_payment_method_id || "",
+        stripeSubscriptionId: row.stripe_subscription_id || "",
+        stripePriceId: axiomProPriceIdFromEnv(),
+      });
+
+      if (decision.action === "skip" && !decision.clearAwaiting) {
+        return { outcome: "skipped" as const, reason: decision.reason };
+      }
+
+      let stripeSubscriptionId = row.stripe_subscription_id || "";
+      let reason = decision.reason;
+      let billingStatus = decision.billingStatus;
+      let outcome: "skipped" | "recorded" | "subscribed" | "held" =
+        decision.action === "subscribe" ? "subscribed" : decision.action === "record_pro" ? "recorded" : "skipped";
+
+      if (decision.action === "subscribe") {
+        const charged = await createAxiomProSubscription({
+          customerId: row.stripe_customer_id || "",
+          paymentMethodId: row.stripe_payment_method_id || "",
+          priceId: axiomProPriceIdFromEnv(),
+          shopId,
+        });
+        if (charged.ok) {
+          stripeSubscriptionId = charged.subscriptionId;
+          billingStatus = "active";
+          reason = "charge_axiom_pro_monthly";
+          outcome = "subscribed";
+        } else {
+          billingStatus = "trialing";
+          reason = charged.reason;
+          outcome = "held";
+        }
+      }
+
+      await persistFirstLeadBilling(sql, shopId, decision, {
+        stripeSubscriptionId,
+        reason,
+        billingStatus,
+        planStatus,
+        clearAwaiting: outcome === "held" ? false : decision.clearAwaiting,
+      });
+      return { outcome, reason };
+    });
   } catch (err) {
     if (missingColumn(err, "awaiting_first_real_lead")) return { outcome: "skipped", reason: "schema_missing" };
     throw err;
   }
-  if (!row) return { outcome: "skipped", reason: "no_billing_row" };
-  try {
-    const tenants = await sql<{ plan_status: string | null }>`
-      select plan_status from tenants where shop_id = ${shopId} limit 1
-    `;
-    planStatus = tenants[0]?.plan_status || "";
-  } catch {
-    planStatus = "";
-  }
-
-  const decision = decideFirstLeadActivation({
-    isSimulated: false,
-    awaitingFirstRealLead: row.awaiting_first_real_lead === true,
-    plan: row.plan || "",
-    planStatus,
-    billingStatus: row.status || "",
-    stripeCustomerId: row.stripe_customer_id || "",
-    stripePaymentMethodId: row.stripe_payment_method_id || "",
-    stripeSubscriptionId: row.stripe_subscription_id || "",
-    stripePriceId: axiomProPriceIdFromEnv(),
-  });
-
-  if (decision.action === "skip" && !decision.clearAwaiting) {
-    return { outcome: "skipped", reason: decision.reason };
-  }
-
-  let stripeSubscriptionId = row.stripe_subscription_id || "";
-  let reason = decision.reason;
-  let billingStatus = decision.billingStatus;
-  let outcome: "skipped" | "recorded" | "subscribed" | "held" =
-    decision.action === "subscribe" ? "subscribed" : decision.action === "record_pro" ? "recorded" : "skipped";
-
-  if (decision.action === "subscribe") {
-    const charged = await createAxiomProSubscription({
-      customerId: row.stripe_customer_id || "",
-      paymentMethodId: row.stripe_payment_method_id || "",
-      priceId: axiomProPriceIdFromEnv(),
-      shopId,
-    });
-    if (charged.ok) {
-      stripeSubscriptionId = charged.subscriptionId;
-      billingStatus = "active";
-      reason = "charge_axiom_pro_monthly";
-      outcome = "subscribed";
-    } else {
-      billingStatus = "trialing";
-      reason = charged.reason;
-      outcome = "held";
-    }
-  }
-
-  await persistFirstLeadBilling(sql, shopId, decision, {
-    stripeSubscriptionId,
-    reason,
-    billingStatus,
-    planStatus,
-    clearAwaiting: outcome === "held" ? false : decision.clearAwaiting,
-  });
-  return { outcome, reason };
 }
 
 async function persistFirstLeadBilling(

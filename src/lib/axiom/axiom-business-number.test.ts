@@ -126,6 +126,8 @@ test("checkout success lands on the welcome screen and webhook provisions the nu
   assert.match(welcome, /#00ffcc/);
   const card = readFileSync(join(root, "components/storefront/AxiomBusinessNumberCard.tsx"), "utf8");
   assert.match(card, /Lock this number into your phone now/);
+  assert.match(card, /Keep Your Existing Business Number/);
+  assert.match(card, /conditionalForwardingCodes/);
   assert.match(card, /Save Contact \(\.vcf\)/);
   assert.match(card, /Open Live Storefront/);
   assert.match(card, /Open My Dashboard/);
@@ -135,4 +137,5 @@ test("checkout success lands on the welcome screen and webhook provisions the nu
   assert.match(vcard, /text\/vcard/);
   const admin = readFileSync(join(root, "components/admin/AdminShell.tsx"), "utf8");
   assert.match(admin, /AxiomBusinessNumberCard/);
+  assert.match(admin, /GoogleReviewUrlCard/);
 });

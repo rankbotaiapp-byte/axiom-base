@@ -12,10 +12,18 @@ const base = {
 
 describe("booking notices", () => {
   it("tells the station and the guest that a request arrived", () => {
-    const copy = bookingNoticeCopy({ ...base, phase: "request" });
+    const copy = bookingNoticeCopy({
+      ...base,
+      phase: "request",
+      guestPhone: "(541) 555-0148",
+      guestEmail: "ada@example.com",
+    });
     assert.equal(copy.kind, "booking_request");
     assert.match(copy.staff.body, /Ada requested Morning half-day/);
     assert.match(copy.guest.body, /Glass Eddy received your request/);
+    assert.match(copy.owner.body, /Phone: \(541\) 555-0148/);
+    assert.match(copy.owner.body, /Email: ada@example.com/);
+    assert.doesNotMatch(copy.owner.body, /Email: \n/);
     assert.equal(noticeKindFor("request"), "booking_request");
   });
 

@@ -38,6 +38,7 @@ function validBundle(over: Partial<Parameters<typeof buildTenantPublishBundle>[0
     motionUrl: "https://cdn.example.com/loop.mp4",
     origin: "https://axiom.example",
     now: new Date("2026-11-22T20:00:00.000Z"),
+    proofAtom: "Panel upgrade on a 1960s ranch, same-week service",
     ...over,
   });
 }
@@ -85,10 +86,10 @@ test("web presence updates preview media and leaves unvalidated branding untouch
   assert.equal(blocked.branding.shopName, "placeholder");
 });
 
-test("simulation adapter records payloads and never calls live Graph stubs", () => {
+test("simulation adapter records payloads and never calls live Graph stubs", async () => {
   const bundle = validBundle();
   const adapter = createSimulationSocialAdapter();
-  const plan = runPublishPlan({
+  const plan = await runPublishPlan({
     bundle,
     adapter,
     branding: { shopName: "Cascade Electric" },
@@ -111,7 +112,7 @@ test("simulation adapter records payloads and never calls live Graph stubs", () 
   assert.match(skipped.detail, /OAuth/);
 });
 
-test("idempotency and per-run/daily caps block a double post of the same item", () => {
+test("idempotency and per-run/daily caps block a double post of the same item", async () => {
   assert.equal(AUTOPILOT_SMS_DAILY_CAP, 40);
   assert.equal(AUTOPILOT_EMAIL_DAILY_CAP, 80);
   assert.equal(AUTOPILOT_SOCIAL_DAILY_CAP, 4);
@@ -166,13 +167,13 @@ test("idempotency and per-run/daily caps block a double post of the same item", 
 
   const bundle = validBundle();
   const adapter = createSimulationSocialAdapter();
-  const firstPlan = runPublishPlan({
+  const firstPlan = await runPublishPlan({
     bundle,
     adapter,
     branding: { shopName: "Cascade Electric" },
     now: new Date("2026-11-22T20:00:00.000Z"),
   });
-  const secondPlan = runPublishPlan({
+  const secondPlan = await runPublishPlan({
     bundle,
     adapter,
     ledger: firstPlan.ledger,
@@ -183,7 +184,7 @@ test("idempotency and per-run/daily caps block a double post of the same item", 
   assert.ok(secondPlan.receipts.some((row) => /Already posted/.test(row.detail)));
 });
 
-test("plumbing storefront simulation records web preview and skips a second tick", () => {
+test("plumbing storefront simulation records web preview and skips a second tick", async () => {
   const bundle = validBundle({
     shopId: "shop_plumb",
     slug: "ridge-plumbing",
@@ -196,7 +197,7 @@ test("plumbing storefront simulation records web preview and skips a second tick
   assert.equal(bundle.approved, true);
   assert.match(bundle.copy.caption, /Ridge Plumbing/);
   const adapter = createSimulationSocialAdapter();
-  const first = runPublishPlan({
+  const first = await runPublishPlan({
     bundle,
     adapter,
     branding: { shopName: "Ridge Plumbing" },
@@ -209,7 +210,7 @@ test("plumbing storefront simulation records web preview and skips a second tick
   assert.equal(stored.stillUrl, "https://cdn.example.com/van.webp");
   assert.equal(first.receipts.filter((row) => row.status === "simulated").length, 4);
   assert.ok(first.receipts.every((row) => !/graph\.facebook|googleapis|replicate|twilio/i.test(JSON.stringify(row))));
-  const second = runPublishPlan({
+  const second = await runPublishPlan({
     bundle,
     adapter,
     ledger: first.ledger,
@@ -225,6 +226,6 @@ test("shop autopilot tick stays on the session-auth path and does not flip outre
   assert.match(tick, /publishApprovedAutopilotBundle/);
   assert.match(hook, /runPublishPlan/);
   assert.match(hook, /createSimulationSocialAdapter/);
+  assert.match(hook, /createLiveSocialAdapter/);
   assert.doesNotMatch(tick, /OUTREACH_MODE\s*=\s*"live"/);
-  assert.doesNotMatch(hook, /OUTREACH_MODE\s*=\s*"live"/);
 });

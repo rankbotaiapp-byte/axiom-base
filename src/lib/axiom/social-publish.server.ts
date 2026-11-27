@@ -10,6 +10,7 @@ import {
   parsePublishPlatforms,
   publicMediaUrl,
   tokenNeedsRefresh,
+  isExpiredOAuthError,
   type GbpLocalPostPayload,
   type GraphFeedPayload,
   type InstagramMediaPayload,
@@ -259,21 +260,27 @@ export async function loadShopSocialAccounts(shopId: string): Promise<SocialAcco
   return rows;
 }
 
-async function markNeedsReauth(accountId: string, detail: string): Promise<void> {
+async function markNeedsReauth(account: SocialAccountRow, detail: string): Promise<void> {
   const sql = await getSql();
+  const prev = account.status;
   await sql`
     update shop_social_accounts
     set status = ${"needs_reauth"},
         last_error = ${detail.slice(0, 400)},
         updated_at = now()
-    where id = ${accountId}
+    where id = ${account.id}
   `.catch(async () => {
     await sql`
       update shop_social_accounts
       set status = ${"needs_reauth"}, updated_at = now()
-      where id = ${accountId}
+      where id = ${account.id}
     `;
   });
+  if (prev !== "needs_reauth" && !account.id.startsWith("env_")) {
+    const { notifyOwnerOpsOnce } = await import("./notify.server");
+    const { SOCIAL_REAUTH_COPY } = await import("./autopilot-caption.ts");
+    await notifyOwnerOpsOnce(account.shop_id, SOCIAL_REAUTH_COPY).catch(() => undefined);
+  }
 }
 
 async function persistTokens(
@@ -282,9 +289,11 @@ async function persistTokens(
 ): Promise<SocialAccountRow> {
   const sql = await getSql();
   const expiresAt =
-    typeof patch.expiresIn === "number" && patch.expiresIn > 0
-      ? new Date(Date.now() + patch.expiresIn * 1000).toISOString()
-      : null;
+    patch.expiresIn === 0
+      ? "2099-12-31T00:00:00.000Z"
+      : typeof patch.expiresIn === "number" && patch.expiresIn > 0
+        ? new Date(Date.now() + patch.expiresIn * 1000).toISOString()
+        : null;
   const refresh = patch.refreshToken ?? account.refresh_token;
   const next: SocialAccountRow = {
     ...account,
@@ -310,24 +319,69 @@ async function persistTokens(
   return next;
 }
 
+async function exchangeMetaUserToken(account: SocialAccountRow, clientId: string, clientSecret: string): Promise<{
+  accessToken: string;
+  expiresIn: number;
+}> {
+  const grant = account.platform === "instagram" ? "ig_refresh_token" : "fb_exchange_token";
+  const url = new URL(`${GRAPH}/oauth/access_token`);
+  url.searchParams.set("grant_type", grant);
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("client_secret", clientSecret);
+  if (grant === "ig_refresh_token") url.searchParams.set("access_token", account.access_token);
+  else url.searchParams.set("fb_exchange_token", account.access_token);
+  const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+  const body = await graphJson(res, "Meta token refresh");
+  const accessToken = String(body.access_token ?? "").trim();
+  if (!accessToken) throw new Error("Meta did not return a refreshed token");
+  const expiresIn = Number(body.expires_in ?? 0);
+  return {
+    accessToken,
+    expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 60 * 24 * 60 * 60,
+  };
+}
+
+async function exchangePageAccessToken(userToken: string, pageId: string): Promise<{ accessToken: string } | null> {
+  if (!pageId) return null;
+  const url = new URL(`${GRAPH}/me/accounts`);
+  url.searchParams.set("access_token", userToken);
+  const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+  const body = await graphJson(res, "Meta page accounts");
+  const data = Array.isArray(body.data) ? body.data : [];
+  for (const row of data) {
+    if (!row || typeof row !== "object") continue;
+    const rec = row as { id?: string; access_token?: string };
+    if (String(rec.id ?? "") === pageId && rec.access_token) {
+      return { accessToken: String(rec.access_token) };
+    }
+  }
+  const first = data[0] as { access_token?: string } | undefined;
+  if (first?.access_token) return { accessToken: String(first.access_token) };
+  return null;
+}
+
 async function refreshFacebookToken(account: SocialAccountRow): Promise<SocialAccountRow> {
   const clientId = env("META_APP_ID") || env("FACEBOOK_APP_ID");
   const clientSecret = env("META_APP_SECRET") || env("FACEBOOK_APP_SECRET");
-  if (!clientId || !clientSecret) return account;
-  const url = new URL(`${GRAPH}/oauth/access_token`);
-  url.searchParams.set("grant_type", "fb_exchange_token");
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("client_secret", clientSecret);
-  url.searchParams.set("fb_exchange_token", account.access_token);
-  const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-  const body = await graphJson(res, "Facebook token refresh");
-  const accessToken = String(body.access_token ?? "").trim();
-  if (!accessToken) throw new Error("Facebook did not return a refreshed token");
-  const expiresIn = Number(body.expires_in ?? 0);
-  return persistTokens(account, {
-    accessToken,
-    expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 60 * 24 * 60 * 60,
-  });
+  if (!clientId || !clientSecret) {
+    throw new Error("Meta app is not configured");
+  }
+  try {
+    const exchanged = await exchangeMetaUserToken(account, clientId, clientSecret);
+    if (account.platform === "facebook") {
+      const page = await exchangePageAccessToken(exchanged.accessToken, account.page_id).catch(() => null);
+      if (page?.accessToken) {
+        return persistTokens(account, { accessToken: page.accessToken, expiresIn: 0 });
+      }
+    }
+    return persistTokens(account, exchanged);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Meta token refresh failed";
+    if (isExpiredOAuthError(detail) || /Meta app is not configured/i.test(detail)) {
+      throw err;
+    }
+    throw err;
+  }
 }
 
 async function refreshGoogleToken(account: SocialAccountRow): Promise<SocialAccountRow> {
@@ -373,7 +427,7 @@ export async function ensureFreshSocialToken(account: SocialAccountRow): Promise
     return account;
   } catch (err) {
     const detail = err instanceof Error ? err.message : "Token refresh failed";
-    await markNeedsReauth(account.id, detail);
+    await markNeedsReauth(account, detail);
     throw err;
   }
 }
@@ -482,6 +536,45 @@ async function imageUrlForPost(origin: string, assetId: string | null): Promise<
   return "";
 }
 
+async function stampOutgoingStill(
+  imageUrl: string,
+  slug: string,
+  shop: {
+    name: string;
+    address: string;
+    phone: string | null;
+    license_number?: string | null;
+    ad_tagline?: string | null;
+    tagline?: string | null;
+  },
+  platform: PublishPlatform,
+): Promise<string> {
+  if (!/^https:\/\//i.test(imageUrl)) return imageUrl;
+  try {
+    const res = await fetch(imageUrl, { signal: AbortSignal.timeout(12_000) });
+    if (!res.ok) return imageUrl;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    const { applyAxiomBrandStamp } = await import("./brand-stamp.server.ts");
+    const { shopCity } = await import("./avatar");
+    const stamped = await applyAxiomBrandStamp({
+      imageBuffer: bytes,
+      shop: {
+        name: shop.name,
+        city: shopCity(shop.address || ""),
+        phone: shop.phone,
+        license_number: shop.license_number,
+        ad_tagline: shop.ad_tagline || shop.tagline,
+      },
+      platform: platform === "gbp" ? "google_business" : platform,
+    });
+    const { uploadPreparedWebpToStorage } = await import("./storefront-layout.server");
+    const stored = await uploadPreparedWebpToStorage(slug || "shop", stamped.webp, "stamp");
+    return stored?.url || imageUrl;
+  } catch {
+    return imageUrl;
+  }
+}
+
 export async function publishSocialPostForShop(input: {
   shopId: string;
   postId: string;
@@ -502,12 +595,41 @@ export async function publishSocialPostForShop(input: {
   const origin = input.origin || resolvePublicAppOrigin();
   const imageUrl = await imageUrlForPost(origin, input.assetId ?? null);
   let slug = "";
+  let stampShop: {
+    name: string;
+    address: string;
+    phone: string | null;
+    license_number?: string | null;
+    ad_tagline?: string | null;
+    tagline?: string | null;
+  } | null = null;
   try {
     const sql = await getSql();
-    const shops = await sql<{ slug: string }>`select slug from shops where id = ${input.shopId} limit 1`;
+    const shops = await sql<{
+      slug: string;
+      name: string;
+      address: string;
+      phone: string | null;
+      license_number: string | null;
+      ad_tagline: string | null;
+      tagline: string | null;
+    }>`
+      select slug, name, address, phone, license_number, ad_tagline, tagline
+      from shops where id = ${input.shopId} limit 1
+    `;
     slug = shops[0]?.slug ?? "";
+    stampShop = shops[0] ?? null;
   } catch {
-    slug = "";
+    try {
+      const sql = await getSql();
+      const shops = await sql<{ slug: string; name: string; address: string; phone: string | null; tagline: string | null }>`
+        select slug, name, address, phone, tagline from shops where id = ${input.shopId} limit 1
+      `;
+      slug = shops[0]?.slug ?? "";
+      stampShop = shops[0] ?? null;
+    } catch {
+      slug = "";
+    }
   }
   const link = publicMediaUrl(origin, slug ? `/t/${slug}` : "/");
   const permalink = /^https:\/\//i.test(link) ? link : origin;
@@ -526,16 +648,18 @@ export async function publishSocialPostForShop(input: {
   const next: SocialDelivery[] = [];
   const errors: string[] = [];
   for (const channel of remaining) {
-    const account = accounts.find((row) => row.platform === channel && row.status !== "revoked");
+    const account = accounts.find((row) => row.platform === channel && row.status === "active");
     if (!account || (!account.access_token && !account.refresh_token)) {
       errors.push(`${channel}: not linked`);
       continue;
     }
     try {
       let platformPostId = "";
+      const stampedUrl = stampShop ? await stampOutgoingStill(imageUrl || permalink, slug, stampShop, channel) : imageUrl;
       if (channel === "facebook") platformPostId = await publishFacebook(account, job.facebook);
-      else if (channel === "instagram") platformPostId = await publishInstagram(account, job.instagram);
-      else platformPostId = await publishGbp(account, job.gbp);
+      else if (channel === "instagram") {
+        platformPostId = await publishInstagram(account, { ...job.instagram, imageUrl: stampedUrl || job.instagram.imageUrl });
+      } else platformPostId = await publishGbp(account, job.gbp);
       next.push({
         channel,
         platformPostId,

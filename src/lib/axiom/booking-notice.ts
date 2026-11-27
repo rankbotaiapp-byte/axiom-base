@@ -1,6 +1,12 @@
 export type BookingPhase = "request" | "confirmed" | "paid";
 
-export type NoticeKind = "booking_request" | "booking_paid" | "inquiry" | "booking_confirmed";
+export type NoticeKind =
+  | "booking_request"
+  | "booking_paid"
+  | "inquiry"
+  | "booking_confirmed"
+  | "social_reauth"
+  | "credits_empty";
 
 export function formatBookingWhen(iso: string): string {
   const date = new Date(iso);
@@ -21,6 +27,14 @@ export function noticeKindFor(phase: BookingPhase): NoticeKind {
 }
 
 /** Copy for the shop inbox, the assigned station, and the guest. */
+function contactBlock(phone?: string, email?: string): string {
+  const lines = [
+    phone?.trim() ? `Phone: ${phone.trim()}` : "",
+    email?.trim() ? `Email: ${email.trim()}` : "",
+  ].filter(Boolean);
+  return lines.length ? `\n${lines.join("\n")}` : "";
+}
+
 export function bookingNoticeCopy(input: {
   phase: BookingPhase;
   shopName: string;
@@ -28,6 +42,8 @@ export function bookingNoticeCopy(input: {
   serviceName: string;
   employeeName: string;
   when: string;
+  guestPhone?: string;
+  guestEmail?: string;
 }): {
   kind: NoticeKind;
   owner: { subject: string; body: string };
@@ -36,12 +52,13 @@ export function bookingNoticeCopy(input: {
 } {
   const { shopName, guestName, serviceName, employeeName, when } = input;
   const withWhom = `${serviceName} with ${employeeName} at ${when}`;
+  const contact = contactBlock(input.guestPhone, input.guestEmail);
   if (input.phase === "confirmed") {
     return {
       kind: "booking_confirmed",
       owner: {
         subject: `Confirmed · ${guestName}`,
-        body: `${guestName} is confirmed for ${withWhom}.`,
+        body: `${guestName} is confirmed for ${withWhom}.${contact}`,
       },
       staff: {
         subject: `Confirmed · ${guestName}`,
@@ -58,7 +75,7 @@ export function bookingNoticeCopy(input: {
       kind: "booking_paid",
       owner: {
         subject: `Paid booking · ${guestName}`,
-        body: `${guestName} paid for ${withWhom}.`,
+        body: `${guestName} paid for ${withWhom}.${contact}`,
       },
       staff: {
         subject: `Paid booking · ${guestName}`,
@@ -74,7 +91,7 @@ export function bookingNoticeCopy(input: {
     kind: "booking_request",
     owner: {
       subject: `New booking · ${guestName}`,
-      body: `${guestName} requested ${withWhom}.`,
+      body: `${guestName} requested ${withWhom}.${contact}`,
     },
     staff: {
       subject: `New booking · ${guestName}`,

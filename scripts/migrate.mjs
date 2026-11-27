@@ -3,27 +3,38 @@
  * Deploy-time database migrator (node-postgres, `pg`).
  *
  * Runs during `npm run build` — on every Vercel deploy — applying pending files
- * in ../migrations to DATABASE_URL. Each file is applied in one transaction and
- * recorded in a `_migrations` table, so it runs once and is safe to re-run.
+ * in ../migrations to DATABASE_URL (or POSTGRES_URL / DIRECT_URL). Each file is
+ * applied in one transaction and recorded in `_migrations`.
  *
  * The read is non-recursive, so the opt-in auth schema under migrations/auth/
  * is not applied to an app that never asked for sign-in.
  *
- * No DATABASE_URL (local / preview builds) -> skip; the PGLite fallback applies
- * the same files at startup instead (see src/lib/db.ts).
+ * No database URL -> skip (exit 0). Vercel Preview + ENETUNREACH / IPv6 to
+ * `db.*.supabase.co` -> warn and skip so the app still deploys. SQL errors and
+ * Production connect failures stay fatal.
  */
+import { config as loadDotenv } from "dotenv";
 import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
-import { isDatabaseUnavailable } from "./db-availability.mjs";
+import {
+  collectDatabaseUrls,
+  pgPoolOptions,
+  preferIpv4DatabaseUrl,
+  PREVIEW_POOLER_HINT,
+  shouldSkipUnreachablePreview,
+} from "./migrate-url.mjs";
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
+if (process.env.VERCEL !== "1") {
+  loadDotenv({ path: ".env.local" });
+  loadDotenv({ path: ".env" });
+}
+
+const databaseUrl = preferIpv4DatabaseUrl(collectDatabaseUrls());
 if (!databaseUrl) {
-  console.log(
-    "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
-  );
+  console.log("[migrate] Skipping migrations: no database URL configured");
   process.exit(0);
 }
 
@@ -37,14 +48,24 @@ async function main() {
     console.log("[migrate] no migrations/ directory — nothing to do.");
     return;
   }
-  // An app with no schema of its own must not pay for a database connection.
   if (pendingMigrations(entries, []).length === 0) {
     console.log("[migrate] no migrations — nothing to do.");
     return;
   }
 
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
-  const client = await pool.connect();
+  const pool = new pg.Pool(pgPoolOptions(databaseUrl));
+  let client;
+  try {
+    client = await pool.connect();
+  } catch (err) {
+    if (shouldSkipUnreachablePreview(err)) {
+      console.warn(PREVIEW_POOLER_HINT);
+      await pool.end().catch(() => undefined);
+      process.exit(0);
+    }
+    throw err;
+  }
+
   try {
     await client.query(
       "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
@@ -58,7 +79,6 @@ async function main() {
       const text = await readFile(join(migrationsDir, name), "utf8");
       try {
         await client.query("BEGIN");
-        // pg's simple-query protocol runs a whole multi-statement file at once.
         await client.query(text);
         await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
         await client.query("COMMIT");
@@ -82,14 +102,11 @@ async function main() {
 }
 
 main().catch((err) => {
-  if (isDatabaseUnavailable(err)) {
-    console.warn(
-      "[migrate] hosted database unreachable — skipping (the PGLite fallback migrates itself).",
-    );
+  if (shouldSkipUnreachablePreview(err)) {
+    console.warn(PREVIEW_POOLER_HINT);
     process.exit(0);
   }
-  console.error("[migrate] failed:", err?.message || err);
-  // pg errors carry the context needed to debug a bad SQL file.
+  console.error("[migrate] Failed:", err?.message || err);
   for (const key of ["code", "detail", "hint", "position", "where"]) {
     if (err?.[key] != null) console.error(`[migrate]   ${key}: ${err[key]}`);
   }

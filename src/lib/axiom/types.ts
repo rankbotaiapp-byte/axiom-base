@@ -36,7 +36,7 @@ export type OnboardingStep =
   | "loop"
   | "complete";
 
-export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled";
+export type AppointmentStatus = "pending" | "confirmed" | "en_route" | "completed" | "cancelled";
 
 export type Shop = {
   id: string;
@@ -153,6 +153,8 @@ export type Appointment = {
   paymentStatus: string;
   paymentCents: number;
   paymentRef: string | null;
+  dispatchedAt?: string | null;
+  etaMinutes?: number | null;
 };
 
 export type ShopEventType =

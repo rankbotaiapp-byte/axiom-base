@@ -3,6 +3,7 @@ import { TradeShowcasePage } from "@/components/storefront/trade-showcase-page";
 import { firstQuery } from "@/lib/axiom/outbound-preview";
 import { resolveOutboundLead } from "@/lib/axiom/outbound-preview.server";
 import { readPublicShop } from "@/lib/axiom/shop-accent.server";
+import { publicShopSlug, RESERVED_SHOP_SLUGS } from "@/lib/axiom/shop-slug";
 
 export default async function ShopPage({
   params,
@@ -13,9 +14,11 @@ export default async function ShopPage({
 }) {
   const { shopSlug } = await params;
   const query = await searchParams;
+  if (RESERVED_SHOP_SLUGS.has(shopSlug.trim().toLowerCase())) notFound();
   const shop = await readPublicShop(shopSlug);
   const lead = firstQuery(query.lead);
 
+  if (!publicShopSlug(shopSlug) && !lead) notFound();
   if (!shop && !lead) notFound();
 
   const profile = lead

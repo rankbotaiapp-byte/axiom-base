@@ -5,6 +5,12 @@
 
 import { composeAutopilotClip, tradeCopyForNiche } from "../../config/AutopilotContentEngine.ts";
 import { AUTOPILOT_TIME_ZONE } from "./autopilot-limits.ts";
+import {
+  assetPublishKey,
+  captionHitsRecent,
+  composeProofCaption,
+  gbpSafeSummary,
+} from "./autopilot-caption.ts";
 import { assertValidBranding } from "./studio-visual-blueprint.ts";
 
 export const SOCIAL_PUBLISH_TARGETS = [
@@ -105,7 +111,7 @@ export type SocialOAuthTokenHook = {
 
 export interface SocialChannelAdapter {
   mode: "simulation" | "live";
-  publish(intent: SocialPublishIntent): SocialPublishReceipt;
+  publish(intent: SocialPublishIntent): SocialPublishReceipt | Promise<SocialPublishReceipt>;
 }
 
 const LOCAL_STILL = /^\/(api\/shop-media\/|api\/hero\/|media\/)[A-Za-z0-9._/?=-]+$/;
@@ -139,9 +145,13 @@ export function publishFingerprint(input: {
   target: SocialPublishTarget;
   stillUrl: string;
   motionUrl?: string;
-  day: string;
+  /** Ignored. Same still must not mint a new identity on a later calendar day. */
+  day?: string;
 }): string {
-  return [input.shopId, input.target, input.stillUrl, input.motionUrl || "", input.day].join("|").slice(0, 400);
+  const still = input.stillUrl.trim();
+  const motion = (input.motionUrl ?? "").trim();
+  const asset = assetPublishKey(input.shopId, still || motion);
+  return [asset, input.target, motion && still !== motion ? motion : ""].filter(Boolean).join("|").slice(0, 400);
 }
 
 export function canPublishItem(
@@ -187,6 +197,8 @@ export type BuildPublishBundleInput = {
   origin?: string;
   now?: Date;
   targets?: SocialPublishTarget[];
+  proofAtom?: string;
+  recentCaptions?: string[];
 };
 
 export function buildTenantPublishBundle(input: BuildPublishBundleInput): TenantPublishBundle {
@@ -203,18 +215,26 @@ export function buildTenantPublishBundle(input: BuildPublishBundleInput): Tenant
   const origin = (input.origin ?? "").replace(/\/$/, "");
   const bookUrl = origin && /^https:\/\//i.test(origin) ? `${origin}${bookPath}` : bookPath;
   const claimUrl = origin && /^https:\/\//i.test(origin) ? `${origin}${claimPath}` : claimPath;
+  const { tradeLabel } = tradeCopyForNiche(input.niche);
   const clip = composeAutopilotClip({
     loopUrl: motionUrl,
     shopName: input.shopName,
     city: input.city || "Your city",
     bookUrl,
     niche: input.niche,
+    proofAtom: input.proofAtom,
   });
-  const { tradeLabel } = tradeCopyForNiche(input.niche);
+  const proof = composeProofCaption({
+    shopName: input.shopName,
+    city: input.city || "Your city",
+    tradeLabel,
+    proofAtom: (input.proofAtom ?? "").trim(),
+    bookUrl,
+  });
   const copy: TenantPublishCopy = {
     shopName: clip.overlay.shopName,
     tradeLabel,
-    caption: clip.caption,
+    caption: proof.ok ? proof.caption : "",
     cta: clip.overlay.cta,
     bookUrl,
     claimUrl,
@@ -224,20 +244,23 @@ export function buildTenantPublishBundle(input: BuildPublishBundleInput): Tenant
     motionUrl,
     kind: motionUrl ? "loop-video" : "image",
   };
-  const day = pacificPublishDay(input.now);
   const targets = (input.targets?.length ? input.targets : [...SOCIAL_PUBLISH_TARGETS]).filter((target) =>
     (SOCIAL_PUBLISH_TARGETS as readonly string[]).includes(target),
   ) as SocialPublishTarget[];
   let rejectReason: string | undefined;
   if (!branding.ok) rejectReason = branding.reason;
   else if (!stillUrl && !motionUrl) rejectReason = "Need a validated still or motion asset before publish.";
+  else if (!proof.ok) rejectReason = "queued_needs_copy";
+  else if (proof.ok && captionHitsRecent(proof.caption, input.recentCaptions ?? [])) {
+    rejectReason = "queued_needs_copy";
+  }
   const approved = !rejectReason;
   const idempotencyKey = publishFingerprint({
     shopId: input.shopId,
     target: "web_storefront",
     stillUrl: stillUrl || motionUrl,
     motionUrl,
-    day,
+    day: pacificPublishDay(input.now),
   });
   return {
     shopId: input.shopId,
@@ -337,7 +360,7 @@ export function socialIntentPayload(bundle: TenantPublishBundle, target: SocialP
   }
   return {
     channel: "google_business",
-    summary: bundle.copy.caption.slice(0, 1500),
+    summary: gbpSafeSummary(bundle.copy.caption),
     callToAction: { actionType: "LEARN_MORE", url: bundle.copy.bookUrl },
   };
 }
@@ -376,7 +399,12 @@ export function createSimulationSocialAdapter(log: SocialPublishReceipt[] = []):
   };
 }
 
-/** Live Graph/GBP is a stub until OAuth tokens are stored per shop. Never called from simulation. */
+export function livePublishCounted(receipts: readonly SocialPublishReceipt[], adapterMode: "simulation" | "live"): boolean {
+  if (adapterMode === "simulation") return false;
+  return receipts.some((row) => row.status === "published");
+}
+
+/** Live Graph/GBP until OAuth tokens are stored per shop. Never used from simulation. */
 export function createLiveSocialAdapterStub(oauth: SocialOAuthTokenHook): SocialChannelAdapter {
   return {
     mode: "live",
@@ -412,17 +440,61 @@ export function createLiveSocialAdapterStub(oauth: SocialOAuthTokenHook): Social
   };
 }
 
-export function runPublishPlan(input: {
+/** Active shop_social_accounts only. Caller supplies the Graph/GBP post. */
+export function createLiveSocialAdapter(input: {
+  activeTargets: ReadonlySet<string>;
+  post: (intent: SocialPublishIntent) => Promise<SocialPublishReceipt>;
+}): SocialChannelAdapter {
+  return {
+    mode: "live",
+    async publish(intent) {
+      if (intent.target === "web_storefront") {
+        return {
+          target: intent.target,
+          status: "queued",
+          idempotencyKey: intent.bundle.idempotencyKey,
+          detail: "Web presence is applied in-app; no OAuth required.",
+          recordedAt: new Date().toISOString(),
+          payload: intent.payload,
+        };
+      }
+      if (intent.target === "instagram") {
+        const imageUrl = String(intent.payload.imageUrl ?? intent.bundle.asset.stillUrl ?? "");
+        if (!/^https:\/\//i.test(imageUrl)) {
+          return {
+            target: intent.target,
+            status: "skipped",
+            idempotencyKey: intent.bundle.idempotencyKey,
+            detail: "Instagram needs a public HTTPS image URL.",
+            recordedAt: new Date().toISOString(),
+          };
+        }
+      }
+      if (!input.activeTargets.has(intent.target) && !input.activeTargets.has(intent.target === "google_business" ? "gbp" : intent.target)) {
+        return {
+          target: intent.target,
+          status: "skipped",
+          idempotencyKey: intent.bundle.idempotencyKey,
+          detail: "No active social account for this channel.",
+          recordedAt: new Date().toISOString(),
+        };
+      }
+      return input.post(intent);
+    },
+  };
+}
+
+export async function runPublishPlan(input: {
   bundle: TenantPublishBundle;
   adapter: SocialChannelAdapter;
   ledger?: PublishLedgerEntry[];
   branding: ShopBrandingSnapshot;
   now?: Date;
-}): {
+}): Promise<{
   web: ReturnType<typeof applyWebPresencePreview>;
   receipts: SocialPublishReceipt[];
   ledger: PublishLedgerEntry[];
-} {
+}> {
   const day = pacificPublishDay(input.now);
   const ledger = [...(input.ledger ?? [])];
   const web = applyWebPresencePreview({ branding: input.branding, bundle: input.bundle });
@@ -466,11 +538,13 @@ export function runPublishPlan(input: {
       });
       continue;
     }
-    const receipt = input.adapter.publish({
-      target,
-      bundle: { ...input.bundle, idempotencyKey: fingerprint },
-      payload: socialIntentPayload(input.bundle, target),
-    });
+    const receipt = await Promise.resolve(
+      input.adapter.publish({
+        target,
+        bundle: { ...input.bundle, idempotencyKey: fingerprint },
+        payload: socialIntentPayload(input.bundle, target),
+      }),
+    );
     receipts.push(receipt);
     ledger.push({
       key: fingerprint,

@@ -1,5 +1,8 @@
 import { appendMessagingNotice } from "./legal-notices.ts";
-import { isPlumbingCampaign, plumberCampaignPath } from "./plumber-outreach.ts";
+import { barberCampaignPath, isBarberCampaign } from "./barber-outreach.ts";
+import { electricianCampaignPath, isElectricalCampaign } from "./electrician-outreach.ts";
+import { landingPreviewPath } from "./landing-preview.ts";
+import { isPlumbingCampaign } from "./plumber-outreach.ts";
 import { sanitizeAccent, sanitizeContactLine, sanitizeLogoUrl } from "./prospect-brand.ts";
 
 /** Saved on the visitor's browser until onboarding claims the business. */
@@ -84,7 +87,7 @@ export function parseFunnelQuery(source: Record<string, unknown>): FunnelQuery {
   const stopToken = clip(source.t, 80).toLowerCase();
   return {
     leadSlug,
-    leadId: parseLeadId(source.lead) || parseLeadId(source.id),
+    leadId: parseLeadId(source.lead_id) || parseLeadId(source.lead) || parseLeadId(source.id),
     utmSource: clip(source.utm_source, 80),
     county: clip(source.county, 80),
     stopToken: /^[a-f0-9]{32,80}$/.test(stopToken) ? stopToken : "",
@@ -498,11 +501,39 @@ export function funnelUrl(
     businessName?: string;
     trade?: string;
     city?: string;
+    phone?: string;
+    email?: string;
   },
 ): string {
   const base = origin.replace(/\/$/, "");
   if (isPlumbingCampaign(lead.trade)) {
-    const path = plumberCampaignPath(lead.leadSlug);
+    const path = landingPreviewPath({
+      leadId: lead.leadId,
+      leadSlug: lead.leadSlug,
+      businessName: lead.businessName,
+      phone: lead.phone,
+      email: lead.email,
+      city: lead.city,
+      trade: "plumbing",
+    });
+    const url = new URL(path, `${base}/`);
+    if (lead.county) url.searchParams.set("county", lead.county);
+    url.searchParams.set("utm_source", "regional");
+    if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+    return url.toString();
+  }
+  if (isElectricalCampaign(lead.trade)) {
+    const path = electricianCampaignPath(lead.leadSlug);
+    const url = new URL(path, `${base}/`);
+    const leadId = parseLeadId(lead.leadId);
+    if (leadId) url.searchParams.set("lead", leadId);
+    if (lead.county) url.searchParams.set("county", lead.county);
+    url.searchParams.set("utm_source", "regional");
+    if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+    return url.toString();
+  }
+  if (isBarberCampaign(lead.trade)) {
+    const path = barberCampaignPath(lead.leadSlug);
     const url = new URL(path, `${base}/`);
     const leadId = parseLeadId(lead.leadId);
     if (leadId) url.searchParams.set("lead", leadId);
@@ -538,6 +569,8 @@ export function deskPreviewPath(lead: {
   city?: string;
   businessName?: string;
   trade?: string;
+  phone?: string;
+  email?: string;
 }): string {
   const params = new URLSearchParams({ b: lead.leadSlug, utm_source: "desk" });
   const leadId = parseLeadId(lead.leadId);
@@ -552,7 +585,24 @@ export function deskPreviewPath(lead: {
   if (trade) params.set("trade", trade);
   params.set("sample", "1");
   if (isPlumbingCampaign(trade)) {
-    return plumberCampaignPath(lead.leadSlug);
+    const path = landingPreviewPath({
+      leadId: lead.leadId,
+      leadSlug: lead.leadSlug,
+      businessName: lead.businessName || lead.leadSlug,
+      phone: lead.phone,
+      city: lead.city,
+      email: lead.email,
+      trade: "plumbing",
+    });
+    const url = new URL(path, "https://axiom.local/");
+    url.searchParams.set("utm_source", "desk");
+    return `${url.pathname}?${url.searchParams.toString()}`;
+  }
+  if (isElectricalCampaign(trade)) {
+    return electricianCampaignPath(lead.leadSlug);
+  }
+  if (isBarberCampaign(trade)) {
+    return barberCampaignPath(lead.leadSlug);
   }
   return `/?${params.toString()}`;
 }

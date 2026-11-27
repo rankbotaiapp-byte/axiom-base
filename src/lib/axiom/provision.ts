@@ -329,6 +329,12 @@ export async function provisionTenant(input: ProvisionTenantInput): Promise<Prov
       gear_guardian_bps = excluded.gear_guardian_bps,
       updated_at = now()
   `;
+  try {
+    const { seedTradePriceBook } = await import("./price-book.server");
+    await seedTradePriceBook(shopId, niche);
+  } catch (err) {
+    console.error("[storefront] price book seed failed", err instanceof Error ? err.message : err);
+  }
   await Promise.all([
     syncCheckoutTenantToSupabase({
       slug,
@@ -351,7 +357,11 @@ export async function syncTenantSubscriptionStatus(slug: string, status: TenantB
     const sql = await getSql();
     await sql`
       update shop_billing as billing
-      set status = ${status}, updated_at = now()
+      set status = case
+        when billing.status in ('canceled', 'lifetime') then billing.status
+        else ${status}
+      end,
+      updated_at = now()
       from shops
       where shops.id = billing.shop_id and shops.slug = ${key}
     `;
@@ -360,7 +370,7 @@ export async function syncTenantSubscriptionStatus(slug: string, status: TenantB
       set plan_status = ${status}
       from shops
       where tenants.shop_id = shops.id and shops.slug = ${key}
-        and tenants.plan_status is distinct from 'lifetime'
+        and tenants.plan_status not in ('lifetime', 'canceled')
     `.catch(() => undefined);
   } catch (err) {
     console.error("[axiom] billing status sync failed", err instanceof Error ? err.message : err);

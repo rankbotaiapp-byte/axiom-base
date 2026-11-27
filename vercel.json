@@ -4,7 +4,7 @@
   "framework": "nextjs",
   "trailingSlash": false,
   "crons": [
-    { "path": "/api/autopilot/cron", "schedule": "12 15 * * *" },
+    { "path": "/api/outreach/cron", "schedule": "12 15 * * *" },
     { "path": "/api/master/autopilot", "schedule": "42 15 * * *" }
   ],
   "rewrites": [

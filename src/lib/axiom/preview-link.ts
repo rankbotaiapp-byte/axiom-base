@@ -1,8 +1,11 @@
 import { RIPPLE_THEMES, type RippleThemeId } from "./brand-studio.ts";
 import { classifyTrade, nicheForLead } from "./directory.ts";
 import { funnelUrl } from "./funnel.ts";
+import { landingPreviewUrl } from "./landing-preview.ts";
 import { PRESENTATION_STYLES, type PresentationStyle } from "./intro.ts";
-import { isPlumbingCampaign, plumberCampaignPath } from "./plumber-outreach.ts";
+import { barberCampaignPath, isBarberCampaign } from "./barber-outreach.ts";
+import { electricianCampaignPath, isElectricalCampaign } from "./electrician-outreach.ts";
+import { isPlumbingCampaign } from "./plumber-outreach.ts";
 import { HOME_REGION_COUNTIES } from "./regional-roster.ts";
 import { isShopNiche, type ShopNiche } from "./types.ts";
 
@@ -58,14 +61,15 @@ export type PreviewLead = {
   leadSlug?: string;
   leadId?: string;
   city?: string;
+  phone?: string;
   stopToken?: string;
   greet?: boolean;
   trade?: string;
 };
 
 /**
- * Personalized storefront. Plumbing always uses the industrial /t/{slug} campaign
- * (hero + greeting), any county. Other trades stay on the Southern Oregon demo.
+ * Personalized storefront. Plumbing outreach opens the production landing
+ * carousel with the lead injected. Other trades stay on the Southern Oregon demo.
  */
 export function tenantPreviewUrl(origin: string, lead: PreviewLead): string | null {
   const business = lead.businessName.trim().slice(0, 80);
@@ -74,8 +78,35 @@ export function tenantPreviewUrl(origin: string, lead: PreviewLead): string | nu
   if (!base) return null;
   const tradeHint = `${lead.tradeType} ${lead.tradeLabel ?? ""} ${lead.trade ?? ""}`;
   if (isPlumbingCampaign(tradeHint) || isPlumbingCampaign(lead.tradeType)) {
-    const slug = (lead.leadSlug ?? "").trim() || "accurate-plumbing";
-    const url = new URL(plumberCampaignPath(slug, { greet: true }), `${base}/`);
+    const url = new URL(
+      landingPreviewUrl(base, {
+        leadId: lead.leadId,
+        leadSlug: lead.leadSlug,
+        businessName: business,
+        phone: lead.phone,
+        city: lead.city,
+      }),
+    );
+    const county = lead.county.trim();
+    if (county) url.searchParams.set("county", county);
+    if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+    return url.toString();
+  }
+  if (isElectricalCampaign(tradeHint) || isElectricalCampaign(lead.tradeType)) {
+    const slug = (lead.leadSlug ?? "").trim() || "cascade-electric";
+    const url = new URL(electricianCampaignPath(slug, { greet: true }), `${base}/`);
+    const leadId = (lead.leadId ?? "").trim();
+    if (leadId) url.searchParams.set("lead", leadId);
+    const county = lead.county.trim();
+    if (county) url.searchParams.set("county", county);
+    const city = (lead.city ?? "").trim().slice(0, 80);
+    if (city) url.searchParams.set("city", city);
+    if (lead.stopToken) url.searchParams.set("t", lead.stopToken);
+    return url.toString();
+  }
+  if (isBarberCampaign(tradeHint) || isBarberCampaign(lead.tradeType)) {
+    const slug = (lead.leadSlug ?? "").trim() || "ashland-barber";
+    const url = new URL(barberCampaignPath(slug, { greet: true }), `${base}/`);
     const leadId = (lead.leadId ?? "").trim();
     if (leadId) url.searchParams.set("lead", leadId);
     const county = lead.county.trim();
@@ -121,7 +152,9 @@ export function outreachDestination(origin: string, lead: PreviewLead & { leadSl
 export function bodyHasPreviewLink(body: string): boolean {
   return (
     (body.includes("/demo/") && body.includes("preview=true")) ||
-    /\/t\/[a-z0-9-]+\?[^ \n]*niche=plumbing/.test(body)
+    /[?&]trade=plumbing/.test(body) ||
+    /[?&]lead_id=/.test(body) ||
+    /\/t\/[a-z0-9-]+\?[^ \n]*niche=(plumbing|electrical|barber)/.test(body)
   );
 }
 

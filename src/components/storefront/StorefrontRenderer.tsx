@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import type { BeforeAfterProject, TenantStorefrontConfig } from "@/lib/schemas/tenant";
+import { DefaultAssetPlaceholder } from "@/components/default-asset-placeholder";
 import { ConversionDrawer } from "./ConversionDrawer";
 import { HeroMediaSlot } from "./HeroMediaSlot";
 import { CinematicMediaFrame } from "./CinematicMediaFrame";
@@ -10,11 +11,20 @@ import { StorefrontHelpFab } from "./StorefrontHelpFab";
 import { resolveCinemaGrade } from "@/lib/axiom/cinematic-media";
 import { UnlockCheckoutButton } from "./UnlockCheckoutButton";
 import type { UnlockPhase } from "@/lib/axiom/hydrate-storefront";
+import { BarberOutreachLive } from "@/components/barber/barber-outreach-landing";
+import { DEFAULT_BARBER_OUTREACH, isBarberCampaign } from "@/lib/axiom/barber-outreach";
+import { electricianHeroDefaults, isElectricalCampaign, mergeElectricianHero } from "@/lib/axiom/electrician-outreach";
+import { emptyOutreachTenant, isPlumbingCampaign } from "@/lib/axiom/plumber-outreach";
+import HeroLoop, { mergePlumbingHero, plumbingHeroDefaults } from "@/components/HeroLoop";
+import { ElectricianHero } from "@/components/electrician/ElectricianHero";
+import { StorefrontProofSlots } from "./StorefrontProofSlots";
+import type { ShopProofSlots } from "@/lib/axiom/shop-proof-slots";
 
 type StorefrontRendererProps = {
   config: TenantStorefrontConfig;
   initialUrgency?: boolean;
   phase?: UnlockPhase;
+  proofSlots?: ShopProofSlots | null;
 };
 
 type DrawerRequest = {
@@ -26,7 +36,12 @@ function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
-export function StorefrontRenderer({ config, initialUrgency = false, phase = "published" }: StorefrontRendererProps) {
+export function StorefrontRenderer({
+  config,
+  initialUrgency = false,
+  phase = "published",
+  proofSlots = null,
+}: StorefrontRendererProps) {
   const [drawer, setDrawer] = useState<DrawerRequest | null>(initialUrgency ? { serviceId: null, urgency: true } : null);
   const { theme, conversion, trust } = config;
   const style = {
@@ -48,8 +63,95 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
     setDrawer({ serviceId, urgency: true });
   }
 
+  const plumbingLoop =
+    isPlumbingCampaign(config.slug) ||
+    isPlumbingCampaign(config.hero.media.videoUrl) ||
+    isPlumbingCampaign(config.hero.media.alt);
+  const electricalLoop =
+    !plumbingLoop &&
+    (isElectricalCampaign(config.slug) ||
+      isElectricalCampaign(config.hero.media.videoUrl) ||
+      isElectricalCampaign(config.hero.media.alt));
+  const barberLoop =
+    !plumbingLoop &&
+    !electricalLoop &&
+    (isBarberCampaign(config.slug) ||
+      isBarberCampaign(config.hero.media.videoUrl) ||
+      isBarberCampaign(config.hero.media.alt));
+
+  const ownerHero = proofSlots?.heroUrl || "";
+
+  if (barberLoop) {
+    const tenant = {
+      ...emptyOutreachTenant(config.slug),
+      business: config.businessName,
+      phone: conversion.displayPhone,
+      city: conversion.serviceCities[0] || "",
+    };
+    return (
+      <>
+        <BarberOutreachLive tenant={tenant} config={DEFAULT_BARBER_OUTREACH} />
+        {proofSlots ? <StorefrontProofSlots slots={proofSlots} bookHref={`/${config.slug}/book`} /> : null}
+      </>
+    );
+  }
+
   return (
-    <div style={style} className="min-h-dvh bg-[#050507] text-[#f4f7fb]">
+    <div style={style} className="relative min-h-dvh bg-[#050507] text-[#f4f7fb]">
+      {electricalLoop ? (
+        <ElectricianHero
+          {...mergeElectricianHero(undefined, {
+            ...electricianHeroDefaults,
+            videoSrc: ownerHero ? "" : config.hero.media.videoUrl || electricianHeroDefaults.videoSrc,
+            poster: ownerHero || config.hero.media.posterUrl || electricianHeroDefaults.poster,
+            tagline: config.hero.eyebrow || electricianHeroDefaults.tagline,
+            headline: config.hero.headline,
+            subhead: config.hero.subheadline,
+            businessName: config.businessName,
+            phone: conversion.displayPhone,
+            primaryCta: { label: conversion.emergencyCtaLabel || electricianHeroDefaults.primaryCta.label },
+            secondaryCta: { label: config.hero.primaryCtaLabel || electricianHeroDefaults.secondaryCta.label, href: "#book" },
+            bg: theme.canvasBg || "#050507",
+          })}
+          onBook={() => openBooking()}
+        />
+      ) : null}
+      {plumbingLoop ? (
+        <HeroLoop
+          {...mergePlumbingHero(
+            { name: config.businessName, phone: conversion.displayPhone, hero: undefined },
+            {
+              ...plumbingHeroDefaults,
+              videoSrc: ownerHero ? "" : config.hero.media.videoUrl || plumbingHeroDefaults.videoSrc,
+              poster: ownerHero || config.hero.media.posterUrl || plumbingHeroDefaults.poster,
+              tagline: config.hero.eyebrow || plumbingHeroDefaults.tagline,
+              headline: config.hero.headline,
+              subhead: config.hero.subheadline,
+              primaryCta: { label: conversion.emergencyCtaLabel || plumbingHeroDefaults.primaryCta!.label },
+              secondaryCta: { label: config.hero.primaryCtaLabel || plumbingHeroDefaults.secondaryCta!.label, href: "#book" },
+              businessName: config.businessName,
+              phone: conversion.displayPhone,
+              billboardText: config.businessName,
+              vanCallout: conversion.displayPhone,
+              bg: theme.canvasBg || "#050507",
+            },
+          )}
+        />
+      ) : null}
+      {electricalLoop && phase === "locked" ? (
+        <div className="pointer-events-none absolute right-4 top-3 z-50 sm:right-6">
+          <div className="pointer-events-auto">
+            <UnlockCheckoutButton
+              slug={config.slug}
+              businessName={config.businessName}
+              phone={conversion.displayPhone}
+              email={conversion.notificationEmail}
+              city={conversion.serviceCities[0]}
+            />
+          </div>
+        </div>
+      ) : null}
+      {electricalLoop || (plumbingLoop && phase === "published") ? null : (
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--canvasBg)] backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -85,8 +187,10 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
           )}
         </div>
       </header>
+      )}
 
       <main>
+        {plumbingLoop || electricalLoop ? null : (
         <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 md:grid-cols-[1.05fr_0.95fr] md:items-center md:py-12">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--primaryAccent)]">{config.hero.eyebrow}</p>
@@ -115,11 +219,16 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
             </div>
           </div>
           <HeroMediaSlot
-            media={config.hero.media}
+            media={
+              proofSlots?.heroUrl
+                ? { ...config.hero.media, kind: "image", posterUrl: proofSlots.heroUrl, videoUrl: "" }
+                : config.hero.media
+            }
             cinemaGrade={theme.cinemaGrade}
             className="relative aspect-[4/5] min-h-[320px] overflow-hidden rounded-3xl border border-white/10 sm:aspect-[5/4]"
           />
         </section>
+        )}
 
         <section className="border-y border-white/10 bg-[var(--surfaceBg)]">
           <div className="mx-auto grid max-w-6xl gap-3 px-4 py-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -134,7 +243,7 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-12">
+        <section id="book" className="mx-auto max-w-6xl px-4 py-12">
           <h2 className="text-2xl font-semibold tracking-tight">Services</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {config.services.map((service) => (
@@ -165,10 +274,15 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
           </div>
         </section>
 
+        {proofSlots ? <StorefrontProofSlots slots={proofSlots} bookHref={`/${config.slug}/book`} /> : null}
+
         <section className="mx-auto max-w-6xl px-4 pb-12">
           <h2 className="text-2xl font-semibold tracking-tight">Proof of work</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {config.projects.map((project) => (
+            {(proofSlots?.beforeAfter.length
+              ? []
+              : config.projects
+            ).map((project) => (
               <CompareCard key={project.id} project={project} cinemaGrade={theme.cinemaGrade} />
             ))}
           </div>
@@ -221,6 +335,7 @@ export function StorefrontRenderer({ config, initialUrgency = false, phase = "pu
       />
       <StorefrontHelpFab
         shopName={config.businessName}
+        slug={config.slug}
         phone={conversion.displayPhone}
         onBook={() => openBooking()}
         onEmergency={() => openEmergency()}
@@ -246,17 +361,31 @@ function CompareCard({
   cinemaGrade?: boolean;
 }) {
   const [split, setSplit] = useState(52);
+  const [beforeFailed, setBeforeFailed] = useState(false);
+  const [afterFailed, setAfterFailed] = useState(false);
   const grade = resolveCinemaGrade(cinemaGrade, project.cinemaGrade);
   return (
     <figure className="overflow-hidden rounded-2xl border border-white/10 bg-[var(--surfaceBg)]">
       <CinematicMediaFrame cinemaGrade={grade} className="relative aspect-[4/5] sm:aspect-[5/4]">
-        <img src={project.beforeUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <img
-          src={project.afterUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ clipPath: `inset(0 0 0 ${split}%)` }}
-        />
+        {beforeFailed || !project.beforeUrl ? (
+          <DefaultAssetPlaceholder compact label="Before still" />
+        ) : (
+          <img
+            src={project.beforeUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={() => setBeforeFailed(true)}
+          />
+        )}
+        {afterFailed || !project.afterUrl ? null : (
+          <img
+            src={project.afterUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ clipPath: `inset(0 0 0 ${split}%)` }}
+            onError={() => setAfterFailed(true)}
+          />
+        )}
         <div className="pointer-events-none absolute inset-y-0" style={{ left: `${split}%` }} data-cmf-ui>
           <span className="absolute top-0 h-full w-px -translate-x-1/2 bg-[var(--primaryAccent)]" />
         </div>
@@ -275,6 +404,8 @@ function CompareCard({
             value={split}
             onChange={(event) => setSplit(Number(event.target.value))}
             className="w-full accent-[var(--primaryAccent)]"
+            data-testid="proof-compare-slider"
+            aria-label={`Compare before and after for ${project.title}`}
           />
         </label>
       </CinematicMediaFrame>

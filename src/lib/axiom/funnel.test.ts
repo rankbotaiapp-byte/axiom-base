@@ -249,6 +249,72 @@ test("campaign urls put the lead slug in b", () => {
   assert.equal(greeted.searchParams.get("b"), "glass-eddy");
 });
 
+test("plumbing campaign urls open the landing carousel with lead_id", () => {
+  const url = new URL(
+    funnelUrl("https://axiom.example/", {
+      leadSlug: "miller-plumbing-medford",
+      leadId: "lead_miller01",
+      county: "Jackson County",
+      trade: "plumbing",
+      businessName: "Miller Plumbing",
+      city: "Medford",
+    }),
+  );
+  assert.equal(url.pathname, "/");
+  assert.equal(url.searchParams.get("lead_id"), "lead_miller01");
+  assert.equal(url.searchParams.get("b"), "Miller Plumbing");
+  assert.equal(url.searchParams.get("city"), "Medford");
+  assert.equal(url.searchParams.get("trade"), "plumbing");
+  const desk = new URL(
+    deskPreviewPath({
+      leadSlug: "miller-plumbing-medford",
+      leadId: "lead_miller01",
+      trade: "plumbing",
+      businessName: "Miller Plumbing",
+      city: "Medford",
+      phone: "541-555-0192",
+    }),
+    "https://axiom.example/",
+  );
+  assert.equal(desk.pathname, "/");
+  assert.equal(desk.searchParams.get("trade"), "plumbing");
+  assert.equal(desk.searchParams.get("phone"), "541-555-0192");
+});
+
+test("electrical campaign urls use the electrician outreach path", () => {
+  const url = new URL(
+    funnelUrl("https://axiom.example/", {
+      leadSlug: "cascade-electric",
+      leadId: "lead_cascade01",
+      county: "Jackson County",
+      trade: "electrical",
+    }),
+  );
+  assert.equal(url.pathname, "/t/cascade-electric");
+  assert.equal(url.searchParams.get("niche"), "electrical");
+  assert.equal(url.searchParams.get("utm_source"), "regional");
+  assert.equal(
+    deskPreviewPath({ leadSlug: "cascade-electric", trade: "electrician" }),
+    "/t/cascade-electric?niche=electrical&greet=1",
+  );
+});
+
+test("barber campaign urls use the barbershop outreach path", () => {
+  const url = new URL(
+    funnelUrl("https://axiom.example/", {
+      leadSlug: "ashland-barber",
+      county: "Jackson County",
+      trade: "barber",
+    }),
+  );
+  assert.equal(url.pathname, "/t/ashland-barber");
+  assert.equal(url.searchParams.get("niche"), "barber");
+  assert.equal(
+    deskPreviewPath({ leadSlug: "ashland-barber", trade: "Barbershop" }),
+    "/t/ashland-barber?niche=barber&greet=1",
+  );
+});
+
 test("desk preview links are tagged for the master desk", () => {
   const path = deskPreviewPath({
     leadSlug: "north-glass",

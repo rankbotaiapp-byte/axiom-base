@@ -86,6 +86,7 @@ export function buildAutonomousContentPlan(input: {
     city,
     bookUrl,
     niche,
+    proofAtom: tradeLine,
   });
 
   const posts = CHANNELS.map((channel) => ({

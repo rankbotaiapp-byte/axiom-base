@@ -30,6 +30,7 @@ export function isCustomStorefrontAsset(imageUrl: string): boolean {
   if (value.startsWith("blob:")) return true;
   if (value.includes("/api/shop-media/")) return true;
   if (value.includes("/api/hero/")) return true;
+  if (/^https:\/\//i.test(value) && /storage\/v1\/object\/public/i.test(value)) return true;
   return false;
 }
 

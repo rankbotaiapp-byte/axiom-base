@@ -40,9 +40,9 @@ test("cinematic overlay tokens and pointer-events lock live in the frame CSS", (
   assert.match(css, /#050507/);
   const frame = readFileSync(join(root, "components/storefront/CinematicMediaFrame.tsx"), "utf8");
   assert.match(frame, /cmf-overlays/);
-  const inbound = readFileSync(join(root, "lib/axiom/twilio-booking.server.ts"), "utf8");
+  const inbound = readFileSync(join(root, "lib/axiom/owner-mms.server.ts"), "utf8");
   assert.match(inbound, /NumMedia/);
-  assert.match(inbound, /uploadEnhancedImageToStorage/);
+  assert.match(inbound, /uploadPreparedWebpToStorage/);
   const assets = readFileSync(join(root, "app/api/storefront/assets/route.ts"), "utf8");
   assert.match(assets, /uploadLayoutAssetBundle/);
 });

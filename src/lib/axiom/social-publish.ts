@@ -1,5 +1,7 @@
 /** Pure Graph / GBP payloads, token expiry, and delivery receipts. */
 
+import { gbpSafeSummary } from "./autopilot-caption.ts";
+
 export const PUBLISH_PLATFORMS = ["facebook", "instagram", "gbp"] as const;
 export type PublishPlatform = (typeof PUBLISH_PLATFORMS)[number];
 
@@ -29,7 +31,7 @@ export type GbpLocalPostPayload = {
     languageCode: "en-US";
     topicType: "STANDARD";
     summary: string;
-    callToAction: { actionType: "LEARN_MORE" | "CALL"; url: string };
+    callToAction: { actionType: "LEARN_MORE" | "CALL" | "BOOK"; url: string };
   };
 };
 
@@ -63,10 +65,16 @@ export function tokenNeedsRefresh(
   now = Date.now(),
   skewMs = TOKEN_SKEW_MS,
 ): boolean {
-  if (!expiresAt) return false;
+  if (!expiresAt) return true;
   const when = expiresAt instanceof Date ? expiresAt.getTime() : Date.parse(String(expiresAt));
-  if (!Number.isFinite(when)) return false;
+  if (!Number.isFinite(when)) return true;
   return when - now <= skewMs;
+}
+
+export function isExpiredOAuthError(message: string): boolean {
+  return /invalid_grant|error.?code.?190|OAuthException|session has expired|#10\b|expired.?token|\b401\b|\b400\b/i.test(
+    message,
+  );
 }
 
 /** Facebook long-lived tokens last ~60 days — refresh in the last week. */
@@ -111,17 +119,20 @@ export function gbpLocalPostPayload(input: {
   locationId: string;
   summary: string;
   articleUrl: string;
+  /** When set, use CALL CTA instead of putting a phone number in the post body. */
+  phone?: string;
 }): GbpLocalPostPayload {
   const accountId = input.accountId.replace(/[^\w.-]/g, "").slice(0, 80);
   const locationId = input.locationId.replace(/[^\w.-]/g, "").slice(0, 80);
   const url = /^https:\/\//i.test(input.articleUrl) ? input.articleUrl : "https://grok.com";
+  const useCall = Boolean((input.phone ?? "").replace(/\D/g, "").length >= 10);
   return {
     endpoint: `${GBP_POSTS_BASE}/accounts/${accountId}/locations/${locationId}/localPosts`,
     body: {
       languageCode: "en-US",
       topicType: "STANDARD",
-      summary: input.summary.slice(0, 1500),
-      callToAction: { actionType: "LEARN_MORE", url },
+      summary: gbpSafeSummary(input.summary),
+      callToAction: { actionType: useCall ? "CALL" : "BOOK", url },
     },
   };
 }

@@ -457,6 +457,15 @@ export async function drainNurtureTouches(sql: Sql, origin = ""): Promise<{ rele
     if (outcome === "sent") {
       sent += 1;
       await sql`update outreach_touches set status = 'sent' where id = ${touch.id}`;
+      void import("./growth-engine.server").then((mod) =>
+        mod.recordFunnelEvent({
+          leadId: touch.lead_id || touch.lead_slug,
+          event: "sent",
+          trade: touch.trade_type || "",
+          city: touch.city || "",
+          variantId: "",
+        }),
+      ).catch(() => undefined);
       await sql`
         update outreach_sequences s
         set status = 'complete', stopped_reason = ''

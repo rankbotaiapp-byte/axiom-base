@@ -1,26 +1,30 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { useCallback, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ActiveLeadsCard } from "@/components/axiom/cards/ActiveLeadsCard";
 import { MarginProtectionCard } from "@/components/axiom/cards/MarginProtectionCard";
 import { AxiomSpaceOrbitCanvas } from "@/components/axiom/AxiomSpaceOrbitCanvas";
 import { AXIOM_COMPACT_FAB_CLASS } from "@/components/AxiomChatDrawer";
 import { AxiomTelemetryProvider, useAxiomTelemetry } from "@/context/AxiomTelemetryContext";
+import { useMasterSessionClaim } from "@/hooks/use-master-session-claim";
 import { masterDeskError, masterDeskFetch } from "@/lib/axiom/master-desk-client";
 import { claimMasterSession, fetchMasterSession } from "@/lib/axiom/master-session-client";
 import { OutreachDesk } from "@/components/master/outreach-desk";
 import { PrimeLeadCommand } from "@/components/master/prime-lead-command";
+import { GrowthTreasuryCard } from "@/components/master/GrowthTreasuryCard";
+import { AutopilotApprovalQueue } from "@/components/master/AutopilotApprovalQueue";
 
 const CREDIT_CENTS = 4;
 
 const NAV = [
   { id: "command", label: "Command Center" },
+  { id: "queue", label: "Action Queue" },
   { id: "studio", label: "Studio & Branding" },
   { id: "leads", label: "Autopilot Leads" },
   { id: "trials", label: "Stripe Trials ($1)" },
   { id: "margin", label: "Margin Protection" },
+  { id: "growth", label: "Growth & Treasury" },
   { id: "settings", label: "System Settings" },
 ] as const;
 
@@ -45,6 +49,8 @@ type DeskNumbers = {
   sessionError: string;
 };
 
+type DeskPhase = "loading" | "need-key" | "attached" | "denied" | "offline";
+
 const EMPTY: DeskNumbers = {
   trials: 0,
   leads: 0,
@@ -52,7 +58,7 @@ const EMPTY: DeskNumbers = {
   creditCents: 0,
   states: [],
   tenants: [],
-  note: "Desk numbers load when the master session answers.",
+  note: "",
   sessionError: "",
 };
 
@@ -81,133 +87,188 @@ function MasterAdminDashboardInner() {
   const router = useRouter();
   const telemetry = useAxiomTelemetry();
   const [section, setSection] = useState<SectionId>("command");
+  const [phase, setPhase] = useState<DeskPhase>("need-key");
   const [numbers, setNumbers] = useState<DeskNumbers>(EMPTY);
+  const [configured, setConfigured] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [attachBusy, setAttachBusy] = useState(false);
   const [pulseNote, setPulseNote] = useState("");
   const [pulsing, setPulsing] = useState<"good" | "warning" | "alert" | null>(null);
   const sweep = "Standing by. A sweep stays a dry run unless outreach is live.";
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const urlKey = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("key")?.trim() ?? "" : "";
-        if (urlKey.length >= 16) {
-          await claimMasterSession(urlKey).catch(() => undefined);
-        } else {
-          await fetchMasterSession().catch(() => undefined);
-        }
-        const [telemetryRes, tenantsRes] = await Promise.all([
-          masterDeskFetch("/api/master/telemetry"),
-          masterDeskFetch("/api/master/tenants"),
-        ]);
-        if (cancelled) return;
-        const denied = [telemetryRes, tenantsRes].find((res) => res.status === 401 || res.status === 403);
-        if (denied) {
-          const message = await masterDeskError(denied);
-          if (!cancelled) setNumbers({ ...EMPTY, note: message, sessionError: message });
+  const loadDesk = useCallback(async (claimKey?: string) => {
+    const urlKey = claimKey?.trim() ?? "";
+    if (urlKey.length >= 16) setPhase("loading");
+    try {
+      if (urlKey.length >= 16) {
+        const claimed = await claimMasterSession(urlKey);
+        setConfigured(claimed.configured);
+      } else {
+        const session = await fetchMasterSession();
+        setConfigured(session.configured);
+        if (!session.attached) {
+          setPhase("need-key");
+          setNumbers({
+            ...EMPTY,
+            note: session.configured
+              ? "Attach MASTER_ADMIN_BYPASS_KEY (or ?key=) so the desk can load live counts."
+              : "No bypass key in env yet. Sign in as a platform owner, or set MASTER_ADMIN_BYPASS_KEY.",
+          });
           return;
         }
-        const next = { ...EMPTY, note: "" };
-        if (telemetryRes.ok) {
-          const body = (await telemetryRes.json()) as {
-            leadsLast24h?: number;
-            leadsByState?: { state: string; count: number }[];
-            trials?: number;
-            creditSpend?: number;
-          };
-          next.leads = Number(body.leadsLast24h ?? 0);
-          next.states = Array.isArray(body.leadsByState) ? body.leadsByState : [];
-          if (typeof body.trials === "number") next.trials = body.trials;
-          if (typeof body.creditSpend === "number") {
-            next.creditCents = Math.round(body.creditSpend * 100);
-            next.credits = CREDIT_CENTS > 0 ? Math.round(next.creditCents / CREDIT_CENTS) : 0;
-          }
-        }
-        if (tenantsRes.ok) {
-          const body = (await tenantsRes.json()) as { tenants?: TenantRow[]; creditSpendCents?: number };
-          const tenants = Array.isArray(body.tenants) ? body.tenants : [];
-          next.tenants = tenants;
-          if (!telemetryRes.ok) {
-            next.trials = tenants.filter((row) => row.subscriptionStatus === "trialing").length;
-            next.creditCents = Number(body.creditSpendCents ?? 0);
-            next.credits = CREDIT_CENTS > 0 ? Math.round(next.creditCents / CREDIT_CENTS) : 0;
-          }
-        }
-        if (!telemetryRes.ok && !tenantsRes.ok) {
-          next.note = "The desk session did not return telemetry. Counts stay at zero so a $1 trial cannot show a fake profit.";
-        }
-        if (!cancelled) setNumbers(next);
-      } catch {
-        if (!cancelled) {
-          setNumbers({ ...EMPTY, note: "The desk is offline. Counts stay at zero." });
+      }
+
+      const [telemetryRes, tenantsRes] = await Promise.all([
+        masterDeskFetch("/api/master/telemetry"),
+        masterDeskFetch("/api/master/tenants"),
+      ]);
+      const denied = [telemetryRes, tenantsRes].find((res) => res.status === 401 || res.status === 403);
+      if (denied) {
+        const message = await masterDeskError(denied);
+        setPhase(denied.status === 401 ? "need-key" : "denied");
+        setNumbers({ ...EMPTY, note: message, sessionError: message });
+        return;
+      }
+      const next = { ...EMPTY, note: "" };
+      if (telemetryRes.ok) {
+        const body = (await telemetryRes.json()) as {
+          leadsLast24h?: number;
+          leadsByState?: { state: string; count: number }[];
+          trials?: number;
+          creditSpend?: number;
+        };
+        next.leads = Number(body.leadsLast24h ?? 0);
+        next.states = Array.isArray(body.leadsByState) ? body.leadsByState : [];
+        if (typeof body.trials === "number") next.trials = body.trials;
+        if (typeof body.creditSpend === "number") {
+          next.creditCents = Math.round(body.creditSpend * 100);
+          next.credits = CREDIT_CENTS > 0 ? Math.round(next.creditCents / CREDIT_CENTS) : 0;
         }
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      if (tenantsRes.ok) {
+        const body = (await tenantsRes.json()) as { tenants?: TenantRow[]; creditSpendCents?: number };
+        const tenants = Array.isArray(body.tenants) ? body.tenants : [];
+        next.tenants = tenants;
+        if (!telemetryRes.ok) {
+          next.trials = tenants.filter((row) => row.subscriptionStatus === "trialing").length;
+          next.creditCents = Number(body.creditSpendCents ?? 0);
+          next.credits = CREDIT_CENTS > 0 ? Math.round(next.creditCents / CREDIT_CENTS) : 0;
+        }
+      }
+      if (!telemetryRes.ok && !tenantsRes.ok) {
+        setPhase("offline");
+        setNumbers({
+          ...EMPTY,
+          note: "The desk session did not return telemetry. Counts stay blank so a $1 trial cannot show a fake profit.",
+          sessionError: "Telemetry unavailable",
+        });
+        return;
+      }
+      setPhase("attached");
+      setNumbers(next);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "The desk is offline.";
+      setPhase("need-key");
+      setNumbers({
+        ...EMPTY,
+        note: message,
+        sessionError: message,
+      });
+    }
   }, []);
 
+  useMasterSessionClaim(loadDesk);
+
   const margin = exposureOf(numbers);
-  const blocked = Boolean(numbers.sessionError);
+  const live = phase === "attached";
+  const blocked = !live;
 
   return (
-    <div className="relative min-h-dvh bg-[#050507] text-white">
+    <div className="axiom-master-desk relative min-h-dvh bg-[#050507] text-white">
       <AxiomSpaceOrbitCanvas anchor={null} />
-      <div className="relative z-10 mx-auto flex min-h-dvh max-w-[1400px]">
-        <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-white/[0.03] px-4 py-6 md:block">
-          <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-[#00ffcc]">Axiom</p>
-          <p className="mt-1 font-mono text-xs text-white/50">Master desk</p>
-          <nav className="mt-8 grid gap-1" aria-label="Master sections">
-            {NAV.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSection(item.id)}
-                className={`rounded-lg px-3 py-2 text-left font-mono text-[11px] uppercase tracking-[0.14em] ${
-                  section === item.id ? "bg-[#00ffcc]/10 text-[#00ffcc]" : "text-white/55 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </aside>
+      <div className="relative z-10 mx-auto min-h-dvh max-w-[1400px] px-4 py-6 pb-28 sm:px-8">
+        <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-[#00ffcc]">Axiom</p>
+        <p className="mt-1 font-mono text-xs text-white/50">Master desk</p>
+        <nav className="axiom-master-nav mt-6" aria-label="Master sections">
+          {NAV.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSection(item.id)}
+              className={`shrink-0 rounded-full border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] sm:text-[11px] ${
+                section === item.id ? "border-[#00ffcc] bg-[#00ffcc]/10 text-[#00ffcc]" : "border-white/15 text-white/55 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-        <main className="min-w-0 flex-1 px-4 py-6 pb-28 sm:px-8">
-          <div className="mb-6 flex gap-2 overflow-x-auto md:hidden">
-            {NAV.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSection(item.id)}
-                className={`shrink-0 rounded-full border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] ${
-                  section === item.id ? "border-[#00ffcc] text-[#00ffcc]" : "border-white/15 text-white/55"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
+        <main className="min-w-0">
           <header className="mb-6">
-            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#ffb020]">Live desk</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#ffb020]">
+              {phase === "attached" ? "Live desk" : phase === "loading" ? "Attaching session" : "Session required"}
+            </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">{NAV.find((item) => item.id === section)?.label}</h1>
             {numbers.note ? <p className="mt-2 max-w-xl text-sm text-white/55">{numbers.note}</p> : null}
           </header>
 
+          {phase !== "attached" ? (
+            <form
+              className="mb-6 grid gap-3 rounded-2xl border border-[#FFE500]/30 bg-white/[0.04] p-4 sm:grid-cols-[1fr_auto]"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const key = keyDraft.trim();
+                if (key.length < 16) return;
+                setAttachBusy(true);
+                void loadDesk(key)
+                  .catch(() => undefined)
+                  .finally(() => {
+                    setAttachBusy(false);
+                    setKeyDraft("");
+                  });
+              }}
+            >
+              <label className="grid gap-1">
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#FFE500]">Master session</span>
+                <input
+                  type="password"
+                  minLength={16}
+                  value={keyDraft}
+                  onChange={(event) => setKeyDraft(event.target.value)}
+                  placeholder={configured ? "MASTER_ADMIN_BYPASS_KEY" : "Owner key (16+ characters)"}
+                  className="min-h-11 rounded-md border border-white/15 bg-[#050507] px-3 text-sm text-white"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={attachBusy || keyDraft.trim().length < 16}
+                className="self-end rounded-lg border border-[#00ffcc]/50 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#00ffcc] disabled:opacity-40"
+              >
+                {attachBusy ? "Attaching…" : "Attach desk"}
+              </button>
+            </form>
+          ) : null}
+
+          {section === "command" || section === "queue" || section === "growth" ? (
+            <AutopilotApprovalQueue attached={live} />
+          ) : null}
+
           {section === "command" || section === "margin" ? (
             <>
               <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <Metric label="Today's $1 trials" value={blocked ? "—" : String(numbers.trials)} detail={blocked ? "Waiting on the desk session" : money(margin.revenueCents)} />
-                <Metric label="Net profit (post-API)" value={blocked ? "—" : money(margin.netCents)} detail="Trial dollars minus credit cost" />
-                <Metric label="AI credit consumption" value={blocked ? "—" : String(numbers.credits)} detail={blocked ? "Waiting on the desk session" : `${money(margin.creditCents)} at ${money(CREDIT_CENTS)} each`} />
-                <ActiveLeadsCard initialLeads={blocked ? null : numbers.leads} blocked={blocked} />
+                <Metric label="Today's $1 trials" value={live ? String(numbers.trials) : "—"} detail={live ? money(margin.revenueCents) : "Waiting on the desk session"} />
+                <Metric label="Net profit (post-API)" value={live ? money(margin.netCents) : "—"} detail="Trial dollars minus credit cost" />
+                <Metric label="AI credit consumption" value={live ? String(numbers.credits) : "—"} detail={live ? `${money(margin.creditCents)} at ${money(CREDIT_CENTS)} each` : "Waiting on the desk session"} />
+                <ActiveLeadsCard initialLeads={live ? numbers.leads : null} blocked={blocked} />
               </section>
               <MarginGuard margin={margin} blocked={blocked} />
               <MarginProtectionCard />
+              <GrowthTreasuryCard attached={live} />
             </>
           ) : null}
+
+          {section === "growth" ? <GrowthTreasuryCard attached={live} /> : null}
 
           {section === "command" ? (
             <>
@@ -260,36 +321,18 @@ function MasterAdminDashboardInner() {
           {section === "studio" ? (
             <Panel title="Studio & branding">
               <p className="text-sm text-white/70">
-                Logo workspace builds storefront loops. The 3D landing studio edits CRO copy, companion face,
-                and particles — persisted to Supabase <span className="font-mono text-[#00ffcc]">app_settings</span> as{" "}
-                <span className="font-mono text-white/80">axiom_landing:&lt;slug&gt;</span>.
+                This desk is internal. Client shops do not get companion-face customizers or AI generation studios.
+                They upload a hero clip and proof-of-work photos from <span className="font-mono text-white/80">/[slug]/admin</span>.
               </p>
-              <div className="mt-4 flex flex-wrap gap-4">
-                <Link
-                  href="/axiom-studio"
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-[#00ffcc]"
-                >
-                  Open logo studio
-                </Link>
-                <Link
-                  href="/axiom/studio"
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-[#00ffcc]"
-                >
-                  Open 3D landing studio
-                </Link>
-                <Link
-                  href="/axiom"
-                  className="inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.16em] text-white/70"
-                >
-                  Preview /axiom
-                </Link>
-              </div>
+              <p className="mt-3 text-sm text-white/55">
+                Assigned default heroes stay on the storefront until the owner uploads a replacement or resets the slot.
+              </p>
             </Panel>
           ) : null}
 
           {section === "leads" ? (
             <>
-              <PrimeLeadCommand />
+              <PrimeLeadCommand sessionAttached={live} />
               <OutreachDesk />
               <Panel title="Autopilot leads">
                 {numbers.states.length === 0 ? (
@@ -380,7 +423,7 @@ function FieldDispatcher({ leads, sweep, blocked, sessionError }: { leads: numbe
         Inbound SMS and new bookings wait here. The dispatcher keeps them on the desk and speaks through the assistant in the corner.
       </p>
       <p className="mt-3 font-mono text-[11px] text-white/45">
-        {blocked ? sessionError : `${leads} inbound in the last day · ${sweep}`}
+        {blocked ? sessionError || "Waiting on the desk session" : `${leads} inbound in the last day · ${sweep}`}
       </p>
     </section>
   );

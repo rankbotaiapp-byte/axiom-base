@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050507">
+<title>Plumbing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: emergency trade service, night-shift confidence; client brand overrides via CONFIG.
+IDEA: unbranded shop + van at night (blank sign, blank van panel), wet lot running down under the call buttons.
+PICTURE: hero-phone.mp4 (9:16, pre-rendered stretched ground) under 900px; hero-loop.mp4 (16:9) on desktop.
+COLOUR and TYPE: #050507 ground, orange #ff7a00 = call, cyan #00f0e8 = book; Montserrat + Inter.
+LAYOUT: header, scene, copy + CTAs, trust tiles, fixed Call/Book dock (mobile); left copy, scene right (desktop).
+*/
+:root{color-scheme:dark;--bg:#050507;--ink:#e8f6f6;--or:#ff7a00;--cy:#00f0e8}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+a{color:inherit}
+.hl{position:relative;min-height:100svh;display:flex;flex-direction:column;overflow:hidden;isolation:isolate;padding-top:env(safe-area-inset-top)}
+.hl-media{position:absolute;inset:0;z-index:0;pointer-events:none}
+.hl-media video{width:100%;height:100%;object-fit:cover;object-position:50% 0;display:block}
+.v-phone{height:auto!important;aspect-ratio:9/16;-webkit-mask-image:linear-gradient(#000 62%,#0000 98%);mask-image:linear-gradient(#000 62%,#0000 98%)}
+.hl-media .v-desk{display:none}
+.hl-shade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,#0000 0,#0000 40%,rgb(5 5 7/.35) 56%,rgb(5 5 7/.55) 100%)}
+
+.hdr{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:14px 16px}
+.logo{width:46px;height:46px;border-radius:12px;border:1px solid #0aa;background:#0a1a1d center/cover no-repeat;flex:none;display:grid;place-items:center;font:800 18px Montserrat,sans-serif;color:var(--cy)}
+.brand{flex:1;font:700 15px/1.15 Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.ph{width:46px;height:46px;border-radius:14px;border:1px solid #0aa;display:grid;place-items:center;color:var(--cy);flex:none;background:rgb(0 0 0/.35)}
+
+.copy{position:relative;z-index:2;margin:auto auto 0;padding:0 18px 108px;text-align:center;max-width:560px;width:100%}
+.badge{display:inline-block;margin-bottom:12px;padding:7px 14px;border-radius:999px;background:rgb(0 0 0/.55);border:1px solid #0a3a3f;color:var(--cy);font:800 11px Inter,sans-serif;letter-spacing:.24em;text-transform:uppercase}
+h1{font:800 clamp(32px,8.6vw,46px)/1.07 Inter,sans-serif;margin:0 0 12px;color:#fff;text-wrap:balance;text-shadow:0 2px 18px #000,0 0 40px #000}
+.sub{color:#d6e2e3;margin:0 0 22px;text-shadow:0 1px 10px #000}
+.cta{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:60px;border-radius:16px;font:800 17px Inter,sans-serif;text-transform:uppercase;text-decoration:none;margin-bottom:12px;letter-spacing:.02em}
+.cta.o{background:var(--or);color:#111;box-shadow:0 0 34px #ff7a0066}
+.cta.c{border:1.5px solid var(--cy);color:var(--cy);background:rgb(0 0 0/.5)}
+.trust{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.tile{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;border:1px solid #1b2a30;background:rgb(5 5 7/.6);backdrop-filter:blur(6px);text-align:left;font:600 15px/1.25 Inter,sans-serif}
+.tile svg{color:var(--cy);flex:none}
+.dock{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(#0000,var(--bg) 42%)}
+.dock a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;font:800 17px Inter,sans-serif;text-transform:uppercase;color:#111;text-decoration:none}
+.dock .a{background:var(--or)}.dock .b{background:var(--cy)}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+a:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+
+
+/* ===== scrollable body below the cover ===== */
+.hdr{padding-top:50px}
+.hl-media .v-phone{margin-top:44px}
+.sec{padding:44px 18px;max-width:640px;margin:0 auto}
+.sec h2{font:800 28px/1.1 Inter,sans-serif;margin:0 0 8px;color:#fff;text-wrap:balance}
+.sec .lead{color:#b9c8ca;margin:0 0 22px}
+.svc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.svc div{padding:14px;border-radius:16px;border:1px solid #1b2a30;background:#0a1114}
+.svc b{display:block;font:800 15px/1.2 Inter,sans-serif;color:#fff;margin-bottom:4px}
+.svc span{font-size:13.5px;color:#9fb2b4;line-height:1.4}
+.steps{display:grid;gap:12px;counter-reset:s}
+.steps>div{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:16px;background:#0a1114;border:1px solid #1b2a30}
+.steps>div::before{counter-increment:s;content:counter(s);flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--or);color:#111;font-weight:800}
+.steps b{color:#fff}.steps p{margin:2px 0 0;color:#9fb2b4;font-size:14.5px}
+form{display:grid;gap:12px}
+label{display:grid;gap:6px;font:600 14px Inter,sans-serif;color:#cfe0e1}
+input,select,textarea{font:16px Inter,sans-serif;color:#fff;background:#0a1114;border:1px solid #23363d;border-radius:12px;padding:13px 14px;min-height:48px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--cy);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:600 14px Inter,sans-serif;color:#cfe0e1;background:#0a1114;border:1px solid #23363d;border-radius:999px;padding:10px 14px;min-height:44px;cursor:pointer}
+.chips button[aria-pressed=true]{background:var(--cy);color:#111;border-color:var(--cy)}
+.send{border:0;cursor:pointer}
+.ok{display:none;padding:18px;border-radius:16px;border:1px solid var(--cy);background:#062227;color:#dff;text-align:center}
+.ok b{display:block;font-size:18px;color:#fff;margin-bottom:4px}
+.area{display:flex;flex-wrap:wrap;gap:8px}
+.area span{padding:8px 13px;border-radius:999px;border:1px solid #1b2a30;color:#cfe0e1;font-size:14px}
+footer{padding:34px 18px 120px;text-align:center;color:#7f9294;font-size:13px;border-top:1px solid #12201f}
+footer a{color:var(--cy);text-decoration:none;font-weight:700;font-size:16px}
+.demo-note{font-size:12px;color:#6f8486;margin-top:10px}
+
+@media (min-width:900px){
+  .hl-media .v-phone{display:none}.hl-media .v-desk{display:block}
+  .hl-media{left:34%;
+    -webkit-mask-image:linear-gradient(90deg,#0000 0,#000 24%,#000 96%,#0000 100%),linear-gradient(180deg,#0000 0,#000 8%,#000 88%,#0000 100%);-webkit-mask-composite:source-in;
+    mask-image:linear-gradient(90deg,#0000 0,#000 24%,#000 96%,#0000 100%),linear-gradient(180deg,#0000 0,#000 8%,#000 88%,#0000 100%);mask-composite:intersect}
+  .hl-media video{object-position:42% 50%}
+  .hl-shade{background:linear-gradient(90deg,var(--bg) 0,rgb(5 5 7/.6) 36%,#0000 52%)}
+  .hdr{padding:22px 48px}
+  .copy{margin:auto 0;padding:0 64px 64px;text-align:left;max-width:760px}
+  .copy h1,.copy .sub{max-width:560px}
+  h1{font-size:58px}
+  .ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .cta{width:auto;flex:none;padding:0 26px;white-space:nowrap}
+  .trust{max-width:520px}
+  .dock{display:none}
+}
+@media (prefers-reduced-motion:reduce){.tile{backdrop-filter:none}}
+</style>
+</head>
+<body>
+<section class="hl">
+  <div class="hl-media" aria-hidden="true">
+    <video class="v-phone" src="hero-phone.mp4" poster="poster-phone.jpg" loop muted playsinline preload="none" disablepictureinpicture></video>
+    <video class="v-desk" src="hero-loop.mp4" poster="poster.jpg" loop muted playsinline preload="none" disablepictureinpicture></video>
+  </div>
+  <div class="hl-shade"></div>
+
+  <header class="hdr">
+    <div class="logo" id="logo"></div>
+    <div class="brand" id="brand"></div>
+    <a class="ph" id="phIcon" aria-label="Call"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></a>
+  </header>
+
+  <div class="copy">
+    <div class="badge" id="badge"></div>
+    <h1 id="headline"></h1>
+    <p class="sub" id="subhead"></p>
+    <div class="ctas">
+      <a class="cta o" id="ctaCall"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg><span></span></a>
+      <a class="cta c" id="ctaBook"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg><span></span></a>
+    </div>
+    <div class="trust" id="trust"></div>
+  </div>
+</section>
+
+
+<section class="sec" id="services">
+  <h2>What we fix</h2>
+  <p class="lead">Homes and small businesses across <span data-area></span>.</p>
+  <div class="svc" id="svc"></div>
+</section>
+
+<section class="sec">
+  <h2>How it works</h2>
+  <div class="steps">
+    <div><div><b>Call or book online</b><p>A real person answers, day or night. Or pick a time below in under a minute.</p></div></div>
+    <div><div><b>We text you an arrival window</b><p>You'll know who is coming and roughly when.</p></div></div>
+    <div><div><b>Price explained before work starts</b><p>No work begins until you've said yes.</p></div></div>
+  </div>
+</section>
+
+<section class="sec" id="book">
+  <h2>Book a plumber</h2>
+  <p class="lead">Tell us what's going on and we'll text you to confirm.</p>
+  <form id="bookForm" novalidate>
+    <div>
+      <div style="font:600 14px Inter;color:#cfe0e1;margin-bottom:8px">What's the problem?</div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <label>Your name<input id="fName" autocomplete="name" required></label>
+    <label>Mobile number<input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+    <label>When?
+      <select id="fWhen"><option>As soon as possible</option><option>Today</option><option>Tomorrow</option><option>This week</option></select>
+    </label>
+    <label>Anything else? (optional)<textarea id="fNote" rows="3"></textarea></label>
+    <button class="cta o send" type="submit">Request a plumber</button>
+    <p class="demo-note">Demo form: requests aren't sent anywhere yet.</p>
+  </form>
+  <div class="ok" id="ok" role="status"><b>Request received</b><span id="okTxt"></span></div>
+</section>
+
+<section class="sec">
+  <h2>Service area</h2>
+  <div class="area" id="area"></div>
+</section>
+
+<footer>
+  <div id="fBrand" style="color:#cfe0e1;font-weight:700;margin-bottom:6px">Licensed plumbing contractor</div>
+  <a id="fCall"></a>
+</footer>
+
+<nav class="dock">
+  <a class="a" id="dockCall">Call</a>
+  <a class="b" id="dockBook">Book</a>
+</nav>
+
+<script>
+{
+/* ===== CONFIG: plumbing outreach defaults. Master Dashboard overrides any key. ===== */
+const DEFAULTS = {
+  businessName: "Plumbing",
+  logoText: "",
+  logoSrc: "",
+  phone: "(541) 555-0100",
+  serviceArea: "Rogue Valley",
+  badge: "24/7 Emergency · Instant dispatch",
+  headline: "Burst pipe? No hot water? We're on the way.",
+  subhead: "Leaks, clogged drains, water heaters and repipes. Book online in 60 seconds or call for a live dispatcher.",
+  callLabel: "Leak or no water? Call now",
+  bookLabel: "Book a plumber",
+  bookHref: "#book",
+  trust: ["Licensed & insured", "24/7 live dispatch"],
+  bg: "#050507"
+};
+const C = { ...DEFAULTS, ...(window.HERO_CONFIG || {}) };
+
+const $ = id => document.getElementById(id);
+const tel = "tel:" + String(C.phone).replace(/[^\d+]/g, "");
+document.documentElement.style.setProperty("--bg", C.bg);
+document.title = C.businessName;
+$("brand").textContent = C.businessName;
+if (C.logoSrc) $("logo").style.backgroundImage = `url("${encodeURI(C.logoSrc)}")`; else if (C.logoText) $("logo").textContent = C.logoText; else $("logo").innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>';
+$("badge").textContent = C.badge.replace("{area}", C.serviceArea);
+$("headline").textContent = C.headline;
+$("subhead").textContent = C.subhead;
+$("ctaCall").querySelector("span").textContent = C.callLabel;
+$("ctaBook").querySelector("span").textContent = C.bookLabel;
+for (const id of ["phIcon", "ctaCall", "dockCall"]) $(id).href = tel;
+for (const id of ["ctaBook", "dockBook"]) $(id).href = C.bookHref;
+$("phIcon").setAttribute("aria-label", "Call " + C.businessName + " at " + C.phone);
+const shield = '<svg class="i" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>';
+$("trust").innerHTML = C.trust.map(() => `<div class="tile">${shield}<span></span></div>`).join("");
+[...$("trust").querySelectorAll("span")].forEach((s, i) => s.textContent = C.trust[i]);
+const playMedia = new URLSearchParams(location.search).get("play") === "1";
+document.querySelectorAll("video").forEach((v) => {
+  v.preload = playMedia ? "metadata" : "none";
+  if (playMedia) v.play().catch(() => {});
+});
+
+
+/* ===== scrollable sections ===== */
+const SERVICES = C.services || [
+  ["Leaks & burst pipes","Find it, stop it, fix it."],
+  ["Clogged drains","Sinks, tubs, toilets, main lines."],
+  ["Water heaters","Repair or replace, tank or tankless."],
+  ["Sewer lines","Camera checks and repairs."],
+  ["Repipes","Old or failing pipe replaced."],
+  ["Fixtures","Faucets, toilets, disposals."]
+];
+const AREA = C.areaTowns || ["Medford","Grants Pass","Ashland","Central Point","Eagle Point","Rogue River","Gold Hill"];
+const PROBS = ["Leak","No hot water","Clogged drain","Toilet","Sewer smell","Other"];
+document.querySelectorAll("[data-area]").forEach(e => e.textContent = C.serviceArea);
+$("svc").innerHTML = SERVICES.map(() => "<div><b></b><span></span></div>").join("");
+[...$("svc").children].forEach((d, i) => { d.querySelector("b").textContent = SERVICES[i][0]; d.querySelector("span").textContent = SERVICES[i][1]; });
+$("area").innerHTML = AREA.map(() => "<span></span>").join("");
+[...$("area").children].forEach((d, i) => d.textContent = AREA[i]);
+$("chips").innerHTML = PROBS.map(() => '<button type="button" aria-pressed="false"></button>').join("");
+[...$("chips").children].forEach((b, i) => { b.textContent = PROBS[i]; b.onclick = () => { [...$("chips").children].forEach(x => x.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true"); }; });
+
+$("fCall").textContent = C.phone; $("fCall").href = tel;
+$("bookForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("fName").value.trim(), ph = $("fPhone").value.replace(/\D/g, "");
+  if (!name) { $("fName").focus(); return; }
+  if (ph.length < 10) { $("fPhone").focus(); return; }
+  const prob = $("chips").querySelector('[aria-pressed="true"]');
+  $("okTxt").textContent = `Thanks ${name}. ${prob ? prob.textContent + ", " : ""}${$("fWhen").value.toLowerCase()}. We'll text ${$("fPhone").value} to confirm.`;
+  $("bookForm").style.display = "none"; $("ok").style.display = "block";
+});
+
+/* ===== Play only the video that's showing; pause off screen; respect reduced motion ===== */
+const mq = matchMedia("(min-width:900px)");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const vids = { phone: document.querySelector(".v-phone"), desk: document.querySelector(".v-desk") };
+let onScreen = true;
+const active = () => mq.matches ? vids.desk : vids.phone;
+function sync() {
+  for (const v of Object.values(vids)) if (v !== active() || !onScreen || reduce) v.pause();
+  const v = active();
+  if (onScreen && !reduce) { v.preload = "auto"; v.play().catch(() => {}); }
+}
+mq.addEventListener("change", sync);
+new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; sync(); }).observe(document.querySelector(".hl"));
+addEventListener("touchstart", sync, { once: true, passive: true });
+if (reduce) vids.phone.removeAttribute("autoplay");
+sync();
+}
+</script>
+</body>
+</html>

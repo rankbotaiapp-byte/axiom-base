@@ -5,6 +5,9 @@
 import { nicheForLead, nicheLabel } from "./directory.ts";
 import { verifiedPrimaryLoop } from "./niche-dataset-pairing.ts";
 import { previewNicheSlug } from "./preview-link.ts";
+import { barberCampaignPath } from "./barber-outreach.ts";
+import { electricianCampaignPath } from "./electrician-outreach.ts";
+import { landingPreviewPath } from "./landing-preview.ts";
 import { plumberCampaignPath } from "./plumber-outreach.ts";
 import type { ShopNiche } from "./types.ts";
 
@@ -15,7 +18,7 @@ export const PLUMBING_CAMPAIGN_HERO = "/media/axio-plumber-hero.mp4";
 export const PLUMBING_CAMPAIGN_GREETING =
   "/media/axiom-24-7-booking-for-contractors.mp4";
 export const PLUMBING_CAMPAIGN_GREETING_SAFE = "/media/axiom-24-7-booking-for-contractors.mp4";
-export const PLUMBING_CAMPAIGN_TEMPLATE = "/t/{slug}?niche=plumbing&greet=1";
+export const PLUMBING_CAMPAIGN_TEMPLATE = "/?lead_id={id}&b={name}&phone={phone}&city={city}&trade=plumbing";
 
 /**
  * Active Automate slate. Frozen on Emergency Plumbing until that dataset is exhausted.
@@ -112,6 +115,8 @@ export function demoStorefrontPath(input: {
   city?: string;
   county?: string;
   tradeLabel?: string;
+  phone?: string;
+  email?: string;
 }): string {
   const niche = previewNicheSlug(input.niche, input.tradeLabel ?? "");
   const params = new URLSearchParams();
@@ -128,18 +133,51 @@ export function demoStorefrontPath(input: {
   if (input.tradeLabel?.trim()) params.set("trade", input.tradeLabel.trim().slice(0, 80));
   const hero = outreachNicheHero(niche, input.tradeLabel);
   params.set("hero", hero);
-  if (niche === "plumbing" && tenantSlug) {
-    const bound = plumberCampaignPath(tenantSlug, { greet: true });
+  if (niche === "plumbing") {
+    const bound = landingPreviewPath({
+      leadId: input.leadId,
+      leadSlug: input.leadSlug,
+      businessName: input.businessName,
+      phone: input.phone,
+      email: input.email,
+      city: input.city,
+      trade: "plumbing",
+    });
     const url = new URL(bound, "https://axiom.local");
-    for (const [key, value] of params.entries()) {
-      if (!url.searchParams.has(key)) url.searchParams.set(key, value);
-    }
-    url.searchParams.set("niche", "plumbing");
+    url.searchParams.set("utm_source", "desk");
     url.searchParams.set("greet", "1");
     url.searchParams.set("hero", PLUMBING_CAMPAIGN_HERO);
     return `${url.pathname}?${url.searchParams.toString()}`;
   }
+  if (niche === "electrical" && tenantSlug) {
+    const bound = electricianCampaignPath(tenantSlug, { greet: true });
+    const url = new URL(bound, "https://axiom.local");
+    for (const [key, value] of params.entries()) {
+      if (!url.searchParams.has(key)) url.searchParams.set(key, value);
+    }
+    url.searchParams.set("niche", "electrical");
+    url.searchParams.set("greet", "1");
+    return `${url.pathname}?${url.searchParams.toString()}`;
+  }
+  if (niche === "barber" && tenantSlug) {
+    const bound = barberCampaignPath(tenantSlug, { greet: true });
+    const url = new URL(bound, "https://axiom.local");
+    for (const [key, value] of params.entries()) {
+      if (!url.searchParams.has(key)) url.searchParams.set(key, value);
+    }
+    url.searchParams.set("niche", "barber");
+    url.searchParams.set("greet", "1");
+    return `${url.pathname}?${url.searchParams.toString()}`;
+  }
   return `/demo/${niche}?${params.toString()}`;
+}
+
+export function barberStorefrontHref(slug: string): string {
+  return barberCampaignPath(slug, { greet: true });
+}
+
+export function electricianStorefrontHref(slug: string): string {
+  return electricianCampaignPath(slug, { greet: true });
 }
 
 /** Canonical industrial plumbing storefront every dispatch and desk preview uses. */

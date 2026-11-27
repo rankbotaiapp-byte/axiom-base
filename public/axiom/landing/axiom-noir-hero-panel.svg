@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Axiom noir hero panel">
+  <defs>
+    <linearGradient id="obsidian" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0c12"/>
+      <stop offset="1" stop-color="#050507"/>
+    </linearGradient>
+    <radialGradient id="cyanGlow" cx="0.18" cy="0.12" r="0.7">
+      <stop offset="0" stop-color="#00ffcc" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#00ffcc" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="smoke" cx="0.55" cy="0.7" r="0.55">
+      <stop offset="0" stop-color="#8aa0b8" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#050507" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#obsidian)"/>
+  <rect width="1280" height="720" fill="url(#cyanGlow)"/>
+  <rect width="1280" height="720" fill="url(#smoke)"/>
+  <rect x="48" y="40" width="1184" height="640" fill="none" stroke="#00ffcc" stroke-opacity=".55" stroke-width="2"/>
+  <path d="M48 72 V40 H80" fill="none" stroke="#FFE500" stroke-width="3"/>
+  <path d="M1232 72 V40 H1200" fill="none" stroke="#FFE500" stroke-width="3"/>
+  <path d="M48 648 V680 H80" fill="none" stroke="#FFE500" stroke-width="3"/>
+  <path d="M1232 648 V680 H1200" fill="none" stroke="#FFE500" stroke-width="3"/>
+  <rect x="160" y="150" width="960" height="420" fill="#050507" stroke="#00ffcc" stroke-opacity=".4"/>
+  <text x="200" y="230" font-family="ui-monospace, Menlo, monospace" font-size="18" letter-spacing="8" fill="#00ffcc">AXIOM � HUD</text>
+  <text x="200" y="330" font-family="Inter, Helvetica, Arial, sans-serif" font-size="54" font-weight="700" fill="#f4f4f5">Job still. Live page.</text>
+  <text x="200" y="390" font-family="Inter, Helvetica, Arial, sans-serif" font-size="22" fill="#a1a1aa">Proof of work, staged in Cyber-Obsidian chrome.</text>
+  <rect x="200" y="440" width="220" height="48" fill="#00ffcc"/>
+  <text x="230" y="471" font-family="Inter, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#03140f">Book now</text>
+</svg>

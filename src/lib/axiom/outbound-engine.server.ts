@@ -16,6 +16,7 @@ import { hasListedPhone } from "./autopilot";
 import { parseLeadLineType } from "./lead-verification";
 import { parseOutreachMode } from "./outreach-queue";
 import { OUTREACH_ACTIVE_VERTICAL, PLUMBING_LEAD_DATASET_SIZE, tradeTypeMatchersForNiche } from "./outreach-niche-batch";
+import { climateRegionForState } from "./growth-engine.ts";
 import {
   DEFAULT_EMAIL_DAILY_CAP,
   DEFAULT_SMS_DAILY_CAP,
@@ -306,6 +307,7 @@ type LeadRow = {
   business_name: string;
   city: string;
   county: string;
+  state?: string | null;
   trade_type: string;
   contact_email: string | null;
   contact_phone: string | null;
@@ -314,6 +316,20 @@ type LeadRow = {
   prime_score?: number | null;
 };
 
+function seasonalBatchRank(state: string): number {
+  const region = climateRegionForState(state);
+  const month = new Date().getUTCMonth() + 1;
+  const winter = month === 11 || month === 12 || month <= 3;
+  const summer = month >= 6 && month <= 8;
+  if (winter && region === "cold") return 0;
+  if (summer && region === "warm") return 0;
+  return 1;
+}
+
+function prioritizeSeasonalLeads(leads: LeadRow[]): LeadRow[] {
+  return [...leads].sort((a, b) => seasonalBatchRank(a.state || "") - seasonalBatchRank(b.state || ""));
+}
+
 async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]> {
   const matchers = tradeTypeMatchersForNiche(OUTREACH_ACTIVE_VERTICAL);
   const from = parseDatasetOffset(offset);
@@ -321,8 +337,8 @@ async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]
   const to = from + size - 1;
   try {
     // Inclusive `.range(from, to)` window — never `select *` the 20,330 catalog.
-    return await sql<LeadRow>`
-      select lead_slug, business_name, city, county, trade_type, contact_email, contact_phone, visual_mode,
+    const rows = await sql<LeadRow>`
+      select lead_slug, business_name, city, county, coalesce(state, '') as state, trade_type, contact_email, contact_phone, visual_mode,
              coalesce(line_type, 'unknown') as line_type, coalesce(prime_score, 0) as prime_score
       from preloaded_leads
       where claimed = false
@@ -339,13 +355,14 @@ async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]
       offset ${from}
       limit ${size}
     `;
+    return prioritizeSeasonalLeads(rows);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (!/visual_mode|prime_score|qa_approved|line_type/i.test(message)) {
+    if (!/visual_mode|prime_score|qa_approved|line_type|column .*state/i.test(message)) {
       logEngineFailure("loadLeads.range", err, { from, to, size });
       throw err;
     }
-    return await sql<LeadRow>`
+    const fallback = await sql<LeadRow>`
       select lead_slug, business_name, city, county, trade_type, contact_email, contact_phone
       from preloaded_leads
       where claimed = false
@@ -358,6 +375,7 @@ async function loadLeads(sql: Sql, limit: number, offset = 0): Promise<LeadRow[]
       offset ${from}
       limit ${size}
     `;
+    return prioritizeSeasonalLeads(fallback);
   }
 }
 
@@ -462,6 +480,16 @@ async function logAssignedLead(
     leadSlug: lead.lead_slug,
     summary: `${line.summary} · ${body.slice(0, 80)}`,
   });
+  void import("./growth-engine.server").then((mod) =>
+    mod.recordFunnelEvent({
+      leadId: lead.lead_slug,
+      event: "sent",
+      trade: lead.trade_type || "plumbing",
+      state: lead.state || "",
+      city: lead.city,
+      variantId: state.pitchAngleId,
+    }),
+  ).catch(() => undefined);
 }
 
 async function enqueueLeadRow(
@@ -620,7 +648,14 @@ async function dispatchDatasetBatch(
 
 /** Logs simulation or queued lines. Provider send is the outreach drain, and only when OUTREACH_MODE is live. */
 async function tickEngine(sql: Sql, request: Request, state: Awaited<ReturnType<typeof loadState>>) {
-  if (state.paused) return { ticked: 0, paused: true as const };
+  const growth = await import("./growth-engine.server");
+  const guard = await growth.enforceTreasuryCaps().catch(() => ({ paused: false, reason: "" }));
+  if (state.paused || guard.paused) return { ticked: 0, paused: true as const };
+  try {
+    state.pitchAngleId = parsePitchAngleId(await growth.sampleLiveVariant());
+  } catch {
+    /* keep saved angle */
+  }
   const want = ENGINE_TICK_SIZE;
   const rooms = {
     sms: throttleCount(want, remainingCap(state.smsSentToday, state.smsDailyCap)),
@@ -653,6 +688,7 @@ async function tickEngine(sql: Sql, request: Request, state: Awaited<ReturnType<
       update outbound_engine_state
       set sms_sent_today = sms_sent_today + ${sms},
           email_sent_today = email_sent_today + ${email},
+          pitch_angle_id = ${state.pitchAngleId},
           updated_at = now()
       where id = ${"master"}
     `;

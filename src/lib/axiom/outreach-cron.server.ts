@@ -6,6 +6,18 @@ import { drainNurtureTouches, drainOutreachQueue } from "./outreach-queue.server
 export async function handleOutreachCron(request: Request): Promise<Response> {
   const denied = requireCronSecret(request);
   if (denied) return denied;
+  const verifySlug = new URL(request.url).searchParams.get("shop_slug")?.trim() || "";
+  if (verifySlug.startsWith("axiom-verify-")) {
+    const quoteNudges = await import("./sprint2-dispatch.server")
+      .then((mod) => mod.sweepUnpaidQuoteNudges(25, verifySlug))
+      .catch(() => ({ sent: 0, skipped: 0, quiet: 0 }));
+    return Response.json({
+      scoped: verifySlug,
+      quoteNudgesSent: quoteNudges.sent,
+      quoteNudgesSkipped: quoteNudges.skipped,
+      quoteNudgesQuiet: quoteNudges.quiet,
+    });
+  }
   const sql = await getSql();
   const { resolvePublicAppOrigin } = await import("./public-app-url");
   const origin = resolvePublicAppOrigin(new URL(request.url).origin);
@@ -46,6 +58,18 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
   const trustClosed = await import("./lifecycle.server")
     .then((mod) => mod.sweepExpiredTrustWindows(sql))
     .catch(() => 0);
+  const notifyRetry = await import("./notify.server")
+    .then((mod) => mod.retryFailedShopNotifications(20))
+    .catch(() => ({ scanned: 0, sent: 0, failed: 0 }));
+  const closedJob = await import("./closed-job.server")
+    .then(async (mod) => {
+      await mod.enqueueDailyOwnerRoiDigests().catch(() => 0);
+      return mod.drainClosedJobQueue(40);
+    })
+    .catch(() => ({ sent: 0, skipped: 0 }));
+  const quoteNudges = await import("./sprint2-dispatch.server")
+    .then((mod) => mod.sweepUnpaidQuoteNudges(25))
+    .catch(() => ({ sent: 0, skipped: 0, quiet: 0 }));
   return Response.json({
     batchReleased: batch.released,
     nurtureReleased: nurture.released,
@@ -60,6 +84,14 @@ export async function handleOutreachCron(request: Request): Promise<Response> {
     tokensRefreshed: refreshed.refreshed,
     engagementHandled: engagement.handled,
     trustWindowsClosed: trustClosed,
+    notifyRetried: notifyRetry.sent,
+    notifyRetryFailed: notifyRetry.failed,
+    notifyRetryScanned: notifyRetry.scanned,
+    closedJobSent: closedJob.sent,
+    closedJobSkipped: closedJob.skipped,
+    quoteNudgesSent: quoteNudges.sent,
+    quoteNudgesSkipped: quoteNudges.skipped,
+    quoteNudgesQuiet: quoteNudges.quiet,
     cronEnabled,
   });
 }

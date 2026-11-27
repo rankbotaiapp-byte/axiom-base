@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import type { ChaChingMetrics } from "./cha-ching-metrics";
-import { simulatedChaChingMetrics } from "./cha-ching-metrics";
+import { emptyChaChingMetrics } from "./cha-ching-metrics";
+import { axiomSubscriptionCostCents, netRoiCents, type BillingForRoi } from "./closed-job.ts";
 
 function pacificDay(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
@@ -8,26 +9,63 @@ function pacificDay(): string {
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 
-export async function readChaChingMetricsForShop(slug: string): Promise<ChaChingMetrics | null> {
+async function loadBilling(sql: Sql, shopId: string): Promise<BillingForRoi> {
+  try {
+    const rows = await sql<{
+      plan: string | null;
+      status: string | null;
+      price_cents: number | null;
+      awaiting_first_real_lead: boolean | null;
+    }>`
+      select plan, status, price_cents, awaiting_first_real_lead
+      from shop_billing where shop_id = ${shopId} limit 1
+    `;
+    const row = rows[0];
+    return {
+      plan: row?.plan,
+      status: row?.status,
+      priceCents: row?.price_cents ?? 0,
+      awaitingFirstRealLead: Boolean(row?.awaiting_first_real_lead),
+    };
+  } catch {
+    try {
+      const rows = await sql<{ plan: string | null; status: string | null; price_cents: number | null }>`
+        select plan, status, price_cents from shop_billing where shop_id = ${shopId} limit 1
+      `;
+      return {
+        plan: rows[0]?.plan,
+        status: rows[0]?.status,
+        priceCents: rows[0]?.price_cents ?? 0,
+        awaitingFirstRealLead: false,
+      };
+    } catch {
+      return {};
+    }
+  }
+}
+
+export async function readChaChingMetricsForShop(slug: string): Promise<ChaChingMetrics> {
   const key = slug.trim().toLowerCase();
-  if (!key) return null;
+  if (!key) return emptyChaChingMetrics();
 
   let sql: Sql;
   try {
     sql = await getSql();
   } catch {
-    return null;
+    return emptyChaChingMetrics();
   }
 
   const shops = await sql<{ id: string }>`
     select id from shops where slug = ${key} limit 1
   `;
   const shopId = shops[0]?.id;
-  if (!shopId) return null;
+  if (!shopId) return emptyChaChingMetrics();
 
+  const billing = await loadBilling(sql, shopId);
   const today = pacificDay();
   let jobsBookedToday = 0;
   let pipelineRevenueCents = 0;
+  let paidRevenueCents = 0;
   let lastEventAt: string | null = null;
 
   try {
@@ -39,55 +77,60 @@ export async function readChaChingMetricsForShop(slug: string): Promise<ChaChing
       from appointments
       where shop_id = ${shopId}
         and status in ('pending', 'confirmed', 'completed')
+        and coalesce(is_simulated, false) = false
         and (created_at at time zone 'America/Los_Angeles')::date = ${today}::date
     `;
-    const row = booked[0];
-    jobsBookedToday = Number(row?.n ?? 0) || 0;
-    pipelineRevenueCents = Number(row?.cents ?? 0) || 0;
-    lastEventAt = row?.latest ?? null;
+    jobsBookedToday = Number(booked[0]?.n ?? 0) || 0;
+    pipelineRevenueCents = Number(booked[0]?.cents ?? 0) || 0;
+    lastEventAt = booked[0]?.latest ?? null;
   } catch {
-    /* appointments optional */
-  }
-
-  let quoteEvents = 0;
-  let responseSamples: number[] = [];
-  try {
-    const events = await sql<{
-      type: string;
-      created_at: string;
-      payload: string | null;
-    }>`
-      select type, created_at::text as created_at, payload::text as payload
-      from shop_events
-      where shop_id = ${shopId}
-        and (created_at at time zone 'America/Los_Angeles')::date = ${today}::date
-        and type in ('booking_request', 'booking_confirmed', 'payment_received')
-      order by created_at desc
-      limit 48
-    `;
-    for (const event of events) {
-      if (!lastEventAt || event.created_at > lastEventAt) lastEventAt = event.created_at;
-      if (event.type === "booking_request" || event.type === "booking_confirmed") quoteEvents += 1;
-      type EventPayload = { quoteMaxCents?: number; quoteMinCents?: number; responseSec?: number };
-      let payload: EventPayload | null = null;
-      try {
-        payload = event.payload ? (JSON.parse(event.payload) as EventPayload) : null;
-      } catch {
-        payload = null;
-      }
-      if (payload?.quoteMaxCents && pipelineRevenueCents === 0) {
-        const mid = Math.round(((payload.quoteMinCents ?? payload.quoteMaxCents) + payload.quoteMaxCents) / 2);
-        pipelineRevenueCents += mid;
-      }
-      if (typeof payload?.responseSec === "number" && payload.responseSec > 0) {
-        responseSamples.push(payload.responseSec);
-      }
+    try {
+      const booked = await sql<{ n: number; cents: number; latest: string | null }>`
+        select
+          count(*)::int as n,
+          coalesce(sum(case when payment_cents > 0 then payment_cents else 0 end), 0)::int as cents,
+          max(created_at)::text as latest
+        from appointments
+        where shop_id = ${shopId}
+          and status in ('pending', 'confirmed', 'completed')
+          and (created_at at time zone 'America/Los_Angeles')::date = ${today}::date
+      `;
+      jobsBookedToday = Number(booked[0]?.n ?? 0) || 0;
+      pipelineRevenueCents = Number(booked[0]?.cents ?? 0) || 0;
+      lastEventAt = booked[0]?.latest ?? null;
+    } catch {
+      /* appointments optional */
     }
-    if (jobsBookedToday === 0 && quoteEvents > 0) jobsBookedToday = Math.min(quoteEvents, 8);
-  } catch {
-    /* shop_events optional */
   }
 
+  try {
+    const paid = await sql<{ cents: number }>`
+      select coalesce(sum(payment_cents), 0)::int as cents
+      from appointments
+      where shop_id = ${shopId}
+        and payment_status = 'paid'
+        and coalesce(is_simulated, false) = false
+        and date_trunc('month', created_at at time zone 'America/Los_Angeles')
+          = date_trunc('month', (${today}::date)::timestamp)
+    `;
+    paidRevenueCents = Number(paid[0]?.cents ?? 0) || 0;
+  } catch {
+    try {
+      const paid = await sql<{ cents: number }>`
+        select coalesce(sum(payment_cents), 0)::int as cents
+        from appointments
+        where shop_id = ${shopId}
+          and payment_status = 'paid'
+          and date_trunc('month', created_at at time zone 'America/Los_Angeles')
+            = date_trunc('month', (${today}::date)::timestamp)
+      `;
+      paidRevenueCents = Number(paid[0]?.cents ?? 0) || 0;
+    } catch {
+      paidRevenueCents = pipelineRevenueCents;
+    }
+  }
+
+  let avgResponseSeconds = 0;
   try {
     const turns = await sql<{ created_at: string; prev: string | null }>`
       select created_at::text as created_at, lag(created_at) over (order by created_at)::text as prev
@@ -97,47 +140,36 @@ export async function readChaChingMetricsForShop(slug: string): Promise<ChaChing
       order by created_at desc
       limit 24
     `;
+    const samples: number[] = [];
     for (const row of turns) {
       if (row.prev && row.created_at) {
         const delta = (new Date(row.created_at).getTime() - new Date(row.prev).getTime()) / 1000;
-        if (delta > 0 && delta < 600) responseSamples.push(Math.round(delta));
+        if (delta > 0 && delta < 600) samples.push(Math.round(delta));
       }
     }
+    if (samples.length > 0) {
+      avgResponseSeconds = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+    }
   } catch {
-    /* sms turns optional */
+    /* optional */
   }
 
-  const avgResponseSeconds =
-    responseSamples.length > 0
-      ? Math.round(responseSamples.reduce((a, b) => a + b, 0) / responseSamples.length)
-      : 0;
-
-  if (jobsBookedToday === 0 && pipelineRevenueCents === 0) {
-    return null;
-  }
-
-  if (pipelineRevenueCents === 0 && jobsBookedToday > 0) {
-    pipelineRevenueCents = jobsBookedToday * 32_500;
-  }
-
+  const verified = Math.max(paidRevenueCents, pipelineRevenueCents);
+  const emptyBook = jobsBookedToday <= 0 && verified <= 0;
   return {
     source: "live",
     jobsBookedToday,
     pipelineRevenueCents,
+    paidRevenueCents,
+    subscriptionCostCents: axiomSubscriptionCostCents(billing),
+    netRoiCents: netRoiCents(verified, billing),
+    emptyBook,
+    emptyMessage: emptyBook ? emptyChaChingMetrics(billing).emptyMessage : "",
     avgResponseSeconds,
     lastEventAt,
   };
 }
 
 export async function resolveChaChingMetrics(slug: string): Promise<ChaChingMetrics> {
-  const live = await readChaChingMetricsForShop(slug);
-  if (live) {
-    const sim = simulatedChaChingMetrics(slug);
-    return {
-      ...live,
-      avgResponseSeconds: live.avgResponseSeconds || sim.avgResponseSeconds,
-      source: "live",
-    };
-  }
-  return simulatedChaChingMetrics(slug);
+  return readChaChingMetricsForShop(slug);
 }

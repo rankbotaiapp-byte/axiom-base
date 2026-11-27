@@ -7,6 +7,7 @@ import {
   billingFromInvoiceFailure,
   decideFirstLeadActivation,
   emailFirstChannel,
+  applyStripeBillingTransition,
   mapStripeBillingStatus,
   parseApprovalCadence,
   parseThemeKey,
@@ -25,6 +26,12 @@ test("Stripe billing maps cancel and failed renewals off active", () => {
   assert.equal(mapStripeBillingStatus("bogus"), "canceled");
   assert.equal(billingFromInvoiceFailure(), "past_due");
   assert.equal(mapStripeBillingStatus("incomplete", false), "past_due");
+  assert.equal(applyStripeBillingTransition("canceled", "active"), "canceled");
+  assert.equal(applyStripeBillingTransition("canceled", "past_due"), "canceled");
+  assert.equal(applyStripeBillingTransition("active", "past_due"), "past_due");
+  assert.equal(applyStripeBillingTransition("past_due", "active"), "active");
+  assert.equal(applyStripeBillingTransition("active", "trialing"), "active");
+  assert.equal(applyStripeBillingTransition("lifetime", "past_due"), "active");
 });
 
 test("themeKey, cadence, email-first, and 24h trust window helpers", () => {
@@ -128,7 +135,7 @@ test("trust-window sweep never activates billing and ignores simulated jobs", ()
   assert.doesNotMatch(sweep, /activateAfterFirstRealLead/);
   assert.doesNotMatch(sweep, /decideFirstLeadActivation/);
   const intake = readFileSync(new URL("../../app/api/leads/intake/route.ts", import.meta.url), "utf8");
-  assert.match(intake, /if \(shop && !isSimulated\)/);
+  assert.match(intake, /persistThenNotify/);
   assert.match(intake, /activateAfterFirstRealLead\(shop\.id, \{ isSimulated: false \}\)/);
   assert.match(server, /Idempotency-Key/);
   assert.match(server, /first-lead-sub-\$\{input\.shopId\}/);

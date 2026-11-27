@@ -376,8 +376,11 @@ export function AxiomFreezeLanding({ studioHref = STUDIO_HREF }: Props) {
             <a href="#founder" data-cfg="content.footL3">
               Founder
             </a>
-            <a href="/terms" data-cfg="content.footL4">
-              Legal
+            <a href="/privacy" data-cfg="content.footL4">
+              Privacy
+            </a>
+            <a href="/terms">
+              Terms
             </a>
           </div>
           <div className="foot-telemetry">

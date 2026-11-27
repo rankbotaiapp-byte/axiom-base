@@ -36,20 +36,25 @@ test("demo slugs accept niche ids and film names such as auto-repair", () => {
   assert.equal(resolveDemoNiche("not-a-real-trade-xyz"), null);
 });
 
-test("plumbing leads always bind the industrial /t storefront with greet=1", () => {
+test("plumbing leads land on the production carousel with their business name", () => {
   const url = new URL(
     tenantPreviewUrl(ORIGIN, {
       businessName: "Rogue Rapid Plumbing",
       tradeType: "plumbing",
       county: "Lane County",
       leadSlug: "rogue-rapid-plumbing",
+      leadId: "lead_rogue01",
       city: "Eugene",
+      phone: "541-555-0100",
     }) ?? "",
   );
-  assert.equal(url.pathname, "/t/rogue-rapid-plumbing");
-  assert.equal(url.searchParams.get("niche"), "plumbing");
-  assert.equal(url.searchParams.get("greet"), "1");
+  assert.equal(url.pathname, "/");
+  assert.equal(url.searchParams.get("trade"), "plumbing");
+  assert.equal(url.searchParams.get("b"), "Rogue Rapid Plumbing");
+  assert.equal(url.searchParams.get("lead_id"), "lead_rogue01");
   assert.equal(url.searchParams.get("city"), "Eugene");
+  assert.equal(url.searchParams.get("phone"), "541-555-0100");
+  assert.equal(url.searchParams.get("county"), "Lane County");
 });
 
 test("home counties get a personalized demo preview link", () => {
@@ -149,9 +154,11 @@ test("every preloaded category resolves to a demo niche", () => {
       }) ?? "",
     );
     if (niche === "plumbing") {
-      assert.equal(url.pathname, "/t/accurate-plumbing");
-      assert.equal(url.searchParams.get("niche"), "plumbing");
-      assert.equal(url.searchParams.get("greet"), "1");
+      assert.equal(url.pathname, "/");
+      assert.equal(url.searchParams.get("trade"), "plumbing");
+      assert.equal(url.searchParams.get("b"), `${vertical.craft} Shop`);
+    } else if (url.pathname.startsWith("/t/")) {
+      assert.match(url.pathname, /^\/t\/[a-z0-9-]+$/);
     } else {
       assert.equal(url.pathname, `/demo/${niche}`);
       assert.equal(url.searchParams.get("preview"), "true");

@@ -19,5 +19,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid unsubscribe link." }, { status: 401 });
   }
   await suppressContact({ email, reason: "unsubscribe" });
+  void import("@/lib/axiom/growth-engine.server")
+    .then((mod) =>
+      mod.recordFunnelEvent({
+        leadId: email.slice(0, 80),
+        event: "unsubscribed",
+      }),
+    )
+    .catch(() => undefined);
   return NextResponse.json({ ok: true, suppressed: email });
 }

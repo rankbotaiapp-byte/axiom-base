@@ -44,7 +44,7 @@ test("Graph and GBP payloads carry caption, page, and CTA", () => {
     articleUrl: "https://example.com/t/accurate-plumbing",
   });
   assert.match(gbp.endpoint, /accounts\/acc-1\/locations\/loc-9\/localPosts/);
-  assert.equal(gbp.body.callToAction.actionType, "LEARN_MORE");
+  assert.equal(gbp.body.callToAction.actionType, "BOOK");
   assert.deepEqual(defaultAutopilotChannels(), ["facebook", "instagram", "gbp"]);
 });
 
@@ -54,6 +54,7 @@ test("token refresh fires before expiry; Facebook refreshes inside 7 days", () =
   const fortyDays = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString();
   assert.equal(tokenNeedsRefresh(soon), true);
   assert.equal(tokenNeedsRefresh(threeDays), false);
+  assert.equal(tokenNeedsRefresh(null), true);
   assert.equal(facebookTokenNeedsRefresh(threeDays), true);
   assert.equal(facebookTokenNeedsRefresh(fortyDays), false);
   assert.equal(facebookTokenNeedsRefresh(null), true);
@@ -126,7 +127,7 @@ test("cron and approve paths publish instead of returning an empty delivered arr
   assert.match(publish, /grant_type: "refresh_token"/);
   assert.match(publish, /SUPABASE_URL|shop_social_accounts/);
   assert.match(publish, /FACEBOOK_PAGE_ACCESS_TOKEN|envSocialAccounts/);
-  assert.match(vercel, /\/api\/autopilot\/cron/);
+  assert.match(vercel, /\/api\/outreach\/cron/);
   assert.match(migration, /shop_social_accounts/);
   assert.match(migration, /accurate-plumbing/);
 });

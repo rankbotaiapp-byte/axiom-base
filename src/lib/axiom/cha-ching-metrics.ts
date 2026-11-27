@@ -1,14 +1,18 @@
 import type { Appointment, Service } from "@/lib/axiom/types";
+import { axiomSubscriptionCostCents, EMPTY_BOOK_MESSAGE, netRoiCents, type BillingForRoi } from "./closed-job.ts";
 
 export type ChaChingMetrics = {
-  source: "live" | "simulated" | "hybrid";
+  source: "live";
   jobsBookedToday: number;
   pipelineRevenueCents: number;
+  paidRevenueCents: number;
+  subscriptionCostCents: number;
+  netRoiCents: number;
+  emptyBook: boolean;
+  emptyMessage: string;
   avgResponseSeconds: number;
   lastEventAt: string | null;
 };
-
-const DEFAULT_JOB_CENTS = 32_500;
 
 function pacificYmd(iso: string): string {
   const d = new Date(iso);
@@ -20,88 +24,113 @@ function todayPacific(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
 }
 
-function hashSlug(slug: string): number {
-  let h = 0;
-  for (let i = 0; i < slug.length; i += 1) h = (h * 31 + slug.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
 export function estimateAppointmentCents(appointment: Appointment, services: Service[]): number {
   if (appointment.paymentCents > 0) return appointment.paymentCents;
   const row = services.find((s) => s.id === appointment.serviceId);
-  if (row?.priceCents) return row.priceCents;
-  return DEFAULT_JOB_CENTS;
+  return row?.priceCents ? row.priceCents : 0;
 }
 
-/** Client-safe rollup from desk appointments payload. */
+export function emptyChaChingMetrics(billing?: BillingForRoi | null): ChaChingMetrics {
+  const subscriptionCostCents = axiomSubscriptionCostCents(billing);
+  return {
+    source: "live",
+    jobsBookedToday: 0,
+    pipelineRevenueCents: 0,
+    paidRevenueCents: 0,
+    subscriptionCostCents,
+    netRoiCents: netRoiCents(0, billing),
+    emptyBook: true,
+    emptyMessage: EMPTY_BOOK_MESSAGE,
+    avgResponseSeconds: 0,
+    lastEventAt: null,
+  };
+}
+
+function withRoi(
+  base: Omit<ChaChingMetrics, "subscriptionCostCents" | "netRoiCents" | "emptyBook" | "emptyMessage" | "source">,
+  billing?: BillingForRoi | null,
+): ChaChingMetrics {
+  const verified = Math.max(base.paidRevenueCents, base.pipelineRevenueCents);
+  const emptyBook = base.jobsBookedToday <= 0 && verified <= 0;
+  return {
+    ...base,
+    source: "live",
+    emptyBook,
+    emptyMessage: emptyBook ? EMPTY_BOOK_MESSAGE : "",
+    subscriptionCostCents: axiomSubscriptionCostCents(billing),
+    netRoiCents: netRoiCents(verified, billing),
+  };
+}
+
+/** Client-safe rollup from desk appointments payload. Never invents jobs. */
 export function metricsFromAppointments(
   appointments: Appointment[],
   services: Service[],
-): ChaChingMetrics | null {
+  billing?: BillingForRoi | null,
+): ChaChingMetrics {
   const today = todayPacific();
-  const active = appointments.filter((a) => a.status !== "cancelled" && pacificYmd(a.startsAt) === today);
-  if (active.length === 0) return null;
+  const active = appointments.filter((row) => {
+    if (row.status === "cancelled") return false;
+    const simulated = (row as Appointment & { isSimulated?: boolean }).isSimulated;
+    if (simulated) return false;
+    return pacificYmd(row.startsAt) === today;
+  });
+  const paid = appointments.filter((row) => {
+    const simulated = (row as Appointment & { isSimulated?: boolean }).isSimulated;
+    if (simulated) return false;
+    return row.paymentStatus === "paid";
+  });
+  if (active.length === 0 && paid.length === 0) return emptyChaChingMetrics(billing);
 
   const pipelineRevenueCents = active.reduce((sum, row) => sum + estimateAppointmentCents(row, services), 0);
-  return {
-    source: "live",
-    jobsBookedToday: active.length,
-    pipelineRevenueCents,
-    avgResponseSeconds: 0,
-    lastEventAt: active[0]?.startsAt ?? null,
-  };
+  const paidRevenueCents = paid.reduce((sum, row) => sum + estimateAppointmentCents(row, services), 0);
+  return withRoi(
+    {
+      jobsBookedToday: active.length,
+      pipelineRevenueCents,
+      paidRevenueCents,
+      avgResponseSeconds: 0,
+      lastEventAt: active[0]?.startsAt ?? paid[0]?.startsAt ?? null,
+    },
+    billing,
+  );
 }
 
-export function simulatedChaChingMetrics(shopSlug: string, day = new Date()): ChaChingMetrics {
-  const key = `${shopSlug.toLowerCase()}:${todayPacific()}`;
-  const h = hashSlug(key);
-  const jobs = 2 + (h % 4);
-  const revenue = (750 + (h % 9) * 125 + jobs * 180) * 100;
-  const response = 12 + (h % 14);
-  return {
-    source: "simulated",
-    jobsBookedToday: jobs,
-    pipelineRevenueCents: revenue,
-    avgResponseSeconds: response,
-    lastEventAt: day.toISOString(),
-  };
+/** @deprecated Simulated ticker is forbidden. Kept as a zero live book. */
+export function simulatedChaChingMetrics(_shopSlug?: string, _day?: Date): ChaChingMetrics {
+  return emptyChaChingMetrics();
 }
 
 export function mergeChaChingMetrics(
   live: ChaChingMetrics | null,
   remote: ChaChingMetrics | null,
-  shopSlug: string,
+  _shopSlug?: string,
+  billing?: BillingForRoi | null,
 ): ChaChingMetrics {
-  const sim = simulatedChaChingMetrics(shopSlug);
-  if (!live && !remote) return sim;
-  if (live && !remote) {
-    return {
-      ...live,
-      avgResponseSeconds: live.avgResponseSeconds || sim.avgResponseSeconds,
-      source: live.jobsBookedToday > 0 ? "live" : "simulated",
-    };
-  }
+  if (!live && !remote) return emptyChaChingMetrics(billing);
+  if (live && !remote) return live.emptyBook ? live : live;
   if (remote && !live) return remote;
-  const merged = remote!;
-  const jobs = Math.max(live!.jobsBookedToday, merged.jobsBookedToday);
-  const revenue = Math.max(live!.pipelineRevenueCents, merged.pipelineRevenueCents);
-  const response =
-    merged.avgResponseSeconds > 0
-      ? Math.round((merged.avgResponseSeconds + (live!.avgResponseSeconds || merged.avgResponseSeconds)) / 2)
-      : live!.avgResponseSeconds || sim.avgResponseSeconds;
-  return {
-    source: jobs > 0 && merged.source === "live" ? "hybrid" : live!.jobsBookedToday > 0 ? "hybrid" : merged.source,
-    jobsBookedToday: jobs,
-    pipelineRevenueCents: revenue,
-    avgResponseSeconds: response || sim.avgResponseSeconds,
-    lastEventAt: merged.lastEventAt || live!.lastEventAt,
-  };
+  const jobs = Math.max(live!.jobsBookedToday, remote!.jobsBookedToday);
+  const pipeline = Math.max(live!.pipelineRevenueCents, remote!.pipelineRevenueCents);
+  const paid = Math.max(live!.paidRevenueCents, remote!.paidRevenueCents);
+  return withRoi(
+    {
+      jobsBookedToday: jobs,
+      pipelineRevenueCents: pipeline,
+      paidRevenueCents: paid,
+      avgResponseSeconds: remote!.avgResponseSeconds || live!.avgResponseSeconds,
+      lastEventAt: remote!.lastEventAt || live!.lastEventAt,
+    },
+    billing,
+  );
 }
 
 export function formatPipelineDollars(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
+  const value = cents / 100;
+  const sign = value < 0 ? "-" : "";
+  return `${sign}${new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
-  }).format(Math.max(0, cents) / 100);
+  }).format(Math.abs(value))}`;
 }

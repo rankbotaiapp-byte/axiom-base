@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StudioAutoBuildPanel } from "@/components/studio/StudioAutoBuildPanel";
+import { PriceBookCard } from "@/components/admin/PriceBookCard";
 import { AxiomStudioHudShell } from "@/components/studio/ObsidianHudChrome";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -67,6 +68,7 @@ export default function MasterAdminPage() {
         >
           Open tenant admin →
         </a>
+        <PriceBookCard slug={shop.slug} />
         <StudioAutoBuildPanel
           shopSlug={shop.slug}
           shopName={shop.name}

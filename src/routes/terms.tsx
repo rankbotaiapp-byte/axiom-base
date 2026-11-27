@@ -3,6 +3,7 @@ import {
   TERMS_AUTOPILOT_LIABILITY_CLAUSE,
   TERMS_PLATFORM_FEE_CLAUSE,
   TERMS_RENEWAL_CLAUSE,
+  TERMS_SMS_PROGRAM_CLAUSE,
 } from "@/lib/axiom/legal-notices";
 
 export const Route = createFileRoute("/terms")({
@@ -18,6 +19,8 @@ function TermsPage() {
       <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_RENEWAL_CLAUSE}</p>
       <h2 className="mt-8 text-lg">Platform Fees & Stripe Connect</h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_PLATFORM_FEE_CLAUSE}</p>
+      <h2 className="mt-8 text-lg">SMS program (STOP / HELP)</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_SMS_PROGRAM_CLAUSE}</p>
       <h2 className="mt-8 text-lg">Limitation of Liability for Autopilot</h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">{TERMS_AUTOPILOT_LIABILITY_CLAUSE}</p>
       <Link to="/" className="mt-8 inline-flex h-11 items-center text-sm text-accent">

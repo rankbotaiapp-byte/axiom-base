@@ -66,11 +66,13 @@ describe("autopilot content engine", () => {
       city: "Medford",
       bookUrl: "/rogue-detail/book",
       niche: "auto",
+      proofAtom: "Ceramic coat on a lifted Tacoma, same-week drop-off",
     });
     assert.match(clip.caption, /Rogue Detail/);
     assert.match(clip.caption, /Medford/);
     assert.match(clip.caption, /Auto/);
-    assert.match(clip.caption, /Book in Medford/);
+    assert.match(clip.overlay.cta, /Book in Medford/);
+    assert.match(clip.caption, /Ceramic coat/);
     assert.equal(clip.masterLoopUrl, masterLoopForNiche("auto"));
     const ashland = composeAutopilotClip({
       loopUrl: loops[0]!,
@@ -78,6 +80,7 @@ describe("autopilot content engine", () => {
       city: "Ashland",
       bookUrl: "/ashland-barber-co/book",
       niche: "barber",
+      proofAtom: "Fade and hot-towel shave for a wedding party of six",
     });
     assert.match(ashland.caption, /Barber/);
     assert.match(ashland.caption, /Ashland/);

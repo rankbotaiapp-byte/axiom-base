@@ -133,6 +133,49 @@ export async function readBusinessBrand(ref: BusinessRef): Promise<BusinessBrand
   }
 }
 
+export type LandingLeadRecord = {
+  id: string;
+  slug: string;
+  businessName: string;
+  phone: string;
+  email: string;
+  city: string;
+  trade: string;
+  licenseVerified: boolean;
+};
+
+function landingFromBrand(
+  record: BusinessBrandRecord,
+  licenseVerified: boolean,
+): LandingLeadRecord {
+  return {
+    id: record.id,
+    slug: record.slug,
+    businessName: record.businessName,
+    phone: record.phone,
+    email: record.email,
+    city: record.city,
+    trade: record.category || record.categoryLabel || "plumbing",
+    licenseVerified,
+  };
+}
+
+/** Public landing hydrate. `qa_approved` is the only license-claim gate. */
+export async function readLandingLead(ref: BusinessRef): Promise<LandingLeadRecord | null> {
+  const record = await readBusinessBrand(ref);
+  if (!record) return null;
+  try {
+    const sql = await getSql();
+    const id = record.id;
+    const rows = await sql<{ qa_approved: boolean }>`
+      select qa_approved from preloaded_leads where id = ${id} limit 1
+    `;
+    return landingFromBrand(record, Boolean(rows[0]?.qa_approved));
+  } catch {
+    return landingFromBrand(record, false);
+  }
+}
+
 async function listById(cursor: string, limit: number): Promise<LeadRow[]> {
   const sql = await getSql();
   if (!cursor) {

@@ -51,6 +51,7 @@ test("Twilio and Resend shop dispatch reads tenant preference columns", () => {
   assert.match(src, /notification_email/);
   assert.match(src, /skipSms: alerts\.skipSms/);
   assert.match(src, /skipEmail: alerts\.skipEmail/);
+  assert.match(src, /Promise<NotifyShopResult>/);
 });
 
 test("enabled channel with a blank destination is skipped", () => {

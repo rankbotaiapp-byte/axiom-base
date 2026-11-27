@@ -1,22 +1,31 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import TenantFrame from "@/components/axiom-landing/TenantFrame";
+import { BarberOutreachLive } from "@/components/barber/barber-outreach-landing";
+import { ElectricianOutreachLive } from "@/components/electrician/electrician-outreach-landing";
 import { FounderIntroHero, PLUMBING_DEMO_ANCHOR } from "@/components/plumbing/founder-intro-hero";
 import { PlumberOutreachLive } from "@/components/plumbing/plumber-outreach-landing";
 import { getShowcase, showcaseSrc } from "@/lib/axiom-landing/showcase";
 import { parseFunnelSearch } from "@/lib/axiom/funnel";
+import { BARBER_HERO, DEFAULT_BARBER_OUTREACH, isBarberCampaign } from "@/lib/axiom/barber-outreach";
+import {
+  DEFAULT_ELECTRICIAN_OUTREACH,
+  ELECTRICIAN_HERO_POSTER,
+  isElectricalCampaign,
+} from "@/lib/axiom/electrician-outreach";
 import {
   PLUMBER_OUTREACH_GREETING_VIDEO,
   PLUMBER_OUTREACH_GREETING_VIDEO_SAFE,
   PLUMBER_OUTREACH_HERO_POSTER,
   PLUMBER_OUTREACH_HERO_VIDEO,
+  emptyOutreachTenant,
   fillTemplate,
   outreachVars,
 } from "@/lib/axiom/plumber-outreach";
 import { getPlumberOutreachPage } from "@/lib/axiom/plumber-outreach.functions";
 
 type Search = ReturnType<typeof parseFunnelSearch> & {
-  /** `?niche=plumbing` is the public plumbing campaign; omitted slugs still use the Claude outreach layout. */
-  niche?: "plumbing";
+  /** `?niche=plumbing` / `electrical` is the public trade campaign. */
+  niche?: "plumbing" | "electrical" | "barber";
   studio?: "1";
 };
 
@@ -24,10 +33,26 @@ export const Route = createFileRoute("/t/$slug")({
   validateSearch: (search: Record<string, unknown>): Search => ({
     ...parseFunnelSearch(search),
     ...(String(search.niche ?? "").toLowerCase() === "plumbing" ? { niche: "plumbing" as const } : {}),
+    ...(String(search.niche ?? "").toLowerCase() === "electrical" ? { niche: "electrical" as const } : {}),
+    ...(String(search.niche ?? "").toLowerCase() === "barber" ? { niche: "barber" as const } : {}),
     ...(search.studio === "1" || search.studio === 1 ? { studio: "1" as const } : {}),
   }),
   loaderDeps: ({ search }) => ({ niche: search.niche }),
   loader: async ({ params, deps }) => {
+    if (deps.niche === "barber" || isBarberCampaign(params.slug)) {
+      return {
+        kind: "barber-outreach" as const,
+        tenant: emptyOutreachTenant(params.slug),
+        config: DEFAULT_BARBER_OUTREACH,
+      };
+    }
+    if (deps.niche === "electrical" || isElectricalCampaign(params.slug)) {
+      return {
+        kind: "electrician-outreach" as const,
+        tenant: emptyOutreachTenant(params.slug),
+        config: DEFAULT_ELECTRICIAN_OUTREACH,
+      };
+    }
     if (deps.niche === "plumbing") {
       const page = await getPlumberOutreachPage({ data: params.slug });
       return { kind: "plumber-outreach" as const, page };
@@ -46,6 +71,30 @@ export const Route = createFileRoute("/t/$slug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Not found" }] };
+    if (loaderData.kind === "barber-outreach") {
+      const business = loaderData.tenant.business || "Barber";
+      return {
+        meta: [
+          { title: `${business} · Barber` },
+          { name: "description", content: "Fades, classic cuts and straight-razor shaves. Book your chair in 60 seconds." },
+          { name: "robots", content: "noindex" },
+          { name: "theme-color", content: "#0a0806" },
+          { property: "og:image", content: BARBER_HERO },
+        ],
+      };
+    }
+    if (loaderData.kind === "electrician-outreach") {
+      const business = loaderData.tenant.business || "YOUR ELECTRIC CO.";
+      return {
+        meta: [
+          { title: `${business} · Electrical` },
+          { name: "description", content: "24/7 emergency electrical dispatch, panel upgrades, EV chargers, and generators." },
+          { name: "robots", content: "noindex" },
+          { name: "theme-color", content: "#050507" },
+          { property: "og:image", content: ELECTRICIAN_HERO_POSTER },
+        ],
+      };
+    }
     if (loaderData.kind === "plumber-outreach") {
       const { config, tenant } = loaderData.page;
       const vars = outreachVars(tenant);
@@ -83,6 +132,31 @@ function TenantSite() {
   const loaded = Route.useLoaderData();
   const search = Route.useSearch();
 
+  if (loaded.kind === "barber-outreach") {
+    return (
+      <BarberOutreachLive
+        tenant={{
+          ...loaded.tenant,
+          business: search.biz || search.business || loaded.tenant.business,
+          city: search.city || loaded.tenant.city,
+          county: search.county || loaded.tenant.county,
+        }}
+        config={loaded.config}
+        studio={search.studio === "1"}
+        tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
+      />
+    );
+  }
+  if (loaded.kind === "electrician-outreach") {
+    return (
+      <ElectricianOutreachLive
+        tenant={loaded.tenant}
+        config={loaded.config}
+        studio={search.studio === "1"}
+        tracking={{ utmSource: search.utm_source, county: search.county, stopToken: search.t }}
+      />
+    );
+  }
   if (loaded.kind === "plumber-outreach") {
     return (
       <>

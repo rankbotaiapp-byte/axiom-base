@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { AxiomStarfieldBackground } from "@/components/AxiomStarfieldBackground";
-import { Atmosphere } from "./atmosphere";
+import { Suspense } from "react";
+import HomeChrome from "@/components/landing-v2/HomeChrome";
 import "../styles.css";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark antialiased" style={{ colorScheme: "dark" }}>
+    <html lang="en" className="dark antialiased scroll-smooth" style={{ colorScheme: "dark" }}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -23,10 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="relative min-h-dvh bg-[#030712] font-sans text-fg antialiased">
-        <Atmosphere />
-        {/* After Atmosphere so opaque WebGL fluid cannot bury the stars; under z-10 UI */}
-        <AxiomStarfieldBackground />
-        <div className="relative z-10 min-h-dvh bg-transparent">{children}</div>
+        <Suspense fallback={<div className="relative z-10 min-h-dvh bg-[#050507]">{children}</div>}>
+          <HomeChrome>{children}</HomeChrome>
+        </Suspense>
       </body>
     </html>
   );

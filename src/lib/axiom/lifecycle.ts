@@ -43,6 +43,26 @@ export function billingFromInvoiceFailure(): LifecycleBillingStatus {
   return "past_due";
 }
 
+/**
+ * Out-of-order Stripe events must not resurrect a canceled shop.
+ * Late invoice.paid never overrides canceled; failures still mark past_due
+ * unless the tenant already canceled.
+ */
+export function applyStripeBillingTransition(
+  current: string | null | undefined,
+  incoming: LifecycleBillingStatus,
+): LifecycleBillingStatus {
+  const cur = String(current ?? "")
+    .trim()
+    .toLowerCase();
+  if (cur === "lifetime") return "active";
+  if (cur === "canceled") return "canceled";
+  if (incoming === "canceled") return "canceled";
+  if (incoming === "past_due") return "past_due";
+  if (cur === "active" && incoming === "trialing") return "active";
+  return incoming;
+}
+
 export function simulatedTestAlert(shopName: string): { subject: string; body: string } {
   const name = shopName.replace(/\s+/g, " ").trim().slice(0, 80) || "Your shop";
   return {

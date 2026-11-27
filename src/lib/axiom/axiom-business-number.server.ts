@@ -166,8 +166,8 @@ async function takenNumbers(): Promise<Set<string>> {
 export async function readAxiomBusinessNumber(slug: string): Promise<AxiomBusinessNumberView | null> {
   const key = slug.trim().toLowerCase();
   if (!key) return null;
-  const sql = await getSql();
   try {
+    const sql = await getSql();
     const rows = await sql<ShopPhoneRow>`
       select
         s.id, s.slug, s.name,

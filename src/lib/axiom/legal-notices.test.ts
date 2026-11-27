@@ -3,13 +3,20 @@ import test from "node:test";
 import {
   EMAIL_TCPA_FOOTER,
   MESSAGING_UI_NOTICE,
+  PRIVACY_MOBILE_NO_SALE_CLAUSE,
   SMS_TCPA_FOOTER,
   STRIPE_CONNECT_NOTICE,
   SUBSCRIPTION_NOTICE,
+  TERMS_RENEWAL_CLAUSE,
+  TERMS_SMS_PROGRAM_CLAUSE,
+  TRIAL_CHECKOUT_DISCLOSURE,
+  UNLOCK_OFFER_COPY,
   appendMessagingNotice,
   finalizeOutreachBody,
   hasMessagingNotice,
+  isMessagingHelp,
   isMessagingOptOut,
+  smsHelpReply,
 } from "./legal-notices.ts";
 
 test("messaging notices append once and survive the SMS cap", () => {
@@ -38,9 +45,27 @@ test("shared legal copy stays short and names the three required notices", () =>
   assert.ok(STRIPE_CONNECT_NOTICE.length < 400);
 });
 
+test("$1 unlock copy is one 14-day story with $150, lifetime, 1.5%, and STOP/HELP", () => {
+  for (const block of [UNLOCK_OFFER_COPY, TRIAL_CHECKOUT_DISCLOSURE, TERMS_RENEWAL_CLAUSE]) {
+    assert.match(block, /\$1\.00 today/);
+    assert.match(block, /14 days/);
+    assert.match(block, /\$150/);
+    assert.match(block, /\$1,500/);
+    assert.match(block, /1\.5%/);
+    assert.doesNotMatch(block, /7 days/);
+  }
+  assert.match(TRIAL_CHECKOUT_DISCLOSURE, /Reply STOP/);
+  assert.match(TRIAL_CHECKOUT_DISCLOSURE, /HELP/);
+});
+
 test("STOP and cancel keywords count as an opt-out", () => {
   assert.equal(isMessagingOptOut("STOP"), true);
   assert.equal(isMessagingOptOut("Stop."), true);
   assert.equal(isMessagingOptOut("unsubscribe please"), true);
   assert.equal(isMessagingOptOut("thanks, booked for Tuesday"), false);
+  assert.equal(isMessagingHelp("HELP"), true);
+  assert.equal(isMessagingHelp("STOP"), false);
+  assert.match(smsHelpReply("https://www.rankbotapp.com"), /\/privacy/);
+  assert.match(TERMS_SMS_PROGRAM_CLAUSE, /Reply STOP/);
+  assert.match(PRIVACY_MOBILE_NO_SALE_CLAUSE, /does not sell mobile phone numbers/i);
 });

@@ -50,6 +50,8 @@ export function plumbingCampaignTokens(input: {
   leadId?: string;
   city?: string;
   county?: string;
+  phone?: string;
+  email?: string;
   owner?: string;
 }): {
   business: string;
@@ -75,6 +77,8 @@ export function plumbingCampaignTokens(input: {
     leadId: input.leadId,
     city: input.city,
     county: input.county,
+    phone: input.phone,
+    email: input.email,
     tradeLabel: trade,
   });
   const url = `${origin}${demoPath}`;

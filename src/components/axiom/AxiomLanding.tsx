@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import AxiomHeroStage from "./AxiomHeroStage";
-import AxiomProofCompare from "./AxiomProofCompare";
+import DemoShowcase from "./DemoShowcase";
 import AxiomIntroVideo from "./AxiomIntroVideo";
 import AxiomStudioFunnel from "./AxiomStudioFunnel";
 import { AxiomPageSpecks } from "./AxiomAtmosphere";
@@ -25,7 +25,6 @@ export default function AxiomLanding({ api, onCheckout = startAxiomTrial }: Axio
   const videoWrap = useRef<HTMLElement>(null);
   const studioRef = useRef<HTMLElement>(null);
   const introRef = useRef<HTMLElement>(null);
-  const proofRef = useRef<HTMLDivElement>(null);
 
   // Video slides up + fades as its bottom edge leaves the viewport.
   const { scrollYProgress } = useScroll({ target: videoWrap, offset: ["end 0.9", "end 0.1"] });
@@ -57,10 +56,8 @@ export default function AxiomLanding({ api, onCheckout = startAxiomTrial }: Axio
           Start for $1
         </button>
       </header>
-      <AxiomHeroStage onStart={() => scrollTo(studioRef.current)} onProof={() => scrollTo(proofRef.current)} />
-      <div ref={proofRef}>
-        <AxiomProofCompare />
-      </div>
+      <AxiomHeroStage onStart={() => scrollTo(studioRef.current)} />
+      <DemoShowcase />
 
       <motion.section
         ref={(el) => {

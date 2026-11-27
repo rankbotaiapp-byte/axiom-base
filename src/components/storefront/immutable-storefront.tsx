@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { AvatarSpeakerPhone } from "@/components/ai/AvatarSpeakerPhone";
 import { FunnelLayout } from "@/components/funnel/FunnelLayout";
 import { getNicheActions } from "@/config/niche-actions";
 import { shopCity } from "@/lib/axiom/avatar";
@@ -10,7 +9,7 @@ import { nicheVoice } from "@/lib/axiom/niches";
 import { SMS_TCPA_FOOTER } from "@/lib/axiom/legal-notices";
 import type { ShopPublic } from "@/lib/axiom/types";
 import { cn, formatMoney } from "@/lib/utils";
-import { CyberCompanionHud } from "@/components/CyberCompanionHud";
+import { StorefrontHelpFab } from "@/components/storefront/StorefrontHelpFab";
 import { SyncedHeroPlayer } from "@/components/studio/SyncedHeroPlayer";
 import { parseHeroLook } from "@/lib/axiom/hero-look";
 import { ShopProofGallery } from "@/components/proof-gallery";
@@ -149,20 +148,11 @@ export function ImmutableStorefront({ data }: { data: ShopPublic }) {
         </div>
       ) : null}
 
-      <CyberCompanionHud
-        environment="storefront"
+      <StorefrontHelpFab
         shopName={name}
-        shopSlug={shop.slug}
-        niche={shop.customNiche || shop.niche}
-        city={city}
+        phone={phone}
         bookHref={bookPath}
         onBook={() => setBookOpen(true)}
-      />
-      <AvatarSpeakerPhone
-        shopName={name}
-        shopSlug={shop.slug}
-        niche={shop.customNiche || shop.niche}
-        city={city}
       />
       </FunnelLayout>
     </div>

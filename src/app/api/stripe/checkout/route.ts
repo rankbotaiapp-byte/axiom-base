@@ -25,6 +25,8 @@ const bodySchema = z.object({
   phone: z.string().max(28).optional(),
   email: z.string().max(120).optional(),
   city: z.string().max(80).optional(),
+  selectedTrade: z.string().max(40).optional(),
+  unlockPlan: z.enum(["monthly", "lifetime"]).optional(),
   showcaseThemeId: z.enum(["solar_gold", "pure_cyan", "emergency_amber", "cobalt_ice"]).optional(),
 });
 
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!userId) {
+    if (!userId && data.planId !== "unlock") {
       const origin = (data.origin || requestOrigin()).replace(/\/$/, "");
       const nextPath = data.shopSlug.trim() ? `/${encodeURIComponent(data.shopSlug)}/admin` : "/axiom-studio";
       const signInUrl = `${origin}/login?next=${encodeURIComponent(`${origin}${nextPath}`)}`;
@@ -89,13 +91,15 @@ export async function POST(request: Request) {
       planId: data.planId,
       namedPriceCents,
       businessName: data.businessName,
-      niche: data.niche,
+      niche: data.selectedTrade || data.niche,
       userId,
       publishAfter: data.publishAfter,
       leadId: data.leadId,
       phone: data.phone,
       email: data.email,
       city: data.city,
+      selectedTrade: data.selectedTrade || data.niche,
+      unlockPlan: data.unlockPlan,
       showcaseThemeId: data.showcaseThemeId,
     });
 

@@ -467,7 +467,32 @@ export async function generateArmedHeroForShop(shopId: string, userId: string): 
   const scene = await stillBytes(shop.hero_image_url);
   if (!scene) return { ok: false, detail: "Drop a still in Hero Studio so Autopilot has a scene to brand." };
   const credits = await loadCredits(shop.id);
-  if (credits < AI_IMAGE_UNITS) return { ok: false, detail: "Buy a $15 render pack to generate." };
+  const { emptyCreditHeroDecision, CREDITS_EMPTY_COPY } = await import("./autopilot-caption.ts");
+  const creditGate = emptyCreditHeroDecision(credits, AI_IMAGE_UNITS, shop.hero_image_url);
+  if (!creditGate.generate) {
+    const wallet = await loadWallet(shop.id);
+    if (wallet.autoReload) {
+      await chargeSavedRenderPack(shop.id).catch(() => undefined);
+      const reloaded = await loadCredits(shop.id);
+      if (reloaded >= AI_IMAGE_UNITS) {
+        /* fall through to generate */
+      } else {
+        const { notifyOwnerOpsOnce } = await import("./notify.server");
+        await notifyOwnerOpsOnce(shop.id, CREDITS_EMPTY_COPY).catch(() => undefined);
+        return {
+          ok: Boolean(creditGate.reuseUrl),
+          detail: creditGate.reason,
+        };
+      }
+    } else {
+      const { notifyOwnerOpsOnce } = await import("./notify.server");
+      await notifyOwnerOpsOnce(shop.id, CREDITS_EMPTY_COPY).catch(() => undefined);
+      return {
+        ok: Boolean(creditGate.reuseUrl),
+        detail: creditGate.reason,
+      };
+    }
+  }
   const actor = userId || shop.owner_user_id || "";
   if (!actor) return { ok: false, detail: "No owner on this shop." };
   const logo = dna.logoDataUrl ? decodeDataUrl(dna.logoDataUrl) : null;

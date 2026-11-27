@@ -10,6 +10,13 @@ import {
 import { toE164 } from "./notify-target";
 import { resolveShopLeadAlerts, type ShopNotifyPrefs } from "./notify-prefs";
 import { twilioSmsFailureDetail } from "./notify-twilio";
+import {
+  formatNotifyDispatchDetail,
+  logNotifyDispatch,
+  notifyShopResultFromChannels,
+  type NotifyChannelResult,
+  type NotifyShopResult,
+} from "./notify-dispatch";
 import { resolvePublicAppOrigin } from "./public-app-url";
 
 export { twilioSmsFailureDetail } from "./notify-twilio";
@@ -22,7 +29,7 @@ type NoticeInput = {
   body: string;
 };
 
-type SendResult = { status: "sent" | "skipped" | "failed"; detail: string };
+type SendResult = { status: "sent" | "skipped" | "failed"; detail: string; providerId?: string };
 
 const inquiryHits = new Map<string, number[]>();
 
@@ -77,7 +84,18 @@ async function record(
 async function sendEmail(to: string, subject: string, body: string): Promise<SendResult> {
   const key = env("RESEND_API_KEY");
   const from = env("RESEND_FROM");
-  if (!key || !from) return { status: "skipped", detail: "Email provider is not configured" };
+  if (!key || !from) {
+    const detail = formatNotifyDispatchDetail({
+      channel: "email",
+      to,
+      status: "skipped",
+      provider: "none",
+      providerId: "",
+      error: "Email provider is not configured",
+    });
+    logNotifyDispatch({ channel: "email", to, status: "skipped", provider: "none", providerId: "", error: "not configured" });
+    return { status: "skipped", detail };
+  }
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -88,9 +106,24 @@ async function sendEmail(to: string, subject: string, body: string): Promise<Sen
       body: JSON.stringify({ from, to: [to], subject, text: body }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { status: "failed", detail: "Email provider rejected the message" };
+    if (!res.ok) {
+      const fail = {
+        status: "failed" as const,
+        detail: formatNotifyDispatchDetail({
+          channel: "email",
+          to,
+          status: "failed",
+          provider: "resend",
+          providerId: "",
+          error: "Email provider rejected the message",
+        }),
+      };
+      logNotifyDispatch({ channel: "email", to, status: "failed", provider: "resend", providerId: "", error: fail.detail });
+      return fail;
+    }
+    const payload = (await res.json().catch(() => ({}))) as { id?: string };
+    const providerId = String(payload.id ?? "");
     try {
-      const payload = (await res.json()) as { id?: string };
       const { persistTelemetryEvent } = await import("./self-correction.server");
       await persistTelemetryEvent({
         provider: "resend",
@@ -99,14 +132,32 @@ async function sendEmail(to: string, subject: string, body: string): Promise<Sen
         errorCode: "",
         identity: from,
         destination: to.slice(0, 160),
-        messageSid: String(payload.id ?? ""),
+        messageSid: providerId,
       });
     } catch {
       /* telemetry table may be missing */
     }
-    return { status: "sent", detail: "" };
+    const detail = formatNotifyDispatchDetail({
+      channel: "email",
+      to,
+      status: "sent",
+      provider: "resend",
+      providerId,
+      error: "",
+    });
+    logNotifyDispatch({ channel: "email", to, status: "sent", provider: "resend", providerId, error: "" });
+    return { status: "sent", detail, providerId };
   } catch {
-    return { status: "failed", detail: "Email request failed" };
+    const detail = formatNotifyDispatchDetail({
+      channel: "email",
+      to,
+      status: "failed",
+      provider: "resend",
+      providerId: "",
+      error: "Email request failed",
+    });
+    logNotifyDispatch({ channel: "email", to, status: "failed", provider: "resend", providerId: "", error: "timeout or network" });
+    return { status: "failed", detail };
   }
 }
 
@@ -168,7 +219,18 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
   const sid = env("TWILIO_ACCOUNT_SID");
   const token = env("TWILIO_AUTH_TOKEN");
   const from = await resolveSmsFrom();
-  if (!sid || !token || !from) return { status: "skipped", detail: "SMS provider is not configured" };
+  if (!sid || !token || !from) {
+    const detail = formatNotifyDispatchDetail({
+      channel: "sms",
+      to,
+      status: "skipped",
+      provider: "none",
+      providerId: "",
+      error: "SMS provider is not configured",
+    });
+    logNotifyDispatch({ channel: "sms", to, status: "skipped", provider: "none", providerId: "", error: "not configured" });
+    return { status: "skipped", detail };
+  }
   const dest = toE164(to) || to.trim();
   if (!dest || dest.length < 8) return { status: "failed", detail: "Invalid destination phone number" };
   try {
@@ -192,10 +254,26 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
       } catch {
         payload = null;
       }
-      return { status: "failed", detail: twilioSmsFailureDetail(res.status, payload) };
+      const failDetail = twilioSmsFailureDetail(res.status, payload);
+      const sid =
+        payload && typeof payload === "object" && "sid" in payload ? String((payload as { sid?: string }).sid ?? "") : "";
+      logNotifyDispatch({ channel: "sms", to: dest, status: "failed", provider: "twilio", providerId: sid, error: failDetail });
+      return {
+        status: "failed",
+        detail: formatNotifyDispatchDetail({
+          channel: "sms",
+          to: dest,
+          status: "failed",
+          provider: "twilio",
+          providerId: sid,
+          error: failDetail,
+        }),
+        providerId: sid,
+      };
     }
+    const payload = (await res.json().catch(() => ({}))) as { sid?: string };
+    const providerId = String(payload.sid ?? "");
     try {
-      const payload = (await res.json()) as { sid?: string };
       const { persistTelemetryEvent } = await import("./self-correction.server");
       await persistTelemetryEvent({
         provider: "twilio",
@@ -204,14 +282,32 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
         errorCode: "",
         identity: from,
         destination: dest.slice(0, 40),
-        messageSid: String(payload.sid ?? ""),
+        messageSid: providerId,
       });
     } catch {
       /* telemetry table may be missing */
     }
-    return { status: "sent", detail: "" };
+    const detail = formatNotifyDispatchDetail({
+      channel: "sms",
+      to: dest,
+      status: "sent",
+      provider: "twilio",
+      providerId,
+      error: "",
+    });
+    logNotifyDispatch({ channel: "sms", to: dest, status: "sent", provider: "twilio", providerId, error: "" });
+    return { status: "sent", detail, providerId };
   } catch {
-    return { status: "failed", detail: "SMS request failed" };
+    const detail = formatNotifyDispatchDetail({
+      channel: "sms",
+      to: dest,
+      status: "failed",
+      provider: "twilio",
+      providerId: "",
+      error: "SMS request failed",
+    });
+    logNotifyDispatch({ channel: "sms", to: dest, status: "failed", provider: "twilio", providerId: "", error: "timeout or network" });
+    return { status: "failed", detail };
   }
 }
 
@@ -267,7 +363,10 @@ async function reach(opts: {
   skipSms: boolean;
   skipEmailDetail?: string;
   skipSmsDetail?: string;
-}) {
+}): Promise<{ sms: NotifyChannelResult; email: NotifyChannelResult }> {
+  let emailResult: NotifyChannelResult = { ok: false, skipped: true, error: "not attempted" };
+  let smsResult: NotifyChannelResult = { ok: false, skipped: true, error: "not attempted" };
+
   await record(
     opts.shopId,
     opts.notice.kind,
@@ -283,6 +382,7 @@ async function reach(opts: {
   const email = opts.email.trim();
   if (opts.skipEmail && opts.skipEmailDetail) {
     logSkip("email", opts.skipEmailDetail);
+    emailResult = { ok: false, skipped: true, error: opts.skipEmailDetail };
     await record(
       opts.shopId,
       opts.notice.kind,
@@ -297,6 +397,12 @@ async function reach(opts: {
   } else if (email && !opts.skipEmail) {
     const result = await sendEmail(email, opts.notice.subject, opts.notice.body);
     if (result.status === "skipped") logSkip("email", result.detail);
+    emailResult = {
+      ok: result.status === "sent",
+      skipped: result.status === "skipped",
+      id: result.providerId,
+      error: result.status === "sent" ? undefined : result.detail,
+    };
     await record(
       opts.shopId,
       opts.notice.kind,
@@ -308,11 +414,14 @@ async function reach(opts: {
       result.detail,
       opts.employeeId,
     );
+  } else if (opts.skipEmail) {
+    emailResult = { ok: false, skipped: true, error: opts.skipEmailDetail || "email skipped" };
   }
 
   const smsTo = opts.phone.trim() ? toE164(opts.phone) : null;
   if (opts.skipSms && opts.skipSmsDetail) {
     logSkip("sms", opts.skipSmsDetail);
+    smsResult = { ok: false, skipped: true, error: opts.skipSmsDetail };
     await record(
       opts.shopId,
       opts.notice.kind,
@@ -325,6 +434,7 @@ async function reach(opts: {
       opts.employeeId,
     );
   } else if (opts.phone.trim() && !smsTo && !opts.skipSms) {
+    smsResult = { ok: false, skipped: true, error: "Phone is not a mobile number we can text" };
     await record(
       opts.shopId,
       opts.notice.kind,
@@ -339,6 +449,12 @@ async function reach(opts: {
   } else if (smsTo && !opts.skipSms) {
     const result = await sendSms(smsTo, `${opts.notice.subject}\n${opts.notice.body}`);
     if (result.status === "skipped") logSkip("sms", result.detail);
+    smsResult = {
+      ok: result.status === "sent",
+      skipped: result.status === "skipped",
+      sid: result.providerId,
+      error: result.status === "sent" ? undefined : result.detail,
+    };
     await record(
       opts.shopId,
       opts.notice.kind,
@@ -350,7 +466,10 @@ async function reach(opts: {
       result.detail,
       opts.employeeId,
     );
+  } else if (opts.skipSms) {
+    smsResult = { ok: false, skipped: true, error: opts.skipSmsDetail || "sms skipped" };
   }
+  return { sms: smsResult, email: emailResult };
 }
 
 async function loadShopLeadAlerts(shopId: string) {
@@ -372,11 +491,33 @@ async function loadShopLeadAlerts(shopId: string) {
   }
 }
 
-/** Inbox always. Twilio / Resend follow tenant notification preferences. */
-export async function notifyShop(shopId: string, notice: NoticeInput) {
+/** One owner SMS/email per ops kind. Does not use inquiry rate limits. */
+export async function notifyOwnerOpsOnce(
+  shopId: string,
+  notice: Extract<NoticeInput, { kind: "social_reauth" | "credits_empty" }> | NoticeInput,
+): Promise<boolean> {
+  if (notice.kind !== "social_reauth" && notice.kind !== "credits_empty") return false;
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ id: string }>`
+      select id from shop_notifications
+      where shop_id = ${shopId} and kind = ${notice.kind}
+        and created_at > now() - interval '14 days'
+      limit 1
+    `;
+    if (rows[0]) return false;
+  } catch {
+    /* table/kind may be missing on older snapshots — still try once */
+  }
+  await notifyShop(shopId, notice);
+  return true;
+}
+
+/** Inbox always. Twilio / Resend follow tenant notification preferences. Never swallows a false success. */
+export async function notifyShop(shopId: string, notice: NoticeInput): Promise<NotifyShopResult> {
   try {
     const alerts = await loadShopLeadAlerts(shopId);
-    await reach({
+    const channels = await reach({
       shopId,
       employeeId: null,
       destination: "console",
@@ -390,9 +531,106 @@ export async function notifyShop(shopId: string, notice: NoticeInput) {
       skipSmsDetail: alerts.smsSkipDetail,
     });
     await sendWebhook(shopId, notice, alerts.email, alerts.phone);
+    return notifyShopResultFromChannels(channels.sms, channels.email);
   } catch (err) {
-    console.error("notify failed", shopId, notice.kind, err instanceof Error ? err.message : "error");
+    const error = err instanceof Error ? err.message.slice(0, 200) : "notify failed";
+    console.error("notify failed", shopId, notice.kind, error);
+    return notifyShopResultFromChannels(
+      { ok: false, error },
+      { ok: false, error },
+    );
   }
+}
+
+const FAILED_NOTIFY_RETRY_CAP = 20;
+const FAILED_NOTIFY_MAX_ATTEMPTS = 3;
+
+export async function retryFailedShopNotifications(limit = FAILED_NOTIFY_RETRY_CAP): Promise<{
+  scanned: number;
+  sent: number;
+  failed: number;
+}> {
+  const cap = Math.min(Math.max(1, limit), FAILED_NOTIFY_RETRY_CAP);
+  const sql = await getSql();
+  type FailedRow = {
+    id: string;
+    shop_id: string;
+    channel: string;
+    kind: string;
+    destination: string;
+    subject: string;
+    body: string;
+    retry_count: number;
+  };
+  let rows: FailedRow[] = [];
+  try {
+    rows = await sql<FailedRow>`
+      select id, shop_id, channel, kind, destination, subject, body, retry_count
+      from shop_notifications
+      where status = 'failed'
+        and channel in ('sms', 'email')
+        and retry_count < ${FAILED_NOTIFY_MAX_ATTEMPTS}
+      order by created_at asc
+      limit ${cap}
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/retry_count/i.test(message)) {
+      rows = await sql<FailedRow>`
+        select id, shop_id, channel, kind, destination, subject, body, 0::int as retry_count
+        from shop_notifications
+        where status = 'failed'
+          and channel in ('sms', 'email')
+        order by created_at asc
+        limit ${cap}
+      `;
+    } else {
+      console.error("[notify] failed retry query", message.slice(0, 200));
+      return { scanned: 0, sent: 0, failed: 0 };
+    }
+  }
+
+  let sent = 0;
+  let failed = 0;
+  for (const row of rows) {
+    const nextCount = Number(row.retry_count ?? 0) + 1;
+    try {
+      const result =
+        row.channel === "email"
+          ? await sendEmail(row.destination, row.subject, row.body)
+          : await sendSms(row.destination, row.body);
+      if (result.status === "sent") {
+        sent += 1;
+        await sql`
+          update shop_notifications
+          set status = 'sent',
+              detail = ${result.detail.slice(0, 240)},
+              retry_count = ${nextCount}
+          where id = ${row.id}
+        `.catch(() => undefined);
+      } else {
+        failed += 1;
+        await sql`
+          update shop_notifications
+          set status = ${result.status === "skipped" ? "skipped" : "failed"},
+              detail = ${result.detail.slice(0, 240)},
+              retry_count = ${nextCount}
+          where id = ${row.id}
+        `.catch(() => undefined);
+      }
+    } catch (err) {
+      failed += 1;
+      const detail = err instanceof Error ? err.message.slice(0, 240) : "retry failed";
+      await sql`
+        update shop_notifications
+        set status = 'failed',
+            detail = ${detail},
+            retry_count = ${nextCount}
+        where id = ${row.id}
+      `.catch(() => undefined);
+    }
+  }
+  return { scanned: rows.length, sent, failed };
 }
 
 type StaffContact = { name: string; email: string; phone: string };
@@ -448,13 +686,13 @@ export async function notifyBookingParties(input: BookingNoticeInput) {
       serviceName: input.serviceName,
       employeeName: input.employeeName,
       when,
+      guestPhone: input.guestPhone,
+      guestEmail: input.guestEmail,
     });
-    const phoneNote = input.guestPhone ? ` Phone: ${input.guestPhone}` : "";
-    const emailNote = input.guestEmail ? ` Email: ${input.guestEmail}` : "";
     await notifyShop(input.shopId, {
       kind: copy.kind,
       subject: copy.owner.subject,
-      body: `${copy.owner.body}${phoneNote}${emailNote}`,
+      body: copy.owner.body,
     });
 
     const alerts = await loadShopLeadAlerts(input.shopId);

@@ -161,6 +161,18 @@ function safeShopSlug(slug: string): string {
   );
 }
 
+export async function uploadPreparedWebpToStorage(
+  slug: string,
+  webp: Buffer | Uint8Array,
+  kind: "hero" | "proof" | "mms" | "stamp" = "mms",
+): Promise<StoredLayoutAsset | null> {
+  const stamp = Date.now();
+  const prefix = `layout/${safeShopSlug(slug)}/${kind}-${stamp}`;
+  const url = await uploadObjectToAxiomMedia(`${prefix}.webp`, webp, "image/webp");
+  if (!url) return null;
+  return { url };
+}
+
 export async function uploadEnhancedImageToStorage(
   slug: string,
   bytes: Buffer | Uint8Array,
@@ -168,13 +180,7 @@ export async function uploadEnhancedImageToStorage(
 ): Promise<StoredLayoutAsset | null> {
   const { enhanceJobPhoto } = await import("./cinematic-enhance.server");
   const enhanced = await enhanceJobPhoto(bytes);
-  const stamp = Date.now();
-  const prefix = `layout/${safeShopSlug(slug)}/${kind}-${stamp}`;
-  const url = await uploadObjectToAxiomMedia(`${prefix}.webp`, enhanced.webp, "image/webp");
-  if (!url) return null;
-  const thumbnailUrl =
-    (await uploadObjectToAxiomMedia(`${prefix}-thumb.webp`, enhanced.thumb, "image/webp")) || undefined;
-  return { url, thumbnailUrl };
+  return uploadPreparedWebpToStorage(slug, enhanced.webp, kind);
 }
 
 export async function uploadLayoutAssetToStorage(

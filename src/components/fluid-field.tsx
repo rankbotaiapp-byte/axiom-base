@@ -154,7 +154,13 @@ const GL_ATTRS = {
 
 /** Cinematic landing and white-label frames already own the GPU (video + trail). */
 function skipFluidForPath(pathname: string) {
-  return pathname === "/" || pathname.startsWith("/t/") || pathname.startsWith("/showcase");
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/t/") ||
+    pathname.startsWith("/showcase") ||
+    pathname === "/master" ||
+    pathname.startsWith("/master/")
+  );
 }
 
 export function FluidField() {

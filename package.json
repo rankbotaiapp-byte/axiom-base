@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test --test-concurrency=1 src/lib/axiom/notify-dispatch.test.ts src/lib/axiom/twilio-signature.test.ts src/lib/axiom/booking-guards.test.ts src/lib/axiom/lifecycle.test.ts src/lib/axiom/storefront-helper.test.ts src/lib/axiom/notify-prefs.test.ts src/lib/axiom/booking-notice.test.ts src/lib/axiom/autopilot-limits.test.ts src/lib/axiom/outreach-quarantine.test.ts src/lib/stripe/connect-fee.test.ts src/lib/axiom/autopilot-publish.test.ts src/lib/axiom/agency-content.test.ts src/lib/axiom/social-publish.test.ts src/lib/axiom/brand-stamp.test.ts src/lib/axiom/owner-mms.test.ts src/lib/axiom/cha-ching-metrics.test.ts src/lib/axiom/closed-job-loop.test.ts src/lib/axiom/sprint2-dispatch.test.ts src/lib/axiom/onboard-success.test.ts src/lib/axiom/legal-notices.test.ts src/lib/axiom/unlock-welcome.test.ts src/lib/axiom/voice-receptionist.test.ts src/lib/axiom/growth-engine.test.ts src/lib/axiom/autopilot-queue.test.ts",
+    "verify:e2e": "tsx scripts/verify-sprint2.ts",
     "encode:hero": "bash scripts/encode-hero.sh",
     "upload-media": "tsx scripts/upload-media.ts"
   },

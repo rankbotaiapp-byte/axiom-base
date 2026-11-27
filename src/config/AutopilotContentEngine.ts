@@ -1,4 +1,5 @@
-import { CATALOG_BY_ID, isCatalogNiche, type CatalogNiche } from "./catalog.ts";
+import { composeProofCaption } from "../lib/axiom/autopilot-caption.ts";
+import { CATALOG_BY_ID, isCatalogNiche } from "./catalog.ts";
 import { HERO_LIBRARY, heroLibraryEntryByUrl } from "./HeroLibrary.ts";
 import { isMediaLibraryUrl, mediaForNiche } from "./mediaLibrary.ts";
 import { MASTER_HERO_DEFAULTS } from "./MasterHeroDefaults.ts";
@@ -30,6 +31,7 @@ export type AutopilotComposedClip = {
   overlay: AutopilotClipOverlay;
   caption: string;
   posterSvg: string;
+  needsCopy?: boolean;
 };
 
 function cleanMediaUrl(url: string | null | undefined): string {
@@ -152,6 +154,7 @@ export function composeAutopilotClip(input: {
   city: string;
   bookUrl: string;
   niche?: string | null;
+  proofAtom?: string;
 }): AutopilotComposedClip {
   const shopName = input.shopName.replace(/\s+/g, " ").trim().slice(0, 48) || "Local shop";
   const city = input.city.replace(/\s+/g, " ").trim().slice(0, 40) || "Your city";
@@ -159,15 +162,20 @@ export function composeAutopilotClip(input: {
   const { tradeLabel, tradeLine } = tradeCopyForNiche(input.niche);
   const cta = bookingCta(city);
   const overlay: AutopilotClipOverlay = { shopName, city, tradeLabel, tradeLine, cta, bookUrl };
-  const caption = `${shopName} · ${tradeLabel} in ${city}. ${tradeLine} ${cta}. ${bookUrl}`
-    .replace(/\s+/g, " ")
-    .trim();
+  const proof = composeProofCaption({
+    shopName,
+    city,
+    tradeLabel,
+    proofAtom: (input.proofAtom ?? "").trim(),
+    bookUrl,
+  });
   const masterLoopUrl = masterLoopForNiche(input.niche);
   return {
     loopUrl: cleanMediaUrl(input.loopUrl) || input.loopUrl,
     masterLoopUrl,
     overlay,
-    caption,
+    caption: proof.ok ? proof.caption : "",
+    needsCopy: !proof.ok,
     posterSvg: autopilotPosterSvg(overlay),
   };
 }

@@ -7,7 +7,9 @@ import {
   PLUMBING_CAMPAIGN_HERO,
   PLUMBING_CAMPAIGN_TEMPLATE,
   PLUMBING_LEAD_DATASET_SIZE,
+  barberStorefrontHref,
   demoStorefrontPath,
+  electricianStorefrontHref,
   nicheForScheduleDay,
   nextScheduledNiche,
   outreachNicheHero,
@@ -35,7 +37,10 @@ test("Emergency Plumbing locks to axio-plumber-hero", () => {
   assert.equal(outreachNicheHero("plumbing"), "/media/axio-plumber-hero.mp4");
   assert.equal(outreachNicheHero("Emergency Plumbing"), "/media/axio-plumber-hero.mp4");
   assert.equal(PLUMBING_CAMPAIGN_GREETING, "/media/axiom-24-7-booking-for-contractors.mp4");
-  assert.equal(PLUMBING_CAMPAIGN_TEMPLATE, "/t/{slug}?niche=plumbing&greet=1");
+  assert.equal(
+    PLUMBING_CAMPAIGN_TEMPLATE,
+    "/?lead_id={id}&b={name}&phone={phone}&city={city}&trade=plumbing",
+  );
   assert.equal(plumbingStorefrontHref("rogue-pipe-co"), "/t/rogue-pipe-co?niche=plumbing&greet=1");
   assert.match(outreachNicheLabel("plumbing"), /Plumbing/);
 });
@@ -48,13 +53,39 @@ test("demo storefront path carries niche, business inlay, and plumbing hero pin"
     city: "Medford",
     county: "Jackson County",
   });
-  assert.match(path, /^\/t\/rogue-pipe-co-medford\?/);
-  assert.match(path, /niche=plumbing/);
-  assert.match(path, /business=Rogue\+Pipe\+Co/);
-  assert.match(path, /b=rogue-pipe-co-medford/);
+  assert.match(path, /^\//);
+  assert.match(path, /trade=plumbing/);
+  assert.match(path, /b=Rogue\+Pipe\+Co/);
+  assert.match(path, /city=Medford/);
   assert.match(path, /hero=%2Fmedia%2Faxio-plumber-hero\.mp4/);
-  assert.match(path, /greet=1/);
   assert.match(path, /utm_source=desk/);
+});
+
+test("electrical demo storefront path binds the electrician outreach landing", () => {
+  const path = demoStorefrontPath({
+    niche: "electrical",
+    businessName: "Cascade Electric",
+    leadSlug: "cascade-electric",
+    city: "Talent",
+    county: "Jackson County",
+  });
+  assert.match(path, /^\/t\/cascade-electric\?/);
+  assert.match(path, /niche=electrical/);
+  assert.match(path, /business=Cascade\+Electric/);
+  assert.equal(electricianStorefrontHref("cascade-electric"), "/t/cascade-electric?niche=electrical&greet=1");
+});
+
+test("barber demo storefront path binds the barbershop landing", () => {
+  const path = demoStorefrontPath({
+    niche: "barber",
+    businessName: "Ashland Barber Co",
+    leadSlug: "ashland-barber",
+    city: "Ashland",
+    county: "Jackson County",
+  });
+  assert.match(path, /^\/t\/ashland-barber\?/);
+  assert.match(path, /niche=barber/);
+  assert.equal(barberStorefrontHref("ashland-barber"), "/t/ashland-barber?niche=barber&greet=1");
 });
 
 test("plumbing preview slug feeds /t/{slug} tenant routes", () => {

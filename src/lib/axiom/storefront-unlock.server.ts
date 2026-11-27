@@ -154,6 +154,10 @@ export async function readStorefrontDesk(slug: string): Promise<StorefrontDesk |
   }
 }
 
+export async function assertStorefrontOwner(slug: string, request: Request): Promise<StorefrontDesk> {
+  return assertOwner(slug, request);
+}
+
 async function assertOwner(slug: string, request: Request): Promise<StorefrontDesk> {
   const desk = await readStorefrontDesk(slug);
   if (!desk) {
@@ -220,6 +224,16 @@ export async function settleStorefrontUnlock(input: {
   `;
   if (existing[0]?.status === "unlocked") {
     const desk = await readDesk(slug);
+    const phone = (input.phone || "").trim();
+    if (desk?.shop_id && phone) {
+      await sql`
+        update shops
+        set owner_phone = coalesce(nullif(btrim(owner_phone), ''), ${phone}),
+            notify_phone = coalesce(nullif(btrim(notify_phone), ''), ${phone}),
+            notification_phone = coalesce(nullif(btrim(notification_phone), ''), ${phone})
+        where id = ${desk.shop_id}
+      `.catch(() => undefined);
+    }
     return {
       already: true,
       shopSlug: slug,
@@ -235,30 +249,38 @@ export async function settleStorefrontUnlock(input: {
   const ownerId = input.userId.trim();
   const found = await sql<{ id: string }>`select id from shops where slug = ${slug} limit 1`;
   let shopId = found[0]?.id ?? "";
+  const ownerPhone = (input.phone || "").trim();
   if (!shopId) {
     shopId = `shop_${randomBytes(8).toString("hex")}`;
     const inserted = await sql<{ id: string }>`
-      insert into shops (id, slug, name, niche, owner_user_id)
-      values (${shopId}, ${slug}, ${businessName}, ${niche}, ${ownerId || null})
+      insert into shops (id, slug, name, niche, owner_user_id, owner_phone, notify_phone, notification_phone)
+      values (${shopId}, ${slug}, ${businessName}, ${niche}, ${ownerId || null}, ${ownerPhone}, ${ownerPhone}, ${ownerPhone})
       on conflict (slug) do update set
         name = excluded.name,
-        owner_user_id = coalesce(shops.owner_user_id, excluded.owner_user_id)
+        owner_user_id = coalesce(shops.owner_user_id, excluded.owner_user_id),
+        owner_phone = coalesce(nullif(btrim(shops.owner_phone), ''), excluded.owner_phone),
+        notify_phone = coalesce(nullif(btrim(shops.notify_phone), ''), excluded.notify_phone),
+        notification_phone = coalesce(nullif(btrim(shops.notification_phone), ''), excluded.notification_phone)
       returning id
-    `;
+    `.catch(() =>
+      sql<{ id: string }>`
+        insert into shops (id, slug, name, niche, owner_user_id)
+        values (${shopId}, ${slug}, ${businessName}, ${niche}, ${ownerId || null})
+        on conflict (slug) do update set
+          name = excluded.name,
+          owner_user_id = coalesce(shops.owner_user_id, excluded.owner_user_id)
+        returning id
+      `,
+    );
     shopId = inserted[0]?.id || shopId;
-  } else if (ownerId) {
+  } else {
     await sql`
       update shops
-      set owner_user_id = coalesce(owner_user_id, ${ownerId}),
+      set owner_user_id = coalesce(owner_user_id, ${ownerId || null}),
           name = case when name = '' then ${businessName} else name end,
-          notify_phone = case
-            when coalesce(notify_phone, '') = '' then ${input.phone || ""}
-            else notify_phone
-          end,
-          notification_phone = case
-            when coalesce(notification_phone, '') = '' then ${input.phone || ""}
-            else notification_phone
-          end
+          owner_phone = coalesce(nullif(btrim(owner_phone), ''), ${ownerPhone}),
+          notify_phone = coalesce(nullif(btrim(notify_phone), ''), ${ownerPhone}),
+          notification_phone = coalesce(nullif(btrim(notification_phone), ''), ${ownerPhone})
       where id = ${shopId}
     `.catch(() => undefined);
   }
@@ -278,6 +300,12 @@ export async function settleStorefrontUnlock(input: {
       price_cents = case when shop_billing.status in ('active', 'trialing') then shop_billing.price_cents else 100 end,
       updated_at = now()
   `;
+  try {
+    const { seedTradePriceBook } = await import("./price-book.server");
+    await seedTradePriceBook(shopId, niche);
+  } catch (err) {
+    console.error("[storefront-unlock] price book seed failed", err instanceof Error ? err.message : err);
+  }
 
   const config = hydrateLeadStorefront({
     slug,
@@ -458,4 +486,30 @@ export async function publishStorefront(
     stripeSubscriptionId: desk.stripeSubscriptionId ?? undefined,
   });
   return { published: true };
+}
+
+export async function readGoogleReviewUrl(slug: string): Promise<string> {
+  const key = cleanShopSlug(slug);
+  if (!key) return "";
+  const sql = await getSql();
+  const rows = await sql<{ google_review_url: string | null }>`
+    select google_review_url from shops where slug = ${key} limit 1
+  `.catch(() => [] as { google_review_url: string | null }[]);
+  return (rows[0]?.google_review_url || "").trim();
+}
+
+export async function saveGoogleReviewUrl(request: Request, slug: string, raw: unknown): Promise<{ url: string }> {
+  const desk = await assertOwner(slug, request);
+  const { sanitizeGoogleReviewUrl } = await import("./google-review-request");
+  const url = sanitizeGoogleReviewUrl(String(raw ?? ""));
+  if (String(raw ?? "").trim() && !url) {
+    const error = new Error("Use an https Google review or Maps link.");
+    (error as Error & { status: number }).status = 400;
+    throw error;
+  }
+  const sql = await getSql();
+  await sql`
+    update shops set google_review_url = ${url} where slug = ${desk.slug}
+  `;
+  return { url };
 }

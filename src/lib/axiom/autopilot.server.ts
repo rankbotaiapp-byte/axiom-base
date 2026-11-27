@@ -533,6 +533,8 @@ function messageFor(
     city: lead.city,
     county: lead.county,
     tradeLabel: outreachNicheLabel(niche),
+    phone: lead.phone,
+    email: lead.email,
   });
   const url =
     outreachDestination(origin, {
@@ -543,6 +545,7 @@ function messageFor(
       leadSlug: lead.leadSlug,
       leadId: lead.id,
       city: lead.city,
+      phone: lead.phone,
       greet: true,
       trade: outreachNicheLabel(niche),
     }) ||
@@ -571,6 +574,8 @@ function messageFor(
       city: lead.city,
       county: lead.county,
       tradeLabel: outreachNicheLabel(niche),
+      phone: lead.phone,
+      email: lead.email,
       origin,
     });
     const day1 = renderSmsDripBody("day1-preview", {
@@ -732,6 +737,8 @@ export async function dispatchAutopilot(request: Request): Promise<
           city: lead.city,
           county: lead.county,
           tradeLabel: outreachNicheLabel(niche),
+          phone: lead.phone,
+          email: lead.email,
           origin,
         });
         const dripTokens = {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AxiomBusinessNumberView } from "@/lib/axiom/axiom-business-number";
 import { formatAxiomPhoneDisplay } from "@/lib/axiom/axiom-business-number";
+import { conditionalForwardingCodes } from "@/lib/axiom/call-forwarding";
 import "./axiom-business-number-card.css";
 
 type Props = {
@@ -22,6 +23,7 @@ export function AxiomBusinessNumberCard({
 }: Props) {
   const [record, setRecord] = useState<AxiomBusinessNumberView | null>(initial);
   const [copied, setCopied] = useState(false);
+  const [copiedDial, setCopiedDial] = useState("");
 
   useEffect(() => {
     let stop = false;
@@ -58,6 +60,7 @@ export function AxiomBusinessNumberCard({
   const e164 = record?.e164 || "";
   const display = e164 ? formatAxiomPhoneDisplay(e164) : "Provisioning…";
   const vcardHref = `/api/storefront/vcard?slug=${encodeURIComponent(slug)}`;
+  const forwarding = e164 ? conditionalForwardingCodes(e164) : [];
 
   async function copyNumber() {
     if (!e164) return;
@@ -120,6 +123,40 @@ export function AxiomBusinessNumberCard({
           Axiom.
         </p>
       )}
+      {forwarding.length ? (
+        <div className="abn-forward">
+          <p className="abn-kicker">Keep Your Existing Business Number</p>
+          <p className="abn-pending">
+            15 seconds: miss a call on the number already on your truck, and it rings Axiom. Dial these from that
+            line — you do not reprint wraps or cards.
+          </p>
+          <ul className="abn-forward-list">
+            {forwarding.map((row) => (
+              <li key={row.code}>
+                <div>
+                  <strong>
+                    {row.code} · {row.label}
+                  </strong>
+                  <span>{row.when}</span>
+                  <code>{row.dial}</code>
+                </div>
+                <button
+                  type="button"
+                  className="abn-btn abn-btn-cyan"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(row.dial).then(() => {
+                      setCopiedDial(row.code);
+                      window.setTimeout(() => setCopiedDial(""), 1600);
+                    });
+                  }}
+                >
+                  {copiedDial === row.code ? "Copied" : "Copy dial"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {showNav ? (
         <div className="abn-links">
           <a className="abn-btn abn-btn-cyan" href={`/t/${encodeURIComponent(slug)}`}>
